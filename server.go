@@ -21,14 +21,16 @@ type Server struct {
 	addOrderMessage chan *AddOrderMessage
 	register        chan *Client
 	unregister      chan *Client
+	engine          *TradingEngine
 }
 
-func NewServer() *Server {
+func NewServer(engine *TradingEngine) *Server {
 	return &Server{
 		addOrderMessage: make(chan *AddOrderMessage),
 		register:        make(chan *Client),
 		unregister:      make(chan *Client),
 		clients:         make(map[*Client]bool),
+		engine:          engine,
 	}
 }
 

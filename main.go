@@ -17,9 +17,15 @@ type TrimmedOrder struct {
 	Amount uint32 `json:"amount,int,omitempty"`
 }
 
+var done = make(chan bool)
+var BTC_USD = NewPair("BTC", "USDT")
+
 func main() {
 	flag.Parse()
-	server := NewServer()
+	engine := NewTradingEngine()
+	engine.CreateNewOrderBook(BTC_USD, done)
+
+	server := NewServer(engine)
 	go server.start()
 
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
@@ -35,7 +41,6 @@ func main() {
 // serveWs handles websocket requests from the peer.
 func registerClient(server *Server, w http.ResponseWriter, r *http.Request) {
 	var order Order
-	// var v interface{}
 	connection, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println(err)
@@ -48,15 +53,21 @@ func registerClient(server *Server, w http.ResponseWriter, r *http.Request) {
 	client.server.register <- client
 
 	for {
-		err := client.connection.ReadJSON(&order)
-		if err != nil {
+
+		if err := client.connection.ReadJSON(&order); err != nil {
 			log.Println("Read", err)
 			break
 		}
 
-		log.Printf("Received: %v", order)
-		err = client.connection.WriteJSON(&order)
-		if err != nil {
+		if err = server.engine.AddOrder(&order); err != nil {
+			log.Println("Failed processing order: %v", &order)
+		}
+
+		server.engine.CloseOrderBookChannel(BTC_USD)
+		<-done
+		server.engine.PrintLogs()
+
+		if err = client.connection.WriteJSON(&order); err != nil {
 			log.Println("Write:", err)
 			break
 		}

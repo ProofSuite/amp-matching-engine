@@ -22,10 +22,15 @@ type OrderBook struct {
 	orderIndex map[uint64]*Order
 	prices     [MAX_PRICE]*PricePoint
 	actions    chan<- *Action
+	logger     []*Action
 }
 
 func (orderbook *OrderBook) String() string {
 	return fmt.Sprintf("Ask:%v, Bid:%v, orderIndex:%v", orderbook.ask, orderbook.bid, orderbook.orderIndex)
+}
+
+func (orderbook *OrderBook) GetLogs() []*Action {
+	return orderbook.logger
 }
 
 func (pricePoint *PricePoint) Insert(order *Order) {
@@ -39,7 +44,9 @@ func (pricePoint *PricePoint) Insert(order *Order) {
 }
 
 func (ob *OrderBook) AddOrder(order *Order) {
+	fmt.Printf("This is cool")
 	if order.OrderType == BUY {
+		fmt.Printf("Buying")
 		ob.actions <- NewBuyAction(order)
 		ob.FillBuy(order)
 	} else {
@@ -64,14 +71,14 @@ func (ob *OrderBook) openOrder(order *Order) {
 	ob.orderIndex[order.Id] = order
 }
 
-func (ob *OrderBook) CancelOrder(id uint64, symbol string) {
-	ob.actions <- NewCancelAction(id, symbol)
+func (ob *OrderBook) CancelOrder(id uint64, pair Pair) {
+	ob.actions <- NewCancelAction(id, pair)
 	if order, ok := ob.orderIndex[id]; ok {
 		order.Amount = 0
 		order.status = CANCELLED
 	}
 
-	ob.actions <- NewCancelledAction(id, symbol)
+	ob.actions <- NewCancelledAction(id, pair)
 }
 
 func (ob *OrderBook) FillBuy(order *Order) {
