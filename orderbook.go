@@ -1,6 +1,8 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+)
 
 const MAX_PRICE = 10000000
 
@@ -8,42 +10,6 @@ const MAX_PRICE = 10000000
 type PricePoint struct {
 	orderHead *Order
 	orderTail *Order
-}
-
-type OrderStatus int
-
-const (
-	NEW OrderStatus = iota
-	OPEN
-	PARTIAL_FILLED
-	FILLED
-	CANCELLED
-)
-
-type OrderType int
-
-const (
-	BUY OrderType = iota
-	SELL
-)
-
-//Each order is linked to the next order at the same price point
-type Order struct {
-	id        uint64
-	symbol    string
-	price     uint32
-	amount    uint32
-	orderType OrderType
-	status    OrderStatus
-	next      *Order
-}
-
-func (order *Order) String() string {
-	return fmt.Sprintf("\nOrder{id:%d,symbol:%s,orderType:%v,price:%d,amount:%d}", order.id, order.symbol, order.orderType, order.price, order.amount)
-}
-
-func NewOrder(id uint64, symbol string, orderType OrderType, price uint32, amount uint32) *Order {
-	return &Order{id: id, symbol: symbol, orderType: orderType, price: price, amount: amount, status: NEW}
 }
 
 //The orderbook keeps track of the maximum bid and minimum ask
@@ -63,8 +29,6 @@ func (orderbook *OrderBook) String() string {
 }
 
 func (pricePoint *PricePoint) Insert(order *Order) {
-	fmt.Printf("\nInserting a new price point at: %v", order.price)
-	fmt.Printf("\n*************")
 	if pricePoint.orderHead == nil {
 		pricePoint.orderHead = order
 		pricePoint.orderTail = order
@@ -72,48 +36,38 @@ func (pricePoint *PricePoint) Insert(order *Order) {
 		pricePoint.orderTail.next = order
 		pricePoint.orderTail = order
 	}
-	fmt.Printf("\nThe price point tail and head for this price point are:")
-	fmt.Printf("\nPrice point order tail: %v", pricePoint.orderTail)
-	fmt.Printf("\nPrice point order head: %v", pricePoint.orderHead)
-	fmt.Printf("\n**************\n")
 }
 
 func (ob *OrderBook) AddOrder(order *Order) {
-	if order.orderType == BUY {
+	if order.OrderType == BUY {
 		ob.actions <- NewBuyAction(order)
 		ob.FillBuy(order)
 	} else {
 		ob.actions <- NewSellAction(order)
 		ob.FillSell(order)
 	}
-	if order.amount > 0 {
+	if order.Amount > 0 {
 		ob.openOrder(order)
 	}
 }
 
 func (ob *OrderBook) openOrder(order *Order) {
-	fmt.Printf("\nOpening a new order")
-	fmt.Printf("\n*********************")
-	fmt.Printf("\nOrder: %v", order)
-	fmt.Printf("\n*********************\n")
-	pricePoint := ob.prices[order.price]
+	pricePoint := ob.prices[order.Price]
 	pricePoint.Insert(order)
 	order.status = OPEN
-	if order.orderType == BUY && order.price > ob.bid {
-		fmt.Printf("\nThe order type is BUY and order price is higher than the bid")
-		ob.bid = order.price
-	} else if order.orderType == SELL && order.price < ob.ask {
-		fmt.Printf("\nThe order type is SELL and order price is lower than the ask")
-		ob.ask = order.price
+	if order.OrderType == BUY && order.Price > ob.bid {
+		ob.bid = order.Price
+	} else if order.OrderType == SELL && order.Price < ob.ask {
+		ob.ask = order.Price
 	}
 
-	ob.orderIndex[order.id] = order
+	ob.orderIndex[order.Id] = order
 }
 
 func (ob *OrderBook) CancelOrder(id uint64, symbol string) {
 	ob.actions <- NewCancelAction(id, symbol)
 	if order, ok := ob.orderIndex[id]; ok {
-		order.amount = 0
+		order.Amount = 0
 		order.status = CANCELLED
 	}
 
@@ -122,7 +76,7 @@ func (ob *OrderBook) CancelOrder(id uint64, symbol string) {
 
 func (ob *OrderBook) FillBuy(order *Order) {
 
-	for ob.ask < order.price && order.amount > 0 {
+	for ob.ask < order.Price && order.Amount > 0 {
 		pricePoint := ob.prices[ob.ask]
 		pricePointOrderHead := pricePoint.orderHead
 		for pricePointOrderHead != nil {
@@ -135,7 +89,7 @@ func (ob *OrderBook) FillBuy(order *Order) {
 }
 
 func (ob *OrderBook) FillSell(order *Order) {
-	for ob.bid >= order.price && order.amount > 0 {
+	for ob.bid >= order.Price && order.Amount > 0 {
 		pricePoint := ob.prices[ob.bid]
 		pricePointOrderHead := pricePoint.orderHead
 		for pricePointOrderHead != nil {
@@ -148,18 +102,18 @@ func (ob *OrderBook) FillSell(order *Order) {
 }
 
 func (ob *OrderBook) fill(order, pricePointOrderHead *Order) {
-	if pricePointOrderHead.amount >= order.amount {
+	if pricePointOrderHead.Amount >= order.Amount {
 		ob.actions <- NewFilledAction(order, pricePointOrderHead)
-		pricePointOrderHead.amount -= order.amount
-		order.amount = 0
+		pricePointOrderHead.Amount -= order.Amount
+		order.Amount = 0
 		order.status = FILLED
 		return
 	} else {
-		if pricePointOrderHead.amount > 0 {
+		if pricePointOrderHead.Amount > 0 {
 			ob.actions <- NewPartialFilledAction(order, pricePointOrderHead)
-			order.amount -= pricePointOrderHead.amount
+			order.Amount -= pricePointOrderHead.Amount
 			order.status = PARTIAL_FILLED
-			pricePointOrderHead.amount = 0
+			pricePointOrderHead.Amount = 0
 		}
 	}
 }

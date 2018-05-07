@@ -42,7 +42,7 @@ func (engine *TradingEngine) CreateNewOrderBook(symbol string, actions chan<- *A
 }
 
 func (engine *TradingEngine) AddOrder(order *Order) (bool, error) {
-	if orderbook, ok := engine.orderbooks[order.symbol]; !ok {
+	if orderbook, ok := engine.orderbooks[order.Symbol]; !ok {
 		return false, errors.New("Orderbook does not exist")
 	} else {
 		orderbook.AddOrder(order)

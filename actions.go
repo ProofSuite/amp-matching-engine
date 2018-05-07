@@ -29,11 +29,11 @@ func (a *Action) String() string {
 }
 
 func NewBuyAction(o *Order) *Action {
-	return &Action{actionType: AT_BUY, symbol: o.symbol, orderId: o.id, amount: o.amount, price: o.price}
+	return &Action{actionType: AT_BUY, symbol: o.Symbol, orderId: o.Id, amount: o.Amount, price: o.Price}
 }
 
 func NewSellAction(o *Order) *Action {
-	return &Action{actionType: AT_SELL, symbol: o.symbol, orderId: o.id, amount: o.amount, price: o.price}
+	return &Action{actionType: AT_SELL, symbol: o.Symbol, orderId: o.Id, amount: o.Amount, price: o.Price}
 }
 
 func NewCancelAction(id uint64, symbol string) *Action {
@@ -45,11 +45,11 @@ func NewCancelledAction(id uint64, symbol string) *Action {
 }
 
 func NewFilledAction(o *Order, fromOrder *Order) *Action {
-	return &Action{actionType: AT_FILLED, symbol: o.symbol, orderId: o.id, fromOrderId: fromOrder.id, amount: o.amount, price: fromOrder.price}
+	return &Action{actionType: AT_FILLED, symbol: o.Symbol, orderId: o.Id, fromOrderId: fromOrder.Id, amount: o.Amount, price: fromOrder.Price}
 }
 
 func NewPartialFilledAction(o *Order, fromOrder *Order) *Action {
-	return &Action{actionType: AT_PARTIAL_FILLED, symbol: o.symbol, orderId: o.id, fromOrderId: fromOrder.id, amount: fromOrder.amount, price: fromOrder.price}
+	return &Action{actionType: AT_PARTIAL_FILLED, symbol: o.Symbol, orderId: o.Id, fromOrderId: fromOrder.Id, amount: fromOrder.Amount, price: fromOrder.Price}
 }
 
 func NewDoneAction() *Action {
