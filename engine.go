@@ -15,17 +15,17 @@ func NewTradingEngine() *TradingEngine {
 	return engine
 }
 
-func NewOrderBook(actions chan<- *Action) *OrderBook {
+func NewOrderBook(actions chan *Action) *OrderBook {
 	ob := new(OrderBook)
 	ob.bid = 0
 	ob.ask = MAX_PRICE
+	ob.actions = actions
+	ob.orderIndex = make(map[uint64]*Order)
 
 	for i := range ob.prices {
 		ob.prices[i] = new(PricePoint)
 	}
 
-	ob.actions = actions
-	ob.orderIndex = make(map[uint64]*Order)
 	return ob
 }
 
@@ -40,17 +40,17 @@ func (engine *TradingEngine) CreateNewOrderBook(pair Pair, done chan<- bool) {
 	actions := make(chan *Action)
 	logger := make([]*Action, 0)
 
-	orderbook := new(OrderBook)
-	orderbook.bid = 0
-	orderbook.ask = MAX_PRICE
-	orderbook.actions = actions
-	orderbook.logger = logger
-	orderbook.orderIndex = make(map[uint64]*Order)
+	ob := new(OrderBook)
+	ob.bid = 0
+	ob.ask = MAX_PRICE
+	ob.actions = actions
+	ob.logger = logger
+	ob.orderIndex = make(map[uint64]*Order)
 
 	go func() {
 		for {
 			action := <-actions
-			orderbook.logger = append(orderbook.logger, action)
+			ob.logger = append(ob.logger, action)
 			if action.actionType == AT_DONE {
 				done <- true
 				return
@@ -58,17 +58,17 @@ func (engine *TradingEngine) CreateNewOrderBook(pair Pair, done chan<- bool) {
 		}
 	}()
 
-	for i := range orderbook.prices {
-		orderbook.prices[i] = new(PricePoint)
+	for i := range ob.prices {
+		ob.prices[i] = new(PricePoint)
 	}
-	engine.orderbooks[pair] = orderbook
+	engine.orderbooks[pair] = ob
 }
 
-func (engine *TradingEngine) AddOrder(order *Order) error {
+func (engine *TradingEngine) AddOrder(o *Order) error {
 	if orderbook, ok := engine.orderbooks[order.Pair]; !ok {
 		return errors.New("Orderbook does not exist")
 	} else {
-		orderbook.AddOrder(order)
+		orderbook.AddOrder(o)
 		return nil
 	}
 }
@@ -80,6 +80,11 @@ func (engine *TradingEngine) CancelOrder(id uint64, pair Pair) error {
 		orderbook.CancelOrder(id, pair)
 		return nil
 	}
+}
+
+//TODO Need to check against the EVM and execute the order
+func (engine *TradingEngine) ExecuteOrder(order *Order) error {
+
 }
 
 func (engine *TradingEngine) CloseOrderBookChannel(pair Pair) (bool, error) {

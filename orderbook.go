@@ -17,12 +17,13 @@ type PricePoint struct {
 //prices is an array of all possible pricepoints
 //actions is a channels to report some action to a handler as they occur
 type OrderBook struct {
-	ask        uint32
-	bid        uint32
-	orderIndex map[uint64]*Order
-	prices     [MAX_PRICE]*PricePoint
-	actions    chan<- *Action
-	logger     []*Action
+	ask             uint32
+	bid             uint32
+	orderIndex      map[uint64]*Order
+	prices          [MAX_PRICE]*PricePoint
+	actions         chan *Action
+	outboundActions chan *Action
+	logger          []*Action
 }
 
 func (orderbook *OrderBook) String() string {
@@ -33,42 +34,42 @@ func (orderbook *OrderBook) GetLogs() []*Action {
 	return orderbook.logger
 }
 
-func (pricePoint *PricePoint) Insert(order *Order) {
-	if pricePoint.orderHead == nil {
-		pricePoint.orderHead = order
-		pricePoint.orderTail = order
+func (p *PricePoint) Insert(order *Order) {
+	if p.orderHead == nil {
+		p.orderHead = order
+		p.orderTail = order
 	} else {
-		pricePoint.orderTail.next = order
-		pricePoint.orderTail = order
+		p.orderTail.next = order
+		p.orderTail = order
 	}
 }
 
-func (ob *OrderBook) AddOrder(order *Order) {
-	fmt.Printf("This is cool")
-	if order.OrderType == BUY {
-		fmt.Printf("Buying")
-		ob.actions <- NewBuyAction(order)
-		ob.FillBuy(order)
+func (ob *OrderBook) AddOrder(o *Order) {
+
+	if o.OrderType == BUY {
+		ob.actions <- NewBuyAction(o)
+		ob.FillBuy(o)
 	} else {
-		ob.actions <- NewSellAction(order)
-		ob.FillSell(order)
+		ob.actions <- NewSellAction(o)
+		ob.FillSell(o)
 	}
-	if order.Amount > 0 {
-		ob.openOrder(order)
+	if o.Amount > 0 {
+		ob.openOrder(o)
 	}
 }
 
-func (ob *OrderBook) openOrder(order *Order) {
-	pricePoint := ob.prices[order.Price]
-	pricePoint.Insert(order)
-	order.status = OPEN
-	if order.OrderType == BUY && order.Price > ob.bid {
-		ob.bid = order.Price
-	} else if order.OrderType == SELL && order.Price < ob.ask {
-		ob.ask = order.Price
+func (ob *OrderBook) openOrder(o *Order) {
+	o.signalOrderCreated()
+	pricePoint := ob.prices[o.Price]
+	pricePoint.Insert(o)
+	o.status = OPEN
+	if o.OrderType == BUY && o.Price > ob.bid {
+		ob.bid = o.Price
+	} else if o.OrderType == SELL && o.Price < ob.ask {
+		ob.ask = o.Price
 	}
 
-	ob.orderIndex[order.Id] = order
+	ob.orderIndex[o.Id] = o
 }
 
 func (ob *OrderBook) CancelOrder(id uint64, pair Pair) {
@@ -108,21 +109,33 @@ func (ob *OrderBook) FillSell(order *Order) {
 	}
 }
 
-func (ob *OrderBook) fill(order, pricePointOrderHead *Order) {
-	if pricePointOrderHead.Amount >= order.Amount {
-		ob.actions <- NewFilledAction(order, pricePointOrderHead)
-		pricePointOrderHead.Amount -= order.Amount
-		order.Amount = 0
-		order.status = FILLED
+func (ob *OrderBook) fill(o, pricePointOrderHead *Order) {
+	if pricePointOrderHead.Amount >= o.Amount {
+		ob.fillCompletely(o, pricePointOrderHead)
 		return
 	} else {
 		if pricePointOrderHead.Amount > 0 {
-			ob.actions <- NewPartialFilledAction(order, pricePointOrderHead)
-			order.Amount -= pricePointOrderHead.Amount
-			order.status = PARTIAL_FILLED
-			pricePointOrderHead.Amount = 0
+			ob.fillPartially(o, pricePointOrderHead)
+			return
 		}
 	}
+}
+
+func (ob *OrderBook) fillCompletely(o, pricePointOrderHead *Order) {
+	ob.actions <- NewFilledAction(o, pricePointOrderHead)
+	pricePointOrderHead.Amount -= o.Amount
+	o.Amount = 0
+	o.status = FILLED
+	o.signalOrderFilled()
+	return
+}
+
+func (ob *OrderBook) fillPartially(o, pricePointOrderHead *Order) {
+	ob.actions <- NewPartialFilledAction(o, pricePointOrderHead)
+	o.Amount -= pricePointOrderHead.Amount
+	o.status = PARTIAL_FILLED
+	o.signalOrderPartiallyFilled()
+	return
 }
 
 func (ob *OrderBook) Done() {
