@@ -23,10 +23,9 @@ type OrderBook struct {
 	ask        uint64
 	bid        uint64
 	orderIndex map[Hash]*Order
-	// orderIndex map[uint64]*Order
-	prices  [MAX_PRICE]*PricePoint
-	actions chan *Action
-	logger  []*Action
+	prices     [MAX_PRICE]*PricePoint
+	actions    chan *Action
+	logger     []*Action
 }
 
 // NewOrderbook returns a default orderbook struct
