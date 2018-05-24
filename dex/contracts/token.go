@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/Dvisacker/proofsuite-orderbook/dex"
-	"github.com/Dvisacker/proofsuite-orderbook/dex/contracts/interfaces"
+	"github.com/Dvisacker/matching-engine/dex"
+	"github.com/Dvisacker/matching-engine/dex/contracts/interfaces"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	. "github.com/ethereum/go-ethereum/common"
 )
