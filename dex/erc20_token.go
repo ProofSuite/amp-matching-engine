@@ -11,29 +11,28 @@ import (
 )
 
 type ERC20Token struct {
-	Address     Address
-	Contract    *interfaces.Token
-	CallOptions *bind.CallOpts
-	TxOptions   *bind.TransactOpts
+	Address       Address
+	Contract      *interfaces.Token
+	CallOptions   *bind.CallOpts
+	TxOptions     *bind.TransactOpts
+	DefaultSender *Wallet
 }
 
-func (t *ERC20Token) SetCustomSender(wallet *Wallet) {
-	txOptions := bind.NewKeyedTransactor(wallet.PrivateKey)
-	t.TxOptions = txOptions
+func (t *ERC20Token) SetCustomSender(w *Wallet) {
+	t.TxOptions = bind.NewKeyedTransactor(w.PrivateKey)
 }
 
 func (t *ERC20Token) SetDefaultSender() {
-	txOptions := bind.NewKeyedTransactor(config.Wallets[0].PrivateKey)
-	t.TxOptions = txOptions
+	t.TxOptions = bind.NewKeyedTransactor(t.DefaultSender.PrivateKey)
 }
 
 func (t *ERC20Token) BalanceOf(owner Address) (*big.Int, error) {
-	balance, err := t.Contract.BalanceOf(t.CallOptions, owner)
+	b, err := t.Contract.BalanceOf(t.CallOptions, owner)
 	if err != nil {
 		return nil, err
 	}
 
-	return balance, nil
+	return b, nil
 }
 
 func (t *ERC20Token) TotalSupply() (*big.Int, error) {
@@ -54,7 +53,18 @@ func (t *ERC20Token) Transfer(receiver Address, amount *big.Int) (Hash, error) {
 	return tx.Hash(), nil
 }
 
-func (t *ERC20Token) TransferFrom(sender Address, receiver Address, amount *big.Int) (Hash, error) {
+func (t *ERC20Token) TransferFromCustomWallet(wallet *Wallet, receiver Address, amount *big.Int) (Hash, error) {
+	t.SetCustomSender(wallet)
+
+	tx, err := t.Contract.Transfer(t.TxOptions, receiver, amount)
+	if err != nil {
+		return Hash{}, errors.New("Error making Transfer() transaction")
+	}
+
+	return tx.Hash(), nil
+}
+
+func (t *ERC20Token) TransferFrom(sender, receiver Address, amount *big.Int) (Hash, error) {
 	tx, err := t.Contract.TransferFrom(t.TxOptions, sender, receiver, amount)
 	if err != nil {
 		return Hash{}, errors.New("Error making TransferFrom() transaction")
@@ -79,6 +89,18 @@ func (t *ERC20Token) Approve(spender Address, amount *big.Int) (Hash, error) {
 		return Hash{}, errors.New("Error making Approve() transaction")
 	}
 
+	return tx.Hash(), nil
+}
+
+func (t *ERC20Token) ApproveFrom(wallet *Wallet, spender Address, amount *big.Int) (Hash, error) {
+	t.SetCustomSender(wallet)
+
+	tx, err := t.Contract.Approve(t.TxOptions, spender, amount)
+	if err != nil {
+		return Hash{}, errors.New("Error making ApproveFrom() transaction")
+	}
+
+	t.SetDefaultSender()
 	return tx.Hash(), nil
 }
 
