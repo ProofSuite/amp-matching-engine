@@ -11,8 +11,6 @@ import (
 	. "github.com/ethereum/go-ethereum/common"
 )
 
-var config = dex.NewDefaultConfiguration()
-
 // type Exchange struct {
 // 	contract *interfaces.ExchangeSession
 // }
@@ -24,17 +22,17 @@ type Exchange struct {
 	TxOptions   *bind.TransactOpts
 }
 
-func NewExchange(wallet *dex.Wallet, contractAddress Address, backend bind.ContractBackend) (*Exchange, error) {
-	instance, err := interfaces.NewExchange(contractAddress, backend)
+func NewExchange(w *dex.Wallet, contract Address, backend bind.ContractBackend) (*Exchange, error) {
+	instance, err := interfaces.NewExchange(contract, backend)
 	if err != nil {
 		return nil, err
 	}
 
 	callOptions := &bind.CallOpts{Pending: true}
-	txOptions := bind.NewKeyedTransactor(wallet.PrivateKey)
+	txOptions := bind.NewKeyedTransactor(w.PrivateKey)
 
 	return &Exchange{
-		Address:     contractAddress,
+		Address:     contract,
 		Contract:    instance,
 		CallOptions: callOptions,
 		TxOptions:   txOptions,
@@ -53,11 +51,6 @@ func (e *Exchange) SetTxValue(value *big.Int) {
 
 func (e *Exchange) SetCustomSender(wallet *dex.Wallet) {
 	txOptions := bind.NewKeyedTransactor(wallet.PrivateKey)
-	e.TxOptions = txOptions
-}
-
-func (e *Exchange) SetDefaultSender() {
-	txOptions := bind.NewKeyedTransactor(config.Wallets[0].PrivateKey)
 	e.TxOptions = txOptions
 }
 
@@ -194,6 +187,17 @@ func (e *Exchange) Trade(o *dex.Order, t *dex.Trade) (dex.Transaction, error) {
 	}
 
 	return tx, nil
+}
+
+func (e *Exchange) GetErrorEvents(logs chan *interfaces.ExchangeLogError) error {
+	options := &bind.WatchOpts{nil, nil}
+
+	_, err := e.Contract.WatchLogError(options, logs)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (e *Exchange) ListenToErrorEvents() (chan *interfaces.ExchangeLogError, error) {

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"math/big"
 
 	. "github.com/ethereum/go-ethereum/common"
@@ -20,12 +21,14 @@ type Trade struct {
 	Taker      Address    `json:"taker"`
 	Signature  *Signature `json:"signature"`
 	Hash       Hash       `json:"hash"`
+	PairID     Hash       `json:"pairID"`
 }
 
 // NewTrade returns a new unsigned trade corresponding to an Order, amount and taker address
 func NewTrade(o *Order, amount *big.Int, taker Address) *Trade {
 	return &Trade{
 		OrderHash:  o.Hash,
+		PairID:     o.PairID,
 		Amount:     amount,
 		TradeNonce: big.NewInt(0),
 		Taker:      taker,
@@ -36,12 +39,13 @@ func NewTrade(o *Order, amount *big.Int, taker Address) *Trade {
 
 // String return the standard trade format string
 func (t *Trade) String() string {
-	return fmt.Sprintf("\nTrade:\nOrderHash: %v\nAmount: %v\nTradeNonce: %v\nTaker: %v\nHash: %v\n\n",
+	return fmt.Sprintf("\nTrade:\nOrderHash: %v\nAmount: %v\nTradeNonce: %v\nTaker: %v\nHash: %v\nPairID: %v\n\n",
 		t.OrderHash.String(),
 		t.Amount,
 		t.TradeNonce,
 		t.Taker.String(),
 		t.Hash.String(),
+		t.PairID.String(),
 	)
 }
 
@@ -49,7 +53,7 @@ func (t *Trade) String() string {
 //
 // The OrderHash, Aounot, Taker and TradeNonce attributes must be
 // set before attempting to compute the trade hash
-func (t *Trade) ComputeTradeHash() Hash {
+func (t *Trade) ComputeHash() Hash {
 	sha := sha3.NewKeccak256()
 
 	sha.Write(t.OrderHash.Bytes())
@@ -62,7 +66,7 @@ func (t *Trade) ComputeTradeHash() Hash {
 // Sign calculates ands sets the trade hash and signature with the
 // given wallet
 func (t *Trade) Sign(w *Wallet) error {
-	hash := t.ComputeTradeHash()
+	hash := t.ComputeHash()
 	signature, err := w.SignHash(hash)
 	if err != nil {
 		return err
@@ -70,6 +74,32 @@ func (t *Trade) Sign(w *Wallet) error {
 
 	t.Hash = hash
 	t.Signature = signature
+	return nil
+}
+
+// Valid verifies that all the fields of a struct are set and
+// not null
+func (t *Trade) Validate() error {
+	if t.OrderHash.String() == "" {
+		return errors.New("Order Hash missing")
+	}
+
+	if t.Hash.String() == "" {
+		return errors.New("Trade Hash missing")
+	}
+
+	if t.Amount.Sign() == 0 {
+		return errors.New("Amount missing or amount null")
+	}
+
+	if t.Taker.String() == "" {
+		return errors.New("Taker address is not set")
+	}
+
+	if t.Signature == nil {
+		return errors.New("Signature is not set")
+	}
+
 	return nil
 }
 
@@ -90,11 +120,13 @@ func (t *Trade) VerifySignature() (bool, error) {
 
 // MarshalJSON returns the json encoded byte array representing the trade struct
 func (t *Trade) MarshalJSON() ([]byte, error) {
+
 	trade := map[string]interface{}{
 		"orderHash":  t.OrderHash,
 		"amount":     t.Amount.String(),
 		"tradeNonce": t.TradeNonce.String(),
 		"taker":      t.Taker,
+		"pairID":     t.PairID,
 		"signature": map[string]interface{}{
 			"V": t.Signature.V,
 			"R": t.Signature.R,
@@ -114,7 +146,23 @@ func (t *Trade) UnmarshalJSON(b []byte) error {
 		return err
 	}
 
+	if trade["orderHash"] == nil {
+		return errors.New("Order Hash is not set")
+	}
 	t.OrderHash = HexToHash(trade["orderHash"].(string))
+
+	log.Printf("Pair ID is equal to %v", err)
+
+	if trade["pairID"] == nil {
+		return errors.New("Pair ID is not set")
+	}
+	t.PairID = HexToHash(trade["pairID"].(string))
+
+	if trade["hash"] == nil {
+		return errors.New("Hash is not set")
+	}
+	t.Hash = HexToHash(trade["hash"].(string))
+
 	t.Amount = new(big.Int)
 	t.Amount.UnmarshalJSON([]byte(trade["amount"].(string)))
 	t.TradeNonce = new(big.Int)
@@ -129,14 +177,21 @@ func (t *Trade) UnmarshalJSON(b []byte) error {
 		S: HexToHash(signature["S"].(string)),
 	}
 
-	t.Hash = HexToHash(trade["hash"].(string))
 	return nil
 }
 
 // DecodeTrade takes a payload previously unmarshalled from a JSON byte string
 // and decodes it into an Trade object
-func (t *Trade) DecodeTrade(trade map[string]interface{}) error {
+func (t *Trade) Decode(trade map[string]interface{}) error {
+	if trade["orderHash"] == nil {
+		return errors.New("Order Hash is not set")
+	}
 	t.OrderHash = HexToHash(trade["orderHash"].(string))
+
+	if trade["pairID"] == nil {
+		return errors.New("Pair ID is not set")
+	}
+	t.PairID = HexToHash(trade["pairID"].(string))
 
 	t.Amount = new(big.Int)
 	t.Amount.UnmarshalJSON([]byte(trade["amount"].(string)))

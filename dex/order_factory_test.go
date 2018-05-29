@@ -6,9 +6,11 @@ import (
 	"testing"
 )
 
+var testConfig = NewDefaultConfiguration()
+
 func TestNewOrderFromFactory(t *testing.T) {
-	wallet := config.Wallets[0]
-	pair := config.TokenPairs["ZRXWETH"]
+	wallet := testConfig.Wallets[0]
+	pair := testConfig.TokenPairs["ZRXWETH"]
 	ZRX := pair.BaseToken
 	WETH := pair.QuoteToken
 
@@ -21,7 +23,7 @@ func TestNewOrderFromFactory(t *testing.T) {
 
 	expected := &Order{
 		Id:              0,
-		ExchangeAddress: config.Contracts.exchange,
+		ExchangeAddress: testConfig.Exchange,
 		Maker:           wallet.Address,
 		TokenBuy:        ZRX.Address,
 		TokenSell:       WETH.Address,
@@ -29,12 +31,12 @@ func TestNewOrderFromFactory(t *testing.T) {
 		SymbolSell:      WETH.Symbol,
 		AmountBuy:       big.NewInt(1),
 		AmountSell:      big.NewInt(1),
-		Expires:         big.NewInt(0),
+		Expires:         big.NewInt(1e18),
 		Nonce:           big.NewInt(0),
 		FeeMake:         big.NewInt(0),
 		FeeTake:         big.NewInt(0),
 		PairID:          pair.ID,
-		Signature:       o.Signature, //TODO Find a better method to test signature/hash
+		Signature:       o.Signature,
 		Hash:            o.Hash,
 	}
 

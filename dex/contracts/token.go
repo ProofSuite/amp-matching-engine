@@ -12,10 +12,11 @@ import (
 )
 
 type Token struct {
-	Address     Address
-	Contract    *interfaces.Token
-	CallOptions *bind.CallOpts
-	TxOptions   *bind.TransactOpts
+	Address       Address
+	Contract      *interfaces.Token
+	CallOptions   *bind.CallOpts
+	TxOptions     *bind.TransactOpts
+	DefaultSender *dex.Wallet
 }
 
 func (t *Token) SetCustomSender(wallet *dex.Wallet) {
@@ -24,7 +25,7 @@ func (t *Token) SetCustomSender(wallet *dex.Wallet) {
 }
 
 func (t *Token) SetDefaultSender() {
-	txOptions := bind.NewKeyedTransactor(config.Wallets[0].PrivateKey)
+	txOptions := bind.NewKeyedTransactor(t.DefaultSender.PrivateKey)
 	t.TxOptions = txOptions
 }
 

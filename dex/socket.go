@@ -43,7 +43,7 @@ func (s *Socket) handleMessagesIn() {
 		case PLACE_ORDER:
 			s.placeOrder(m.Payload)
 		case CANCEL_ORDER:
-			s.cancelOrder(&m.Payload)
+			s.cancelOrder(m.Payload)
 		case SIGNED_DATA:
 			s.executeOrder(m.Payload)
 		case DONE:
@@ -82,7 +82,7 @@ func (s *Socket) handleMessagesOut() {
 func (s *Socket) placeOrder(p Payload) {
 	payload := p.(map[string]interface{})["order"].(map[string]interface{})
 	o := &Order{}
-	o.DecodeOrder(payload)
+	o.Decode(payload)
 
 	o.events = s.events
 	if err := s.server.engine.AddOrder(o); err != nil {
@@ -92,21 +92,33 @@ func (s *Socket) placeOrder(p Payload) {
 
 // cancelOrder decodes the message payload and then passes it to the engine object
 func (s *Socket) cancelOrder(p Payload) {
-	decoded := NewOrderCancelPayload()
-	decoded.DecodeOrderCancelPayload(p)
+	ocp := NewOrderCancelPayload()
 
-	oc := decoded.OrderCancel
-	// fmt.Printf("\nLOG. Canceling Order:\n%v\n\n", payload)
+	if err := ocp.DecodeOrderCancelPayload(p); err != nil {
+		log.Printf("Error: %v", err)
+	}
+
+	oc := ocp.OrderCancel
+
 	if err := s.server.engine.CancelOrder(oc); err != nil {
-		log.Println("Error: Failing canceling order")
+		log.Printf("Error: %v", err)
 	}
 }
 
 // executeOrder decodes the message payload before passing it to the transaction handler
 func (s *Socket) executeOrder(p Payload) {
-	payload := p.(map[string]interface{})["trade"].(map[string]interface{})
-	t := &Trade{}
-	t.DecodeTrade(payload)
+	tp := NewTradePayload()
+
+	if err := tp.DecodeTradePayload(p); err != nil {
+		log.Printf("Error: %v", err)
+	}
+
+	t := tp.Trade
+
+	err := s.server.engine.ExecuteOrder(t)
+	if err != nil {
+		log.Printf("Error: %v", err)
+	}
 
 	fmt.Printf("\nLOG: Executing order. Payload:\n%v\n\n", t)
 }
