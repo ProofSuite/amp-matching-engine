@@ -84,7 +84,7 @@ func (w *Wallet) NewRandomizedOrder(id uint64, p TokenPair, ot OrderType) (*Orde
 	o.Price = 0
 	o.Amount = 0
 
-	hash := o.ComputeOrderHash()
+	hash := o.ComputeHash()
 	o.Hash = hash
 
 	sig, err := w.SignHash(hash)
@@ -152,7 +152,7 @@ func (w *Wallet) NewTrade(o *Order, amount uint64) (*Trade, error) {
 	trade.TradeNonce = big.NewInt(0)
 	trade.Taker = w.Address
 
-	hash := trade.ComputeTradeHash()
+	hash := trade.ComputeHash()
 	trade.Hash = hash
 
 	sig, err := w.SignHash(hash)
@@ -188,7 +188,7 @@ func (w *Wallet) SignHash(h Hash) (*Signature, error) {
 
 // SignTrade signs and sets the signature of a trade with a wallet private key
 func (w *Wallet) SignTrade(t *Trade) error {
-	hash := t.ComputeTradeHash()
+	hash := t.ComputeHash()
 	t.Hash = hash
 
 	sig, err := w.SignHash(hash)

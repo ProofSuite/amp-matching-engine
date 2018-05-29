@@ -257,7 +257,7 @@ func (o *Order) TokenInfo() string {
 	return fmt.Sprintf("Order Token Info:\nbuyToken: %x\nsellToken: %x\nbuyTokenSymbol: %v\n, sellTokenSymbol: %v\n", o.TokenBuy, o.TokenSell, o.SymbolBuy, o.SymbolSell)
 }
 
-func (o *Order) ComputeOrderHash() Hash {
+func (o *Order) ComputeHash() Hash {
 	sha := sha3.NewKeccak256()
 	sha.Write(o.ExchangeAddress.Bytes())
 	sha.Write(o.TokenBuy.Bytes())
@@ -292,18 +292,11 @@ func (o *Order) VerifySignature() (bool, error) {
 func (o *Order) ValidateOrder() (bool, error) {
 
 	//Order Type needs to be equal to BUY or SELL
-
 	//Exchange Address needs to be correct
-
 	//AmountBuy and AmountSell need to be positive
-
 	//OrderHash needs to be correct
 
 	return true, nil
-}
-
-func (o *Order) ComputeBuyAndSellAmounts() {
-
 }
 
 func (o *Order) NewOrderPlacedEvent() *Event {
@@ -332,8 +325,8 @@ func NewDoneMessage() *Event {
 }
 
 func (o *Order) Sign(w *Wallet) error {
-	hash := o.ComputeOrderHash()
-	signature, err := w.SignHash(hash)
+	hash := o.ComputeHash()
+	sig, err := w.SignHash(hash)
 	if err != nil {
 		return err
 	}
