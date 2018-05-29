@@ -49,7 +49,7 @@ func (t *Trade) String() string {
 //
 // The OrderHash, Aounot, Taker and TradeNonce attributes must be
 // set before attempting to compute the trade hash
-func (t *Trade) ComputeTradeHash() Hash {
+func (t *Trade) ComputeHash() Hash {
 	sha := sha3.NewKeccak256()
 
 	sha.Write(t.OrderHash.Bytes())
@@ -62,7 +62,7 @@ func (t *Trade) ComputeTradeHash() Hash {
 // Sign calculates ands sets the trade hash and signature with the
 // given wallet
 func (t *Trade) Sign(w *Wallet) error {
-	hash := t.ComputeTradeHash()
+	hash := t.ComputeHash()
 	signature, err := w.SignHash(hash)
 	if err != nil {
 		return err
