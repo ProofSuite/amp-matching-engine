@@ -20,6 +20,7 @@ import (
 // CallOptions are options for making read calls to the connected backend
 // TxOptions are options for making write txs to the connected backend
 type Exchange struct {
+	Admin       *Wallet
 	Address     Address
 	Contract    *interfaces.Exchange
 	CallOptions *bind.CallOpts
@@ -29,25 +30,27 @@ type Exchange struct {
 // Returns a new exchange interface for a given wallet, contract address and connected backend.
 // The exchange contract need to be already deployed at the given address. The given wallet will
 // be used by default when sending transactions with this object.
-func NewExchange(wallet *Wallet, contractAddress Address, backend bind.ContractBackend) (*Exchange, error) {
+func NewExchange(admin *Wallet, contractAddress Address, backend bind.ContractBackend) (*Exchange, error) {
 	instance, err := interfaces.NewExchange(contractAddress, backend)
 	if err != nil {
 		return nil, err
 	}
 
 	callOptions := &bind.CallOpts{Pending: true}
-	txOptions := bind.NewKeyedTransactor(wallet.PrivateKey)
+	txOptions := bind.NewKeyedTransactor(admin.PrivateKey)
 
 	return &Exchange{
 		Address:     contractAddress,
 		Contract:    instance,
 		CallOptions: callOptions,
 		TxOptions:   txOptions,
+		Admin:       admin,
 	}, nil
 }
 
 // SetDefaultTxOptions resets the transaction value to 0
 func (e *Exchange) SetDefaultTxOptions() {
+	e.TxOptions = bind.NewKeyedTransactor(e.Admin.PrivateKey)
 	e.TxOptions.Value = big.NewInt(0)
 }
 
@@ -58,20 +61,18 @@ func (e *Exchange) SetTxValue(value *big.Int) {
 
 // SetCustomSender updates the sender address address to the exchange contract
 func (e *Exchange) SetCustomSender(wallet *Wallet) {
-	txOptions := bind.NewKeyedTransactor(wallet.PrivateKey)
-	e.TxOptions = txOptions
+	e.TxOptions = bind.NewKeyedTransactor(wallet.PrivateKey)
 }
 
 // SetDefaultSender sets the default sender address that will be used when sending a transcation to
 // the exchange contract
 func (e *Exchange) SetDefaultSender() {
-	txOptions := bind.NewKeyedTransactor(config.Wallets[0].PrivateKey)
-	e.TxOptions = txOptions
+	e.TxOptions = bind.NewKeyedTransactor(e.Admin.PrivateKey)
 }
 
 // SetFeeAccount sets the fee account of the exchange contract. The fee account receives
 // the trading fees whenever a trade is settled.
-func (e *Exchange) SetFeeAccount(account Address) (Transaction, error) {
+func (e *Exchange) SetFeeAccount(account Address) (*types.Transaction, error) {
 	tx, err := e.Contract.SetFeeAccount(e.TxOptions, account)
 	if err != nil {
 		return nil, err
@@ -285,6 +286,17 @@ func (e *Exchange) ListenToErrorEvents() (chan *interfaces.ExchangeLogError, err
 	return events, nil
 }
 
+func (e *Exchange) GetErrorEvents(logs chan *interfaces.ExchangeLogError) error {
+	opts := &bind.WatchOpts{nil, nil}
+
+	_, err := e.Contract.WatchLogError(opts, logs)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // ListenToTrades returns a channel that receivs trade logs (events) from the underlying exchange smart contract
 func (e *Exchange) ListenToTrades() (chan *interfaces.ExchangeLogTrade, error) {
 	events := make(chan *interfaces.ExchangeLogTrade)
@@ -353,9 +365,27 @@ func (e *Exchange) PrintErrors() error {
 	go func() {
 		for {
 			event := <-events
-			fmt.Printf("New Error Event. Id: %v, Hash: %v\n\n", event.ErrorId, hex.EncodeToString(event.OrderHash[:]))
+			log.Printf("New Error Event. Id: %v, Hash: %v\n\n", event.ErrorId, hex.EncodeToString(event.OrderHash[:]))
 		}
 	}()
 
 	return nil
 }
+
+func PrintErrorLog(log *interfaces.ExchangeLogError) string {
+	return fmt.Sprintf("Error:\nErrorID: %v\nOrderHash: %v\n\n", log.ErrorId, log.OrderHash)
+}
+
+func PrintTradeLog(log *interfaces.ExchangeLogTrade) string {
+	return fmt.Sprintf("Error:\nAmount: %v\nHash: %vMaker: %v\nTaker: %v\nTokenBuy: %v\nTokenSell: %v\n\n",
+		log.Amount, log.Hsh, log.Maker, log.Taker, log.TokenBuy, log.TokenSell)
+}
+
+func PrintCancelOrderLog(log *interfaces.ExchangeLogCancelOrder) string {
+	return fmt.Sprintf("Error:\nAmountBuy: %vAmountSell: %v\nTokenBuy: %v\nTokenSell: %v\nMaker: %v\nNonce: %v\nExpires: %v\n\n",
+		log.AmountBuy, log.AmountSell, log.TokenBuy, log.TokenSell, log.Maker, log.Nonce, log.Expires)
+}
+
+// func Print(log *interfaces.ExchangeLogError) string {
+// 	return fmt.Sprintf("Error:\nErrorID: %v\nOrderHash: %v\n\n", log.)
+// }

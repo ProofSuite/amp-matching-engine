@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/gorilla/websocket"
 )
 
@@ -15,11 +16,17 @@ var upgrader = websocket.Upgrader{
 
 // Server type handles a mapping of socket structs and the trading engine
 type Server struct {
-	clients map[*Socket]bool
-	engine  *TradingEngine
+	clients    map[*Socket]bool
+	engine     *TradingEngine
+	operator   *Operator
+	actionLogs chan *Action
+	txLogs     chan *types.Transaction
 }
 
-// NewServer returns a a new empty Server instance
+// NewServer returns a a new empty Server instance. The operator is deployed
+// according to the given configuration. There are currently 4 different choices of
+// configurations:
+// - NewConfiguration() new configuration
 func NewServer() *Server {
 	return &Server{
 		clients: make(map[*Socket]bool),
