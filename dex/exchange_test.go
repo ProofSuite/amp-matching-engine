@@ -14,8 +14,8 @@ func TestSetFeeAccount(t *testing.T) {
 		fmt.Printf("%v", err)
 	}
 
-	initialFeeAccount := config.Wallets[0].Address
-	newFeeAccount := config.Wallets[1].Address
+	initialFeeAccount := testConfig.Wallets[0].Address
+	newFeeAccount := testConfig.Wallets[1].Address
 
 	exchange, err := deployer.DeployExchange(initialFeeAccount)
 	if err != nil {
@@ -48,8 +48,8 @@ func TestSetOperator(t *testing.T) {
 		fmt.Printf("%v", err)
 	}
 
-	feeAccount := config.Wallets[0].Address
-	operator := config.Wallets[1].Address
+	feeAccount := testConfig.Wallets[0].Address
+	operator := testConfig.Wallets[1].Address
 	exchange, err := deployer.DeployExchange(feeAccount)
 	if err != nil {
 		t.Errorf("Could not deploy exchange: %v", err)
@@ -81,7 +81,7 @@ func TestSetWithdrawalSecurityPeriod(t *testing.T) {
 		fmt.Printf("%v", err)
 	}
 
-	feeAccount := config.Wallets[0].Address
+	feeAccount := testConfig.Wallets[0].Address
 	exchange, err := deployer.DeployExchange(feeAccount)
 	if err != nil {
 		t.Errorf("Could not set operator: %v", err)
@@ -112,7 +112,7 @@ func TestDepositEther(t *testing.T) {
 		fmt.Printf("%v", err)
 	}
 
-	feeAccount := config.Wallets[0].Address
+	feeAccount := testConfig.Wallets[0].Address
 	exchange, err := deployer.DeployExchange(feeAccount)
 	if err != nil {
 		t.Errorf("Error deploying exchange: %v", err)
@@ -121,7 +121,7 @@ func TestDepositEther(t *testing.T) {
 	simulator := deployer.Backend.(*backends.SimulatedBackend)
 	simulator.Commit()
 
-	sender := config.Wallets[1]
+	sender := testConfig.Wallets[1]
 	value := big.NewInt(5 * 1e17)
 
 	exchange.SetCustomSender(sender)
@@ -147,8 +147,8 @@ func TestDepositToken(t *testing.T) {
 		fmt.Printf("%v", err)
 	}
 
-	admin := config.Wallets[0].Address
-	sender := config.Wallets[1]
+	admin := testConfig.Wallets[0].Address
+	sender := testConfig.Wallets[1]
 	simulator := deployer.Backend.(*backends.SimulatedBackend)
 	amount := big.NewInt(1e18)
 
@@ -196,9 +196,9 @@ func TestWithdraw(t *testing.T) {
 	}
 
 	simulator := deployer.Backend.(*backends.SimulatedBackend)
-	admin := config.Wallets[0]
-	sender := config.Wallets[1]
-	receiver := config.Wallets[2]
+	admin := testConfig.Wallets[0]
+	sender := testConfig.Wallets[1]
+	receiver := testConfig.Wallets[2]
 	amount := big.NewInt(1e18)
 	n := big.NewInt(1)
 	f := big.NewInt(0)
@@ -285,9 +285,9 @@ func TestTrade(t *testing.T) {
 
 	simulator := deployer.Backend.(*backends.SimulatedBackend)
 
-	admin := config.Wallets[0]
-	maker := config.Wallets[1]
-	taker := config.Wallets[2]
+	admin := testConfig.Wallets[0]
+	maker := testConfig.Wallets[1]
+	taker := testConfig.Wallets[2]
 	buyAmount := big.NewInt(1e18)
 	sellAmount := big.NewInt(1e18)
 	amount := big.NewInt(5e17)

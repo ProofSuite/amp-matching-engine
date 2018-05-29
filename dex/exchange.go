@@ -3,11 +3,13 @@ package dex
 import (
 	"encoding/hex"
 	"fmt"
+	"log"
 	"math/big"
 
 	"github.com/Dvisacker/matching-engine/dex/interfaces"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	. "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 )
 
 // Exchange is an augmented interface to the Exchange.sol smart-contract. It uses the
@@ -18,6 +20,7 @@ import (
 // CallOptions are options for making read calls to the connected backend
 // TxOptions are options for making write txs to the connected backend
 type Exchange struct {
+	Admin       *Wallet
 	Address     Address
 	Contract    *interfaces.Exchange
 	CallOptions *bind.CallOpts
@@ -27,25 +30,27 @@ type Exchange struct {
 // Returns a new exchange interface for a given wallet, contract address and connected backend.
 // The exchange contract need to be already deployed at the given address. The given wallet will
 // be used by default when sending transactions with this object.
-func NewExchange(wallet *Wallet, contractAddress Address, backend bind.ContractBackend) (*Exchange, error) {
+func NewExchange(admin *Wallet, contractAddress Address, backend bind.ContractBackend) (*Exchange, error) {
 	instance, err := interfaces.NewExchange(contractAddress, backend)
 	if err != nil {
 		return nil, err
 	}
 
 	callOptions := &bind.CallOpts{Pending: true}
-	txOptions := bind.NewKeyedTransactor(wallet.PrivateKey)
+	txOptions := bind.NewKeyedTransactor(admin.PrivateKey)
 
 	return &Exchange{
 		Address:     contractAddress,
 		Contract:    instance,
 		CallOptions: callOptions,
 		TxOptions:   txOptions,
+		Admin:       admin,
 	}, nil
 }
 
 // SetDefaultTxOptions resets the transaction value to 0
 func (e *Exchange) SetDefaultTxOptions() {
+	e.TxOptions = bind.NewKeyedTransactor(e.Admin.PrivateKey)
 	e.TxOptions.Value = big.NewInt(0)
 }
 
@@ -56,20 +61,18 @@ func (e *Exchange) SetTxValue(value *big.Int) {
 
 // SetCustomSender updates the sender address address to the exchange contract
 func (e *Exchange) SetCustomSender(wallet *Wallet) {
-	txOptions := bind.NewKeyedTransactor(wallet.PrivateKey)
-	e.TxOptions = txOptions
+	e.TxOptions = bind.NewKeyedTransactor(wallet.PrivateKey)
 }
 
 // SetDefaultSender sets the default sender address that will be used when sending a transcation to
 // the exchange contract
 func (e *Exchange) SetDefaultSender() {
-	txOptions := bind.NewKeyedTransactor(config.Wallets[0].PrivateKey)
-	e.TxOptions = txOptions
+	e.TxOptions = bind.NewKeyedTransactor(e.Admin.PrivateKey)
 }
 
 // SetFeeAccount sets the fee account of the exchange contract. The fee account receives
 // the trading fees whenever a trade is settled.
-func (e *Exchange) SetFeeAccount(account Address) (Transaction, error) {
+func (e *Exchange) SetFeeAccount(account Address) (*types.Transaction, error) {
 	tx, err := e.Contract.SetFeeAccount(e.TxOptions, account)
 	if err != nil {
 		return nil, err
@@ -80,7 +83,7 @@ func (e *Exchange) SetFeeAccount(account Address) (Transaction, error) {
 
 // SetOperator updates the operator settings of the given address. Only addresses with an
 // operator access can execute Withdraw and Trade transactions to the Exchange smart contract
-func (e *Exchange) SetOperator(account Address, isOperator bool) (Transaction, error) {
+func (e *Exchange) SetOperator(account Address, isOperator bool) (*types.Transaction, error) {
 	tx, err := e.Contract.SetOperator(e.TxOptions, account, isOperator)
 	if err != nil {
 		return nil, err
@@ -92,7 +95,7 @@ func (e *Exchange) SetOperator(account Address, isOperator bool) (Transaction, e
 // SetWithdrawalSecurityPeriod sets the period after which a non-operator address can send
 // a transaction to the exchange smart-contract to withdraw their funds. This acts as security mechanism
 // to prevent the operator of the exchange from holding funds
-func (e *Exchange) SetWithdrawalSecurityPeriod(p *big.Int) (Transaction, error) {
+func (e *Exchange) SetWithdrawalSecurityPeriod(p *big.Int) (*types.Transaction, error) {
 	tx, err := e.Contract.SetWithdrawalSecurityPeriod(e.TxOptions, p)
 	if err != nil {
 		return nil, err
@@ -102,7 +105,7 @@ func (e *Exchange) SetWithdrawalSecurityPeriod(p *big.Int) (Transaction, error) 
 }
 
 // DepositEther deposits ether into the exchange smart-contract.
-func (e *Exchange) DepositEther(value *big.Int) (Transaction, error) {
+func (e *Exchange) DepositEther(value *big.Int) (*types.Transaction, error) {
 	e.SetTxValue(value)
 
 	tx, err := e.Contract.DepositEther(e.TxOptions)
@@ -114,8 +117,23 @@ func (e *Exchange) DepositEther(value *big.Int) (Transaction, error) {
 	return tx, nil
 }
 
+// DepositEtherFrom deposits ether from a custom address. The transaction sender is reset
+// after the transaction is carried out.
+func (e *Exchange) DepositEtherFrom(wallet *Wallet, value *big.Int) (*types.Transaction, error) {
+	e.SetTxValue(value)
+	e.SetCustomSender(wallet)
+
+	tx, err := e.Contract.DepositEther(e.TxOptions)
+	if err != nil {
+		return nil, err
+	}
+
+	e.SetDefaultTxOptions()
+	return tx, nil
+}
+
 // DepositToken deposits tokens into the exchange smart-contract.
-func (e *Exchange) DepositToken(token Address, amount *big.Int) (Transaction, error) {
+func (e *Exchange) DepositToken(token Address, amount *big.Int) (*types.Transaction, error) {
 	// e.SetDefaultTxOptions()
 
 	tx, err := e.Contract.DepositToken(e.TxOptions, token, amount)
@@ -123,6 +141,20 @@ func (e *Exchange) DepositToken(token Address, amount *big.Int) (Transaction, er
 		return nil, err
 	}
 
+	return tx, err
+}
+
+// DepositEtherFrom deposits ether from a custom address. The transaction sender is reset
+// after the transaction is carried out.
+func (e *Exchange) DepositTokenFrom(wallet *Wallet, token Address, amount *big.Int) (*types.Transaction, error) {
+	e.SetCustomSender(wallet)
+
+	tx, err := e.Contract.DepositToken(e.TxOptions, token, amount)
+	if err != nil {
+		return nil, err
+	}
+
+	e.SetDefaultSender()
 	return tx, err
 }
 
@@ -183,7 +215,7 @@ func (e *Exchange) Operator(address Address) (bool, error) {
 
 // SecurityWithdraw executes a security withdraw transaction. Security withdraw transactions can only be
 // executed after the security withdrawal period has ended.
-func (e *Exchange) SecurityWithdraw(wallet *Wallet, token Address, amount *big.Int) (Transaction, error) {
+func (e *Exchange) SecurityWithdraw(wallet *Wallet, token Address, amount *big.Int) (*types.Transaction, error) {
 	e.SetDefaultTxOptions()
 	e.SetCustomSender(wallet)
 
@@ -198,7 +230,7 @@ func (e *Exchange) SecurityWithdraw(wallet *Wallet, token Address, amount *big.I
 // Withdraw executes a normal withdraw transaction. This withdraws tokens or ether from the exchange
 // and returns them to the payload Receiver. Only an operator account can send a withdraw
 // transaction
-func (e *Exchange) Withdraw(w *Withdrawal) (Transaction, error) {
+func (e *Exchange) Withdraw(w *Withdrawal) (*types.Transaction, error) {
 	e.SetDefaultTxOptions()
 
 	s := w.Signature
@@ -213,7 +245,7 @@ func (e *Exchange) Withdraw(w *Withdrawal) (Transaction, error) {
 // Trade executes a settlements transaction. The order and trade payloads need to be signed respectively
 // by the Maker and the Taker of the trade. Only the operator account can send a Trade function to the
 // Exchange smart contract.
-func (e *Exchange) Trade(o *Order, t *Trade) (Transaction, error) {
+func (e *Exchange) Trade(o *Order, t *Trade) (*types.Transaction, error) {
 	e.SetDefaultTxOptions()
 
 	orderValues := [8]*big.Int{o.AmountBuy, o.AmountSell, o.Expires, o.Nonce, o.FeeMake, o.FeeTake, t.Amount, t.TradeNonce}
@@ -244,22 +276,33 @@ func (e *Exchange) Trade(o *Order, t *Trade) (Transaction, error) {
 // 11. TAKER_SIGNATURE_INVALID
 func (e *Exchange) ListenToErrorEvents() (chan *interfaces.ExchangeLogError, error) {
 	events := make(chan *interfaces.ExchangeLogError)
-	options := &bind.WatchOpts{nil, nil}
+	opts := &bind.WatchOpts{nil, nil}
 
-	_, err := e.Contract.WatchLogError(options, events)
+	_, err := e.Contract.WatchLogError(opts, events)
 	if err != nil {
 		return nil, err
 	}
 
 	return events, nil
+}
+
+func (e *Exchange) GetErrorEvents(logs chan *interfaces.ExchangeLogError) error {
+	opts := &bind.WatchOpts{nil, nil}
+
+	_, err := e.Contract.WatchLogError(opts, logs)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // ListenToTrades returns a channel that receivs trade logs (events) from the underlying exchange smart contract
 func (e *Exchange) ListenToTrades() (chan *interfaces.ExchangeLogTrade, error) {
 	events := make(chan *interfaces.ExchangeLogTrade)
-	options := &bind.WatchOpts{nil, nil}
+	opts := &bind.WatchOpts{nil, nil}
 
-	_, err := e.Contract.WatchLogTrade(options, events)
+	_, err := e.Contract.WatchLogTrade(opts, events)
 	if err != nil {
 		return nil, err
 	}
@@ -267,12 +310,23 @@ func (e *Exchange) ListenToTrades() (chan *interfaces.ExchangeLogTrade, error) {
 	return events, nil
 }
 
+func (e *Exchange) GetTrades(logs chan *interfaces.ExchangeLogTrade) error {
+	opts := &bind.WatchOpts{nil, nil}
+
+	_, err := e.Contract.WatchLogTrade(opts, logs)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // ListenToTrades returns a channel that receivs deposit logs (events) from the underlying exchange smart contract
 func (e *Exchange) ListenToDeposits() (chan *interfaces.ExchangeLogDeposit, error) {
 	events := make(chan *interfaces.ExchangeLogDeposit)
-	options := &bind.WatchOpts{nil, nil}
+	opts := &bind.WatchOpts{nil, nil}
 
-	_, err := e.Contract.WatchLogDeposit(options, events)
+	_, err := e.Contract.WatchLogDeposit(opts, events)
 	if err != nil {
 		return nil, err
 	}
@@ -282,9 +336,9 @@ func (e *Exchange) ListenToDeposits() (chan *interfaces.ExchangeLogDeposit, erro
 
 func (e *Exchange) PrintTrades() error {
 	events := make(chan *interfaces.ExchangeLogTrade)
-	options := &bind.WatchOpts{nil, nil}
+	opts := &bind.WatchOpts{nil, nil}
 
-	_, err := e.Contract.WatchLogTrade(options, events)
+	_, err := e.Contract.WatchLogTrade(opts, events)
 	if err != nil {
 		return err
 	}
@@ -301,9 +355,9 @@ func (e *Exchange) PrintTrades() error {
 
 func (e *Exchange) PrintErrors() error {
 	events := make(chan *interfaces.ExchangeLogError)
-	options := &bind.WatchOpts{nil, nil}
+	opts := &bind.WatchOpts{nil, nil}
 
-	_, err := e.Contract.WatchLogError(options, events)
+	_, err := e.Contract.WatchLogError(opts, events)
 	if err != nil {
 		return err
 	}
@@ -311,9 +365,27 @@ func (e *Exchange) PrintErrors() error {
 	go func() {
 		for {
 			event := <-events
-			fmt.Printf("New Error Event. Id: %v, Hash: %v\n\n", event.ErrorId, hex.EncodeToString(event.OrderHash[:]))
+			log.Printf("New Error Event. Id: %v, Hash: %v\n\n", event.ErrorId, hex.EncodeToString(event.OrderHash[:]))
 		}
 	}()
 
 	return nil
 }
+
+func PrintErrorLog(log *interfaces.ExchangeLogError) string {
+	return fmt.Sprintf("Error:\nErrorID: %v\nOrderHash: %v\n\n", log.ErrorId, log.OrderHash)
+}
+
+func PrintTradeLog(log *interfaces.ExchangeLogTrade) string {
+	return fmt.Sprintf("Error:\nAmount: %v\nHash: %vMaker: %v\nTaker: %v\nTokenBuy: %v\nTokenSell: %v\n\n",
+		log.Amount, log.Hsh, log.Maker, log.Taker, log.TokenBuy, log.TokenSell)
+}
+
+func PrintCancelOrderLog(log *interfaces.ExchangeLogCancelOrder) string {
+	return fmt.Sprintf("Error:\nAmountBuy: %vAmountSell: %v\nTokenBuy: %v\nTokenSell: %v\nMaker: %v\nNonce: %v\nExpires: %v\n\n",
+		log.AmountBuy, log.AmountSell, log.TokenBuy, log.TokenSell, log.Maker, log.Nonce, log.Expires)
+}
+
+// func Print(log *interfaces.ExchangeLogError) string {
+// 	return fmt.Sprintf("Error:\nErrorID: %v\nOrderHash: %v\n\n", log.)
+// }

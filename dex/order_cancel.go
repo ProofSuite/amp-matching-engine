@@ -3,7 +3,7 @@ package dex
 import (
 	"encoding/json"
 	"errors"
-	"strconv"
+	"fmt"
 
 	. "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -28,6 +28,7 @@ func NewOrderCancel() *OrderCancel {
 	return &OrderCancel{
 		OrderId:   0,
 		PairID:    Hash{},
+		Hash:      Hash{},
 		OrderHash: Hash{},
 		Signature: &Signature{},
 	}
@@ -36,9 +37,10 @@ func NewOrderCancel() *OrderCancel {
 // MarshalJSON returns the json encoded byte array representing the OrderCancel struct
 func (oc *OrderCancel) MarshalJSON() ([]byte, error) {
 	orderCancel := map[string]interface{}{
-		"id":     oc.OrderId,
-		"pairID": oc.PairID,
-		"hash":   oc.OrderHash,
+		"orderId":   oc.OrderId,
+		"orderHash": oc.OrderHash,
+		"pairID":    oc.PairID,
+		"hash":      oc.Hash,
 		"signature": map[string]interface{}{
 			"V": oc.Signature.V,
 			"R": oc.Signature.R,
@@ -47,6 +49,11 @@ func (oc *OrderCancel) MarshalJSON() ([]byte, error) {
 	}
 
 	return json.Marshal(orderCancel)
+}
+
+func (oc *OrderCancel) String() string {
+	return fmt.Sprintf("\nOrderCancel:\norderId: %d\nOrderHash: %x\nPairID: %x\nHash: %x\nSignature.V: %x\nSignature.R: %x\nSignature.S: %x\n\n",
+		oc.OrderId, oc.OrderHash, oc.PairID, oc.Hash, oc.Signature.V, oc.Signature.R, oc.Signature.S)
 }
 
 // UnmarshalJSON creates an OrderCancel object from a json byte string
@@ -61,7 +68,8 @@ func (oc *OrderCancel) UnmarshalJSON(b []byte) error {
 	if parsed["orderId"] == nil {
 		return errors.New("Order Id missing")
 	}
-	oc.OrderId, _ = strconv.ParseUint(parsed["orderId"].(string), 10, 64)
+	oc.OrderId = uint64(parsed["orderId"].(float64))
+	// oc.OrderId, _ = strconv.ParseUint(parsed["orderId"].(string), 10, 64)
 
 	if parsed["pairID"] == nil {
 		return errors.New("Pair ID is missing")
@@ -72,6 +80,11 @@ func (oc *OrderCancel) UnmarshalJSON(b []byte) error {
 		return errors.New("Order Hash is missing")
 	}
 	oc.OrderHash = HexToHash(parsed["orderHash"].(string))
+
+	if parsed["hash"] == nil {
+		return errors.New("Hash is missing")
+	}
+	oc.Hash = HexToHash(parsed["hash"].(string))
 
 	sig := parsed["signature"].(map[string]interface{})
 	oc.Signature = &Signature{
@@ -89,7 +102,7 @@ func (oc *OrderCancel) Decode(orderCancel map[string]interface{}) error {
 	if orderCancel["orderId"] == nil {
 		return errors.New("Order Id missing")
 	}
-	oc.OrderId, _ = strconv.ParseUint(orderCancel["orderId"].(string), 10, 64)
+	oc.OrderId = uint64(orderCancel["orderId"].(float64))
 
 	if orderCancel["pairID"] == nil {
 		return errors.New("Pair ID is missing")
@@ -100,6 +113,11 @@ func (oc *OrderCancel) Decode(orderCancel map[string]interface{}) error {
 		return errors.New("Order Hash is missing")
 	}
 	oc.OrderHash = HexToHash(orderCancel["orderHash"].(string))
+
+	if orderCancel["hash"] == nil {
+		return errors.New("Order Cancel Hash is missing")
+	}
+	oc.Hash = HexToHash(orderCancel["hash"].(string))
 
 	sig := orderCancel["signature"].(map[string]interface{})
 	oc.Signature = &Signature{

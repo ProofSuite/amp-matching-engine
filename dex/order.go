@@ -198,7 +198,7 @@ func (o *Order) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-func (o *Order) DecodeOrder(order map[string]interface{}) error {
+func (o *Order) Decode(order map[string]interface{}) error {
 	if order["id"] == nil {
 		return errors.New("Order ID not set")
 	}
@@ -247,7 +247,14 @@ func (o *Order) DecodeOrder(order map[string]interface{}) error {
 }
 
 func (o *Order) String() string {
-	return fmt.Sprintf("\nOrder:\nid: %d\nbuyToken: %v\nsellToken: %v\nbuyTokenAmount: %v\nsellTokenAmount: %v\npairID: %x\n\n", o.Id, o.SymbolBuy, o.SymbolSell, o.AmountBuy, o.AmountSell, o.PairID)
+	return fmt.Sprintf(
+		"Order:\n"+
+			"Id: %d\nOrderType: %v\nExchangeAddress: %x\nMaker: %x\nTokenBuy: %x\nTokenSell: %x\n"+
+			"AmountBuy: %v\nAmountSell: %v\nSymbolBuy: %x\nSymbolSell: %x\nExpires: %v\nNonce: %v\n"+
+			"FeeMake: %v\nFeeTake: %v\nSignature.V: %x\nSignature.R: %x\nSignature.S: %x\nPairID: %x\nHash: %x\nPrice: %v\nAmount: %v\n\n",
+		o.Id, o.OrderType, o.ExchangeAddress, o.Maker, o.TokenBuy, o.TokenSell, o.AmountBuy, o.AmountSell, o.SymbolBuy, o.SymbolSell, o.Expires,
+		o.Nonce, o.FeeMake, o.FeeTake, o.Signature.V, o.Signature.R, o.Signature.S, o.PairID, o.Hash, o.Price, o.Amount,
+	)
 }
 
 func (o *Order) PriceInfo() string {
@@ -257,7 +264,7 @@ func (o *Order) TokenInfo() string {
 	return fmt.Sprintf("Order Token Info:\nbuyToken: %x\nsellToken: %x\nbuyTokenSymbol: %v\n, sellTokenSymbol: %v\n", o.TokenBuy, o.TokenSell, o.SymbolBuy, o.SymbolSell)
 }
 
-func (o *Order) ComputeOrderHash() Hash {
+func (o *Order) ComputeHash() Hash {
 	sha := sha3.NewKeccak256()
 	sha.Write(o.ExchangeAddress.Bytes())
 	sha.Write(o.TokenBuy.Bytes())
@@ -292,18 +299,11 @@ func (o *Order) VerifySignature() (bool, error) {
 func (o *Order) ValidateOrder() (bool, error) {
 
 	//Order Type needs to be equal to BUY or SELL
-
 	//Exchange Address needs to be correct
-
 	//AmountBuy and AmountSell need to be positive
-
 	//OrderHash needs to be correct
 
 	return true, nil
-}
-
-func (o *Order) ComputeBuyAndSellAmounts() {
-
 }
 
 func (o *Order) NewOrderPlacedEvent() *Event {
@@ -332,13 +332,13 @@ func NewDoneMessage() *Event {
 }
 
 func (o *Order) Sign(w *Wallet) error {
-	hash := o.ComputeOrderHash()
-	signature, err := w.SignHash(hash)
+	hash := o.ComputeHash()
+	sig, err := w.SignHash(hash)
 	if err != nil {
 		return err
 	}
 
 	o.Hash = hash
-	o.Signature = signature
+	o.Signature = sig
 	return nil
 }
