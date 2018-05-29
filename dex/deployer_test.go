@@ -8,7 +8,7 @@ import (
 )
 
 func TestNewDefaultLocalDeployer(t *testing.T) {
-	_, err := NewDefaultLocalDeployer()
+	_, err := NewDefaultDeployer()
 	if err != nil {
 		t.Errorf("Error creating deployer: %v", err)
 	}
@@ -22,7 +22,7 @@ func TestNewDefaultSimulator(t *testing.T) {
 }
 
 func TestDeployTokenWithLocalBackend(t *testing.T) {
-	deployer, err := NewDefaultLocalDeployer()
+	deployer, err := NewDefaultDeployer()
 	if err != nil {
 		t.Errorf("Error creating deployer: %v", err)
 	}
@@ -37,13 +37,14 @@ func TestDeployTokenWithLocalBackend(t *testing.T) {
 	}
 }
 
+// This test is only meaningful if a token is present at the given address
 func TestNewTokenWithLocalBackend(t *testing.T) {
-	deployer, err := NewDefaultLocalDeployer()
+	deployer, err := NewDefaultDeployer()
 	if err != nil {
 		t.Errorf("Error creating deployer: %v", err)
 	}
 
-	address := config.Contracts.token1
+	address := config.Tokens["ZRX"]
 	_, err = deployer.NewToken(address)
 	if err != nil {
 		t.Errorf("Error deploying token: %v", err)
@@ -87,7 +88,7 @@ func TestNewTokenWithSimulatedBackend(t *testing.T) {
 }
 
 func TestDeployExchangeWithLocalBackend(t *testing.T) {
-	deployer, err := NewDefaultLocalDeployer()
+	deployer, err := NewDefaultDeployer()
 	if err != nil {
 		t.Errorf("Error creating deployer: %v", err)
 	}
@@ -101,12 +102,12 @@ func TestDeployExchangeWithLocalBackend(t *testing.T) {
 }
 
 func TestNewExchangeWithLocalBackend(t *testing.T) {
-	deployer, err := NewDefaultLocalDeployer()
+	deployer, err := NewDefaultDeployer()
 	if err != nil {
 		t.Errorf("Error creating deployer: %v", err)
 	}
 
-	address := config.Contracts.exchange
+	address := config.Exchange
 	_, err = deployer.NewExchange(address)
 	if err != nil {
 		t.Errorf("Error deploying exchange: %v", err)
