@@ -15,20 +15,21 @@ type TradingEngine struct {
 	orderbooks  map[TokenPair]*OrderBook
 	quoteTokens map[Address]Token
 	pairs       map[Hash]TokenPair
+	operator    *Operator
 }
 
 // NewTradingEngine returns an empty TradingEngine struct
 func NewTradingEngine() *TradingEngine {
-	engine := new(TradingEngine)
-	engine.orderbooks = make(map[TokenPair]*OrderBook)
-	engine.quoteTokens = make(map[Address]Token)
-	engine.pairs = make(map[Hash]TokenPair)
-	return engine
+	e := new(TradingEngine)
+	e.orderbooks = make(map[TokenPair]*OrderBook)
+	e.quoteTokens = make(map[Address]Token)
+	e.pairs = make(map[Hash]TokenPair)
+	return e
 }
 
 // PrintLogs prints the logs for each token pair registered in the orderbook
-func (engine *TradingEngine) PrintLogs() {
-	for symbol, orderbook := range engine.orderbooks {
+func (e *TradingEngine) PrintLogs() {
+	for symbol, orderbook := range e.orderbooks {
 		fmt.Printf("Logs for %v:\n", symbol)
 		fmt.Printf("%v\n", orderbook.GetLogs())
 	}
@@ -36,24 +37,37 @@ func (engine *TradingEngine) PrintLogs() {
 
 // RegisterNewQuoteToken registers a new quote token on the engine
 // Only an authorized user should be allowed to register a new token on the engine (TODO)
-func (engine *TradingEngine) RegisterNewQuoteToken(t Token) error {
-	if _, ok := engine.quoteTokens[t.Address]; ok {
+func (e *TradingEngine) RegisterNewQuoteToken(t Token) error {
+	if _, ok := e.quoteTokens[t.Address]; ok {
 		return errors.New("Quote token already exists")
 	}
 
-	engine.quoteTokens[t.Address] = t
+	e.quoteTokens[t.Address] = t
+	return nil
+}
+
+// RegisterOperator registers a new operator on the engine. The operator is the account
+// that sends the blockchain transaction associated to an order/trade to the exchange
+// smart contract
+func (e *TradingEngine) RegisterOperator(config *OperatorConfig) error {
+	op, err := NewOperator(config)
+	if err != nil {
+		return err
+	}
+
+	e.operator = op
 	return nil
 }
 
 // RegisterNewPair registers a new token pair on the engine
 // To be valid, the quote token of the new token pair needs to be registered in the quote tokens of the engine
-func (engine *TradingEngine) RegisterNewPair(p TokenPair, done chan<- bool) error {
-	if _, ok := engine.quoteTokens[p.QuoteToken.Address]; !ok {
+func (e *TradingEngine) RegisterNewPair(p TokenPair, done chan<- bool) error {
+	if _, ok := e.quoteTokens[p.QuoteToken.Address]; !ok {
 		return errors.New("Quote token is not registered")
 	}
 
 	id := p.ComputeID()
-	if _, ok := engine.pairs[id]; ok {
+	if _, ok := e.pairs[id]; ok {
 		return errors.New("Token Pair is already registered")
 	}
 
@@ -83,8 +97,8 @@ func (engine *TradingEngine) RegisterNewPair(p TokenPair, done chan<- bool) erro
 		ob.prices[i] = new(PricePoint)
 	}
 
-	engine.pairs[id] = p
-	engine.orderbooks[p] = ob
+	e.pairs[id] = p
+	e.orderbooks[p] = ob
 
 	// fmt.Printf("\nRegistered new pair %v\n\n", p.String())
 	return nil
@@ -92,8 +106,8 @@ func (engine *TradingEngine) RegisterNewPair(p TokenPair, done chan<- bool) erro
 
 // ComputeOrderPrice calculates the (Amount, Price) tuple corresponding
 // to the (AmountBuy, TokenBuy, AmountSell, TokenSell) quadruplet
-func (engine *TradingEngine) ComputeOrderPrice(o *Order) error {
-	tokenPair := engine.pairs[o.PairID]
+func (e *TradingEngine) ComputeOrderPrice(o *Order) error {
+	tokenPair := e.pairs[o.PairID]
 
 	if o.TokenBuy == tokenPair.BaseToken.Address {
 		o.OrderType = BUY
@@ -111,73 +125,103 @@ func (engine *TradingEngine) ComputeOrderPrice(o *Order) error {
 }
 
 // AddOrder computes the order price point
-func (engine *TradingEngine) AddOrder(o *Order) error {
+func (e *TradingEngine) AddOrder(o *Order) error {
 
-	tokenPair, ok := engine.pairs[o.PairID]
+	tokenPair, ok := e.pairs[o.PairID]
 	if !ok {
 		return errors.New("Token pair does not exist")
 	}
 
-	orderbook, ok := engine.orderbooks[tokenPair]
+	ob, ok := e.orderbooks[tokenPair]
 	if !ok {
 		return errors.New("Orderbook does not exist")
 	}
 
-	err := engine.ComputeOrderPrice(o)
+	err := e.ComputeOrderPrice(o)
 	if err != nil {
 		return err
 	}
 
-	if ok, _ := o.VerifySignature(); !ok {
+	ok, err = o.VerifySignature()
+	if err != nil {
+		return err
+	}
+
+	if !ok {
 		return errors.New("Signature is not valid")
 	}
 
-	engine.ComputeOrderPrice(o)
-	orderbook.AddOrder(o)
+	e.ComputeOrderPrice(o)
+	ob.AddOrder(o)
 	return nil
 }
 
 // CancelOrder cancels an order that was previously sent to the orderbook. To be valid,
 // the orderCancel struct, need to correspond an existing token pair and order. The
 // orderCancel's signature needs to be a valid signature from the order Maker.
-func (engine *TradingEngine) CancelOrder(oc *OrderCancel) error {
-	tokenPair, ok := engine.pairs[oc.PairID]
+func (e *TradingEngine) CancelOrder(oc *OrderCancel) error {
+	tokenPair, ok := e.pairs[oc.PairID]
 	if !ok {
 		return errors.New("Token Pair does not exist")
 	}
 
-	orderbook, ok := engine.orderbooks[tokenPair]
+	ob, ok := e.orderbooks[tokenPair]
 	if !ok {
 		return errors.New("Orderbook does not exist")
 	}
 
-	order, ok := orderbook.orderIndex[oc.OrderHash]
+	order, ok := ob.orderIndex[oc.OrderHash]
 	if !ok {
 		return errors.New("Order does not exist")
 	}
 
-	ok, _ = oc.VerifySignature(order)
+	ok, err := oc.VerifySignature(order)
+	if err != nil {
+		return err
+	}
+
 	if !ok {
 		return errors.New("Signature is not valid")
 	}
 
-	orderbook.CancelOrder(oc.OrderHash)
+	ob.CancelOrder(oc.OrderHash)
 	return nil
 }
 
 // Execute Order adds the order to the blockchain transaction execution queue
-func (engine *TradingEngine) ExecuteOrder(o *Order) error {
-	fmt.Printf("Executing order: %v", o)
+func (e *TradingEngine) ExecuteOrder(t *Trade) error {
+	fmt.Printf("Now in the trading engine trying to trade: %v", t)
+
+	tokenPair, ok := e.pairs[t.PairID]
+	if !ok {
+		return errors.New("Token Pair does not exist")
+	}
+
+	ob, ok := e.orderbooks[tokenPair]
+	if !ok {
+		return errors.New("Orderbook does not exist")
+	}
+
+	o, ok := ob.orderIndex[t.OrderHash]
+	if !ok {
+		return errors.New("Order does not exist")
+	}
+
+	_, err := e.operator.ExecuteTrade(o, t)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
 // CloseOrderBook closes the orderbook associated to a pair ID
-func (engine *TradingEngine) CloseOrderBook(pairID Hash) (bool, error) {
-	tokenPair := engine.pairs[pairID]
-	if orderbook, ok := engine.orderbooks[tokenPair]; !ok {
+func (e *TradingEngine) CloseOrderBook(pairID Hash) (bool, error) {
+	tokenPair := e.pairs[pairID]
+	if ob, ok := e.orderbooks[tokenPair]; !ok {
 		return false, errors.New("Orderbook does not exist")
 	} else {
-		orderbook.Done()
+		ob.Done()
 		return true, nil
 	}
 }
