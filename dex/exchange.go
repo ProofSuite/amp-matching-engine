@@ -116,6 +116,21 @@ func (e *Exchange) DepositEther(value *big.Int) (*types.Transaction, error) {
 	return tx, nil
 }
 
+// DepositEtherFrom deposits ether from a custom address. The transaction sender is reset
+// after the transaction is carried out.
+func (e *Exchange) DepositEtherFrom(wallet *Wallet, value *big.Int) (*types.Transaction, error) {
+	e.SetTxValue(value)
+	e.SetCustomSender(wallet)
+
+	tx, err := e.Contract.DepositEther(e.TxOptions)
+	if err != nil {
+		return nil, err
+	}
+
+	e.SetDefaultTxOptions()
+	return tx, nil
+}
+
 // DepositToken deposits tokens into the exchange smart-contract.
 func (e *Exchange) DepositToken(token Address, amount *big.Int) (*types.Transaction, error) {
 	// e.SetDefaultTxOptions()
@@ -125,6 +140,20 @@ func (e *Exchange) DepositToken(token Address, amount *big.Int) (*types.Transact
 		return nil, err
 	}
 
+	return tx, err
+}
+
+// DepositEtherFrom deposits ether from a custom address. The transaction sender is reset
+// after the transaction is carried out.
+func (e *Exchange) DepositTokenFrom(wallet *Wallet, token Address, amount *big.Int) (*types.Transaction, error) {
+	e.SetCustomSender(wallet)
+
+	tx, err := e.Contract.DepositToken(e.TxOptions, token, amount)
+	if err != nil {
+		return nil, err
+	}
+
+	e.SetDefaultSender()
 	return tx, err
 }
 
