@@ -2,8 +2,6 @@ package dex
 
 import (
 	"math/big"
-
-	"github.com/ethereum/go-ethereum/core/types"
 )
 
 // Nonce alias type represents the number of transactions of an Ethereum account
@@ -16,4 +14,4 @@ type TokenAmount *big.Int
 type Fee *big.Int
 
 // Transactions alias
-type Transaction *types.Transaction
+// type Transaction *types.Transaction
