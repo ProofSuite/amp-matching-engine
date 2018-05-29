@@ -131,14 +131,21 @@ func (t *Trade) UnmarshalJSON(b []byte) error {
 		S: HexToHash(signature["S"].(string)),
 	}
 
-	t.Hash = HexToHash(trade["hash"].(string))
 	return nil
 }
 
 // DecodeTrade takes a payload previously unmarshalled from a JSON byte string
 // and decodes it into an Trade object
-func (t *Trade) DecodeTrade(trade map[string]interface{}) error {
+func (t *Trade) Decode(trade map[string]interface{}) error {
+	if trade["orderHash"] == nil {
+		return errors.New("Order Hash is not set")
+	}
 	t.OrderHash = HexToHash(trade["orderHash"].(string))
+
+	if trade["pairID"] == nil {
+		return errors.New("Pair ID is not set")
+	}
+	t.PairID = HexToHash(trade["pairID"].(string))
 
 	t.Amount = new(big.Int)
 	t.Amount.UnmarshalJSON([]byte(trade["amount"].(string)))
