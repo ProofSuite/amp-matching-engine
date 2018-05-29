@@ -21,12 +21,13 @@ type Client struct {
 	requestLogs  []*Message
 	responseLogs []*Message
 	wallet       *Wallet
+	mutex        sync.Mutex
 }
 
 func NewClient(w *Wallet, s *Server) *Client {
 	flag.Parse()
 	uri := url.URL{Scheme: "ws", Host: *addr, Path: "/api"}
-	log.Printf("Connecting to %s", uri.String())
+	fmt.Printf("Connecting to %s", uri.String())
 
 	d := wstest.NewDialer(s)
 	c, _, err := d.Dial(uri.String(), nil)
@@ -48,6 +49,12 @@ func NewClient(w *Wallet, s *Server) *Client {
 	}
 }
 
+func (c *Client) send(v interface{}) error {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	return c.connection.WriteJSON(v)
+}
+
 func (c *Client) start() {
 	c.handleMessages()
 	c.handleIncomingMessages()
@@ -58,6 +65,7 @@ func (c *Client) handleMessages() {
 		for {
 			select {
 			case request := <-c.requests:
+				// log.Printf("Request is equal to %v", request)
 				c.requestLogs = append(c.requestLogs, request)
 				switch request.MessageType {
 				case PLACE_ORDER:
@@ -106,7 +114,7 @@ func (c *Client) handleIncomingMessages() {
 }
 
 func (c *Client) placeOrder(request *Message) {
-	err := c.connection.WriteJSON(request)
+	err := c.send(request)
 	if err != nil {
 		fmt.Printf("Error: Could not place order. Payload: %#v\n", request.Payload)
 		return
@@ -117,7 +125,7 @@ func (c *Client) placeOrder(request *Message) {
 }
 
 func (c *Client) sendSignedData(request *Message) {
-	err := c.connection.WriteJSON(request)
+	err := c.send(request)
 	if err != nil {
 		fmt.Printf("Error: Could not send signed orders. Payload: %#v", request.Payload)
 		return
@@ -128,7 +136,7 @@ func (c *Client) sendSignedData(request *Message) {
 }
 
 func (c *Client) cancelOrder(request *Message) {
-	err := c.connection.WriteJSON(request)
+	err := c.send(request)
 	if err != nil {
 		fmt.Printf("Error: Could not cancel order. Payload: %#v", request.Payload)
 		return
@@ -154,15 +162,14 @@ func (c *Client) handleOrderFilled(p Payload) {
 	decoded := NewTradePayload()
 	decoded.DecodeTradePayload(p)
 
-	// order := decoded.Order
-	trade := decoded.Trade
+	t := decoded.Trade
 
-	err := c.wallet.SignTrade(trade)
+	err := c.wallet.SignTrade(t)
 	if err != nil {
 		fmt.Printf("Error signing trade: %v", err)
 	}
 
-	m := &Message{MessageType: SIGNED_DATA, Payload: RequestSignedDataPayload{Trade: trade}}
+	m := &Message{MessageType: SIGNED_DATA, Payload: RequestSignedDataPayload{Trade: t}}
 	c.requests <- m
 	// trade, err := c.wallet.
 }
