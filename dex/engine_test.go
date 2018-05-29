@@ -9,7 +9,7 @@ import (
 )
 
 func TestRegisterNewQuoteToken(t *testing.T) {
-	quoteToken := config.QuoteTokens["WETH"]
+	quoteToken := testConfig.QuoteTokens["WETH"]
 
 	engine := NewTradingEngine()
 	err := engine.RegisterNewQuoteToken(quoteToken)
@@ -23,7 +23,7 @@ func TestRegisterNewQuoteToken(t *testing.T) {
 }
 
 func TestRegisterNewPair(t *testing.T) {
-	pair := config.TokenPairs["ZRXWETH"]
+	pair := testConfig.TokenPairs["ZRXWETH"]
 	done := make(chan bool)
 
 	engine := NewTradingEngine()
@@ -34,8 +34,8 @@ func TestRegisterNewPair(t *testing.T) {
 }
 
 func TestRegisterNewPair2(t *testing.T) {
-	quoteToken := config.QuoteTokens["WETH"]
-	pair := config.TokenPairs["ZRXWETH"]
+	quoteToken := testConfig.QuoteTokens["WETH"]
+	pair := testConfig.TokenPairs["ZRXWETH"]
 	done := make(chan bool)
 
 	engine := NewTradingEngine()
@@ -47,8 +47,8 @@ func TestRegisterNewPair2(t *testing.T) {
 }
 
 func TestComputeOrderPrice(t *testing.T) {
-	quoteToken := config.QuoteTokens["WETH"]
-	pair := config.TokenPairs["ZRXWETH"]
+	quoteToken := testConfig.QuoteTokens["WETH"]
+	pair := testConfig.TokenPairs["ZRXWETH"]
 	done := make(chan bool)
 
 	engine := NewTradingEngine()
@@ -59,10 +59,10 @@ func TestComputeOrderPrice(t *testing.T) {
 		Id:              0,
 		ExchangeAddress: common.HexToAddress("0xae55690d4b079460e6ac28aaa58c9ec7b73a7485"),
 		Maker:           common.HexToAddress("0xc9b32e9563fe99612ce3a2695ac2a6404c111dde"),
-		TokenBuy:        config.TokenPairs["ZRXWETH"].QuoteToken.Address,
-		TokenSell:       config.TokenPairs["ZRXWETH"].BaseToken.Address,
-		SymbolBuy:       config.TokenPairs["ZRXWETH"].QuoteToken.Symbol,
-		SymbolSell:      config.TokenPairs["ZRXWETH"].BaseToken.Symbol,
+		TokenBuy:        testConfig.TokenPairs["ZRXWETH"].QuoteToken.Address,
+		TokenSell:       testConfig.TokenPairs["ZRXWETH"].BaseToken.Address,
+		SymbolBuy:       testConfig.TokenPairs["ZRXWETH"].QuoteToken.Symbol,
+		SymbolSell:      testConfig.TokenPairs["ZRXWETH"].BaseToken.Symbol,
 		AmountBuy:       big.NewInt(1000),
 		AmountSell:      big.NewInt(100),
 		Expires:         big.NewInt(10000),
@@ -85,8 +85,8 @@ func TestComputeOrderPrice(t *testing.T) {
 }
 
 func TestEngine(t *testing.T) {
-	wallet := config.Wallets[0]
-	pair := config.TokenPairs["ZRXWETH"]
+	wallet := testConfig.Wallets[0]
+	pair := testConfig.TokenPairs["ZRXWETH"]
 	ZRX := pair.BaseToken
 	WETH := pair.QuoteToken
 	done := make(chan bool)
@@ -117,8 +117,8 @@ func TestEngine(t *testing.T) {
 }
 
 func TestEngine2(t *testing.T) {
-	wallet := config.Wallets[0]
-	pair := config.TokenPairs["ZRXWETH"]
+	wallet := testConfig.Wallets[1]
+	pair := testConfig.TokenPairs["ZRXWETH"]
 	ZRX := pair.BaseToken
 	WETH := pair.QuoteToken
 	done := make(chan bool)
@@ -154,8 +154,8 @@ func TestEngine2(t *testing.T) {
 }
 
 func TestEngine3(t *testing.T) {
-	wallet := config.Wallets[0]
-	pair := config.TokenPairs["ZRXWETH"]
+	wallet := testConfig.Wallets[0]
+	pair := testConfig.TokenPairs["ZRXWETH"]
 	ZRX := pair.BaseToken
 	WETH := pair.QuoteToken
 	done := make(chan bool)
@@ -188,8 +188,8 @@ func TestEngine3(t *testing.T) {
 }
 
 func TestEngine4(t *testing.T) {
-	wallet := config.Wallets[0]
-	pair := config.TokenPairs["ZRXWETH"]
+	wallet := testConfig.Wallets[0]
+	pair := testConfig.TokenPairs["ZRXWETH"]
 	ZRX := pair.BaseToken
 	WETH := pair.QuoteToken
 	done := make(chan bool)
