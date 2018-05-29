@@ -198,7 +198,7 @@ func (o *Order) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-func (o *Order) DecodeOrder(order map[string]interface{}) error {
+func (o *Order) Decode(order map[string]interface{}) error {
 	if order["id"] == nil {
 		return errors.New("Order ID not set")
 	}
