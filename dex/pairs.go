@@ -3,8 +3,8 @@ package dex
 import (
 	"fmt"
 
-	"github.com/Dvisacker/go-ethereum/crypto/sha3"
 	. "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto/sha3"
 )
 
 type Token struct {

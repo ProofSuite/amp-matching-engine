@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"math/big"
 
 	. "github.com/ethereum/go-ethereum/common"
@@ -36,12 +37,13 @@ func NewTrade(o *Order, amount *big.Int, taker Address) *Trade {
 
 // String return the standard trade format string
 func (t *Trade) String() string {
-	return fmt.Sprintf("\nTrade:\nOrderHash: %v\nAmount: %v\nTradeNonce: %v\nTaker: %v\nHash: %v\n\n",
+	return fmt.Sprintf("\nTrade:\nOrderHash: %v\nAmount: %v\nTradeNonce: %v\nTaker: %v\nHash: %v\nPairID: %v\n\n",
 		t.OrderHash.String(),
 		t.Amount,
 		t.TradeNonce,
 		t.Taker.String(),
 		t.Hash.String(),
+		t.PairID.String(),
 	)
 }
 
