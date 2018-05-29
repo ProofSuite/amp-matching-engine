@@ -247,7 +247,14 @@ func (o *Order) Decode(order map[string]interface{}) error {
 }
 
 func (o *Order) String() string {
-	return fmt.Sprintf("\nOrder:\nid: %d\nbuyToken: %v\nsellToken: %v\nbuyTokenAmount: %v\nsellTokenAmount: %v\npairID: %x\n\n", o.Id, o.SymbolBuy, o.SymbolSell, o.AmountBuy, o.AmountSell, o.PairID)
+	return fmt.Sprintf(
+		"Order:\n"+
+			"Id: %d\nOrderType: %v\nExchangeAddress: %x\nMaker: %x\nTokenBuy: %x\nTokenSell: %x\n"+
+			"AmountBuy: %v\nAmountSell: %v\nSymbolBuy: %x\nSymbolSell: %x\nExpires: %v\nNonce: %v\n"+
+			"FeeMake: %v\nFeeTake: %v\nSignature.V: %x\nSignature.R: %x\nSignature.S: %x\nPairID: %x\nHash: %x\nPrice: %v\nAmount: %v\n\n",
+		o.Id, o.OrderType, o.ExchangeAddress, o.Maker, o.TokenBuy, o.TokenSell, o.AmountBuy, o.AmountSell, o.SymbolBuy, o.SymbolSell, o.Expires,
+		o.Nonce, o.FeeMake, o.FeeTake, o.Signature.V, o.Signature.R, o.Signature.S, o.PairID, o.Hash, o.Price, o.Amount,
+	)
 }
 
 func (o *Order) PriceInfo() string {
@@ -332,6 +339,6 @@ func (o *Order) Sign(w *Wallet) error {
 	}
 
 	o.Hash = hash
-	o.Signature = signature
+	o.Signature = sig
 	return nil
 }

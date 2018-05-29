@@ -51,51 +51,6 @@ func (w *Wallet) GetPrivateKey() string {
 	return hex.EncodeToString(w.PrivateKey.D.Bytes())
 }
 
-// NewRandomizedOrder (DEPRECATED - use the order factory instead) creates
-// a new order from a wallet, computes the order hash and signs it with it the
-// wallet private key
-func (w *Wallet) NewRandomizedOrder(id uint64, p TokenPair, ot OrderType) (*Order, error) {
-	o := &Order{}
-	tokenBuy := Token{}
-	tokenSell := Token{}
-
-	if ot == BUY {
-		tokenBuy = p.QuoteToken
-		tokenSell = p.BaseToken
-	} else {
-		tokenBuy = p.BaseToken
-		tokenSell = p.QuoteToken
-	}
-
-	o.Id = id
-	o.ExchangeAddress = config.Contracts.exchange
-	o.TokenBuy = tokenBuy.Address
-	o.TokenSell = tokenSell.Address
-	o.SymbolBuy = tokenBuy.Symbol
-	o.SymbolSell = tokenSell.Symbol
-	o.AmountBuy = big.NewInt(1)
-	o.AmountSell = big.NewInt(1)
-	o.Expires = big.NewInt(0)
-	o.FeeMake = big.NewInt(0)
-	o.FeeTake = big.NewInt(0)
-	o.Nonce = big.NewInt(0)
-	o.Maker = w.Address
-	o.PairID = p.ID
-	o.Price = 0
-	o.Amount = 0
-
-	hash := o.ComputeHash()
-	o.Hash = hash
-
-	sig, err := w.SignHash(hash)
-	if err != nil {
-		return nil, err
-	}
-	o.Signature = sig
-
-	return o, nil
-}
-
 // NewOrder (DEPRECATED - use the order factory instead) creates a new
 // order from a wallet, compute the order hash and signs it with the
 // wallet private key
@@ -113,7 +68,7 @@ func (w *Wallet) NewOrder(id, amountBuy, amountSell uint64, p TokenPair, ot Orde
 	}
 
 	o.Id = id
-	o.ExchangeAddress = config.Contracts.exchange
+	o.ExchangeAddress = config.Exchange
 	o.TokenBuy = tokenBuy.Address
 	o.TokenSell = tokenSell.Address
 	o.SymbolBuy = tokenBuy.Symbol
@@ -129,7 +84,7 @@ func (w *Wallet) NewOrder(id, amountBuy, amountSell uint64, p TokenPair, ot Orde
 	o.Price = 0
 	o.Amount = 0
 
-	hash := o.ComputeOrderHash()
+	hash := o.ComputeHash()
 	o.Hash = hash
 
 	sig, err := w.SignHash(hash)
