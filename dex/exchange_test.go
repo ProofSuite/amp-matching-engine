@@ -17,7 +17,7 @@ func TestSetFeeAccount(t *testing.T) {
 	initialFeeAccount := testConfig.Wallets[0].Address
 	newFeeAccount := testConfig.Wallets[1].Address
 
-	exchange, err := deployer.DeployExchange(initialFeeAccount)
+	exchange, _, err := deployer.DeployExchange(initialFeeAccount)
 	if err != nil {
 		t.Errorf("Could not deploy exchange: %v", err)
 	}
@@ -50,7 +50,7 @@ func TestSetOperator(t *testing.T) {
 
 	feeAccount := testConfig.Wallets[0].Address
 	operator := testConfig.Wallets[1].Address
-	exchange, err := deployer.DeployExchange(feeAccount)
+	ex, _, err := deployer.DeployExchange(feeAccount)
 	if err != nil {
 		t.Errorf("Could not deploy exchange: %v", err)
 	}
@@ -58,14 +58,14 @@ func TestSetOperator(t *testing.T) {
 	simulator := deployer.Backend.(*backends.SimulatedBackend)
 	simulator.Commit()
 
-	_, err = exchange.SetOperator(operator, true)
+	_, err = ex.SetOperator(operator, true)
 	if err != nil {
 		t.Errorf("Could not set operator: %v", err)
 	}
 
 	simulator.Commit()
 
-	isOperator, err := exchange.Operator(operator)
+	isOperator, err := ex.Operator(operator)
 	if err != nil {
 		t.Errorf("Error calling the operator variable: %v", err)
 	}
@@ -82,7 +82,7 @@ func TestSetWithdrawalSecurityPeriod(t *testing.T) {
 	}
 
 	feeAccount := testConfig.Wallets[0].Address
-	exchange, err := deployer.DeployExchange(feeAccount)
+	exchange, _, err := deployer.DeployExchange(feeAccount)
 	if err != nil {
 		t.Errorf("Could not set operator: %v", err)
 	}
@@ -113,7 +113,7 @@ func TestDepositEther(t *testing.T) {
 	}
 
 	feeAccount := testConfig.Wallets[0].Address
-	exchange, err := deployer.DeployExchange(feeAccount)
+	exchange, _, err := deployer.DeployExchange(feeAccount)
 	if err != nil {
 		t.Errorf("Error deploying exchange: %v", err)
 	}
@@ -152,12 +152,12 @@ func TestDepositToken(t *testing.T) {
 	simulator := deployer.Backend.(*backends.SimulatedBackend)
 	amount := big.NewInt(1e18)
 
-	exchange, err := deployer.DeployExchange(admin)
+	exchange, _, err := deployer.DeployExchange(admin)
 	if err != nil {
 		t.Errorf("Error deploying exchange: %v", err)
 	}
 
-	token, err := deployer.DeployToken(sender.Address, amount)
+	token, _, err := deployer.DeployToken(sender.Address, amount)
 	if err != nil {
 		t.Errorf("Error deploying token: %v", err)
 	}
@@ -203,12 +203,12 @@ func TestWithdraw(t *testing.T) {
 	n := big.NewInt(1)
 	f := big.NewInt(0)
 
-	exchange, err := deployer.DeployExchange(admin.Address)
+	exchange, _, err := deployer.DeployExchange(admin.Address)
 	if err != nil {
 		t.Errorf("Error deploying exchange: %v", err)
 	}
 
-	token, err := deployer.DeployToken(sender.Address, amount)
+	token, _, err := deployer.DeployToken(sender.Address, amount)
 	if err != nil {
 		t.Errorf("Error deploying token: %v", err)
 	}
@@ -293,17 +293,17 @@ func TestTrade(t *testing.T) {
 	amount := big.NewInt(5e17)
 	expires := big.NewInt(1e7)
 
-	exchange, err := deployer.DeployExchange(admin.Address)
+	exchange, _, err := deployer.DeployExchange(admin.Address)
 	if err != nil {
 		t.Errorf("Error deploying exchange: %v", err)
 	}
 
 	//Initially Maker owns 1e18 units of sellToken and Taker owns 1e18 units buyToken
-	sellToken, err := deployer.DeployToken(maker.Address, sellAmount)
+	sellToken, _, err := deployer.DeployToken(maker.Address, sellAmount)
 	if err != nil {
 		t.Errorf("Error deploying token 1: %v", err)
 	}
-	buyToken, err := deployer.DeployToken(taker.Address, buyAmount)
+	buyToken, _, err := deployer.DeployToken(taker.Address, buyAmount)
 	if err != nil {
 		t.Errorf("Error deploying token 2: %v", err)
 	}
