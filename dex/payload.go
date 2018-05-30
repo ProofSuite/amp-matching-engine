@@ -18,6 +18,17 @@ type TradePayload struct {
 	Trade *Trade `json:"trade"`
 }
 
+type TxSuccessPayload struct {
+	Order *Order `json:"order"`
+	Trade *Trade `json:"trade"`
+}
+
+type TxErrorPayload struct {
+	Order   *Order `json:"order"`
+	Trade   *Trade `json:"trade"`
+	ErrorId uint8  `json:"errorId"`
+}
+
 // CancelOrderPayload contains both an OrderId and the pairID of the corresponding orderbook/token pair
 type OrderCancelPayload struct {
 	OrderCancel *OrderCancel `json:"orderCancel"`

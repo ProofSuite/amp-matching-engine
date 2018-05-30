@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"math/big"
 
 	"github.com/Dvisacker/matching-engine/dex/interfaces"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind/backends"
 	. "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -22,6 +22,7 @@ import (
 type Operator struct {
 	Admin              *Wallet
 	Exchange           *Exchange
+	Engine             *TradingEngine
 	EthereumClient     *ethclient.Client
 	Params             *OperatorParams
 	Chain              bind.ContractBackend
@@ -29,6 +30,7 @@ type Operator struct {
 	ErrorChannel       chan *interfaces.ExchangeLogError
 	TradeChannel       chan *interfaces.ExchangeLogTrade
 	CancelOrderChannel chan *interfaces.ExchangeLogCancelOrder
+	OrderTradePairs    map[Hash]*OrderTradePair
 }
 
 // OperatorParams contains numerical values that define how the operator should send transcations.
@@ -64,6 +66,7 @@ func NewOperator(config *OperatorConfig) (*Operator, error) {
 	op.Params = config.OperatorParams
 	op.Exchange = ex
 	op.EthereumClient = client
+	op.OrderTradePairs = make(map[Hash]*OrderTradePair)
 
 	op.ErrorChannel, err = op.Exchange.ListenToErrorEvents()
 	if err != nil {
@@ -75,52 +78,97 @@ func NewOperator(config *OperatorConfig) (*Operator, error) {
 		return nil, err
 	}
 
-	// err = op.Exchange.GetErrorEvents(op.ErrorChannel)
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	// err = op.Exchange.GetTrades(op.TradeChannel)
-	// if err != nil {
-	// 	return nil, err
-	// }
-
 	err = op.Validate()
 	if err != nil {
 		return nil, err
 	}
 
+	go func() {
+		for {
+			select {
+			case errLog := <-op.ErrorChannel:
+				tradeHash := errLog.TradeHash
+				otp, ok := op.OrderTradePairs[tradeHash]
+				if !ok {
+					log.Printf("Could not retrieve initial hash")
+				}
+
+				t := otp.trade
+				o := otp.order
+
+				errId := errLog.ErrorId
+
+				if otp.order.events != nil {
+					otp.order.events <- otp.order.NewOrderTxError(t, errId)
+				}
+
+				if otp.trade.events != nil {
+					otp.trade.events <- otp.trade.NewTradeTxError(o, errId)
+				}
+
+				if op.Engine != nil {
+					if err := op.Engine.CancelTrade(t); err != nil {
+						log.Printf("Could not update order")
+					}
+				}
+
+			case tradeLog := <-op.TradeChannel:
+				otp, ok := op.OrderTradePairs[tradeLog.TradeHash]
+				if !ok {
+					log.Printf("Could not retrieve initial hash")
+				}
+
+				if otp.order.events != nil {
+					otp.order.events <- otp.order.NewOrderTxSuccess(otp.trade)
+				}
+
+				if otp.trade.events != nil {
+					otp.trade.events <- otp.trade.NewTradeTxSuccess(otp.order)
+				}
+			}
+		}
+	}()
+
 	return op, nil
 }
 
-func NewHTTPOperator(config *OperatorConfig) (*Operator, error) {
-	op := &Operator{}
-
-	conn, err := rpc.DialHTTP(config.OperatorParams.rpcURL)
+// Trade executes a settlements transaction. The order and trade payloads need to be signed respectively
+// by the Maker and the Taker of the trade. Only the operator account can send a Trade function to the
+// Exchange smart contract.
+func (op *Operator) ExecuteTrade(o *Order, t *Trade) (*types.Transaction, error) {
+	op.OrderTradePairs[t.Hash] = &OrderTradePair{order: o, trade: t}
+	err := t.Validate()
 	if err != nil {
 		return nil, err
 	}
 
-	client := ethclient.NewClient(conn)
-
-	ex, err := NewExchange(config.Admin, config.Exchange, client)
+	tx, err := op.Exchange.Trade(o, t)
 	if err != nil {
 		return nil, err
 	}
 
-	op.Admin = config.Admin
-	op.Params = config.OperatorParams
-	op.Exchange = ex
-	op.EthereumClient = client
-
-	err = op.Validate()
-	if err != nil {
-		return nil, err
+	if o.events != nil {
+		o.events <- o.NewOrderExecutedEvent()
 	}
 
-	return op, nil
+	if o.events != nil {
+		t.events <- t.NewTradeExecutedEvent()
+	}
+
+	fmt.Printf("Successfully execute transaction")
+	return tx, nil
 }
 
+func (op *Operator) WaitMined(tx *types.Transaction) (*types.Receipt, error) {
+	ctx := context.Background()
+	receipt, err := bind.WaitMined(ctx, op.EthereumClient, tx)
+	if err != nil {
+		return nil, err
+	}
+	return receipt, nil
+}
+
+// Validate checks that the operator configuration is sufficient.
 func (op *Operator) Validate() error {
 	balance, err := op.EthereumClient.PendingBalanceAt(context.Background(), op.Admin.Address)
 	if err != nil {
