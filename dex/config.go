@@ -1,74 +1,284 @@
 package dex
 
 import (
+	"fmt"
+	"math/big"
+
 	. "github.com/ethereum/go-ethereum/common"
 )
 
 var config = NewDefaultConfiguration()
 
+// Config holds the general configuration for the application
+// Currently some parameters are redundant as different type of
+// configurations need different (but similar) parameters
 type Config struct {
-	Contracts   ConfigContracts
-	Wallets     []*Wallet
-	Keys        []string
-	Accounts    []Address
-	Tokens      map[string]Address
-	QuoteTokens Tokens
-	TokenPairs  TokenPairs
+	Accounts       []Address
+	Admin          *Wallet
+	Wallets        []*Wallet
+	Constants      *Constants
+	Exchange       Address
+	Tokens         map[string]Address
+	QuoteTokens    Tokens
+	TokenPairs     TokenPairs
+	Deployer       *Deployer
+	OperatorParams *OperatorParams
 }
 
-type ConfigContracts struct {
-	exchange Address
-	token1   Address
-	token2   Address
+type Constants struct {
+	ether           *big.Int
+	defaultGasPrice *big.Int
+	defaultMaxGas   *big.Int
 }
 
+// NewDefaultConfiguration() returns the configuration used for testing. No contract
+// is deployed and the data used does not exist on-chain.
 func NewDefaultConfiguration() *Config {
 	wallets := getWallets()
 	accounts := getAccounts()
-	tokens := getTokens()
-	contracts := getContracts()
+	tokens := getTokenAddresses()
+	exchange := getExchangeAddress()
 	quoteTokens := getQuoteTokens()
 	tokenPairs := getTokenPairs()
 
-	return &Config{
-		Contracts: contracts,
-		Wallets:   wallets,
-		Accounts:  accounts,
+	admin := wallets[0]
 
-		Keys: []string{
-			"7c78c6e2f65d0d84c44ac0f7b53d6e4dd7a82c35f51b251d387c2a69df712660",
-			"7c78c6e2f65d0d84c44ac0f7b53d6e4dd7a82c35f51b251d387c2a69df712661",
-			"7c78c6e2f65d0d84c44ac0f7b53d6e4dd7a82c35f51b251d387c2a69df712662",
-			"7c78c6e2f65d0d84c44ac0f7b53d6e4dd7a82c35f51b251d387c2a69df712663",
-			"7c78c6e2f65d0d84c44ac0f7b53d6e4dd7a82c35f51b251d387c2a69df712664",
-			"7c78c6e2f65d0d84c44ac0f7b53d6e4dd7a82c35f51b251d387c2a69df712665",
-			"7c78c6e2f65d0d84c44ac0f7b53d6e4dd7a82c35f51b251d387c2a69df712666",
-			"7c78c6e2f65d0d84c44ac0f7b53d6e4dd7a82c35f51b251d387c2a69df712667",
-			"7c78c6e2f65d0d84c44ac0f7b53d6e4dd7a82c35f51b251d387c2a69df712668",
-			"7c78c6e2f65d0d84c44ac0f7b53d6e4dd7a82c35f51b251d387c2a69df712669",
-		},
+	return &Config{
+		Admin:       admin,
+		Exchange:    exchange,
+		Wallets:     wallets,
+		Accounts:    accounts,
 		Tokens:      tokens,
 		QuoteTokens: quoteTokens,
 		TokenPairs:  tokenPairs,
 	}
 }
 
-func getTokens() map[string]Address {
+// NewSimulatorConfiguration() returns the configuration used for testing. Contracts
+// are deployed on a go-ethereum simulated backend.
+// ZRX, EOS, WETH tokens (which are actually only standard ERC20 tokens arbitrarily named
+// for clarity purposes) are deployed and then added to the pair, quotes and token variables.
+func NewSimulatorConfiguration() *Config {
+	minted := big.NewInt(1e18)
+	constants := getConstants()
+	wallets := getWallets()
+	accounts := getAccounts()
+
+	admin := wallets[0]
+
+	deployer, err := NewSimulator(admin, accounts)
+	if err != nil {
+		fmt.Printf("Could not deploy simulator")
+	}
+
+	ZRXTokenContract, _, err := deployer.DeployToken(admin.Address, minted)
+	if err != nil {
+		fmt.Printf("Could not deploy the ZRX token contract")
+	}
+
+	WETHTokenContract, _, err := deployer.DeployToken(admin.Address, minted)
+	if err != nil {
+		fmt.Printf("Could not deploy the WETH token contract")
+	}
+
+	EOSTokenContract, _, err := deployer.DeployToken(admin.Address, minted)
+	if err != nil {
+		fmt.Printf("Could not deploy the EOS token contract")
+	}
+
+	ZRX := Token{Symbol: "ZRX", Address: ZRXTokenContract.Address}
+	WETH := Token{Symbol: "WETH", Address: WETHTokenContract.Address}
+	EOS := Token{Symbol: "EOS", Address: EOSTokenContract.Address}
+	ZRX_WETH := NewPair(ZRX, WETH)
+	EOS_WETH := NewPair(EOS, WETH)
+
+	pairs := TokenPairs{}
+	pairs["ZRXWETH"] = ZRX_WETH
+	pairs["EOSWETH"] = EOS_WETH
+
+	quotes := Tokens{}
+	quotes["ZRX"] = ZRX
+	quotes["WETH"] = WETH
+	quotes["EOS"] = EOS
+
 	tokens := make(map[string]Address)
-	tokens["EOS"] = HexToAddress("0x86fa049857e0209aa7d9e616f7eb3b3b78ecfdb0")
-	tokens["ZRX"] = HexToAddress("0xe41d2489571d322189246dafa5ebde1f4699f498")
+	tokens["ZRX"] = ZRX.Address
+	tokens["WETH"] = WETH.Address
+	tokens["EOS"] = EOS.Address
+
+	ex, _, err := deployer.DeployExchange(admin.Address)
+	if err != nil {
+		fmt.Printf("Could not deploy exchange: %v", err)
+	}
+
+	return &Config{
+		Admin:       admin,
+		Constants:   constants,
+		Exchange:    ex.Address,
+		Wallets:     wallets,
+		Accounts:    accounts,
+		Tokens:      tokens,
+		QuoteTokens: quotes,
+		TokenPairs:  pairs,
+		Deployer:    deployer,
+	}
+}
+
+// CreateLocalhostConfiguration() deploys mock tokens and the decentralized exchange contract
+// and returns a configuration object that includes accounts, contract addresses, etc.
+// If contracts are already deployed, then use the NewLocalHostConfiguration instead.
+func CreateConfiguration() *Config {
+	minted := big.NewInt(1e18)
+	constants := getConstants()
+	wallets := getWallets()
+	accounts := getAccounts()
+	opParams := getOperatorParams()
+	admin := wallets[0]
+
+	deployer, err := NewDeployer(admin)
+	if err != nil {
+		fmt.Printf("Could not deploy simulator")
+	}
+
+	ex, _, err := deployer.DeployExchange(admin.Address)
+	if err != nil {
+		fmt.Printf("Could not deploy the exchange contract")
+	}
+
+	ZRXContract, _, err := deployer.DeployToken(admin.Address, minted)
+	if err != nil {
+		fmt.Printf("Could not deploy the ZRX token contract")
+	}
+
+	WETHContract, _, err := deployer.DeployToken(admin.Address, minted)
+	if err != nil {
+		fmt.Printf("Could not deploy the WETH token contract")
+	}
+
+	EOSContract, _, err := deployer.DeployToken(admin.Address, minted)
+	if err != nil {
+		fmt.Printf("Could not deploy the EOS token contract")
+	}
+
+	ZRX := Token{Symbol: "ZRX", Address: ZRXContract.Address}
+	WETH := Token{Symbol: "WETH", Address: WETHContract.Address}
+	EOS := Token{Symbol: "EOS", Address: EOSContract.Address}
+	ZRX_WETH := NewPair(ZRX, WETH)
+	EOS_WETH := NewPair(EOS, WETH)
+
+	pairs := TokenPairs{}
+	pairs["ZRXWETH"] = ZRX_WETH
+	pairs["EOSWETH"] = EOS_WETH
+
+	quotes := Tokens{}
+	quotes["ZRX"] = ZRX
+	quotes["WETH"] = WETH
+	quotes["EOS"] = EOS
+
+	tokens := make(map[string]Address)
+	tokens["ZRX"] = ZRX.Address
+	tokens["WETH"] = WETH.Address
+	tokens["EOS"] = EOS.Address
+
+	return &Config{
+		Admin:          admin,
+		Constants:      constants,
+		Exchange:       ex.Address,
+		Wallets:        wallets,
+		Accounts:       accounts,
+		Tokens:         tokens,
+		QuoteTokens:    quotes,
+		TokenPairs:     pairs,
+		Deployer:       deployer,
+		OperatorParams: opParams,
+	}
+
+}
+
+// NewLocalhostConfiguration() returns the configuration used for interacting with a localhost
+// blockchain. ZRX, EOS, WETH token objects are created from the given addresses.
+// The DEX, ZRX, EOS, WETH contracts (ZRX, EOS, WETH can be any ERC20 contracts) have to be
+// already deployed. Otherwise, use the CreateLocalHostConfiguration contract.
+func NewConfiguration() *Config {
+	constants := getConstants()
+	wallets := getWallets()
+	accounts := getAccounts()
+	tokens := getTokenAddresses()
+	exchange := getExchangeAddress()
+	opParams := getOperatorParams()
+
+	admin := wallets[0]
+
+	dep, err := NewDeployer(admin)
+	if err != nil {
+		fmt.Printf("Could not deploy simulator")
+	}
+
+	ZRXContract, err := dep.NewToken(tokens["ZRX"])
+	if err != nil {
+		fmt.Printf("Could not retrieve the ZRX token contract")
+	}
+
+	WETHContract, err := dep.NewToken(tokens["WETH"])
+	if err != nil {
+		fmt.Printf("Could not retrieve the WETH token contract")
+	}
+
+	EOSContract, err := dep.NewToken(tokens["EOS"])
+	if err != nil {
+		fmt.Printf("Could not retrieve the EOS token contract")
+	}
+
+	ex, err := dep.NewExchange(exchange)
+	if err != nil {
+		fmt.Printf("Could not deploy the exchange contract")
+	}
+
+	ZRX := Token{Symbol: "ZRX", Address: ZRXContract.Address}
+	WETH := Token{Symbol: "WETH", Address: WETHContract.Address}
+	EOS := Token{Symbol: "EOS", Address: EOSContract.Address}
+	ZRX_WETH := NewPair(ZRX, WETH)
+	EOS_WETH := NewPair(EOS, WETH)
+
+	pairs := TokenPairs{}
+	pairs["ZRXWETH"] = ZRX_WETH
+	pairs["EOSWETH"] = EOS_WETH
+
+	quotes := Tokens{}
+	quotes["ZRX"] = ZRX
+	quotes["WETH"] = WETH
+	quotes["EOS"] = EOS
+
+	return &Config{
+		Admin:          admin,
+		Constants:      constants,
+		Exchange:       ex.Address,
+		Wallets:        wallets,
+		Accounts:       accounts,
+		Tokens:         tokens,
+		QuoteTokens:    quotes,
+		TokenPairs:     pairs,
+		Deployer:       dep,
+		OperatorParams: opParams,
+	}
+}
+
+// getTokens returns a mapping of token symbol to token addresses
+func getTokenAddresses() map[string]Address {
+	tokens := make(map[string]Address)
+	tokens["EOS"] = HexToAddress("0x5d564669ab4cfd96b785d3d05e8c7d66a073daf0")
+	tokens["ZRX"] = HexToAddress("0x9792845456a0075df8a03123e7dac62bb0f69440")
+	tokens["WETH"] = HexToAddress("0x27cb1d4b335ec45512088eea990238344d776714")
 
 	return tokens
 }
 
-func getContracts() ConfigContracts {
-	return ConfigContracts{
-		exchange: HexToAddress("0xae55690d4b079460e6ac28aaa58c9ec7b73a7485"),
-		token1:   HexToAddress("0x5ac05570112c0a95f2fd1d85292e0c08522a1bdb"),
-		token2:   HexToAddress("0x43925198636a2d43f1c887ed1d936c76f03f55de"),
-	}
+func getExchangeAddress() Address {
+	return HexToAddress("0x29faee20f205c15c6c3004482f8996a468336b67")
 }
 
+// getAccounts returns default accounts. They can be used with the current localhost private
+// blockchain
 func getAccounts() []Address {
 	accountList := []Address{}
 
@@ -92,6 +302,21 @@ func getAccounts() []Address {
 	return accountList
 }
 
+// getConstants returns ether value in wei, the default gas price in wei
+// and the default max gas in wei
+func getConstants() *Constants {
+	ether := big.NewInt(1e18)
+	defaultGasPrice := big.NewInt(1e9)
+	defaultMaxGas := big.NewInt(5e6)
+
+	return &Constants{
+		ether:           ether,
+		defaultGasPrice: defaultGasPrice,
+		defaultMaxGas:   defaultMaxGas,
+	}
+}
+
+// getWallets() generates and returns a list of wallets that
 func getWallets() []*Wallet {
 	walletList := []*Wallet{}
 
@@ -115,21 +340,13 @@ func getWallets() []*Wallet {
 	return walletList
 }
 
-// func getQuoteTokens() []*Token {
-
-// 	EOS := &Token{Symbol: "EOS", Address: HexToAddress("0x86fa049857e0209aa7d9e616f7eb3b3b78ecfdb0")}
-// 	WETH := &Token{Symbol: "WETH", Address: HexToAddress("0x2956356cd2a2bf3202f771f50d3d14a367b48070")}
-
-// 	quoteTokens := []*Token{EOS, WETH}
-// 	return quoteTokens
-// }
-
+// getQuoteTokens generates a mapping of quote tokens (arbitrary addresses)
 func getQuoteTokens() Tokens {
 	quoteTokens := Tokens{}
 
-	WETH := Token{Symbol: "WETH", Address: HexToAddress("0x2956356cd2a2bf3202f771f50d3d14a367b48070")}
-	ZRX := Token{Symbol: "ZRX", Address: HexToAddress("0xe41d2489571d322189246dafa5ebde1f4699f498")}
-	EOS := Token{Symbol: "EOS", Address: HexToAddress("0x86fa049857e0209aa7d9e616f7eb3b3b78ecfdb0")}
+	WETH := Token{Symbol: "WETH", Address: HexToAddress("0x5d564669ab4cfd96b785d3d05e8c7d66a073daf0")}
+	ZRX := Token{Symbol: "ZRX", Address: HexToAddress("0x9792845456a0075df8a03123e7dac62bb0f69440")}
+	EOS := Token{Symbol: "EOS", Address: HexToAddress("0x27cb1d4b335ec45512088eea990238344d776714")}
 
 	quoteTokens["WETH"] = WETH
 	quoteTokens["ZRX"] = ZRX
@@ -137,12 +354,13 @@ func getQuoteTokens() Tokens {
 	return quoteTokens
 }
 
+// getTokenPairs() generates a mapping of token pairs (arbitrary addresses)
 func getTokenPairs() TokenPairs {
 	tokenPairs := TokenPairs{}
 
-	WETH := Token{Symbol: "WETH", Address: HexToAddress("0x2956356cd2a2bf3202f771f50d3d14a367b48070")}
-	ZRX := Token{Symbol: "ZRX", Address: HexToAddress("0xe41d2489571d322189246dafa5ebde1f4699f498")}
-	EOS := Token{Symbol: "EOS", Address: HexToAddress("0x86fa049857e0209aa7d9e616f7eb3b3b78ecfdb0")}
+	WETH := Token{Symbol: "WETH", Address: HexToAddress("0x5d564669ab4cfd96b785d3d05e8c7d66a073daf0")}
+	ZRX := Token{Symbol: "ZRX", Address: HexToAddress("0x9792845456a0075df8a03123e7dac62bb0f69440")}
+	EOS := Token{Symbol: "EOS", Address: HexToAddress("0x27cb1d4b335ec45512088eea990238344d776714")}
 
 	ZRX_WETH := TokenPair{BaseToken: ZRX, QuoteToken: WETH}
 	EOS_WETH := TokenPair{BaseToken: EOS, QuoteToken: WETH}
@@ -153,4 +371,13 @@ func getTokenPairs() TokenPairs {
 	tokenPairs["ZRXWETH"] = ZRX_WETH
 	tokenPairs["EOSWETH"] = EOS_WETH
 	return tokenPairs
+}
+
+func getOperatorParams() *OperatorParams {
+	return &OperatorParams{
+		gasPrice:   big.NewInt(1e9),
+		maxGas:     5e6,
+		minBalance: big.NewInt(1e17),
+		rpcURL:     "ws://127.0.0.1:8546",
+	}
 }

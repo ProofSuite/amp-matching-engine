@@ -23,10 +23,9 @@ type OrderBook struct {
 	ask        uint64
 	bid        uint64
 	orderIndex map[Hash]*Order
-	// orderIndex map[uint64]*Order
-	prices  [MAX_PRICE]*PricePoint
-	actions chan *Action
-	logger  []*Action
+	prices     [MAX_PRICE]*PricePoint
+	actions    chan *Action
+	logger     []*Action
 }
 
 // NewOrderbook returns a default orderbook struct
@@ -96,6 +95,14 @@ func (ob *OrderBook) CancelOrder(h Hash) {
 		order.Amount = 0
 		order.status = CANCELLED
 		ob.actions <- NewCancelAction(h)
+	}
+}
+
+func (ob *OrderBook) CancelTrade(t *Trade) {
+	if order, ok := ob.orderIndex[t.OrderHash]; ok {
+		order.Amount = order.Amount + t.Amount.Uint64()
+		order.status = OPEN
+		ob.actions <- NewCancelTradeAction()
 	}
 }
 
