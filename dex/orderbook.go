@@ -98,6 +98,14 @@ func (ob *OrderBook) CancelOrder(h Hash) {
 	}
 }
 
+func (ob *OrderBook) CancelTrade(t *Trade) {
+	if order, ok := ob.orderIndex[t.OrderHash]; ok {
+		order.Amount = order.Amount + t.Amount.Uint64()
+		order.status = OPEN
+		ob.actions <- NewCancelTradeAction()
+	}
+}
+
 func (ob *OrderBook) FillBuy(o *Order) {
 	for ob.ask <= o.Price && o.Amount > 0 {
 		pricePoint := ob.prices[ob.ask]
