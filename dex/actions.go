@@ -15,6 +15,7 @@ const (
 	AT_CANCELLED      = "CANCELLED"
 	AT_PARTIAL_FILLED = "PARTIAL_FILLED"
 	AT_FILLED         = "FILLED"
+	AT_CANCEL_TRADE   = "AT_CANCEL_TRADE"
 	AT_DONE           = "DONE"
 )
 
@@ -49,6 +50,10 @@ func NewSellAction(o *Order) *Action {
 
 func NewCancelAction(hash common.Hash) *Action {
 	return &Action{actionType: AT_CANCEL, orderHash: hash}
+}
+
+func NewCancelTradeAction() *Action {
+	return &Action{actionType: AT_CANCEL_TRADE}
 }
 
 func NewCancelledAction(hash common.Hash, pair TokenPair) *Action {
