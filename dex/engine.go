@@ -126,7 +126,6 @@ func (e *TradingEngine) ComputeOrderPrice(o *Order) error {
 
 // AddOrder computes the order price point
 func (e *TradingEngine) AddOrder(o *Order) error {
-
 	tokenPair, ok := e.pairs[o.PairID]
 	if !ok {
 		return errors.New("Token pair does not exist")
@@ -212,6 +211,21 @@ func (e *TradingEngine) ExecuteOrder(t *Trade) error {
 		return err
 	}
 
+	return nil
+}
+
+func (e *TradingEngine) CancelTrade(t *Trade) error {
+	tokenPair, ok := e.pairs[t.PairID]
+	if !ok {
+		return errors.New("Token Pair does not exist")
+	}
+
+	ob, ok := e.orderbooks[tokenPair]
+	if !ok {
+		return errors.New("Orderbook does not exist")
+	}
+
+	ob.CancelTrade(t)
 	return nil
 }
 
