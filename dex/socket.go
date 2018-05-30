@@ -58,19 +58,44 @@ func (s *Socket) handleMessagesIn() {
 func (s *Socket) handleMessagesOut() {
 	for {
 		e := <-s.events
+		log.Printf("Received an event")
 		switch e.eventType {
 		case ORDER_PLACED:
 			order := e.payload.(*Order)
-			s.sendOrderPlacedMessage(order)
+			s.sendOrderPlaced(order)
 		case ORDER_PARTIALLY_FILLED:
 			order := e.payload.(*TradePayload)
-			s.sendOrderPartiallyFilledMessage(order)
+			s.sendOrderPartiallyFilled(order)
 		case ORDER_FILLED:
 			payload := e.payload.(*TradePayload)
-			s.sendOrderFilledMessage(payload)
+			s.sendOrderFilled(payload)
 		case ORDER_CANCELED:
 			order := e.payload.(*Order)
-			s.sendOrderCanceledMessage(order)
+			s.sendOrderCanceled(order)
+		case ORDER_EXECUTED:
+			log.Printf("Trade has bee executed")
+			order := e.payload.(*Order)
+			s.sendOrderExecuted(order)
+		case ORDER_TX_SUCCESS:
+			log.Printf("Order TX success")
+			order := e.payload.(*Order)
+			s.sendOrderTxSuccess(order)
+		case ORDER_TX_ERROR:
+			log.Printf("Order TX error")
+			order := e.payload.(*Order)
+			s.sendOrderTxSuccess(order)
+		case TRADE_EXECUTED:
+			log.Printf("Trade executed")
+			trade := e.payload.(*Trade)
+			s.sendTradeExecuted(trade)
+		case TRADE_TX_SUCCESS:
+			log.Printf("Trade Tx Success")
+			trade := e.payload.(*Trade)
+			s.sendTradeTxSuccess(trade)
+		case TRADE_TX_ERROR:
+			log.Printf("Trade Tx Error")
+			trade := e.payload.(*Trade)
+			s.sendTradeTxSuccess(trade)
 		case DONE:
 		default:
 			panic("Unknown action type")
@@ -115,6 +140,8 @@ func (s *Socket) executeOrder(p Payload) {
 
 	t := tp.Trade
 
+	t.events = s.events
+
 	err := s.server.engine.ExecuteOrder(t)
 	if err != nil {
 		log.Printf("Error: %v", err)
@@ -124,7 +151,7 @@ func (s *Socket) executeOrder(p Payload) {
 }
 
 // sendOrderPlacedMessage creates and ORDER_PLACED messages and writes it into the websocket connection
-func (s *Socket) sendOrderPlacedMessage(o *Order) error {
+func (s *Socket) sendOrderPlaced(o *Order) error {
 	p := &OrderPayload{Order: o}
 	m := &Message{MessageType: ORDER_PLACED, Payload: p}
 
@@ -137,7 +164,7 @@ func (s *Socket) sendOrderPlacedMessage(o *Order) error {
 }
 
 // sendOrderFilledMessage creates an ORDER_FILLED messages and writes it into the websocket connection
-func (s *Socket) sendOrderFilledMessage(p *TradePayload) error {
+func (s *Socket) sendOrderFilled(p *TradePayload) error {
 	m := &Message{MessageType: ORDER_FILLED, Payload: p}
 	if err := s.connection.WriteJSON(&m); err != nil {
 		return err
@@ -148,7 +175,7 @@ func (s *Socket) sendOrderFilledMessage(p *TradePayload) error {
 }
 
 // sendOrderPartiallyFilledMessage creates and ORDER_PARTIALLY_FILLED message and writes it into the websocket connection
-func (s *Socket) sendOrderPartiallyFilledMessage(p *TradePayload) error {
+func (s *Socket) sendOrderPartiallyFilled(p *TradePayload) error {
 	fmt.Printf("Send order partially filled message")
 	m := &Message{MessageType: ORDER_PARTIALLY_FILLED, Payload: p}
 	if err := s.connection.WriteJSON(&m); err != nil {
@@ -160,7 +187,7 @@ func (s *Socket) sendOrderPartiallyFilledMessage(p *TradePayload) error {
 }
 
 // sendOrderCanceledMessage creates an ORDER_CANCELED message and writes it into the websocket connection
-func (s *Socket) sendOrderCanceledMessage(o *Order) error {
+func (s *Socket) sendOrderCanceled(o *Order) error {
 	fmt.Printf("Send order canceled message")
 	p := &OrderPayload{Order: o}
 	m := &Message{MessageType: ORDER_CANCELED, Payload: p}
@@ -169,5 +196,71 @@ func (s *Socket) sendOrderCanceledMessage(o *Order) error {
 	}
 
 	// fmt.Printf("\nLOG: Sending Order Canceled Message:\n%v\n\n", o)
+	return nil
+}
+
+func (s *Socket) sendOrderExecuted(o *Order) error {
+	p := &OrderPayload{Order: o}
+	m := &Message{MessageType: ORDER_EXECUTED, Payload: p}
+
+	if err := s.connection.WriteJSON(&m); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *Socket) sendOrderTxSuccess(o *Order) error {
+	p := &OrderPayload{Order: o}
+	m := &Message{MessageType: ORDER_TX_SUCCESS, Payload: p}
+
+	if err := s.connection.WriteJSON(&m); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *Socket) sendOrderTxError(o *Order) error {
+	p := &OrderPayload{Order: o}
+	m := &Message{MessageType: ORDER_TX_ERROR, Payload: p}
+
+	if err := s.connection.WriteJSON(&m); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *Socket) sendTradeExecuted(t *Trade) error {
+	p := &TradePayload{Trade: t}
+	m := &Message{MessageType: TRADE_EXECUTED, Payload: p}
+
+	if err := s.connection.WriteJSON(&m); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *Socket) sendTradeTxSuccess(t *Trade) error {
+	p := &TradePayload{Trade: t}
+	m := &Message{MessageType: TRADE_TX_SUCCESS, Payload: p}
+
+	if err := s.connection.WriteJSON(&m); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *Socket) sendTradeTxError(t *Trade) error {
+	p := &TradePayload{Trade: t}
+	m := &Message{MessageType: TRADE_TX_ERROR, Payload: p}
+
+	if err := s.connection.WriteJSON(&m); err != nil {
+		return err
+	}
+
 	return nil
 }
