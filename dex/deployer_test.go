@@ -31,7 +31,7 @@ func TestDeployTokenWithLocalBackend(t *testing.T) {
 	receiver := wallet.Address
 	amount := big.NewInt(1e18)
 
-	_, err = deployer.DeployToken(receiver, amount)
+	_, _, err = deployer.DeployToken(receiver, amount)
 	if err != nil {
 		t.Errorf("Error deploying token: %v", err)
 	}
@@ -61,7 +61,7 @@ func TestDeployTokenWithSimulatedBackend(t *testing.T) {
 	receiver := wallet.Address
 	amount := big.NewInt(1e18)
 
-	_, err = deployer.DeployToken(receiver, amount)
+	_, _, err = deployer.DeployToken(receiver, amount)
 	if err != nil {
 		t.Errorf("Error deploying token: %v", err)
 	}
@@ -77,7 +77,7 @@ func TestNewTokenWithSimulatedBackend(t *testing.T) {
 	receiver := wallet.Address
 	amount := big.NewInt(1e18)
 
-	_, err = deployer.DeployToken(receiver, amount)
+	_, _, err = deployer.DeployToken(receiver, amount)
 	if err != nil {
 		t.Errorf("Error deploying token")
 	}
@@ -95,7 +95,7 @@ func TestDeployExchangeWithLocalBackend(t *testing.T) {
 
 	feeAccount := config.Accounts[1]
 
-	_, err = deployer.DeployExchange(feeAccount)
+	_, _, err = deployer.DeployExchange(feeAccount)
 	if err != nil {
 		t.Errorf("Error deploying token: %v", err)
 	}
@@ -122,7 +122,7 @@ func TestDeployExchangeWithSimulatedBackend(t *testing.T) {
 
 	feeAccount := config.Accounts[1]
 
-	_, err = deployer.DeployExchange(feeAccount)
+	_, _, err = deployer.DeployExchange(feeAccount)
 	if err != nil {
 		t.Errorf("Error deploying exchange: %v", err)
 	}
