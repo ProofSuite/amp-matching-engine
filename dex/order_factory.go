@@ -1,10 +1,15 @@
 package dex
 
 import (
+	"context"
 	"log"
 	"math/big"
+	"math/rand"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/rpc"
 )
 
 // Orderfactory simplifies creating orders, trades and cancelOrders objects
@@ -12,11 +17,15 @@ import (
 // Exchange is the Ethereum address of the exchange smart contract
 // CurrentOrderID increments for each new order
 type OrderFactory struct {
+	Client         *ethclient.Client
 	Pair           *TokenPair
 	Wallet         *Wallet
 	Exchange       common.Address
 	Params         *OrderParams
+	TradeNonce     uint64
+	OrderNonce     uint64
 	CurrentOrderID uint64
+	NonceGenerator *rand.Rand
 }
 
 type OrderParams struct {
@@ -44,12 +53,17 @@ func NewOrderFactory(p *TokenPair, w *Wallet) *OrderFactory {
 		Expires: big.NewInt(1e18),
 	}
 
+	source := rand.NewSource(time.Now().UnixNano())
+	ng := rand.New(source)
+
 	return &OrderFactory{
 		Pair:           p,
 		Wallet:         w,
 		Exchange:       config.Exchange,
 		Params:         params,
 		CurrentOrderID: 0,
+		Client:         client,
+		NonceGenerator: ng,
 	}
 }
 
@@ -83,14 +97,16 @@ func (f *OrderFactory) NewOrder(tokenBuy Token, amountBuy int64, tokenSell Token
 	o.Expires = f.Params.Expires
 	o.FeeMake = f.Params.FeeMake
 	o.FeeTake = f.Params.FeeTake
-	o.Nonce = f.Params.Nonce
+	o.Nonce = big.NewInt(int64(f.NonceGenerator.Intn(1000)))
 	o.Maker = f.Wallet.Address
-	o.Nonce = big.NewInt(0)
 	o.Price = 0
 	o.Amount = 0
 	o.PairID = f.Pair.ID
 	o.Sign(f.Wallet)
 
+	log.Printf("Order is equal to %v", o)
+
+	f.OrderNonce++
 	f.CurrentOrderID++
 	return o, nil
 }
@@ -101,12 +117,13 @@ func (f *OrderFactory) NewTrade(o *Order, amount int64) (*Trade, error) {
 	t.OrderHash = o.Hash
 	t.PairID = f.Pair.ID
 	t.Taker = f.Wallet.Address
-	t.TradeNonce = big.NewInt(0)
+	t.TradeNonce = big.NewInt(int64(f.NonceGenerator.Intn(1000)))
 	t.Amount = big.NewInt(amount)
 	t.Sign(f.Wallet)
 
 	log.Printf("Trade is equal to %v", t)
 
+	f.TradeNonce++
 	return t, nil
 }
 
