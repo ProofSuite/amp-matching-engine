@@ -14,6 +14,11 @@ import (
 var wg = &sync.WaitGroup{}
 var addr = flag.String("addr", "localhost:8080", "http service address")
 
+// Client simulates the client websocket handler that will be used to perform trading.
+// requests and responses are respectively the outbound and incoming messages.
+// requestLogs and responseLogs are arrays of messages that denote the history of received messages
+// wallet is the ethereum account used for orders and trades.
+// mutex is used to prevent concurrent writes on the websocket connection
 type Client struct {
 	connection   *websocket.Conn
 	requests     chan *Message
@@ -24,6 +29,7 @@ type Client struct {
 	mutex        sync.Mutex
 }
 
+// NewClient a default client struct connected to the given server
 func NewClient(w *Wallet, s *Server) *Client {
 	flag.Parse()
 	uri := url.URL{Scheme: "ws", Host: *addr, Path: "/api"}
@@ -49,17 +55,23 @@ func NewClient(w *Wallet, s *Server) *Client {
 	}
 }
 
+// send is used to prevent concurrent writes on the websocket connection
 func (c *Client) send(v interface{}) error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 	return c.connection.WriteJSON(v)
 }
 
+// start listening and handling incoming messages
 func (c *Client) start() {
 	c.handleMessages()
 	c.handleIncomingMessages()
 }
 
+// handleMessages waits for incoming messages and routes messages to the
+// corresponding handler.
+// requests are the messages that are written on the client and destined to
+// the server. responses are the message that are
 func (c *Client) handleMessages() {
 	go func() {
 		for {
@@ -88,14 +100,26 @@ func (c *Client) handleMessages() {
 					go c.handleRequestSignedData(response.Payload)
 				case ORDER_FILLED:
 					go c.handleOrderFilled(response.Payload)
-				case ORDER_PARTIALLY_FILLED:
-					go c.handleOrderPartiallyFilled(response.Payload)
+				case ORDER_EXECUTED:
+					go c.handleOrderExecuted(response.Payload)
+				case ORDER_TX_SUCCESS:
+					go c.handleOrderTxSuccess(response.Payload)
+				case ORDER_TX_ERROR:
+					go c.handleOrderTxError(response.Payload)
+				case TRADE_EXECUTED:
+					go c.handleTradeExecuted(response.Payload)
+				case TRADE_TX_SUCCESS:
+					go c.handleTradeTxSuccess(response.Payload)
+				case TRADE_TX_ERROR:
+					go c.handleTradeTxError(response.Payload)
 				}
 			}
 		}
 	}()
 }
 
+// handleIncomingMessages reads incomings JSON messages from the websocket connection and
+// feeds them into the responses channel
 func (c *Client) handleIncomingMessages() {
 	message := new(Message)
 	go func() {
@@ -192,6 +216,30 @@ func (c *Client) handleRequestSignedData(p Payload) {
 	// fakeData := SignedDataPayload{}
 	// m := &Message{MessageType: "SIGNED_DATA", Payload: fakeData}
 	// c.requests <- m
+}
+
+func (c *Client) handleOrderExecuted(p Payload) {
+	log.Printf("\nLog: Handling Order executed message. Payload: %#v\n\n", p)
+}
+
+func (c *Client) handleOrderTxSuccess(p Payload) {
+	log.Printf("\nLog: Handling Order Tx Success message. Payload: %#v\n\n", p)
+}
+
+func (c *Client) handleOrderTxError(p Payload) {
+	log.Printf("\nLog: Handling Order Tx Error message. Payload: %#v\n\n", p)
+}
+
+func (c *Client) handleTradeExecuted(p Payload) {
+	log.Printf("\nLog: Handling Trade Executed message. Payload: %#v\n\n", p)
+}
+
+func (c *Client) handleTradeTxSuccess(p Payload) {
+	log.Printf("\nLog: Handling Trade Tx Success message. Payload: %#v\n\n", p)
+}
+
+func (c *Client) handleTradeTxError(p Payload) {
+	log.Printf("\nLog: Handling Trade Tx Error message. Payload: %#v\n\n", p)
 }
 
 func (c *Client) done() {
