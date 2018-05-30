@@ -28,6 +28,15 @@ type OrderParams struct {
 
 // NewOrderFactory returns an order factory from a given token pair and a given wallet
 func NewOrderFactory(p *TokenPair, w *Wallet) *OrderFactory {
+
+	rpcClient, err := rpc.DialWebsocket(context.Background(), "ws://127.0.0.1:8546", "")
+	if err != nil {
+		log.Printf("Could not create order factory")
+		return nil
+	}
+
+	client := ethclient.NewClient(rpcClient)
+
 	params := &OrderParams{
 		FeeMake: big.NewInt(0),
 		FeeTake: big.NewInt(0),
