@@ -25,7 +25,7 @@ func TestComputeOrderHash(t *testing.T) {
 		Maker:           common.HexToAddress("0xc9b32e9563fe99612ce3a2695ac2a6404c111dde"),
 	}
 
-	order.Hash = order.ComputeOrderHash()
+	order.Hash = order.ComputeHash()
 
 	if hash := order.Hash.String(); hash != "0xb9070a2d333403c255ce71ddf6e795053599b2e885321de40353832b96d8880a" {
 		t.Error("Expected Orderhash to equal 0xb9070a2d333403c255ce71ddf6e795053599b2e885321de40353832b96d8880a but got", hash)

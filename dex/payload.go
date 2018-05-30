@@ -18,6 +18,17 @@ type TradePayload struct {
 	Trade *Trade `json:"trade"`
 }
 
+type TxSuccessPayload struct {
+	Order *Order `json:"order"`
+	Trade *Trade `json:"trade"`
+}
+
+type TxErrorPayload struct {
+	Order   *Order `json:"order"`
+	Trade   *Trade `json:"trade"`
+	ErrorId uint8  `json:"errorId"`
+}
+
 // CancelOrderPayload contains both an OrderId and the pairID of the corresponding orderbook/token pair
 type OrderCancelPayload struct {
 	OrderCancel *OrderCancel `json:"orderCancel"`
@@ -61,29 +72,49 @@ func NewOrderCancelPayload() *OrderCancelPayload {
 }
 
 // DecodeOrderPayload takes a payload retrieved from a JSON and decodes it into an Order structure
-func (o *Order) DecodeOrderPayload(p Payload) {
+func (o *Order) DecodeOrderPayload(p Payload) error {
 	payload := p.(map[string]interface{})["order"].(map[string]interface{})
-	o.DecodeOrder(payload)
+	err := o.Decode(payload)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (tp *TradePayload) DecodeTradePayload(p Payload) error {
+	trade := p.(map[string]interface{})["trade"].(map[string]interface{})
+	err := tp.Trade.Decode(trade)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // DecodeOrderFilledPayload takes a payload unmarshalled from a JSON byte string and decodes it into
 // an OrderFilledPayload
-func (d *OrderFilledPayload) DecodeOrderFilledPayload(p Payload) {
+func (d *OrderFilledPayload) DecodeOrderFilledPayload(p Payload) error {
 	makerOrderPayload := p.(map[string]interface{})["makerOrder"].(map[string]interface{})
 	takerOrderPayload := p.(map[string]interface{})["takerOrder"].(map[string]interface{})
-	d.MakerOrder.DecodeOrder(makerOrderPayload)
-	d.TakerOrder.DecodeOrder(takerOrderPayload)
+	err := d.MakerOrder.Decode(makerOrderPayload)
+	if err != nil {
+		return err
+	}
+	err = d.TakerOrder.Decode(takerOrderPayload)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-// DecodeTradePayload takes a payload unmarshalled from a JSON byte string and decodes it into a DecodeTradePayload
-func (d *TradePayload) DecodeTradePayload(p Payload) {
-	trade := p.(map[string]interface{})["trade"].(map[string]interface{})
-	order := p.(map[string]interface{})["order"].(map[string]interface{})
-	d.Order.DecodeOrder(order)
-	d.Trade.DecodeTrade(trade)
-}
-
-func (d *OrderCancelPayload) DecodeOrderCancelPayload(p Payload) {
+func (ocp *OrderCancelPayload) DecodeOrderCancelPayload(p Payload) error {
 	orderCancel := p.(map[string]interface{})["orderCancel"].(map[string]interface{})
-	d.OrderCancel.Decode(orderCancel)
+	err := ocp.OrderCancel.Decode(orderCancel)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

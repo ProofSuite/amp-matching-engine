@@ -198,7 +198,7 @@ func (o *Order) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-func (o *Order) DecodeOrder(order map[string]interface{}) error {
+func (o *Order) Decode(order map[string]interface{}) error {
 	if order["id"] == nil {
 		return errors.New("Order ID not set")
 	}
@@ -247,7 +247,14 @@ func (o *Order) DecodeOrder(order map[string]interface{}) error {
 }
 
 func (o *Order) String() string {
-	return fmt.Sprintf("\nOrder:\nid: %d\nbuyToken: %v\nsellToken: %v\nbuyTokenAmount: %v\nsellTokenAmount: %v\npairID: %x\n\n", o.Id, o.SymbolBuy, o.SymbolSell, o.AmountBuy, o.AmountSell, o.PairID)
+	return fmt.Sprintf(
+		"Order:\n"+
+			"Id: %d\nOrderType: %v\nExchangeAddress: %x\nMaker: %x\nTokenBuy: %x\nTokenSell: %x\n"+
+			"AmountBuy: %v\nAmountSell: %v\nSymbolBuy: %v\nSymbolSell: %v\nExpires: %v\nNonce: %v\n"+
+			"FeeMake: %v\nFeeTake: %v\nSignature.V: %x\nSignature.R: %x\nSignature.S: %x\nPairID: %x\nHash: %x\nPrice: %v\nAmount: %v\n\n",
+		o.Id, o.OrderType, o.ExchangeAddress, o.Maker, o.TokenBuy, o.TokenSell, o.AmountBuy, o.AmountSell, o.SymbolBuy, o.SymbolSell, o.Expires,
+		o.Nonce, o.FeeMake, o.FeeTake, o.Signature.V, o.Signature.R, o.Signature.S, o.PairID, o.Hash, o.Price, o.Amount,
+	)
 }
 
 func (o *Order) PriceInfo() string {
@@ -257,7 +264,7 @@ func (o *Order) TokenInfo() string {
 	return fmt.Sprintf("Order Token Info:\nbuyToken: %x\nsellToken: %x\nbuyTokenSymbol: %v\n, sellTokenSymbol: %v\n", o.TokenBuy, o.TokenSell, o.SymbolBuy, o.SymbolSell)
 }
 
-func (o *Order) ComputeOrderHash() Hash {
+func (o *Order) ComputeHash() Hash {
 	sha := sha3.NewKeccak256()
 	sha.Write(o.ExchangeAddress.Bytes())
 	sha.Write(o.TokenBuy.Bytes())
@@ -292,39 +299,65 @@ func (o *Order) VerifySignature() (bool, error) {
 func (o *Order) ValidateOrder() (bool, error) {
 
 	//Order Type needs to be equal to BUY or SELL
-
 	//Exchange Address needs to be correct
-
 	//AmountBuy and AmountSell need to be positive
-
 	//OrderHash needs to be correct
 
 	return true, nil
 }
 
-func (o *Order) ComputeBuyAndSellAmounts() {
-
-}
-
+// NewOrderPlacedEvent is called when an order is first placed in
+// the orderbook.
 func (o *Order) NewOrderPlacedEvent() *Event {
 	return &Event{eventType: ORDER_PLACED, payload: o}
 }
 
+// NewOrderMatchedEvent is called when an order is matched (as taker)
+// in the orderbook. This does not mean that the order is executed on the
+// blockchain as of yet.
 func (o *Order) NewOrderMatchedEvent() *Event {
 	return &Event{eventType: ORDER_MATCHED, payload: o}
 }
 
+// NewOrderPartiallyFilledEvent is called when an order is mached (as taker)
+// partially. This does not mean that the order is executed on the
+// blockchain as of yet.
 func (o *Order) NewOrderPartiallyFilledEvent() *Event {
 	return &Event{eventType: ORDER_PARTIALLY_FILLED, payload: o}
 }
 
+// NewOrderPartiallyFilledEvent is called when an order is mached (as taker)
+//This does not mean that the order is executed on the
+// blockchain as of yet.
 func (o *Order) NewOrderFilledEvent(t *Trade) *Event {
 	payload := &TradePayload{Order: o, Trade: t}
 	return &Event{eventType: ORDER_FILLED, payload: payload}
 }
 
+// NewOrderCanceled is called when an order is called
 func (o *Order) NewOrderCanceledEvent() *Event {
 	return &Event{eventType: ORDER_CANCELED, payload: o}
+}
+
+// NewOrderExecuted is called when an order is executed meaning that
+// the operator has performed a blockchain transaction and is currently
+// waiting for the transaction to resolve.
+func (o *Order) NewOrderExecutedEvent() *Event {
+	return &Event{eventType: ORDER_EXECUTED, payload: o}
+}
+
+// NewOrderTransactionSuccessful is called when the operator receives confirmation
+// that a trade was carried out successfully.
+func (o *Order) NewOrderTxSuccess(t *Trade) *Event {
+	p := &TxSuccessPayload{Order: o, Trade: t}
+	return &Event{eventType: ORDER_TX_SUCCESS, payload: p}
+}
+
+// NewOrderTransactionError is called when the operator receives an error event
+// from the exchange smart contract.
+func (o *Order) NewOrderTxError(t *Trade, errorId uint8) *Event {
+	p := &TxErrorPayload{Order: o, Trade: t, ErrorId: errorId}
+	return &Event{eventType: ORDER_TX_ERROR, payload: p}
 }
 
 func NewDoneMessage() *Event {
@@ -332,13 +365,13 @@ func NewDoneMessage() *Event {
 }
 
 func (o *Order) Sign(w *Wallet) error {
-	hash := o.ComputeOrderHash()
-	signature, err := w.SignHash(hash)
+	hash := o.ComputeHash()
+	sig, err := w.SignHash(hash)
 	if err != nil {
 		return err
 	}
 
 	o.Hash = hash
-	o.Signature = signature
+	o.Signature = sig
 	return nil
 }

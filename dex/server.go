@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/gorilla/websocket"
 )
 
@@ -15,11 +16,17 @@ var upgrader = websocket.Upgrader{
 
 // Server type handles a mapping of socket structs and the trading engine
 type Server struct {
-	clients map[*Socket]bool
-	engine  *TradingEngine
+	clients    map[*Socket]bool
+	engine     *TradingEngine
+	operator   *Operator
+	actionLogs chan *Action
+	txLogs     chan *types.Transaction
 }
 
-// NewServer returns a a new empty Server instance
+// NewServer returns a a new empty Server instance. The operator is deployed
+// according to the given configuration. There are currently 4 different choices of
+// configurations:
+// - NewConfiguration() new configuration
 func NewServer() *Server {
 	return &Server{
 		clients: make(map[*Socket]bool),
@@ -27,8 +34,46 @@ func NewServer() *Server {
 	}
 }
 
-func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (s *Server) SetupTradingEngine(config *OperatorConfig, quotes Tokens, pairs TokenPairs, done chan bool) {
+	s.engine = NewTradingEngine()
 
+	for _, val := range quotes {
+		log.Printf("val is equal to %x: %v\n", val.Address, val.Symbol)
+		if err := s.engine.RegisterNewQuoteToken(val); err != nil {
+			fmt.Printf("\nError registering new quote token: %v\n", err)
+		}
+	}
+
+	for _, p := range pairs {
+		if err := s.engine.RegisterNewPair(p, done); err != nil {
+			fmt.Printf("\nError registering token pair: %v\n", err)
+		}
+	}
+
+	if err := s.engine.RegisterOperator(config); err != nil {
+		fmt.Printf("\nError registering operator: %v\n", err)
+	}
+
+}
+
+// Setup registers a list of quote tokens and token pairs
+func (s *Server) SetupCurrencies(quotes Tokens, pairs TokenPairs, done chan bool) {
+	s.engine = NewTradingEngine()
+
+	for _, val := range quotes {
+		s.engine.RegisterNewQuoteToken(val)
+	}
+
+	for _, p := range pairs {
+		err := s.engine.RegisterNewPair(p, done)
+		if err != nil {
+			fmt.Printf("\nError registering token pair %v: %v\n", p, err)
+		}
+
+	}
+}
+
+func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/api" {
 		w.WriteHeader(http.StatusNotFound)
 	}
@@ -47,30 +92,12 @@ func (s *Server) Start() {
 	}
 }
 
-// Setup registers a list of quote tokens and token pairs
-func (s *Server) Setup(quoteTokens Tokens, pairs TokenPairs, done chan bool) {
-	fmt.Printf("Starting server ....\n\n\n")
-	s.engine = NewTradingEngine()
-
-	for _, val := range quoteTokens {
-		s.engine.RegisterNewQuoteToken(val)
-	}
-
-	for _, p := range pairs {
-		err := s.engine.RegisterNewPair(p, done)
-		if err != nil {
-			fmt.Printf("Error registering token pair: %v", err)
-		}
-
-	}
-}
-
 // OpenWebsocketConnection opens a new websocket connection
 func (s *Server) OpenWebsocketConnection(w http.ResponseWriter, r *http.Request) {
-	messageOut := make(chan *Message)
-	messagesIn := make(chan *Message)
+	out := make(chan *Message)
+	in := make(chan *Message)
 	events := make(chan *Event)
-	connection, err := upgrader.Upgrade(w, r, nil)
+	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println(err)
 		return
@@ -78,7 +105,7 @@ func (s *Server) OpenWebsocketConnection(w http.ResponseWriter, r *http.Request)
 
 	// defer connection.Close()
 	fmt.Printf("Opening new connection ...\n\n")
-	socket := &Socket{server: s, connection: connection, messagesOut: messageOut, messagesIn: messagesIn, events: events}
+	socket := &Socket{server: s, connection: conn, messagesOut: out, messagesIn: in, events: events}
 
 	go socket.handleMessagesOut() //Handle messages from server socket to client
 	go socket.handleMessagesIn()  //Handle messages from client to server socket
