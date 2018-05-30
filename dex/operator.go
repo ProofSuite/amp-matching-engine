@@ -31,6 +31,9 @@ type Operator struct {
 	CancelOrderChannel chan *interfaces.ExchangeLogCancelOrder
 }
 
+// OperatorParams contains numerical values that define how the operator should send transcations.
+// rpcURL is the url of the ethereum node. By default it is ws://localhost:8546. For non-websocket
+// (not supported a priori) http://localhost:8545
 type OperatorParams struct {
 	gasPrice   *big.Int
 	maxGas     uint64
@@ -38,6 +41,11 @@ type OperatorParams struct {
 	rpcURL     string
 }
 
+// NewOperator creates a new operator struct. It creates an exchange contract instance from the
+// provided address. The error and trade events are received in the ErrorChannel and TradeChannel.
+// Upon receiving errors and trades in their respective channels, event payloads are sent to the
+// associated order maker and taker sockets through the through the event channel on the Order and Trade struct.
+// In addition, an error event cancels the trade in the trading engine and makes the order available again.
 func NewOperator(config *OperatorConfig) (*Operator, error) {
 	op := &Operator{}
 
@@ -47,7 +55,6 @@ func NewOperator(config *OperatorConfig) (*Operator, error) {
 	}
 
 	client := ethclient.NewClient(rpcClient)
-
 	ex, err := NewExchange(config.Admin, config.Exchange, client)
 	if err != nil {
 		return nil, err
@@ -125,42 +132,6 @@ func (op *Operator) Validate() error {
 	}
 
 	return nil
-}
-
-// NewOperator returns a new operator object. If the contract object has already been created,
-// it is preferable to use the NewOperatorFromContract object
-func NewOperatorFromAddress(w *Wallet, contractAddr Address, chain bind.ContractBackend) (*Operator, error) {
-	op := &Operator{}
-
-	ex, err := NewExchange(w, contractAddr, chain)
-	if err != nil {
-		return nil, err
-	}
-
-	op.Admin = w
-	op.Exchange = ex
-	op.Chain = chain
-	return op, nil
-}
-
-// NewOperatorFromContract returns an operator object from a go contract binding object.
-func NewOperatorFromContract(w *Wallet, e *Exchange, chain bind.ContractBackend) (*Operator, error) {
-	op := &Operator{}
-	e.CallOptions = &bind.CallOpts{Pending: true}
-	e.TxOptions = bind.NewKeyedTransactor(w.PrivateKey)
-
-	switch c := chain.(type) {
-	case *ethclient.Client:
-		op.Chain = c
-	//handle the simulated backend case
-	case (*backends.SimulatedBackend):
-		op.Chain = c
-	}
-
-	op.Admin = w
-	op.Exchange = e
-
-	return op, nil
 }
 
 // SetDefaultTxOptions resets the transaction value to 0
@@ -310,23 +281,5 @@ func (op *Operator) Withdraw(w *Withdrawal) (*types.Transaction, error) {
 		return nil, err
 	}
 
-	return tx, nil
-}
-
-// Trade executes a settlements transaction. The order and trade payloads need to be signed respectively
-// by the Maker and the Taker of the trade. Only the operator account can send a Trade function to the
-// Exchange smart contract.
-func (op *Operator) ExecuteTrade(o *Order, t *Trade) (*types.Transaction, error) {
-	err := t.Validate()
-	if err != nil {
-		return nil, err
-	}
-
-	tx, err := op.Exchange.Trade(o, t)
-	if err != nil {
-		return nil, err
-	}
-
-	fmt.Printf("Successfully execute transaction")
 	return tx, nil
 }

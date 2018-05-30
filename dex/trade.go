@@ -22,6 +22,7 @@ type Trade struct {
 	Signature  *Signature `json:"signature"`
 	Hash       Hash       `json:"hash"`
 	PairID     Hash       `json:"pairID"`
+	events     chan *Event
 }
 
 // NewTrade returns a new unsigned trade corresponding to an Order, amount and taker address
@@ -209,4 +210,24 @@ func (t *Trade) Decode(trade map[string]interface{}) error {
 
 	t.Hash = HexToHash(trade["hash"].(string))
 	return nil
+}
+
+// NewTradeExecutedEvent is called when a blockchain transaction is created with the
+// trade as input
+func (t *Trade) NewTradeExecutedEvent() *Event {
+	return &Event{eventType: TRADE_EXECUTED, payload: t}
+}
+
+// NewTradeTransactionSuccessful is called when the operator receives a trade event meaning that the
+// exchange was performed successfully on the chain.
+func (t *Trade) NewTradeTxSuccess(o *Order) *Event {
+	p := &TxSuccessPayload{Order: o, Trade: t}
+	return &Event{eventType: TRADE_TX_SUCCESS, payload: p}
+}
+
+// NewTradeTransactionError is called when the operator receives a error event meaning that the
+// transaction was interrupted.
+func (t *Trade) NewTradeTxError(o *Order, errId uint8) *Event {
+	p := &TxErrorPayload{Order: o, Trade: t, ErrorId: errId}
+	return &Event{eventType: TRADE_TX_ERROR, payload: p}
 }
