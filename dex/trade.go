@@ -8,6 +8,7 @@ import (
 	"math/big"
 
 	. "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto/sha3"
 )
 
@@ -214,14 +215,15 @@ func (t *Trade) Decode(trade map[string]interface{}) error {
 
 // NewTradeExecutedEvent is called when a blockchain transaction is created with the
 // trade as input
-func (t *Trade) NewTradeExecutedEvent() *Event {
-	return &Event{eventType: TRADE_EXECUTED, payload: t}
+func (t *Trade) NewTradeExecutedEvent(tx *types.Transaction) *Event {
+	payload := &TradeExecutedPayload{Trade: t, Tx: tx.Hash()}
+	return &Event{eventType: TRADE_EXECUTED, payload: payload}
 }
 
 // NewTradeTransactionSuccessful is called when the operator receives a trade event meaning that the
 // exchange was performed successfully on the chain.
-func (t *Trade) NewTradeTxSuccess(o *Order) *Event {
-	p := &TxSuccessPayload{Order: o, Trade: t}
+func (t *Trade) NewTradeTxSuccess(o *Order, tx *types.Transaction) *Event {
+	p := &TxSuccessPayload{Order: o, Trade: t, Tx: tx.Hash()}
 	return &Event{eventType: TRADE_TX_SUCCESS, payload: p}
 }
 
