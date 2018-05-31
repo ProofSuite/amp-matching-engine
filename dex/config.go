@@ -37,7 +37,7 @@ func NewDefaultConfiguration() *Config {
 	wallets := getWallets()
 	accounts := getAccounts()
 	tokens := getTokenAddresses()
-	exchange := getMockExchangeAddress()
+	exchange := getExchangeAddress()
 	quoteTokens := getQuoteTokens()
 	tokenPairs := getTokenPairs()
 
@@ -71,17 +71,17 @@ func NewSimulatorConfiguration() *Config {
 		fmt.Printf("Could not deploy simulator")
 	}
 
-	ZRXTokenContract, err := deployer.DeployToken(admin.Address, minted)
+	ZRXTokenContract, _, err := deployer.DeployToken(admin.Address, minted)
 	if err != nil {
 		fmt.Printf("Could not deploy the ZRX token contract")
 	}
 
-	WETHTokenContract, err := deployer.DeployToken(admin.Address, minted)
+	WETHTokenContract, _, err := deployer.DeployToken(admin.Address, minted)
 	if err != nil {
 		fmt.Printf("Could not deploy the WETH token contract")
 	}
 
-	EOSTokenContract, err := deployer.DeployToken(admin.Address, minted)
+	EOSTokenContract, _, err := deployer.DeployToken(admin.Address, minted)
 	if err != nil {
 		fmt.Printf("Could not deploy the EOS token contract")
 	}
@@ -106,7 +106,7 @@ func NewSimulatorConfiguration() *Config {
 	tokens["WETH"] = WETH.Address
 	tokens["EOS"] = EOS.Address
 
-	ex, err := deployer.DeployExchange(admin.Address)
+	ex, _, err := deployer.DeployExchange(admin.Address)
 	if err != nil {
 		fmt.Printf("Could not deploy exchange: %v", err)
 	}
@@ -140,22 +140,22 @@ func CreateConfiguration() *Config {
 		fmt.Printf("Could not deploy simulator")
 	}
 
-	ex, err := deployer.DeployExchange(admin.Address)
+	ex, _, err := deployer.DeployExchange(admin.Address)
 	if err != nil {
 		fmt.Printf("Could not deploy the exchange contract")
 	}
 
-	ZRXContract, err := deployer.DeployToken(admin.Address, minted)
+	ZRXContract, _, err := deployer.DeployToken(admin.Address, minted)
 	if err != nil {
 		fmt.Printf("Could not deploy the ZRX token contract")
 	}
 
-	WETHContract, err := deployer.DeployToken(admin.Address, minted)
+	WETHContract, _, err := deployer.DeployToken(admin.Address, minted)
 	if err != nil {
 		fmt.Printf("Could not deploy the WETH token contract")
 	}
 
-	EOSContract, err := deployer.DeployToken(admin.Address, minted)
+	EOSContract, _, err := deployer.DeployToken(admin.Address, minted)
 	if err != nil {
 		fmt.Printf("Could not deploy the EOS token contract")
 	}
@@ -263,32 +263,18 @@ func NewConfiguration() *Config {
 	}
 }
 
-// getMockTokens returns a mapping of token symbol to token addresses
-func getMockTokensAddresses() map[string]Address {
-	tokens := make(map[string]Address)
-	tokens["EOS"] = HexToAddress("0x86fa049857e0209aa7d9e616f7eb3b3b78ecfdb0")
-	tokens["ZRX"] = HexToAddress("0xe41d2489571d322189246dafa5ebde1f4699f498")
-	tokens["WETH"] = HexToAddress("0x2956356cd2a2bf3202f771f50d3d14a367b48070")
-
-	return tokens
-}
-
-func getMockExchangeAddress() Address {
-	return HexToAddress("0xae55690d4b079460e6ac28aaa58c9ec7b73a7485")
-}
-
 // getTokens returns a mapping of token symbol to token addresses
 func getTokenAddresses() map[string]Address {
 	tokens := make(map[string]Address)
-	tokens["EOS"] = HexToAddress("0x86fa049857e0209aa7d9e616f7eb3b3b78ecfdb0")
-	tokens["ZRX"] = HexToAddress("0xe41d2489571d322189246dafa5ebde1f4699f498")
-	tokens["WETH"] = HexToAddress("0x2956356cd2a2bf3202f771f50d3d14a367b48070")
+	tokens["EOS"] = HexToAddress("0x5d564669ab4cfd96b785d3d05e8c7d66a073daf0")
+	tokens["ZRX"] = HexToAddress("0x9792845456a0075df8a03123e7dac62bb0f69440")
+	tokens["WETH"] = HexToAddress("0x27cb1d4b335ec45512088eea990238344d776714")
 
 	return tokens
 }
 
 func getExchangeAddress() Address {
-	return HexToAddress("0xae55690d4b079460e6ac28aaa58c9ec7b73a7485")
+	return HexToAddress("0x29faee20f205c15c6c3004482f8996a468336b67")
 }
 
 // getAccounts returns default accounts. They can be used with the current localhost private
@@ -358,9 +344,9 @@ func getWallets() []*Wallet {
 func getQuoteTokens() Tokens {
 	quoteTokens := Tokens{}
 
-	WETH := Token{Symbol: "WETH", Address: HexToAddress("0x2956356cd2a2bf3202f771f50d3d14a367b48070")}
-	ZRX := Token{Symbol: "ZRX", Address: HexToAddress("0xe41d2489571d322189246dafa5ebde1f4699f498")}
-	EOS := Token{Symbol: "EOS", Address: HexToAddress("0x86fa049857e0209aa7d9e616f7eb3b3b78ecfdb0")}
+	WETH := Token{Symbol: "WETH", Address: HexToAddress("0x5d564669ab4cfd96b785d3d05e8c7d66a073daf0")}
+	ZRX := Token{Symbol: "ZRX", Address: HexToAddress("0x9792845456a0075df8a03123e7dac62bb0f69440")}
+	EOS := Token{Symbol: "EOS", Address: HexToAddress("0x27cb1d4b335ec45512088eea990238344d776714")}
 
 	quoteTokens["WETH"] = WETH
 	quoteTokens["ZRX"] = ZRX
@@ -372,9 +358,9 @@ func getQuoteTokens() Tokens {
 func getTokenPairs() TokenPairs {
 	tokenPairs := TokenPairs{}
 
-	WETH := Token{Symbol: "WETH", Address: HexToAddress("0x2956356cd2a2bf3202f771f50d3d14a367b48070")}
-	ZRX := Token{Symbol: "ZRX", Address: HexToAddress("0xe41d2489571d322189246dafa5ebde1f4699f498")}
-	EOS := Token{Symbol: "EOS", Address: HexToAddress("0x86fa049857e0209aa7d9e616f7eb3b3b78ecfdb0")}
+	WETH := Token{Symbol: "WETH", Address: HexToAddress("0x5d564669ab4cfd96b785d3d05e8c7d66a073daf0")}
+	ZRX := Token{Symbol: "ZRX", Address: HexToAddress("0x9792845456a0075df8a03123e7dac62bb0f69440")}
+	EOS := Token{Symbol: "EOS", Address: HexToAddress("0x27cb1d4b335ec45512088eea990238344d776714")}
 
 	ZRX_WETH := TokenPair{BaseToken: ZRX, QuoteToken: WETH}
 	EOS_WETH := TokenPair{BaseToken: EOS, QuoteToken: WETH}

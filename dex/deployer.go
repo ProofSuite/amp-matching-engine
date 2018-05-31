@@ -10,6 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind/backends"
 	. "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
 )
@@ -19,9 +20,11 @@ type Deployer struct {
 	Backend bind.ContractBackend
 }
 
+// NewDefaultDeployer returns a deployer connected to the local node via HTTP
+// (on port 8545) with the first wallet in the configuration
 func NewDefaultDeployer() (*Deployer, error) {
 	w := config.Wallets[0]
-	conn, err := rpc.DialHTTP("ws://127.0.0.1:8546")
+	conn, err := rpc.DialHTTP("http://127.0.0.1:8545")
 	if err != nil {
 		return nil, err
 	}
@@ -34,8 +37,10 @@ func NewDefaultDeployer() (*Deployer, error) {
 	}, nil
 }
 
+// NewDeployer returns a deployer connected to the local node via HTTP
+// (on port 8545) with the first wallet in the configuration
 func NewDeployer(w *Wallet) (*Deployer, error) {
-	conn, err := rpc.DialHTTP("ws://127.0.0.1:8546")
+	conn, err := rpc.DialHTTP("http://127.0.0.1:8545")
 	if err != nil {
 		return nil, err
 	}
@@ -48,6 +53,8 @@ func NewDeployer(w *Wallet) (*Deployer, error) {
 	}, nil
 }
 
+// NewWebsocketDeployer returns a deployer connected to the local node via websocket
+// (on port 8546). The given wallet is used for signing transactions
 func NewWebsocketDeployer(w *Wallet) (*Deployer, error) {
 	client, err := rpc.DialWebsocket(context.Background(), "ws://127.0.0.1:8546", "")
 	if err != nil {
@@ -63,6 +70,9 @@ func NewWebsocketDeployer(w *Wallet) (*Deployer, error) {
 
 }
 
+// NewDefaultSimulator returns a simulated deployer useful for unit testing certain functions
+// This simulator functions different from a standard deployer. It does not call a blockchain
+// and uses a fake backend.
 func NewDefaultSimulator() (*Deployer, error) {
 	weiBalance := &big.Int{}
 	ether := big.NewInt(1e18)
@@ -84,6 +94,8 @@ func NewDefaultSimulator() (*Deployer, error) {
 	}, nil
 }
 
+// NewSimulator returns a simulated deployer. The given wallet is used for signing transactions.
+// Each ethereum address in the list of given accounts is funded with one ether
 func NewSimulator(wallet *Wallet, accounts []Address) (*Deployer, error) {
 	genesisAlloc := make(core.GenesisAlloc)
 
@@ -99,16 +111,18 @@ func NewSimulator(wallet *Wallet, accounts []Address) (*Deployer, error) {
 	}, nil
 }
 
-func (d Deployer) DeployToken(receiver Address, amount *big.Int) (*ERC20Token, error) {
+// DeployToken deploys a mock ERC20 token. The given `receiver` address receives `amount` tokens. This function
+// makes a complete deployment
+func (d Deployer) DeployToken(receiver Address, amount *big.Int) (*ERC20Token, *types.Transaction, error) {
 	callOptions := &bind.CallOpts{Pending: true}
 	txOptions := bind.NewKeyedTransactor(d.Wallet.PrivateKey)
 
-	address, _, token, err := interfaces.DeployToken(txOptions, d.Backend, receiver, amount)
+	address, tx, token, err := interfaces.DeployToken(txOptions, d.Backend, receiver, amount)
 	if err != nil && err.Error() == "replacement transaction underpriced" {
 		txOptions.Nonce = d.GetNonce()
-		address, _, token, err = interfaces.DeployToken(txOptions, d.Backend, receiver, amount)
+		address, tx, token, err = interfaces.DeployToken(txOptions, d.Backend, receiver, amount)
 	} else if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	return &ERC20Token{
@@ -117,9 +131,10 @@ func (d Deployer) DeployToken(receiver Address, amount *big.Int) (*ERC20Token, e
 		CallOptions:   callOptions,
 		TxOptions:     txOptions,
 		DefaultSender: d.Wallet,
-	}, nil
+	}, tx, nil
 }
 
+// NewTokens returns a mock ERC20 instance from a given address. This does not deploy any new code on the chain
 func (d Deployer) NewToken(address Address) (*ERC20Token, error) {
 	instance, err := interfaces.NewToken(address, d.Backend)
 	if err != nil {
@@ -138,27 +153,30 @@ func (d Deployer) NewToken(address Address) (*ERC20Token, error) {
 	}, nil
 }
 
-func (d Deployer) DeployExchange(feeAccount Address) (*Exchange, error) {
-	callOptions := &bind.CallOpts{Pending: true}
-	txOptions := bind.NewKeyedTransactor(d.Wallet.PrivateKey)
+// DeployExchange deploys and returns a new instance of the decentralized exchange contract. The
+// exchange is deployed with the given fee account which will receive the trading fees.
+func (d Deployer) DeployExchange(feeAccount Address) (*Exchange, *types.Transaction, error) {
+	callOpts := &bind.CallOpts{Pending: true}
+	txOpts := bind.NewKeyedTransactor(d.Wallet.PrivateKey)
 
-	address, _, exchange, err := interfaces.DeployExchange(txOptions, d.Backend, feeAccount)
+	addr, tx, ex, err := interfaces.DeployExchange(txOpts, d.Backend, feeAccount)
 	if err != nil && err.Error() == "replacement transaction underpriced" {
-		txOptions.Nonce = d.GetNonce()
-		address, _, exchange, err = interfaces.DeployExchange(txOptions, d.Backend, feeAccount)
+		txOpts.Nonce = d.GetNonce()
+		addr, tx, ex, err = interfaces.DeployExchange(txOpts, d.Backend, feeAccount)
 	} else if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	return &Exchange{
-		Address:     address,
-		Contract:    exchange,
-		CallOptions: callOptions,
-		TxOptions:   txOptions,
+		Address:     addr,
+		Contract:    ex,
+		CallOptions: callOpts,
+		TxOptions:   txOpts,
 		Admin:       d.Wallet,
-	}, nil
+	}, tx, nil
 }
 
+// NewExchange returns a new instance of the excha
 func (d Deployer) NewExchange(address Address) (*Exchange, error) {
 	instance, err := interfaces.NewExchange(address, d.Backend)
 	if err != nil {
@@ -178,11 +196,23 @@ func (d Deployer) NewExchange(address Address) (*Exchange, error) {
 }
 
 func (d Deployer) GetNonce() *big.Int {
-	context := context.Background()
-	nonce, err := d.Backend.PendingNonceAt(context, d.Wallet.Address)
+	ctx := context.Background()
+	n, err := d.Backend.PendingNonceAt(ctx, d.Wallet.Address)
 	if err != nil {
 		fmt.Printf("Error retrieving the account nonce: %v", err)
 	}
 
-	return big.NewInt(0).SetUint64(nonce)
+	return big.NewInt(0).SetUint64(n)
+}
+
+func (d Deployer) WaitMined(tx *types.Transaction) (*types.Receipt, error) {
+	ctx := context.Background()
+	backend := d.Backend.(bind.DeployBackend)
+
+	receipt, err := bind.WaitMined(ctx, backend, tx)
+	if err != nil {
+		return nil, err
+	}
+
+	return receipt, nil
 }

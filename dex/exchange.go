@@ -377,13 +377,20 @@ func PrintErrorLog(log *interfaces.ExchangeLogError) string {
 }
 
 func PrintTradeLog(log *interfaces.ExchangeLogTrade) string {
-	return fmt.Sprintf("Error:\nAmount: %v\nHash: %vMaker: %v\nTaker: %v\nTokenBuy: %v\nTokenSell: %v\n\n",
-		log.Amount, log.Hsh, log.Maker, log.Taker, log.TokenBuy, log.TokenSell)
+	return fmt.Sprintf("Error:\nAmount: %v\nMaker: %v\nTaker: %v\nTokenBuy: %v\nTokenSell: %v\nOrderHash: %v\nTradeHash: %v\n\n",
+		log.Amount, log.Maker, log.Taker, log.TokenBuy, log.TokenSell, log.OrderHash, log.TradeHash)
 }
 
 func PrintCancelOrderLog(log *interfaces.ExchangeLogCancelOrder) string {
-	return fmt.Sprintf("Error:\nAmountBuy: %vAmountSell: %v\nTokenBuy: %v\nTokenSell: %v\nMaker: %v\nNonce: %v\nExpires: %v\n\n",
-		log.AmountBuy, log.AmountSell, log.TokenBuy, log.TokenSell, log.Maker, log.Nonce, log.Expires)
+	return fmt.Sprintf("Error:\nSender: %v\nOrderHash: %v\n\n", log.Sender, log.OrderHash)
+}
+
+func PrintCancelTradeLog(log *interfaces.ExchangeLogCancelTrade) string {
+	return fmt.Sprintf("Error:\nSender: %v\nTradeHash: %v\n\n", log.Sender, log.TradeHash)
+}
+
+func PrintWithdrawalErrorLog(log *interfaces.ExchangeLogWithdrawalError) string {
+	return fmt.Sprintf("Error:\nError ID: %v\n, WithdrawalHash: %v\n\n", log.ErrorId, log.WithdrawalHash)
 }
 
 // func Print(log *interfaces.ExchangeLogError) string {

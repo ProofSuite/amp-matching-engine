@@ -34,26 +34,27 @@ func NewServer() *Server {
 	}
 }
 
-func (s *Server) SetupTradingEngine(config *OperatorConfig, quotes Tokens, pairs TokenPairs, done chan bool) {
+func (s *Server) SetupTradingEngine(config *OperatorConfig, quotes Tokens, pairs TokenPairs, done chan bool) error {
 	s.engine = NewTradingEngine()
 
 	for _, val := range quotes {
 		log.Printf("val is equal to %x: %v\n", val.Address, val.Symbol)
 		if err := s.engine.RegisterNewQuoteToken(val); err != nil {
-			fmt.Printf("\nError registering new quote token: %v\n", err)
+			return err
 		}
 	}
 
 	for _, p := range pairs {
 		if err := s.engine.RegisterNewPair(p, done); err != nil {
-			fmt.Printf("\nError registering token pair: %v\n", err)
+			return err
 		}
 	}
 
 	if err := s.engine.RegisterOperator(config); err != nil {
-		fmt.Printf("\nError registering operator: %v\n", err)
+		return err
 	}
 
+	return nil
 }
 
 // Setup registers a list of quote tokens and token pairs
@@ -104,7 +105,6 @@ func (s *Server) OpenWebsocketConnection(w http.ResponseWriter, r *http.Request)
 	}
 
 	// defer connection.Close()
-	fmt.Printf("Opening new connection ...\n\n")
 	socket := &Socket{server: s, connection: conn, messagesOut: out, messagesIn: in, events: events}
 
 	go socket.handleMessagesOut() //Handle messages from server socket to client
