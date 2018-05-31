@@ -104,3 +104,30 @@ type OrderPartiallyFilledMessage struct {
 	MessageType MessageType  `json:"messageType"`
 	Payload     OrderPayload `json:"payload"`
 }
+
+type OrderExecutedMessage struct {
+	MessageType MessageType          `json:"messageType"`
+	Payload     OrderExecutedPayload `json:"payload"`
+}
+
+type TradeExecutedMessage struct {
+	MessageType MessageType          `json:"messageType"`
+	Payload     TradeExecutedPayload `json:"payload"`
+}
+
+// The client log is mostly used for testing. It optionally takes orders, trade,
+// error ids and transaction hashes. All these parameters are optional in order to
+// allow the client log message to take in a lot of different types of messages
+// An error id of -1 means that there was no error.
+type ClientLogMessage struct {
+	MessageType MessageType `json:"messageType"`
+	Order       *Order      `json:"order"`
+	Trade       *Trade      `json:"trade"`
+	Tx          common.Hash `json:"tx"`
+	ErrorID     int8        `json:"errorID"`
+}
+
+func (m *ClientLogMessage) String() string {
+	return fmt.Sprintf("\nMessageType: %v\nOrder: %v\nTrade: %v\nTx: %v\nErrorID: %v\n\n",
+		m.MessageType, m.Order, m.Trade, m.Tx, m.ErrorID)
+}
