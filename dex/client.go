@@ -1,12 +1,15 @@
 package dex
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
 	"net/url"
 	"sync"
 
+	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/gorilla/websocket"
 	"github.com/posener/wstest"
 )
@@ -20,20 +23,28 @@ var addr = flag.String("addr", "localhost:8080", "http service address")
 // wallet is the ethereum account used for orders and trades.
 // mutex is used to prevent concurrent writes on the websocket connection
 type Client struct {
-	connection   *websocket.Conn
-	requests     chan *Message
-	responses    chan *Message
-	requestLogs  []*Message
-	responseLogs []*Message
-	wallet       *Wallet
-	mutex        sync.Mutex
+	connection     *websocket.Conn
+	requests       chan *Message
+	responses      chan *Message
+	requestLogs    []*Message
+	responseLogs   []*Message
+	ethereumClient *ethclient.Client
+	wallet         *Wallet
+	mutex          sync.Mutex
+	logs           chan *ClientLogMessage
 }
 
 // NewClient a default client struct connected to the given server
 func NewClient(w *Wallet, s *Server) *Client {
 	flag.Parse()
 	uri := url.URL{Scheme: "ws", Host: *addr, Path: "/api"}
-	fmt.Printf("Connecting to %s", uri.String())
+
+	rpcClient, err := rpc.DialWebsocket(context.Background(), "ws://127.0.0.1:8546", "")
+	if err != nil {
+		log.Printf("Could not connect to ethereum client")
+	}
+
+	ethClient := ethclient.NewClient(rpcClient)
 
 	d := wstest.NewDialer(s)
 	c, _, err := d.Dial(uri.String(), nil)
@@ -41,17 +52,20 @@ func NewClient(w *Wallet, s *Server) *Client {
 		panic(err)
 	}
 
-	requests := make(chan *Message)
-	responses := make(chan *Message)
-	requestLogs := make([]*Message, 0)
-	responseLogs := make([]*Message, 0)
+	reqs := make(chan *Message)
+	resps := make(chan *Message)
+	logs := make(chan *ClientLogMessage)
+	reqLogs := make([]*Message, 0)
+	respLogs := make([]*Message, 0)
 
 	return &Client{connection: c,
-		wallet:       w,
-		requests:     requests,
-		responses:    responses,
-		requestLogs:  requestLogs,
-		responseLogs: responseLogs,
+		wallet:         w,
+		requests:       reqs,
+		logs:           logs,
+		ethereumClient: ethClient,
+		responses:      resps,
+		requestLogs:    reqLogs,
+		responseLogs:   respLogs,
 	}
 }
 
