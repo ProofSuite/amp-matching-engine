@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	. "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/sha3"
 )
@@ -246,24 +247,39 @@ func (o *Order) Decode(order map[string]interface{}) error {
 	return nil
 }
 
+// Stringer method for order
 func (o *Order) String() string {
 	return fmt.Sprintf(
 		"Order:\n"+
 			"Id: %d\nOrderType: %v\nExchangeAddress: %x\nMaker: %x\nTokenBuy: %x\nTokenSell: %x\n"+
-			"AmountBuy: %v\nAmountSell: %v\nSymbolBuy: %x\nSymbolSell: %x\nExpires: %v\nNonce: %v\n"+
+			"AmountBuy: %v\nAmountSell: %v\nSymbolBuy: %v\nSymbolSell: %v\nExpires: %v\nNonce: %v\n"+
 			"FeeMake: %v\nFeeTake: %v\nSignature.V: %x\nSignature.R: %x\nSignature.S: %x\nPairID: %x\nHash: %x\nPrice: %v\nAmount: %v\n\n",
 		o.Id, o.OrderType, o.ExchangeAddress, o.Maker, o.TokenBuy, o.TokenSell, o.AmountBuy, o.AmountSell, o.SymbolBuy, o.SymbolSell, o.Expires,
 		o.Nonce, o.FeeMake, o.FeeTake, o.Signature.V, o.Signature.R, o.Signature.S, o.PairID, o.Hash, o.Price, o.Amount,
 	)
 }
 
+// PriceInfo prints the following information:
+// -ID
+// -BuyTokenAmount
+// -SellTokenAmount
+// -Price
+// -Amount
+// -Type
 func (o *Order) PriceInfo() string {
 	return fmt.Sprintf("\nOrder Price Info:\nid: %d\nbuyTokenAmount: %v\nsellTokenAmount: %v\nprice: %v\namount: %v\ntype: %v\n\n", o.Id, o.AmountBuy, o.AmountSell, o.Price, o.Amount, o.OrderType)
 }
+
+// TokenInfo prints the following information:
+// -BuyToken (address)
+// -SellToken (address)
+// -BuyToken Symbol
+// -SellToken Symbol
 func (o *Order) TokenInfo() string {
 	return fmt.Sprintf("Order Token Info:\nbuyToken: %x\nsellToken: %x\nbuyTokenSymbol: %v\n, sellTokenSymbol: %v\n", o.TokenBuy, o.TokenSell, o.SymbolBuy, o.SymbolSell)
 }
 
+// ComputeHash calculates the order hash
 func (o *Order) ComputeHash() Hash {
 	sha := sha3.NewKeccak256()
 	sha.Write(o.ExchangeAddress.Bytes())
@@ -277,6 +293,7 @@ func (o *Order) ComputeHash() Hash {
 	return BytesToHash(sha.Sum(nil))
 }
 
+// VerifySignature checks that the order signature corresponds to the address in the maker field
 func (o *Order) VerifySignature() (bool, error) {
 
 	message := crypto.Keccak256(
@@ -296,41 +313,77 @@ func (o *Order) VerifySignature() (bool, error) {
 	return true, nil
 }
 
+// ValidateOrder checks the following elements:
+//Order Type needs to be equal to BUY or SELL
+//Exchange Address needs to be correct
+//AmountBuy and AmountSell need to be positive
+//OrderHash needs to be correct
 func (o *Order) ValidateOrder() (bool, error) {
-
-	//Order Type needs to be equal to BUY or SELL
-	//Exchange Address needs to be correct
-	//AmountBuy and AmountSell need to be positive
-	//OrderHash needs to be correct
-
 	return true, nil
 }
 
+// NewOrderPlacedEvent is called when an order is first placed in
+// the orderbook.
 func (o *Order) NewOrderPlacedEvent() *Event {
 	return &Event{eventType: ORDER_PLACED, payload: o}
 }
 
+// NewOrderMatchedEvent is called when an order is matched (as taker)
+// in the orderbook. This does not mean that the order is executed on the
+// blockchain as of yet.
 func (o *Order) NewOrderMatchedEvent() *Event {
 	return &Event{eventType: ORDER_MATCHED, payload: o}
 }
 
+// NewOrderPartiallyFilledEvent is called when an order is mached (as taker)
+// partially. This does not mean that the order is executed on the
+// blockchain as of yet.
 func (o *Order) NewOrderPartiallyFilledEvent() *Event {
 	return &Event{eventType: ORDER_PARTIALLY_FILLED, payload: o}
 }
 
+// NewOrderPartiallyFilledEvent is called when an order is mached (as taker)
+//This does not mean that the order is executed on the
+// blockchain as of yet.
 func (o *Order) NewOrderFilledEvent(t *Trade) *Event {
 	payload := &TradePayload{Order: o, Trade: t}
 	return &Event{eventType: ORDER_FILLED, payload: payload}
 }
 
+// NewOrderCanceled is called when an order is called
 func (o *Order) NewOrderCanceledEvent() *Event {
 	return &Event{eventType: ORDER_CANCELED, payload: o}
 }
 
+// NewOrderExecuted is called when an order is executed meaning that
+// the operator has performed a blockchain transaction and is currently
+// waiting for the transaction to resolve.
+func (o *Order) NewOrderExecutedEvent(tx *types.Transaction) *Event {
+	payload := &OrderExecutedPayload{Order: o, Tx: tx.Hash()}
+	return &Event{eventType: ORDER_EXECUTED, payload: payload}
+}
+
+// NewOrderTransactionSuccessful is called when the operator receives confirmation
+// that a trade was carried out successfully.
+func (o *Order) NewOrderTxSuccess(t *Trade, tx *types.Transaction) *Event {
+	p := &TxSuccessPayload{Order: o, Trade: t, Tx: tx.Hash()}
+	return &Event{eventType: ORDER_TX_SUCCESS, payload: p}
+}
+
+// NewOrderTransactionError is called when the operator receives an error event
+// from the exchange smart contract.
+func (o *Order) NewOrderTxError(t *Trade, errorId uint8) *Event {
+	p := &TxErrorPayload{Order: o, Trade: t, ErrorId: errorId}
+	return &Event{eventType: ORDER_TX_ERROR, payload: p}
+}
+
+// NewDoneMessage is used to close certain channels
 func NewDoneMessage() *Event {
 	return &Event{eventType: DONE}
 }
 
+// Sign first calculates the order hash, then computes a signature of this hash
+// with the given wallet
 func (o *Order) Sign(w *Wallet) error {
 	hash := o.ComputeHash()
 	sig, err := w.SignHash(hash)

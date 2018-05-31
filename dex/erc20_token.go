@@ -8,6 +8,7 @@ import (
 	"github.com/Dvisacker/matching-engine/dex/interfaces"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	. "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 )
 
 type ERC20Token struct {
@@ -44,34 +45,34 @@ func (t *ERC20Token) TotalSupply() (*big.Int, error) {
 	return supply, nil
 }
 
-func (t *ERC20Token) Transfer(receiver Address, amount *big.Int) (Hash, error) {
+func (t *ERC20Token) Transfer(receiver Address, amount *big.Int) (*types.Transaction, error) {
 	tx, err := t.Contract.Transfer(t.TxOptions, receiver, amount)
 	if err != nil {
-		return Hash{}, errors.New("Error making Transfer() transaction")
+		return nil, errors.New("Error making Transfer() transaction")
 	}
 
-	return tx.Hash(), nil
+	return tx, nil
 }
 
-func (t *ERC20Token) TransferFromCustomWallet(wallet *Wallet, receiver Address, amount *big.Int) (Hash, error) {
+func (t *ERC20Token) TransferFromCustomWallet(wallet *Wallet, receiver Address, amount *big.Int) (*types.Transaction, error) {
 	t.SetCustomSender(wallet)
 
 	tx, err := t.Contract.Transfer(t.TxOptions, receiver, amount)
 	if err != nil {
-		return Hash{}, errors.New("Error making Transfer() transaction")
+		return nil, errors.New("Error making Transfer() transaction")
 	}
 
-	return tx.Hash(), nil
+	return tx, nil
 }
 
-func (t *ERC20Token) TransferFrom(sender, receiver Address, amount *big.Int) (Hash, error) {
+func (t *ERC20Token) TransferFrom(sender, receiver Address, amount *big.Int) (*types.Transaction, error) {
 	tx, err := t.Contract.TransferFrom(t.TxOptions, sender, receiver, amount)
 	if err != nil {
-		return Hash{}, errors.New("Error making TransferFrom() transaction")
+		return nil, errors.New("Error making TransferFrom() transaction")
 	}
 
 	fmt.Printf("Transfered %v tokens from %v to %v", amount, sender, receiver)
-	return tx.Hash(), nil
+	return tx, nil
 }
 
 func (t *ERC20Token) Allowance(owner Address, spender Address) (*big.Int, error) {
@@ -83,25 +84,25 @@ func (t *ERC20Token) Allowance(owner Address, spender Address) (*big.Int, error)
 	return allowance, nil
 }
 
-func (t *ERC20Token) Approve(spender Address, amount *big.Int) (Hash, error) {
+func (t *ERC20Token) Approve(spender Address, amount *big.Int) (*types.Transaction, error) {
 	tx, err := t.Contract.Approve(t.TxOptions, spender, amount)
 	if err != nil {
-		return Hash{}, errors.New("Error making Approve() transaction")
+		return nil, errors.New("Error making Approve() transaction")
 	}
 
-	return tx.Hash(), nil
+	return tx, nil
 }
 
-func (t *ERC20Token) ApproveFrom(wallet *Wallet, spender Address, amount *big.Int) (Hash, error) {
+func (t *ERC20Token) ApproveFrom(wallet *Wallet, spender Address, amount *big.Int) (*types.Transaction, error) {
 	t.SetCustomSender(wallet)
 
 	tx, err := t.Contract.Approve(t.TxOptions, spender, amount)
 	if err != nil {
-		return Hash{}, errors.New("Error making ApproveFrom() transaction")
+		return nil, errors.New("Error making ApproveFrom() transaction")
 	}
 
 	t.SetDefaultSender()
-	return tx.Hash(), nil
+	return tx, nil
 }
 
 func (t *ERC20Token) ListenToTransferEvents() (chan *interfaces.TokenTransfer, error) {

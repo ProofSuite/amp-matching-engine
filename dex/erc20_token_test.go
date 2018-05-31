@@ -17,7 +17,7 @@ func TestBalanceOf(t *testing.T) {
 	receiver := config.Accounts[1]
 	amount := big.NewInt(1e18)
 
-	token, err := deployer.DeployToken(receiver, amount)
+	token, _, err := deployer.DeployToken(receiver, amount)
 	if err != nil {
 		t.Errorf("Could not deploy token: %v", err)
 	}
@@ -40,7 +40,7 @@ func TestTotalSupply(t *testing.T) {
 	receiver := config.Accounts[0]
 	amount := big.NewInt(1e18)
 
-	token, err := deployer.DeployToken(receiver, amount)
+	token, _, err := deployer.DeployToken(receiver, amount)
 	if err != nil {
 		t.Errorf("Could not deploy token: %v", err)
 	}
@@ -65,7 +65,7 @@ func TestTransfer(t *testing.T) {
 	initialAmount := big.NewInt(1e18)
 	transferAmount := big.NewInt(1e18 / 2)
 
-	token, err := deployer.DeployToken(owner, initialAmount)
+	token, _, err := deployer.DeployToken(owner, initialAmount)
 	if err != nil {
 		t.Errorf("Could not deploy token: %v", err)
 	}
@@ -95,7 +95,7 @@ func TestApprove(t *testing.T) {
 	spender := config.Accounts[1]
 	amount := big.NewInt(1e18)
 
-	token, err := deployer.DeployToken(owner, amount)
+	token, _, err := deployer.DeployToken(owner, amount)
 	if err != nil {
 		t.Errorf("Could not deploy token: %v", err)
 	}
@@ -127,7 +127,7 @@ func TestTransferEvent(t *testing.T) {
 	amount := big.NewInt(1e18)
 	done := make(chan bool)
 
-	token, err := deployer.DeployToken(owner, amount)
+	token, _, err := deployer.DeployToken(owner, amount)
 	if err != nil {
 		t.Errorf("Could not deploy token: %v", err)
 	}
