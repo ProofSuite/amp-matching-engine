@@ -3,6 +3,7 @@ package dex
 import (
 	"errors"
 	"fmt"
+	"math/big"
 
 	. "github.com/ethereum/go-ethereum/common"
 )
@@ -238,4 +239,14 @@ func (e *TradingEngine) CloseOrderBook(pairID Hash) (bool, error) {
 		ob.Done()
 		return true, nil
 	}
+}
+
+func (e *TradingEngine) TokenBalance(owner Address, token Address) (*big.Int, error) {
+	ex := e.operator.Exchange
+	balance, err := ex.TokenBalance(owner, token)
+	if err != nil {
+		return nil, err
+	}
+
+	return balance, nil
 }

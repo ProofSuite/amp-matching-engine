@@ -28,6 +28,11 @@ type OrderFactory struct {
 	NonceGenerator *rand.Rand
 }
 
+// OrderParams groups FeeMake, FeeTake, Nonce, Exipres
+// FeeMake and FeeTake are the default fees imposed on makers and takers
+// Nonce is the ethereum account nonce that tracks the numbers of transactions
+// for the order factory account
+// Expires adds a timeout after which an order can no longer be matched
 type OrderParams struct {
 	FeeMake *big.Int
 	FeeTake *big.Int
@@ -67,11 +72,13 @@ func NewOrderFactory(p *TokenPair, w *Wallet) *OrderFactory {
 	}
 }
 
+// SetExchangeAddress changes the default exchange address for orders created by this factory
 func (f *OrderFactory) SetExchangeAddress(exchange common.Address) error {
 	f.Exchange = exchange
 	return nil
 }
 
+// NewOrderMessage creates an order with the given params and returns a new PLACE_ORDER message
 func (f *OrderFactory) NewOrderMessage(tokenBuy Token, amountBuy int64, tokenSell Token, amountSell int64) (*Message, *Order, error) {
 	o, err := f.NewOrder(tokenBuy, amountBuy, tokenSell, amountBuy)
 	if err != nil {
@@ -82,7 +89,8 @@ func (f *OrderFactory) NewOrderMessage(tokenBuy Token, amountBuy int64, tokenSel
 	return &Message{MessageType: PLACE_ORDER, Payload: p}, o, nil
 }
 
-// NewOrder creates a new Order object
+// NewOrder returns a new order with the given params. The order is signed by the factory wallet.
+// Currently the nonce is chosen randomly which will be changed in the future
 func (f *OrderFactory) NewOrder(tokenBuy Token, amountBuy int64, tokenSell Token, amountSell int64) (*Order, error) {
 	o := &Order{}
 
@@ -104,13 +112,13 @@ func (f *OrderFactory) NewOrder(tokenBuy Token, amountBuy int64, tokenSell Token
 	o.PairID = f.Pair.ID
 	o.Sign(f.Wallet)
 
-	log.Printf("Order is equal to %v", o)
-
 	f.OrderNonce++
 	f.CurrentOrderID++
 	return o, nil
 }
 
+// NewTrade returns a new trade with the given params. The trade is signed by the factory wallet.
+// Currently the nonce is chosen randomly which will be changed in the future
 func (f *OrderFactory) NewTrade(o *Order, amount int64) (*Trade, error) {
 	t := &Trade{}
 
@@ -121,13 +129,11 @@ func (f *OrderFactory) NewTrade(o *Order, amount int64) (*Trade, error) {
 	t.Amount = big.NewInt(amount)
 	t.Sign(f.Wallet)
 
-	log.Printf("Trade is equal to %v", t)
-
 	f.TradeNonce++
 	return t, nil
 }
 
-// NewOrderCancel creates a new OrderCancel object from an Order
+// NewOrderCancel creates a new OrderCancel object from a given order
 func (f *OrderFactory) NewOrderCancel(o *Order) (*OrderCancel, error) {
 	oc := &OrderCancel{}
 
@@ -138,6 +144,7 @@ func (f *OrderFactory) NewOrderCancel(o *Order) (*OrderCancel, error) {
 	return oc, nil
 }
 
+// NewCancelOrderMessage creates a new OrderCancelMessage from a given order
 func (f *OrderFactory) NewCancelOrderMessage(o *Order) (*Message, error) {
 	oc, err := f.NewOrderCancel(o)
 	if err != nil {

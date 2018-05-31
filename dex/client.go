@@ -90,42 +90,40 @@ func (c *Client) handleMessages() {
 	go func() {
 		for {
 			select {
-			case request := <-c.requests:
-				// log.Printf("Request is equal to %v", request)
-				c.requestLogs = append(c.requestLogs, request)
-				switch request.MessageType {
+			case req := <-c.requests:
+				fmt.Printf("Handling Request: %v\n", req)
+				c.requestLogs = append(c.requestLogs, req)
+				switch req.MessageType {
 				case PLACE_ORDER:
-					go c.placeOrder(request)
+					go c.placeOrder(req)
 				case SIGNED_DATA:
-					go c.sendSignedData(request)
+					go c.sendSignedData(req)
 				case CANCEL_ORDER:
-					go c.cancelOrder(request)
+					go c.cancelOrder(req)
 				case DONE:
 					go c.done()
 				}
-			case response := <-c.responses:
-				c.responseLogs = append(c.responseLogs, response)
-				switch response.MessageType {
+			case resp := <-c.responses:
+				c.responseLogs = append(c.responseLogs, resp)
+				switch resp.MessageType {
 				case ORDER_PLACED:
-					go c.handleOrderPlaced(response.Payload)
+					go c.handleOrderPlaced(resp)
 				case ORDER_CANCELED:
-					go c.handleOrderCanceled(response.Payload)
-				case REQUEST_SIGNED_DATA:
-					go c.handleRequestSignedData(response.Payload)
+					go c.handleOrderCanceled(resp)
 				case ORDER_FILLED:
-					go c.handleOrderFilled(response.Payload)
+					go c.handleOrderFilled(resp)
 				case ORDER_EXECUTED:
-					go c.handleOrderExecuted(response.Payload)
+					go c.handleOrderExecuted(resp)
 				case ORDER_TX_SUCCESS:
-					go c.handleOrderTxSuccess(response.Payload)
+					go c.handleOrderTxSuccess(resp)
 				case ORDER_TX_ERROR:
-					go c.handleOrderTxError(response.Payload)
+					go c.handleOrderTxError(resp)
 				case TRADE_EXECUTED:
-					go c.handleTradeExecuted(response.Payload)
+					go c.handleTradeExecuted(resp)
 				case TRADE_TX_SUCCESS:
-					go c.handleTradeTxSuccess(response.Payload)
+					go c.handleTradeTxSuccess(resp)
 				case TRADE_TX_ERROR:
-					go c.handleTradeTxError(response.Payload)
+					go c.handleTradeTxError(resp)
 				}
 			}
 		}
@@ -151,109 +149,183 @@ func (c *Client) handleIncomingMessages() {
 	}()
 }
 
-func (c *Client) placeOrder(request *Message) {
-	err := c.send(request)
+func (c *Client) placeOrder(req *Message) {
+	err := c.send(req)
 	if err != nil {
-		fmt.Printf("Error: Could not place order. Payload: %#v\n", request.Payload)
+		log.Printf("Error: Could not place order. Payload: %#v\n", req.Payload)
 		return
 	}
-
 	// fmt.Printf("Log: Place Order Message sent:\n")
-	// fmt.Printf("%v\n\n", request.Payload)
+	// fmt.Printf("%v\n\n", req.Payload)
 }
 
-func (c *Client) sendSignedData(request *Message) {
-	err := c.send(request)
+func (c *Client) sendSignedData(req *Message) {
+	log.Printf("Sending signed data message\n")
+	err := c.send(req)
 	if err != nil {
-		fmt.Printf("Error: Could not send signed orders. Payload: %#v", request.Payload)
+		log.Printf("Error: Could not send signed orders. Payload: %#v", req.Payload)
 		return
 	}
-
 	// fmt.Printf("Log: Signed Orders Message sent:\n")
-	// fmt.Printf("%v\n\n", request)
+	// fmt.Printf("%v\n\n", req)
 }
 
-func (c *Client) cancelOrder(request *Message) {
-	err := c.send(request)
+func (c *Client) cancelOrder(req *Message) {
+	err := c.send(req)
 	if err != nil {
-		fmt.Printf("Error: Could not cancel order. Payload: %#v", request.Payload)
+		log.Printf("Error: Could not cancel order. Payload: %#v", req.Payload)
 		return
 	}
-
 	// fmt.Printf("Log: Cancel Orders Message sent:\n")
 	// fmt.Printf("%v\n\n", request)
 }
 
-func (c *Client) handleOrderPlaced(p Payload) {
+func (c *Client) handleOrderPlaced(resp *Message) {
 	o := &Order{}
-	o.DecodeOrderPayload(p)
+	o.DecodeOrderPayload(resp.Payload)
 
-	// fmt.Printf("Log: Handling Order Placed Message:\n")
-	// fmt.Printf("%v\n\n", o)
+	l := &ClientLogMessage{
+		MessageType: resp.MessageType,
+		Order:       o,
+	}
+
+	c.logs <- l
+	log.Printf("Log: Handling Order Placed Message:%v\n\n", o)
 }
 
-func (c *Client) handleOrderCanceled(p Payload) {
-	fmt.Printf("Log: Handling Order Canceled Message. Payload: %#v", p)
+func (c *Client) handleOrderCanceled(r *Message) {
+	log.Printf("Log: Handling Order Canceled Message. Payload: %#v", r.Payload)
 }
 
-func (c *Client) handleOrderFilled(p Payload) {
+func (c *Client) handleOrderFilled(resp *Message) {
 	decoded := NewTradePayload()
-	decoded.DecodeTradePayload(p)
+	err := decoded.DecodeTradePayload(resp.Payload)
+	if err != nil {
+		fmt.Printf("Could not decode trade payload: %v", err)
+	}
 
-	t := decoded.Trade
+	trade := decoded.Trade
 
-	err := c.wallet.SignTrade(t)
+	err = c.wallet.SignTrade(trade)
 	if err != nil {
 		fmt.Printf("Error signing trade: %v", err)
 	}
 
-	m := &Message{MessageType: SIGNED_DATA, Payload: RequestSignedDataPayload{Trade: t}}
-	c.requests <- m
-	// trade, err := c.wallet.
+	l := &ClientLogMessage{
+		MessageType: resp.MessageType,
+		Order:       decoded.Order,
+		Trade:       trade,
+	}
+
+	c.logs <- l
+	log.Printf("Sending signed data message 1\n")
+	req := &Message{MessageType: SIGNED_DATA, Payload: SignedDataPayload{Trade: trade}}
+	c.requests <- req
+	log.Printf("Log: Handling Order Filled Message. Payload: %#v", trade)
 }
 
-func (c *Client) handleOrderPartiallyFilled(p Payload) {
+func (c *Client) handleOrderPartiallyFilled(resp *Message) {
 	decoded := NewOrderFilledPayload()
-	decoded.DecodeOrderFilledPayload(p)
+	decoded.DecodeOrderFilledPayload(resp.Payload)
 
 	trade, err := c.wallet.NewTrade(decoded.MakerOrder, decoded.TakerOrder.Amount)
 	if err != nil {
 		fmt.Printf("Error signing trade: %v", err)
 	}
 
-	m := &Message{MessageType: SIGNED_DATA, Payload: RequestSignedDataPayload{Trade: trade}}
-	c.requests <- m
+	req := &Message{MessageType: SIGNED_DATA, Payload: SignedDataPayload{Trade: trade}}
+	c.requests <- req
 }
 
-func (c *Client) handleRequestSignedData(p Payload) {
-	// fmt.Printf("Log: Handling Request Signed Data. Payload: %#v", p)
-	// fakeData := SignedDataPayload{}
-	// m := &Message{MessageType: "SIGNED_DATA", Payload: fakeData}
-	// c.requests <- m
+func (c *Client) handleOrderExecuted(resp *Message) {
+	decoded := NewOrderExecutedPayload()
+	decoded.DecodeOrderExecutedPayload(resp.Payload)
+
+	l := &ClientLogMessage{
+		MessageType: resp.MessageType,
+		Order:       decoded.Order,
+		Tx:          decoded.Tx,
+	}
+
+	c.logs <- l
+	log.Printf("\nLog: Handling Order executed message. Tx Hash: %v", decoded.Tx)
 }
 
-func (c *Client) handleOrderExecuted(p Payload) {
-	log.Printf("\nLog: Handling Order executed message. Payload: %#v\n\n", p)
+func (c *Client) handleTradeExecuted(resp *Message) {
+	decoded := NewTradeExecutedPayload()
+	decoded.DecodeTradeExecutedPayload(resp.Payload)
+
+	l := &ClientLogMessage{
+		MessageType: resp.MessageType,
+		Trade:       decoded.Trade,
+		Tx:          decoded.Tx,
+	}
+
+	c.logs <- l
+	log.Printf("\nLog: Handling Trade Executed message. Payload: %x\n\n", decoded.Tx)
 }
 
-func (c *Client) handleOrderTxSuccess(p Payload) {
-	log.Printf("\nLog: Handling Order Tx Success message. Payload: %#v\n\n", p)
+func (c *Client) handleOrderTxSuccess(resp *Message) {
+	decoded := NewTxSuccessPayload()
+	decoded.DecodeTxSuccessPayload(resp.Payload)
+
+	l := &ClientLogMessage{
+		MessageType: resp.MessageType,
+		Order:       decoded.Order,
+		Trade:       decoded.Trade,
+		Tx:          decoded.Tx,
+		ErrorID:     -1,
+	}
+
+	c.logs <- l
+	log.Printf("\nLog: Handling Order Tx Success message. Payload: %x\n\n", decoded.Tx)
 }
 
-func (c *Client) handleOrderTxError(p Payload) {
-	log.Printf("\nLog: Handling Order Tx Error message. Payload: %#v\n\n", p)
+func (c *Client) handleOrderTxError(resp *Message) {
+	decoded := NewTxErrorPayload()
+	decoded.DecodeTxErrorPayload(resp.Payload)
+	errId := decoded.ErrorId
+
+	l := &ClientLogMessage{
+		MessageType: resp.MessageType,
+		Order:       decoded.Order,
+		Trade:       decoded.Trade,
+		ErrorID:     int8(decoded.ErrorId),
+	}
+
+	c.logs <- l
+	log.Printf("\nLog: Handling Tx Error Message. Error ID: %v\n", errId)
 }
 
-func (c *Client) handleTradeExecuted(p Payload) {
-	log.Printf("\nLog: Handling Trade Executed message. Payload: %#v\n\n", p)
+func (c *Client) handleTradeTxSuccess(resp *Message) {
+	decoded := NewTxSuccessPayload()
+	decoded.DecodeTxSuccessPayload(resp.Payload)
+
+	l := &ClientLogMessage{
+		MessageType: resp.MessageType,
+		Order:       decoded.Order,
+		Trade:       decoded.Trade,
+		Tx:          decoded.Tx,
+		ErrorID:     -1,
+	}
+
+	c.logs <- l
+	log.Printf("\nLog: Handling Order Tx Success message. Payload: %#v\n\n", decoded.Tx)
 }
 
-func (c *Client) handleTradeTxSuccess(p Payload) {
-	log.Printf("\nLog: Handling Trade Tx Success message. Payload: %#v\n\n", p)
-}
+func (c *Client) handleTradeTxError(resp *Message) {
+	decoded := NewTxErrorPayload()
+	decoded.DecodeTxErrorPayload(resp.Payload)
 
-func (c *Client) handleTradeTxError(p Payload) {
-	log.Printf("\nLog: Handling Trade Tx Error message. Payload: %#v\n\n", p)
+	l := &ClientLogMessage{
+		MessageType: resp.MessageType,
+		Order:       decoded.Order,
+		Trade:       decoded.Trade,
+		ErrorID:     int8(decoded.ErrorId),
+	}
+
+	c.logs <- l
+	log.Printf("\nLog: Handling Tx Error Message. Error ID: %v\n", decoded.ErrorId)
 }
 
 func (c *Client) done() {

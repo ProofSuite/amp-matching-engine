@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/kr/pretty"
 )
 
@@ -83,16 +84,6 @@ type CancelOrderMessage struct {
 type OrderPlacedMessage struct {
 	MessageType MessageType  `json:"messageType"`
 	Payload     OrderPayload `json:"payload"`
-}
-
-type OrderCanceledMessage struct {
-	MessageType MessageType    `json:"messageType"`
-	Payload     OrderIdPayload `json:"payload"`
-}
-
-type RequestSignedDataMessage struct {
-	MessageType MessageType              `json:"messageType"`
-	Payload     RequestSignedDataPayload `json:"payload"`
 }
 
 type OrderFilledMessage struct {
