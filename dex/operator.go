@@ -31,16 +31,9 @@ type Operator struct {
 	TradeChannel       chan *interfaces.ExchangeLogTrade
 	CancelOrderChannel chan *interfaces.ExchangeLogCancelOrder
 	OrderTradePairs    map[Hash]*OrderTradePair
-}
-
-// OperatorParams contains numerical values that define how the operator should send transcations.
-// rpcURL is the url of the ethereum node. By default it is ws://localhost:8546. For non-websocket
-// (not supported a priori) http://localhost:8545
-type OperatorParams struct {
-	gasPrice   *big.Int
-	maxGas     uint64
-	minBalance *big.Int
-	rpcURL     string
+	ErrorLogs          []*interfaces.ExchangeLogError
+	TradeLogs          []*interfaces.ExchangeLogTrade
+	CancelOrderLogs    []*interfaces.ExchangeLogCancelOrder
 }
 
 // NewOperator creates a new operator struct. It creates an exchange contract instance from the
@@ -119,11 +112,11 @@ func NewOperator(config *OperatorConfig) (*Operator, error) {
 				}
 
 				if otp.order.events != nil {
-					otp.order.events <- otp.order.NewOrderTxSuccess(otp.trade)
+					otp.order.events <- otp.order.NewOrderTxSuccess(otp.trade, otp.tx)
 				}
 
 				if otp.trade.events != nil {
-					otp.trade.events <- otp.trade.NewTradeTxSuccess(otp.order)
+					otp.trade.events <- otp.trade.NewTradeTxSuccess(otp.order, otp.tx)
 				}
 			}
 		}
@@ -136,7 +129,6 @@ func NewOperator(config *OperatorConfig) (*Operator, error) {
 // by the Maker and the Taker of the trade. Only the operator account can send a Trade function to the
 // Exchange smart contract.
 func (op *Operator) ExecuteTrade(o *Order, t *Trade) (*types.Transaction, error) {
-	op.OrderTradePairs[t.Hash] = &OrderTradePair{order: o, trade: t}
 	err := t.Validate()
 	if err != nil {
 		return nil, err
@@ -147,15 +139,17 @@ func (op *Operator) ExecuteTrade(o *Order, t *Trade) (*types.Transaction, error)
 		return nil, err
 	}
 
+	op.OrderTradePairs[t.Hash] = &OrderTradePair{order: o, trade: t, tx: tx}
+
 	if o.events != nil {
-		o.events <- o.NewOrderExecutedEvent()
+		o.events <- o.NewOrderExecutedEvent(tx)
 	}
 
 	if o.events != nil {
-		t.events <- t.NewTradeExecutedEvent()
+		t.events <- t.NewTradeExecutedEvent(tx)
 	}
 
-	fmt.Printf("Successfully execute transaction")
+	fmt.Printf("Successfully executed transaction")
 	return tx, nil
 }
 
