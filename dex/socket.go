@@ -74,26 +74,21 @@ func (s *Socket) handleMessagesOut() {
 			order := e.payload.(*Order)
 			s.sendOrderCanceled(order)
 		case ORDER_EXECUTED:
-			log.Printf("Trade has been executed")
 			p := e.payload.(*OrderExecutedPayload)
 			s.sendOrderExecuted(p)
 		case ORDER_TX_SUCCESS:
-			log.Printf("Order TX success")
 			p := e.payload.(*TxSuccessPayload)
 			s.sendOrderTxSuccess(p)
 		case ORDER_TX_ERROR:
-			log.Printf("Order TX error")
 			p := e.payload.(*TxErrorPayload)
 			s.sendOrderTxError(p)
 		case TRADE_EXECUTED:
 			p := e.payload.(*TradeExecutedPayload)
 			s.sendTradeExecuted(p)
 		case TRADE_TX_SUCCESS:
-			log.Printf("Trade Tx Success")
 			p := e.payload.(*TxSuccessPayload)
 			s.sendTradeTxSuccess(p)
 		case TRADE_TX_ERROR:
-			log.Printf("Trade Tx Error")
 			p := e.payload.(*TxErrorPayload)
 			s.sendTradeTxError(p)
 		case DONE:
