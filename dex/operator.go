@@ -36,16 +36,6 @@ type Operator struct {
 	CancelOrderLogs    []*interfaces.ExchangeLogCancelOrder
 }
 
-// OperatorParams contains numerical values that define how the operator should send transcations.
-// rpcURL is the url of the ethereum node. By default it is ws://localhost:8546. For non-websocket
-// (not supported a priori) http://localhost:8545
-type OperatorParams struct {
-	gasPrice   *big.Int
-	maxGas     uint64
-	minBalance *big.Int
-	rpcURL     string
-}
-
 // NewOperator creates a new operator struct. It creates an exchange contract instance from the
 // provided address. The error and trade events are received in the ErrorChannel and TradeChannel.
 // Upon receiving errors and trades in their respective channels, event payloads are sent to the
