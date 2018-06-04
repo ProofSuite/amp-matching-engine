@@ -106,7 +106,7 @@ func (f *OrderFactory) NewOrder(tokenBuy Token, amountBuy int64, tokenSell Token
 	o.Expires = f.Params.Expires
 	o.FeeMake = f.Params.FeeMake
 	o.FeeTake = f.Params.FeeTake
-	o.Nonce = big.NewInt(int64(f.NonceGenerator.Intn(10000)))
+	o.Nonce = big.NewInt(int64(f.NonceGenerator.Intn(1e8)))
 	o.Maker = f.Wallet.Address
 	o.Price = 0
 	o.Amount = 0
@@ -115,6 +115,16 @@ func (f *OrderFactory) NewOrder(tokenBuy Token, amountBuy int64, tokenSell Token
 
 	f.OrderNonce++
 	f.CurrentOrderID++
+	return o, nil
+}
+
+func (f *OrderFactory) NewOrderWithEvents(tokenBuy Token, amountBuy int64, tokenSell Token, amountSell int64) (*Order, error) {
+	o, err := f.NewOrder(tokenBuy, amountBuy, tokenSell, amountSell)
+	if err != nil {
+		return nil, err
+	}
+
+	o.events = make(chan *Event)
 	return o, nil
 }
 
@@ -138,7 +148,7 @@ func (f *OrderFactory) NewBuyOrder(price uint64, amount uint64) (*Order, error) 
 	o.Maker = f.Wallet.Address
 	o.Price = price
 	o.Amount = amount
-	o.Nonce = big.NewInt(int64(f.NonceGenerator.Intn(10000)))
+	o.Nonce = big.NewInt(int64(f.NonceGenerator.Intn(1e8)))
 	o.PairID = f.Pair.ID
 
 	o.AmountBuy = big.NewInt(int64(o.Amount))
@@ -152,6 +162,17 @@ func (f *OrderFactory) NewBuyOrder(price uint64, amount uint64) (*Order, error) 
 
 	f.OrderNonce++
 	f.CurrentOrderID++
+	return o, nil
+}
+
+// NewSellOrderWithEvents adds an event channel to the trade returned by NewSellOrder
+func (f *OrderFactory) NewBuyOrderWithEvent(price uint64, amount uint64) (*Order, error) {
+	o, err := f.NewBuyOrder(price, amount)
+	if err != nil {
+		return nil, err
+	}
+
+	o.events = make(chan *Event)
 	return o, nil
 }
 
@@ -175,7 +196,7 @@ func (f *OrderFactory) NewSellOrder(price uint64, amount uint64) (*Order, error)
 	o.Maker = f.Wallet.Address
 	o.Price = price
 	o.Amount = amount
-	o.Nonce = big.NewInt(int64(f.NonceGenerator.Intn(10000)))
+	o.Nonce = big.NewInt(int64(f.NonceGenerator.Intn(1e8)))
 	o.PairID = f.Pair.ID
 
 	o.AmountSell = big.NewInt(int64(o.Amount))
@@ -192,6 +213,17 @@ func (f *OrderFactory) NewSellOrder(price uint64, amount uint64) (*Order, error)
 	return o, nil
 }
 
+// NewSellOrderWithEvents adds an event channel to the trade returned by NewSellOrder
+func (f *OrderFactory) NewSellOrderWithEvent(price uint64, amount uint64) (*Order, error) {
+	o, err := f.NewSellOrder(price, amount)
+	if err != nil {
+		return nil, err
+	}
+
+	o.events = make(chan *Event)
+	return o, nil
+}
+
 // NewTrade returns a new trade with the given params. The trade is signed by the factory wallet.
 // Currently the nonce is chosen randomly which will be changed in the future
 func (f *OrderFactory) NewTrade(o *Order, amount int64) (*Trade, error) {
@@ -200,11 +232,22 @@ func (f *OrderFactory) NewTrade(o *Order, amount int64) (*Trade, error) {
 	t.OrderHash = o.Hash
 	t.PairID = f.Pair.ID
 	t.Taker = f.Wallet.Address
-	t.TradeNonce = big.NewInt(int64(f.NonceGenerator.Intn(10000)))
+	t.TradeNonce = big.NewInt(int64(f.NonceGenerator.Intn(1e8)))
 	t.Amount = big.NewInt(amount)
 	t.Sign(f.Wallet)
 
 	f.TradeNonce++
+	return t, nil
+}
+
+// NewTradeWithEvents adds an event channel to the trade returned by NewTrade
+func (f *OrderFactory) NewTradeWithEvents(o *Order, amount int64) (*Trade, error) {
+	t, err := f.NewTrade(o, amount)
+	if err != nil {
+		return nil, err
+	}
+
+	t.events = make(chan *Event)
 	return t, nil
 }
 
