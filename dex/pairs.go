@@ -1,6 +1,7 @@
 package dex
 
 import (
+	"errors"
 	"fmt"
 
 	. "github.com/ethereum/go-ethereum/common"
@@ -37,5 +38,23 @@ func (p *TokenPair) ComputeID() Hash {
 }
 
 func (p *TokenPair) String() string {
-	return fmt.Sprintf("\nQuoteToken: %v at %x\nBaseToken: %v at %x\nID: %x\n\n", p.QuoteToken.Symbol, p.QuoteToken.Address, p.BaseToken.Symbol, p.BaseToken.Address, p.ID)
+	return fmt.Sprintf("\nQuoteToken: %x at %x\nBaseToken: %x at %x\nID: %x\n\n", p.QuoteToken.Symbol, p.QuoteToken.Address, p.BaseToken.Symbol, p.BaseToken.Address, p.ID)
+}
+
+// ComputeOrderPrice calculates the (Amount, Price) tuple corresponding
+// to the (AmountBuy, TokenBuy, AmountSell, TokenSell) quadruplet
+func (p *TokenPair) ComputeOrderPrice(o *Order) error {
+	if o.TokenBuy == p.BaseToken.Address {
+		o.OrderType = BUY
+		o.Amount = o.AmountBuy.Uint64()
+		o.Price = o.AmountSell.Uint64() * (1e3) / o.AmountBuy.Uint64()
+	} else if o.TokenBuy == p.QuoteToken.Address {
+		o.OrderType = SELL
+		o.Amount = o.AmountSell.Uint64()
+		o.Price = o.AmountBuy.Uint64() * (1e3) / o.AmountSell.Uint64()
+	} else {
+		return errors.New("\nToken Buy Address should be either the base token address or the quote token address\n\n")
+	}
+
+	return nil
 }
