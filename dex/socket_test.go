@@ -185,6 +185,8 @@ func TestSocketExecuteOrder(t *testing.T) {
 	initialMakerZRXBalance, _ := server.engine.TokenBalance(maker.Address, ZRX.Address)
 	initialMakerWETHBalance, _ := server.engine.TokenBalance(maker.Address, WETH.Address)
 
+	//We impose a millisecond delay between the two ordesr to ensure the same order gets
+	//processed first through the websocket for every test. One millisecond seems to be enough
 	makerClient.requests <- m1
 	time.Sleep(time.Millisecond)
 	takerClient.requests <- m2

@@ -27,7 +27,6 @@ type Server struct {
 // NewServer returns a a new empty Server instance.
 // Note: Currently note sure whether actionLogs and txLogs are still used
 func NewServer() *Server {
-
 	e := NewTradingEngine()
 
 	return &Server{
@@ -43,7 +42,6 @@ func (s *Server) SetupTradingEngine(config *OperatorConfig, quotes Tokens, pairs
 	s.engine = NewTradingEngine()
 
 	for _, val := range quotes {
-		log.Printf("val is equal to %x: %v\n", val.Address, val.Symbol)
 		if err := s.engine.RegisterNewQuoteToken(val); err != nil {
 			return err
 		}
@@ -88,7 +86,6 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) Start() {
-
 	http.HandleFunc("/api", func(w http.ResponseWriter, r *http.Request) {
 		s.OpenWebsocketConnection(w, r)
 	})

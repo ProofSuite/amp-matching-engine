@@ -221,3 +221,59 @@ func TestEngine4(t *testing.T) {
 		t.Error("\n\nExpected:\n\n", expected, "\n\nGot:\n\n", logs, "\n\n")
 	}
 }
+
+func TestEngine5(t *testing.T) {
+	wallet := testConfig.Wallets[0]
+	pair := testConfig.TokenPairs["ZRXWETH"]
+	WETH := pair.QuoteToken // ZRX is the base token and WETH is the quote token
+	done := make(chan bool)
+
+	engine := NewTradingEngine()
+	engine.RegisterNewQuoteToken(WETH)
+	engine.RegisterNewPair(pair, done)
+
+	factory := NewOrderFactory(&pair, wallet)
+	o1, _ := factory.NewSellOrder(50, 50)
+	o2, _ := factory.NewSellOrder(45, 25)
+	o3, _ := factory.NewSellOrder(45, 25)
+	o4, _ := factory.NewBuyOrder(55, 75)
+	oc5, _ := factory.NewOrderCancel(o1)
+	o6, _ := factory.NewBuyOrder(55, 20)
+	o7, _ := factory.NewBuyOrder(50, 15)
+	o8, _ := factory.NewSellOrder(45, 25)
+
+	engine.AddOrder(o1)
+	engine.AddOrder(o2)
+	engine.AddOrder(o3)
+	engine.AddOrder(o4)
+	engine.CancelOrder(oc5)
+	engine.AddOrder(o6)
+	engine.AddOrder(o7)
+	engine.AddOrder(o8)
+	engine.CloseOrderBook(pair.ID)
+
+	<-done
+
+	expected := []*Action{
+		&Action{actionType: AT_SELL, price: 50 * 1e3, amount: 50, orderHash: o1.Hash},
+		&Action{actionType: AT_SELL, price: 45 * 1e3, amount: 25, orderHash: o2.Hash},
+		&Action{actionType: AT_SELL, price: 45 * 1e3, amount: 25, orderHash: o3.Hash},
+		&Action{actionType: AT_BUY, price: 55 * 1e3, amount: 75, orderHash: o4.Hash},
+		&Action{actionType: AT_PARTIAL_FILLED, price: 45 * 1e3, amount: 25, orderHash: o4.Hash, fromOrderHash: o2.Hash},
+		&Action{actionType: AT_PARTIAL_FILLED, price: 45 * 1e3, amount: 25, orderHash: o4.Hash, fromOrderHash: o3.Hash},
+		&Action{actionType: AT_FILLED, price: 50 * 1e3, amount: 25, orderHash: o4.Hash, fromOrderHash: o1.Hash},
+		&Action{actionType: AT_CANCEL, orderHash: o1.Hash},
+		&Action{actionType: AT_BUY, price: 55 * 1e3, amount: 20, orderHash: o6.Hash},
+		&Action{actionType: AT_BUY, price: 50 * 1e3, amount: 15, orderHash: o7.Hash},
+		&Action{actionType: AT_SELL, price: 45 * 1e3, amount: 25, orderHash: o8.Hash},
+		&Action{actionType: AT_PARTIAL_FILLED, price: 55 * 1e3, amount: 20, orderHash: o8.Hash, fromOrderHash: o6.Hash},
+		&Action{actionType: AT_FILLED, price: 50 * 1e3, amount: 5, orderHash: o8.Hash, fromOrderHash: o7.Hash},
+		&Action{actionType: AT_DONE},
+	}
+
+	logs := engine.orderbooks[pair].logger
+
+	if !reflect.DeepEqual(logs, expected) {
+		t.Error("\n\nExpected:\n\n", expected, "\n\nGot:\n\n", logs, "\n\n")
+	}
+}

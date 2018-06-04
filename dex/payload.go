@@ -1,8 +1,6 @@
 package dex
 
 import (
-	"log"
-
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -178,7 +176,6 @@ func (ocp *OrderCancelPayload) DecodeOrderCancelPayload(p Payload) error {
 // DecodeOrderExecutedPayload takes a payload that was previously unmarshalled from a JSON byte string and decodes it
 // into a OrderExecutedPayload
 func (oep *OrderExecutedPayload) DecodeOrderExecutedPayload(p Payload) error {
-	log.Printf("The payload is equal to : %v\n", p)
 	orderPayload := p.(map[string]interface{})["order"].(map[string]interface{})
 	txHash := common.HexToHash(p.(map[string]interface{})["tx"].(string))
 
@@ -198,7 +195,6 @@ func (oep *OrderExecutedPayload) DecodeOrderExecutedPayload(p Payload) error {
 // Developer note: For some reason there is currently a difference between DecodeTradeExecutedPayload and DeodeOrderExecutedPayload
 // In the first one, the transaction hash is saved under the "tx" key while it is saved under the "Tx" on the second one.
 func (tep *TradeExecutedPayload) DecodeTradeExecutedPayload(p Payload) error {
-	log.Printf("The payload is equal to : %v\n", p)
 	tradePayload := p.(map[string]interface{})["trade"].(map[string]interface{})
 	txHash := common.HexToHash(p.(map[string]interface{})["Tx"].(string))
 
