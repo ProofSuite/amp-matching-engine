@@ -118,6 +118,80 @@ func (f *OrderFactory) NewOrder(tokenBuy Token, amountBuy int64, tokenSell Token
 	return o, nil
 }
 
+// NewBuyOrder returns a new order with the given params. The order is signed by the factory wallet
+// NewBuyOrder computes the AmountBuy and AmountSell parameters from the given amount and price.
+// Currently, the amount, price and order type are also kept. This could be amended in the future
+// (meaning we would let the engine compute OrderBuy, Amount and Price. Ultimately this does not really
+// matter except maybe for convenience/readability purposes)
+func (f *OrderFactory) NewBuyOrder(price uint64, amount uint64) (*Order, error) {
+	o := &Order{}
+
+	o.Id = f.CurrentOrderID
+	o.ExchangeAddress = f.Exchange
+	o.TokenBuy = f.Pair.BaseToken.Address
+	o.TokenSell = f.Pair.QuoteToken.Address
+	o.SymbolBuy = f.Pair.BaseToken.Symbol
+	o.SymbolSell = f.Pair.QuoteToken.Symbol
+	o.Expires = f.Params.Expires
+	o.FeeMake = f.Params.FeeMake
+	o.FeeTake = f.Params.FeeTake
+	o.Maker = f.Wallet.Address
+	o.Price = price
+	o.Amount = amount
+	o.Nonce = big.NewInt(int64(f.NonceGenerator.Intn(10000)))
+	o.PairID = f.Pair.ID
+
+	o.AmountBuy = big.NewInt(int64(o.Amount))
+
+	amountSell := &big.Int{}
+	amountSell.Mul(big.NewInt(int64(o.Amount)), big.NewInt(int64(o.Price)))
+	o.AmountSell = amountSell
+	o.OrderType = BUY
+
+	o.Sign(f.Wallet)
+
+	f.OrderNonce++
+	f.CurrentOrderID++
+	return o, nil
+}
+
+// NewBuyOrder returns a new order with the given params. The order is signed by the factory wallet
+// NewBuyOrder computes the AmountBuy and AmountSell parameters from the given amount and price.
+// Currently, the amount, price and order type are also kept. This could be amended in the future
+// (meaning we would let the engine compute OrderBuy, Amount and Price. Ultimately this does not really
+// matter except maybe for convenience/readability purposes)
+func (f *OrderFactory) NewSellOrder(price uint64, amount uint64) (*Order, error) {
+	o := &Order{}
+
+	o.Id = f.CurrentOrderID
+	o.ExchangeAddress = f.Exchange
+	o.TokenBuy = f.Pair.QuoteToken.Address
+	o.TokenSell = f.Pair.BaseToken.Address
+	o.SymbolBuy = f.Pair.QuoteToken.Symbol
+	o.SymbolSell = f.Pair.BaseToken.Symbol
+	o.Expires = f.Params.Expires
+	o.FeeMake = f.Params.FeeMake
+	o.FeeTake = f.Params.FeeTake
+	o.Maker = f.Wallet.Address
+	o.Price = price
+	o.Amount = amount
+	o.Nonce = big.NewInt(int64(f.NonceGenerator.Intn(10000)))
+	o.PairID = f.Pair.ID
+
+	o.AmountSell = big.NewInt(int64(o.Amount))
+
+	amountBuy := &big.Int{}
+	amountBuy.Mul(big.NewInt(int64(o.Amount)), big.NewInt(int64(o.Price)))
+
+	o.AmountBuy = amountBuy
+	o.OrderType = SELL
+
+	o.Sign(f.Wallet)
+	f.OrderNonce++
+	f.CurrentOrderID++
+	return o, nil
+}
+
 // NewTrade returns a new trade with the given params. The trade is signed by the factory wallet.
 // Currently the nonce is chosen randomly which will be changed in the future
 func (f *OrderFactory) NewTrade(o *Order, amount int64) (*Trade, error) {
