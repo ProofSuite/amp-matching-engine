@@ -127,8 +127,6 @@ func (s *Socket) cancelOrder(p Payload) {
 
 // executeOrder decodes the message payload before passing it to the transaction handler
 func (s *Socket) executeOrder(p Payload) {
-	log.Printf("Receiving execute order message: %v", p)
-
 	tp := NewTradePayload()
 
 	if err := tp.DecodeTradePayload(p); err != nil {
