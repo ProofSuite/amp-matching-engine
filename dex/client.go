@@ -160,7 +160,6 @@ func (c *Client) placeOrder(req *Message) {
 }
 
 func (c *Client) sendSignedData(req *Message) {
-	log.Printf("Sending signed data message\n")
 	err := c.send(req)
 	if err != nil {
 		log.Printf("Error: Could not send signed orders. Payload: %#v", req.Payload)
@@ -190,11 +189,11 @@ func (c *Client) handleOrderPlaced(resp *Message) {
 	}
 
 	c.logs <- l
-	log.Printf("Log: Handling Order Placed Message:%v\n\n", o)
+	fmt.Printf("Log: Handling Order Placed Message:%v\n\n", o)
 }
 
 func (c *Client) handleOrderCanceled(r *Message) {
-	log.Printf("Log: Handling Order Canceled Message. Payload: %#v", r.Payload)
+	fmt.Printf("Log: Handling Order Canceled Message. Payload: %#v", r.Payload)
 }
 
 func (c *Client) handleOrderFilled(resp *Message) {
@@ -218,10 +217,9 @@ func (c *Client) handleOrderFilled(resp *Message) {
 	}
 
 	c.logs <- l
-	log.Printf("Sending signed data message 1\n")
 	req := &Message{MessageType: SIGNED_DATA, Payload: SignedDataPayload{Trade: trade}}
 	c.requests <- req
-	log.Printf("Log: Handling Order Filled Message. Payload: %#v", trade)
+	fmt.Printf("Log: Handling Order Filled Message. Payload: %#v", trade)
 }
 
 func (c *Client) handleOrderPartiallyFilled(resp *Message) {
@@ -248,7 +246,7 @@ func (c *Client) handleOrderExecuted(resp *Message) {
 	}
 
 	c.logs <- l
-	log.Printf("\nLog: Handling Order executed message. Tx Hash: %v", decoded.Tx)
+	fmt.Printf("\nLog: Handling Order executed message. Tx Hash: %v", decoded.Tx)
 }
 
 func (c *Client) handleTradeExecuted(resp *Message) {
@@ -262,7 +260,7 @@ func (c *Client) handleTradeExecuted(resp *Message) {
 	}
 
 	c.logs <- l
-	log.Printf("\nLog: Handling Trade Executed message. Payload: %x\n\n", decoded.Tx)
+	fmt.Printf("\nLog: Handling Trade Executed message. Payload: %x\n\n", decoded.Tx)
 }
 
 func (c *Client) handleOrderTxSuccess(resp *Message) {
@@ -278,7 +276,7 @@ func (c *Client) handleOrderTxSuccess(resp *Message) {
 	}
 
 	c.logs <- l
-	log.Printf("\nLog: Handling Order Tx Success message. Payload: %x\n\n", decoded.Tx)
+	fmt.Printf("\nLog: Handling Order Tx Success message. Payload: %x\n\n", decoded.Tx)
 }
 
 func (c *Client) handleOrderTxError(resp *Message) {
@@ -294,7 +292,7 @@ func (c *Client) handleOrderTxError(resp *Message) {
 	}
 
 	c.logs <- l
-	log.Printf("\nLog: Handling Tx Error Message. Error ID: %v\n", errId)
+	fmt.Printf("\nLog: Handling Tx Error Message. Error ID: %v\n", errId)
 }
 
 func (c *Client) handleTradeTxSuccess(resp *Message) {
@@ -310,7 +308,7 @@ func (c *Client) handleTradeTxSuccess(resp *Message) {
 	}
 
 	c.logs <- l
-	log.Printf("\nLog: Handling Order Tx Success message. Payload: %#v\n\n", decoded.Tx)
+	fmt.Printf("\nLog: Handling Order Tx Success message. Payload: %x\n\n", decoded.Tx)
 }
 
 func (c *Client) handleTradeTxError(resp *Message) {
@@ -325,7 +323,7 @@ func (c *Client) handleTradeTxError(resp *Message) {
 	}
 
 	c.logs <- l
-	log.Printf("\nLog: Handling Tx Error Message. Error ID: %v\n", decoded.ErrorId)
+	fmt.Printf("\nLog: Handling Tx Error Message. Error ID: %v\n", decoded.ErrorId)
 }
 
 func (c *Client) done() {

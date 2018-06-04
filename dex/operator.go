@@ -3,7 +3,6 @@ package dex
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log"
 	"math/big"
 
@@ -76,6 +75,11 @@ func NewOperator(config *OperatorConfig) (*Operator, error) {
 		return nil, err
 	}
 
+	// Bug: In certain cases, the trade channel seems to be receiving additional unexpected trades.
+	// In the case TestSocketExecuteOrder (in file socket_test.go) is run on its own, everything is working correctly.
+	// However, in the case TestSocketExecuteOrder is run among other tests, some tradeLogs do not correspond to an
+	// order hash in the ordertrade mapping. I suspect this is because the event listener catches events from previous
+	// tests. It might be helpful to see how to listen to events from up to a certain block.
 	go func() {
 		for {
 			select {
@@ -84,6 +88,7 @@ func NewOperator(config *OperatorConfig) (*Operator, error) {
 				otp, ok := op.OrderTradePairs[tradeHash]
 				if !ok {
 					log.Printf("Could not retrieve initial hash")
+					return
 				}
 
 				t := otp.trade
@@ -102,6 +107,7 @@ func NewOperator(config *OperatorConfig) (*Operator, error) {
 				if op.Engine != nil {
 					if err := op.Engine.CancelTrade(t); err != nil {
 						log.Printf("Could not update order")
+						return
 					}
 				}
 
@@ -109,6 +115,7 @@ func NewOperator(config *OperatorConfig) (*Operator, error) {
 				otp, ok := op.OrderTradePairs[tradeLog.TradeHash]
 				if !ok {
 					log.Printf("Could not retrieve initial hash")
+					return
 				}
 
 				if otp.order.events != nil {
@@ -149,10 +156,11 @@ func (op *Operator) ExecuteTrade(o *Order, t *Trade) (*types.Transaction, error)
 		t.events <- t.NewTradeExecutedEvent(tx)
 	}
 
-	fmt.Printf("Successfully executed transaction")
 	return tx, nil
 }
 
+// WaitMined blocks the current the current goroutine execution until the given transaction gets mined on the blockchain
+// the operator is connected to
 func (op *Operator) WaitMined(tx *types.Transaction) (*types.Receipt, error) {
 	ctx := context.Background()
 	receipt, err := bind.WaitMined(ctx, op.EthereumClient, tx)
