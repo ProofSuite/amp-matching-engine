@@ -51,6 +51,7 @@ func (ob *OrderBook) GetLogs() []*Action {
 	return ob.logger
 }
 
+// Insert adds a new order to a pricepoint in the orderbook.
 func (p *PricePoint) Insert(order *Order) {
 	if p.orderHead == nil {
 		p.orderHead = order
@@ -61,6 +62,9 @@ func (p *PricePoint) Insert(order *Order) {
 	}
 }
 
+// AddOrder adds a new order to the orderbook. First it checks whether the order is a buy or a sell
+// Depending on the order type, the orderbook tries to fill the order against the existing orders of the opposite type in the
+// orderbook. If any amount is left, the orderbook opens an additional order with the remaining amount
 func (ob *OrderBook) AddOrder(o *Order) {
 	if o.OrderType == BUY {
 		ob.actions <- NewBuyAction(o)
@@ -74,6 +78,11 @@ func (ob *OrderBook) AddOrder(o *Order) {
 	}
 }
 
+// OpenOrder opens a additional order in the orderbook. It first adds the order
+// in the pricepoint mapping corresponding to the given order
+// Then, in case of a BUY order for example, the bid price of the orderbook is changed in case the new order
+// has a higher price ("best buy order from seller's perspective") than the current bid.
+// It works similarly in the case of a SELL order.
 func (ob *OrderBook) openOrder(o *Order) {
 	if o.events != nil {
 		o.events <- o.NewOrderPlacedEvent()
@@ -90,6 +99,7 @@ func (ob *OrderBook) openOrder(o *Order) {
 	ob.orderIndex[o.Hash] = o
 }
 
+// CancelOrder removes an order from the orderbook
 func (ob *OrderBook) CancelOrder(h Hash) {
 	if order, ok := ob.orderIndex[h]; ok {
 		order.Amount = 0
@@ -98,6 +108,8 @@ func (ob *OrderBook) CancelOrder(h Hash) {
 	}
 }
 
+// CancelTrade is called when a blockchain transaction execution fails. Then the order needs to
+// be re-added to the orderbook.
 func (ob *OrderBook) CancelTrade(t *Trade) {
 	if order, ok := ob.orderIndex[t.OrderHash]; ok {
 		order.Amount = order.Amount + t.Amount.Uint64()
@@ -106,6 +118,10 @@ func (ob *OrderBook) CancelTrade(t *Trade) {
 	}
 }
 
+// FillBuy tries to fill a BUY order with the existing sell orders.
+// In the case, the order price is under the ask price, no orders will be found and the loops thus ends
+// Otherwise, FillBuy loops through the different pricepoints by increasing the ask price whenever an
+// order is matched
 func (ob *OrderBook) FillBuy(o *Order) {
 	for ob.ask <= o.Price && o.Amount > 0 {
 		pricePoint := ob.prices[ob.ask]
@@ -119,13 +135,14 @@ func (ob *OrderBook) FillBuy(o *Order) {
 	}
 }
 
+// FillSell functions similarly to the FillBuy function
 func (ob *OrderBook) FillSell(o *Order) {
 	for ob.bid >= o.Price && o.Amount > 0 {
 		pricePoint := ob.prices[ob.bid]
 		pricePointOrderHead := pricePoint.orderHead
 		for pricePointOrderHead != nil {
 			ob.fill(o, pricePointOrderHead)
-			pricePointOrderHead = pricePointOrderHead.next //only of these two lines is necessary
+			pricePointOrderHead = pricePointOrderHead.next //perhaps only one of these two lines is necessary ?
 			pricePoint.orderHead = pricePointOrderHead
 		}
 		ob.bid--
@@ -145,7 +162,6 @@ func (ob *OrderBook) fill(o, pricePointOrderHead *Order) {
 }
 
 func (ob *OrderBook) fillCompletely(o, pricePointOrderHead *Order) {
-	ob.actions <- NewFilledAction(o, pricePointOrderHead)
 
 	amount := big.NewInt(int64(o.Amount))
 	trade := NewTrade(pricePointOrderHead, amount, o.Maker)
@@ -157,6 +173,8 @@ func (ob *OrderBook) fillCompletely(o, pricePointOrderHead *Order) {
 	if o.events != nil {
 		o.events <- o.NewOrderFilledEvent(trade)
 	}
+
+	ob.actions <- NewFilledAction(o, pricePointOrderHead, amount.Uint64())
 	return
 }
 

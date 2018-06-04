@@ -36,8 +36,8 @@ type Action struct {
 // }
 
 func (a *Action) String() string {
-	return fmt.Sprintf("\n Action{actionType:%v,pair:%v,orderHash:%v,fromOrderHash:%v,amount:%v,price:%v}",
-		a.actionType, a.pair, a.orderHash, a.fromOrderHash, a.amount, a.price)
+	return fmt.Sprintf("Action Type:%v\nOrderHash:%x\nFromOrderHash:%x\nAmount:%v\nPrice:%v\n\n",
+		a.actionType, a.orderHash, a.fromOrderHash, a.amount, a.price)
 }
 
 func NewBuyAction(o *Order) *Action {
