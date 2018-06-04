@@ -69,7 +69,6 @@ func (oc *OrderCancel) UnmarshalJSON(b []byte) error {
 		return errors.New("Order Id missing")
 	}
 	oc.OrderId = uint64(parsed["orderId"].(float64))
-	// oc.OrderId, _ = strconv.ParseUint(parsed["orderId"].(string), 10, 64)
 
 	if parsed["pairID"] == nil {
 		return errors.New("Pair ID is missing")

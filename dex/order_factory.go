@@ -41,6 +41,7 @@ type OrderParams struct {
 }
 
 // NewOrderFactory returns an order factory from a given token pair and a given wallet
+// TODO: Refactor this function to send back an error
 func NewOrderFactory(p *TokenPair, w *Wallet) *OrderFactory {
 
 	rpcClient, err := rpc.DialWebsocket(context.Background(), "ws://127.0.0.1:8546", "")
@@ -105,7 +106,7 @@ func (f *OrderFactory) NewOrder(tokenBuy Token, amountBuy int64, tokenSell Token
 	o.Expires = f.Params.Expires
 	o.FeeMake = f.Params.FeeMake
 	o.FeeTake = f.Params.FeeTake
-	o.Nonce = big.NewInt(int64(f.NonceGenerator.Intn(1000)))
+	o.Nonce = big.NewInt(int64(f.NonceGenerator.Intn(10000)))
 	o.Maker = f.Wallet.Address
 	o.Price = 0
 	o.Amount = 0
@@ -125,7 +126,7 @@ func (f *OrderFactory) NewTrade(o *Order, amount int64) (*Trade, error) {
 	t.OrderHash = o.Hash
 	t.PairID = f.Pair.ID
 	t.Taker = f.Wallet.Address
-	t.TradeNonce = big.NewInt(int64(f.NonceGenerator.Intn(1000)))
+	t.TradeNonce = big.NewInt(int64(f.NonceGenerator.Intn(10000)))
 	t.Amount = big.NewInt(amount)
 	t.Sign(f.Wallet)
 
