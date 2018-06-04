@@ -18,6 +18,15 @@ import (
 // sent to the exchange contract. The Operator Wallet must be equal to the
 // account that initially deployed the exchange contract or an address with operator rights
 // on the contract
+// - Admin is the wallet that sends the transactions to the exchange smart-contract
+// - EthereumClient contains
+// - Params contains the
+// - Chain seems to be deprecated
+// - TxLogs seems to be deprecated
+// - ErrorChannel, TradeChannel and CancelOrderChannel listen and pipes smart-contract to the engine handler goroutine
+// - ErrorLogs, TradeLogs and CancelOrderLogs listen on the
+// - OrderTradePairs contains a mapping of the current trade hashes that have been sent to the contract.
+// - ErrorLogs, TradeLogs and CancelOrderLogs don't seem to be used as of now
 type Operator struct {
 	Admin              *Wallet
 	Exchange           *Exchange
@@ -26,6 +35,7 @@ type Operator struct {
 	Params             *OperatorParams
 	Chain              bind.ContractBackend
 	TxLogs             []*types.Transaction
+	TxQueue            []Hash
 	ErrorChannel       chan *interfaces.ExchangeLogError
 	TradeChannel       chan *interfaces.ExchangeLogTrade
 	CancelOrderChannel chan *interfaces.ExchangeLogCancelOrder
@@ -59,6 +69,7 @@ func NewOperator(config *OperatorConfig) (*Operator, error) {
 	op.Exchange = ex
 	op.EthereumClient = client
 	op.OrderTradePairs = make(map[Hash]*OrderTradePair)
+	op.TxQueue = make([]Hash, 0)
 
 	op.ErrorChannel, err = op.Exchange.ListenToErrorEvents()
 	if err != nil {
@@ -93,15 +104,14 @@ func NewOperator(config *OperatorConfig) (*Operator, error) {
 
 				t := otp.trade
 				o := otp.order
-
-				errId := errLog.ErrorId
+				errID := errLog.ErrorId
 
 				if otp.order.events != nil {
-					otp.order.events <- otp.order.NewOrderTxError(t, errId)
+					otp.order.events <- otp.order.NewOrderTxError(t, errID)
 				}
 
 				if otp.trade.events != nil {
-					otp.trade.events <- otp.trade.NewTradeTxError(o, errId)
+					otp.trade.events <- otp.trade.NewTradeTxError(o, errID)
 				}
 
 				if op.Engine != nil {
@@ -118,13 +128,34 @@ func NewOperator(config *OperatorConfig) (*Operator, error) {
 					return
 				}
 
-				if otp.order.events != nil {
-					otp.order.events <- otp.order.NewOrderTxSuccess(otp.trade, otp.tx)
-				}
+				// only execute the next transaction in the queue when this transaction is mined
+				go func() {
+					_, err := op.WaitMined(otp.tx)
+					if err != nil {
+						log.Printf("Could not execute trade: %v\n", err)
+					}
 
-				if otp.trade.events != nil {
-					otp.trade.events <- otp.trade.NewTradeTxSuccess(otp.order, otp.tx)
-				}
+					if otp.order.events != nil {
+						otp.order.events <- otp.order.NewOrderTxSuccess(otp.trade, otp.tx)
+					}
+
+					if otp.trade.events != nil {
+						otp.trade.events <- otp.trade.NewTradeTxSuccess(otp.order, otp.tx)
+					}
+
+					op.TxQueue = op.TxQueue[1:]
+					if len(op.TxQueue) > 0 {
+						newOtp, ok := op.OrderTradePairs[op.TxQueue[0]]
+						if !ok {
+							log.Printf("Error parsing queue")
+						}
+						_, err := op.ExecuteTrade(newOtp.order, newOtp.trade)
+						if err != nil {
+							log.Printf("Could not execute trade: %v\n", err)
+						}
+					}
+				}()
+
 			}
 		}
 	}()
@@ -132,21 +163,39 @@ func NewOperator(config *OperatorConfig) (*Operator, error) {
 	return op, nil
 }
 
+// AddTradeToExecutionList adds a new trade to the execution list. If the execution list is empty (= contains 1 element
+// after adding the transaction hash), the given order/trade pair gets executed. If the tranasction queue is full,
+// we return an error. Ultimately we want to account send the transaction to another queue that is handled by another ethereum account
+func (op *Operator) AddTradeToExecutionList(o *Order, t *Trade) error {
+	err := t.Validate()
+	if err != nil {
+		return err
+	}
+
+	op.OrderTradePairs[t.Hash] = &OrderTradePair{order: o, trade: t, tx: nil}
+	op.TxQueue = append(op.TxQueue, t.Hash)
+
+	if len(op.TxQueue) == 1 {
+		go op.ExecuteTrade(o, t)
+	}
+
+	if len(op.TxQueue) == 10 {
+		return errors.New("Transaction queue is full")
+	}
+
+	return nil
+}
+
 // Trade executes a settlements transaction. The order and trade payloads need to be signed respectively
 // by the Maker and the Taker of the trade. Only the operator account can send a Trade function to the
 // Exchange smart contract.
 func (op *Operator) ExecuteTrade(o *Order, t *Trade) (*types.Transaction, error) {
-	err := t.Validate()
-	if err != nil {
-		return nil, err
-	}
-
 	tx, err := op.Exchange.Trade(o, t)
 	if err != nil {
 		return nil, err
 	}
 
-	op.OrderTradePairs[t.Hash] = &OrderTradePair{order: o, trade: t, tx: tx}
+	op.OrderTradePairs[t.Hash].tx = tx
 
 	if o.events != nil {
 		o.events <- o.NewOrderExecutedEvent(tx)

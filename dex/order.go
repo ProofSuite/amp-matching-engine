@@ -112,7 +112,6 @@ type Order struct {
 	Amount          uint64      `json:"amount,omitempty"`
 	next            *Order
 	events          chan *Event
-	// client          *ClientInterface
 }
 
 func (o *Order) MarshalJSON() ([]byte, error) {

@@ -2,10 +2,13 @@ package dex
 
 import (
 	"math/big"
+	"sync"
 	"testing"
 )
 
 func TestOperator(t *testing.T) {
+	var wg sync.WaitGroup
+	wg.Add(2)
 	testConfig := NewConfiguration()
 	opParams := testConfig.OperatorParams
 
@@ -52,18 +55,41 @@ func TestOperator(t *testing.T) {
 	initialMakerZRXBalance, _ := ex.TokenBalance(maker.Address, ZRX.Address)
 	initialMakerWETHBalance, _ := ex.TokenBalance(maker.Address, WETH.Address)
 
-	o, _ := makerFactory.NewOrder(WETH, WETHAmount.Int64(), ZRX, ZRXAmount.Int64())
-	trade, _ := takerFactory.NewTrade(o, 1)
+	order, _ := makerFactory.NewOrderWithEvents(WETH, WETHAmount.Int64(), ZRX, ZRXAmount.Int64())
+	trade, _ := takerFactory.NewTradeWithEvents(order, 1)
 
-	tx, err := operator.ExecuteTrade(o, trade)
+	err = operator.AddTradeToExecutionList(order, trade)
 	if err != nil {
 		t.Errorf("Could not execute trade: %v", err)
 	}
 
-	_, err = operator.WaitMined(tx)
-	if err != nil {
-		t.Errorf("Could not mine trade transaction")
-	}
+	//Each received success event sends a done signal to the wait group
+	//In total, the wait group (wg) needs to receive 2 different signals
+	//corresponding to ORDER_TX_SUCCESS and TRADE_TX_SUCCESS
+	go func() {
+		for {
+			select {
+			case e := <-order.events:
+				switch e.eventType {
+				case ORDER_TX_SUCCESS:
+					wg.Done()
+				case ORDER_TX_ERROR:
+					p := e.payload.(*TxErrorPayload)
+					t.Errorf("Received Tx error payload: %v", p)
+				}
+			case e := <-trade.events:
+				switch e.eventType {
+				case TRADE_TX_SUCCESS:
+					wg.Done()
+				case TRADE_TX_ERROR:
+					p := e.payload.(*TxErrorPayload)
+					t.Errorf("Received Tx error payload: %v", p)
+				}
+			}
+		}
+	}()
+
+	wg.Wait()
 
 	TakerZRXBalance, _ := ex.TokenBalance(taker.Address, ZRX.Address)
 	TakerWETHBalance, _ := ex.TokenBalance(taker.Address, WETH.Address)
@@ -97,137 +123,179 @@ func TestOperator(t *testing.T) {
 	}
 }
 
-// func TestOperator2(t *testing.T) {
+func TestOperator2(t *testing.T) {
+	var wg sync.WaitGroup
+	wg.Add(4)
+	testConfig := NewConfiguration()
+	opParams := testConfig.OperatorParams
 
-// 	testConfig := NewConfiguration()
-// 	opParams := testConfig.OperatorParams
+	ZRX := testConfig.QuoteTokens["ZRX"]
+	WETH := testConfig.QuoteTokens["WETH"]
+	ZRXWETH := NewPair(ZRX, WETH)
 
-// 	admin := config.Wallets[0]
-// 	maker := config.Wallets[1]
-// 	taker := config.Wallets[2]
-// 	exchange := config.Exchange
+	admin := config.Wallets[0]
 
-// 	opConfig := &OperatorConfig{
-// 		Admin:          admin,
-// 		Exchange:       exchange,
-// 		OperatorParams: opParams,
-// 	}
+	maker1 := config.Wallets[1]
+	taker1 := config.Wallets[2]
+	maker2 := config.Wallets[3]
+	taker2 := config.Wallets[4]
 
-// 	ZRXAmount := big.NewInt(1e18)
-// 	WETHAmount := big.NewInt(1e18)
+	exchange := config.Exchange
 
-// 	deployer, err := NewWebsocketDeployer(admin)
-// 	if err != nil {
-// 		t.Errorf("Could not instantiate deployer: %v", err)
-// 	}
-// 	ZRXTokenContract, tx, err := deployer.DeployToken(maker.Address, ZRXAmount)
-// 	if err != nil {
-// 		t.Errorf("Could not deploy ZRX: %v", err)
-// 	}
-// 	_, err = deployer.WaitMined(tx)
-// 	if err != nil {
-// 		t.Errorf("Could not mine ZRX deployment transaction")
-// 	}
+	opConfig := &OperatorConfig{
+		Admin:          admin,
+		Exchange:       exchange,
+		OperatorParams: opParams,
+	}
 
-// 	WETHTokenContract, tx, err := deployer.DeployToken(taker.Address, WETHAmount)
-// 	if err != nil {
-// 		t.Errorf("Could not deploy WETH: %v", err)
-// 	}
-// 	_, err = deployer.WaitMined(tx)
-// 	if err != nil {
-// 		t.Errorf("Could not mine WETH deployment transaction")
-// 	}
+	ZRXAmount := big.NewInt(1e18)
+	WETHAmount := big.NewInt(1e18)
 
-// 	ZRX := Token{Symbol: "ZRX", Address: ZRXTokenContract.Address}
-// 	WETH := Token{Symbol: "WETH", Address: WETHTokenContract.Address}
-// 	ZRXWETH := NewPair(ZRX, WETH)
+	deployer, err := NewWebsocketDeployer(admin)
+	if err != nil {
+		t.Errorf("Could not instantiate deployer: %v", err)
+	}
 
-// 	ex, tx, err := deployer.DeployExchange(admin.Address)
-// 	if err != nil {
-// 		t.Errorf("Could not deploy exchange: %v", err)
-// 	}
-// 	_, err = deployer.WaitMined(tx)
-// 	if err != nil {
-// 		t.Errorf("Could not mine Exchange deployment transaction")
-// 	}
+	ex, err := deployer.NewExchange(exchange)
+	if err != nil {
+		t.Errorf("Could not retrieve exchange instance: %v", err)
+	}
 
-// 	makerFactory := NewOrderFactory(&ZRXWETH, maker)
-// 	takerFactory := NewOrderFactory(&ZRXWETH, taker)
+	maker1Factory := NewOrderFactory(&ZRXWETH, maker1)
+	taker1Factory := NewOrderFactory(&ZRXWETH, taker1)
+	maker2Factory := NewOrderFactory(&ZRXWETH, maker2)
+	taker2Factory := NewOrderFactory(&ZRXWETH, taker2)
 
-// 	makerFactory.SetExchangeAddress(ex.Address)
-// 	takerFactory.SetExchangeAddress(ex.Address)
+	maker1Factory.SetExchangeAddress(ex.Address)
+	taker1Factory.SetExchangeAddress(ex.Address)
+	maker2Factory.SetExchangeAddress(ex.Address)
+	taker2Factory.SetExchangeAddress(ex.Address)
 
-// 	tx, err = ZRXTokenContract.ApproveFrom(maker, ex.Address, ZRXAmount)
-// 	if err != nil {
-// 		t.Errorf("Could not approve ZRX Token: %v", err)
-// 	}
-// 	_, err = deployer.WaitMined(tx)
-// 	if err != nil {
-// 		t.Errorf("Could not mine approx ZRX Token Transaction")
-// 	}
+	operator, err := NewOperator(opConfig)
+	if err != nil {
+		t.Errorf("Could not instantiate operator: %v", err)
+	}
 
-// 	tx, err = WETHTokenContract.ApproveFrom(taker, ex.Address, WETHAmount)
-// 	if err != nil {
-// 		t.Errorf("Could not approve WETH Token: %v", err)
-// 	}
-// 	_, err = deployer.WaitMined(tx)
-// 	if err != nil {
-// 		t.Errorf("Could not mine approve WETH Token Transaction")
-// 	}
+	initialTaker1ZRXBalance, _ := ex.TokenBalance(taker1.Address, ZRX.Address)
+	initialTaker1WETHBalance, _ := ex.TokenBalance(taker1.Address, WETH.Address)
+	initialMaker1ZRXBalance, _ := ex.TokenBalance(maker1.Address, ZRX.Address)
+	initialMaker1WETHBalance, _ := ex.TokenBalance(maker1.Address, WETH.Address)
 
-// 	operator, err := NewOperator(opConfig)
-// 	if err != nil {
-// 		t.Errorf("Could not instantiate operator: %v", err)
-// 	}
+	initialTaker2ZRXBalance, _ := ex.TokenBalance(taker2.Address, ZRX.Address)
+	initialTaker2WETHBalance, _ := ex.TokenBalance(taker2.Address, WETH.Address)
+	initialMaker2ZRXBalance, _ := ex.TokenBalance(maker2.Address, ZRX.Address)
+	initialMaker2WETHBalance, _ := ex.TokenBalance(maker2.Address, WETH.Address)
 
-// 	tx, err = ex.DepositTokenFrom(maker, ZRX.Address, ZRXAmount)
-// 	if err != nil {
-// 		t.Errorf("Could not deposit token: %v", err)
-// 	}
-// 	_, err = operator.WaitMined(tx)
-// 	if err != nil {
-// 		t.Errorf("Could not mine ZRX Token Deposit transaction")
-// 	}
+	o1, _ := maker1Factory.NewOrderWithEvents(WETH, WETHAmount.Int64(), ZRX, ZRXAmount.Int64())
+	t1, _ := taker1Factory.NewTradeWithEvents(o1, 1)
 
-// 	tx, err = ex.DepositTokenFrom(taker, WETH.Address, WETHAmount)
-// 	if err != nil {
-// 		t.Errorf("Could not deposit token: %v", err)
-// 	}
-// 	_, err = operator.WaitMined(tx)
-// 	if err != nil {
-// 		t.Errorf("Could not mine WETH Token Deposit transaction")
-// 	}
+	o2, _ := maker2Factory.NewOrderWithEvents(WETH, WETHAmount.Int64(), ZRX, ZRXAmount.Int64())
+	t2, _ := taker2Factory.NewTradeWithEvents(o2, 1)
 
-// 	o, _ := makerFactory.NewOrder(WETH, WETHAmount.Int64(), ZRX, ZRXAmount.Int64())
-// 	trade, _ := takerFactory.NewTrade(o, WETHAmount.Int64())
+	err = operator.AddTradeToExecutionList(o1, t1)
+	err = operator.AddTradeToExecutionList(o2, t2)
 
-// 	tx, err = operator.ExecuteTrade(o, trade)
-// 	if err != nil {
-// 		t.Errorf("Could not execute trade: %v", err)
-// 	}
-// 	_, err = operator.WaitMined(tx)
-// 	if err != nil {
-// 		t.Errorf("Could not mine trade transaction")
-// 	}
+	//Each received success event sends a done signal to the wait group
+	//In total, the wait group (wg) needs to receive 4 different signals
+	//corresponding to 2 ORDER_TX_SUCCESS (o1 and o2) and 2 TRADE_TX_SUCCESS (t1 and t2)
+	go func() {
+		for {
+			select {
+			case e := <-o1.events:
+				switch e.eventType {
+				case ORDER_TX_SUCCESS:
+					wg.Done()
+				case ORDER_TX_ERROR:
+					p := e.payload.(*TxErrorPayload)
+					t.Errorf("Received Tx error payload: %v", p)
+				}
+			case e := <-o2.events:
+				switch e.eventType {
+				case ORDER_TX_SUCCESS:
+					wg.Done()
+				case ORDER_TX_ERROR:
+					p := e.payload.(*TxErrorPayload)
+					t.Errorf("Received Tx error payload: %v", p)
+				}
+			case e := <-t1.events:
+				switch e.eventType {
+				case TRADE_TX_SUCCESS:
+					wg.Done()
+				case TRADE_TX_ERROR:
+					p := e.payload.(*TxErrorPayload)
+					t.Errorf("Received Tx error payload: %v", p)
+				}
+			case e := <-t2.events:
+				switch e.eventType {
+				case TRADE_TX_SUCCESS:
+					wg.Done()
+				case TRADE_TX_ERROR:
+					p := e.payload.(*TxErrorPayload)
+					t.Errorf("Received Tx error payload: %v", p)
+				}
+			}
+		}
+	}()
 
-// 	TakerZRXBalance, _ := ex.TokenBalance(taker.Address, ZRX.Address)
-// 	TakerWETHBalance, _ := ex.TokenBalance(taker.Address, WETH.Address)
-// 	MakerZRXBalance, _ := ex.TokenBalance(maker.Address, ZRX.Address)
-// 	MakerWETHBalance, _ := ex.TokenBalance(maker.Address, WETH.Address)
+	wg.Wait()
 
-// 	if MakerZRXBalance.Cmp(big.NewInt(0)) != 0 {
-// 		t.Errorf("Expected Maker Balance to be equal to be %v but got %v instead", 0, MakerZRXBalance)
-// 	}
+	Taker1ZRXBalance, _ := ex.TokenBalance(taker1.Address, ZRX.Address)
+	Taker1WETHBalance, _ := ex.TokenBalance(taker1.Address, WETH.Address)
+	Maker1ZRXBalance, _ := ex.TokenBalance(maker1.Address, ZRX.Address)
+	Maker1WETHBalance, _ := ex.TokenBalance(maker1.Address, WETH.Address)
 
-// 	if TakerZRXBalance.Cmp(ZRXAmount) != 0 {
-// 		t.Errorf("Expected Taker Balance to be equal to be %v but got %v instead", ZRXAmount, TakerZRXBalance)
-// 	}
+	Taker2ZRXBalance, _ := ex.TokenBalance(taker2.Address, ZRX.Address)
+	Taker2WETHBalance, _ := ex.TokenBalance(taker2.Address, WETH.Address)
+	Maker2ZRXBalance, _ := ex.TokenBalance(maker2.Address, ZRX.Address)
+	Maker2WETHBalance, _ := ex.TokenBalance(maker2.Address, WETH.Address)
 
-// 	if TakerWETHBalance.Cmp(big.NewInt(0)) != 0 {
-// 		t.Errorf("Expected Maker Balance to be equal to %v but got %v instead", 0, TakerWETHBalance)
-// 	}
+	Taker1ZRXIncrement := big.NewInt(0)
+	Taker2ZRXIncrement := big.NewInt(0)
+	Taker1WETHIncrement := big.NewInt(0)
+	Taker2WETHIncrement := big.NewInt(0)
+	Maker1ZRXIncrement := big.NewInt(0)
+	Maker2ZRXIncrement := big.NewInt(0)
+	Maker1WETHIncrement := big.NewInt(0)
+	Maker2WETHIncrement := big.NewInt(0)
 
-// 	if MakerWETHBalance.Cmp(WETHAmount) != 0 {
-// 		t.Errorf("Expected Maker Balance to be equal to %v but got %v instead", WETHAmount, MakerWETHBalance)
-// 	}
-// }
+	Maker1ZRXIncrement.Sub(Maker1ZRXBalance, initialMaker1ZRXBalance)
+	Maker1WETHIncrement.Sub(Maker1WETHBalance, initialMaker1WETHBalance)
+	Taker1ZRXIncrement.Sub(Taker1ZRXBalance, initialTaker1ZRXBalance)
+	Taker1WETHIncrement.Sub(Taker1WETHBalance, initialTaker1WETHBalance)
+	Maker2ZRXIncrement.Sub(Maker2ZRXBalance, initialMaker2ZRXBalance)
+	Maker2WETHIncrement.Sub(Maker2WETHBalance, initialMaker2WETHBalance)
+	Taker2ZRXIncrement.Sub(Taker2ZRXBalance, initialTaker2ZRXBalance)
+	Taker2WETHIncrement.Sub(Taker2WETHBalance, initialTaker2WETHBalance)
+
+	if Maker1ZRXIncrement.Cmp(big.NewInt(-1)) != 0 {
+		t.Errorf("Expected Maker Balance to be equal to be %v but got %v instead", -1, Maker1ZRXIncrement)
+	}
+
+	if Maker1WETHIncrement.Cmp(big.NewInt(1)) != 0 {
+		t.Errorf("Expected Taker Balance to be equal to be %v but got %v instead", 1, Maker1WETHIncrement)
+	}
+
+	if Taker1WETHIncrement.Cmp(big.NewInt(-1)) != 0 {
+		t.Errorf("Expected Maker Balance to be equal to %v but got %v instead", -1, Taker1WETHIncrement)
+	}
+
+	if Taker1ZRXIncrement.Cmp(big.NewInt(1)) != 0 {
+		t.Errorf("Expected Maker Balance to be equal to %v but got %v instead", 1, Taker1ZRXIncrement)
+	}
+
+	if Maker2ZRXIncrement.Cmp(big.NewInt(-1)) != 0 {
+		t.Errorf("Expected Maker Balance to be equal to be %v but got %v instead", -1, Maker2ZRXIncrement)
+	}
+
+	if Maker2WETHIncrement.Cmp(big.NewInt(1)) != 0 {
+		t.Errorf("Expected Taker Balance to be equal to be %v but got %v instead", 1, Maker2WETHIncrement)
+	}
+
+	if Taker2WETHIncrement.Cmp(big.NewInt(-1)) != 0 {
+		t.Errorf("Expected Maker Balance to be equal to %v but got %v instead", -1, Taker2WETHIncrement)
+	}
+
+	if Taker2ZRXIncrement.Cmp(big.NewInt(1)) != 0 {
+		t.Errorf("Expected Maker Balance to be equal to %v but got %v instead", 1, Taker2ZRXIncrement)
+	}
+}
