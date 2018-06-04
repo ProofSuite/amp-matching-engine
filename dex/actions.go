@@ -60,11 +60,11 @@ func NewCancelledAction(hash common.Hash, pair TokenPair) *Action {
 	return &Action{actionType: AT_CANCELLED, pair: pair, orderHash: hash}
 }
 
-func NewFilledAction(order, fromOrder *Order) *Action {
+func NewFilledAction(order, fromOrder *Order, amount uint64) *Action {
 	return &Action{actionType: AT_FILLED,
 		orderHash:     order.Hash,
 		fromOrderHash: fromOrder.Hash,
-		amount:        fromOrder.Amount,
+		amount:        amount,
 		price:         fromOrder.Price}
 }
 
