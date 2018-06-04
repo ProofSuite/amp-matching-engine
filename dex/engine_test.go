@@ -102,6 +102,9 @@ func TestEngine(t *testing.T) {
 
 	engine.AddOrder(o1)
 	engine.AddOrder(o2)
+	engine.CloseOrderBook(pair.ID)
+
+	<-done
 
 	logs := engine.orderbooks[pair].logger
 
@@ -109,6 +112,7 @@ func TestEngine(t *testing.T) {
 		&Action{actionType: AT_BUY, amount: 1, price: 1e3, orderHash: o1.Hash},
 		&Action{actionType: AT_SELL, amount: 1, price: 1e3, orderHash: o2.Hash},
 		&Action{actionType: AT_FILLED, amount: 1, price: 1e3, orderHash: o2.Hash, fromOrderHash: o1.Hash},
+		&Action{actionType: AT_DONE},
 	}
 
 	if !reflect.DeepEqual(logs, expected) {

@@ -207,7 +207,7 @@ func (e *TradingEngine) ExecuteOrder(t *Trade) error {
 		return errors.New("Order does not exist")
 	}
 
-	_, err := e.operator.ExecuteTrade(o, t)
+	err := e.operator.AddTradeToExecutionList(o, t)
 	if err != nil {
 		return err
 	}

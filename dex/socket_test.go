@@ -168,7 +168,7 @@ func TestSocketExecuteOrder(t *testing.T) {
 
 	err := server.SetupTradingEngine(config, quotes, pairs, done)
 	if err != nil {
-		t.Errorf("Error during trading engine setup : %v", err)
+		t.Errorf("Error during trading engine setup: %v", err)
 	}
 
 	makerClient := NewClient(maker, server)
