@@ -134,7 +134,6 @@ func TestOperator2(t *testing.T) {
 	ZRXWETH := NewPair(ZRX, WETH)
 
 	admin := config.Wallets[0]
-
 	maker1 := config.Wallets[1]
 	taker1 := config.Wallets[2]
 	maker2 := config.Wallets[3]

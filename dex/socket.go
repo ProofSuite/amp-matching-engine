@@ -59,7 +59,6 @@ func (s *Socket) handleMessagesIn() {
 func (s *Socket) handleMessagesOut() {
 	for {
 		e := <-s.events
-		fmt.Printf("Sending message: %v", e)
 		switch e.eventType {
 		case ORDER_PLACED:
 			order := e.payload.(*Order)

@@ -100,8 +100,6 @@ func (e *TradingEngine) RegisterNewPair(p TokenPair, done chan<- bool) error {
 
 	e.pairs[id] = p
 	e.orderbooks[p] = ob
-
-	// fmt.Printf("\nRegistered new pair %v\n\n", p.String())
 	return nil
 }
 
