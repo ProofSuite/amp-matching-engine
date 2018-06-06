@@ -3,7 +3,11 @@ Official proof decentralized exchange matching engine
 
 # The Proof Decentralized Exchange
 
+<<<<<<< HEAD
 The proof decentralized exchange is a hybrid decentralized exchange that aims at bringing together the ease of use of centralized exchanges along with the security and privacy features of decentralized exchanges. Orders are matched through the an off-chain orderbook. After orders are matched and signed, the decentralized exchange operator has the sole ability to perform a transaction to the smart contract. This provides for the best UX as the exchange operator is the only party having to interact directly with the blockchain. Exchange users simply sign orders which are broadcasted then to the orderbook. This design enables users to queue and cancel their orders seamlessly.
+=======
+The proof decentralized exchange is a hybrid decentralized exchange that aims at bringing together the ease of use of centralized exchanges along with the security and privacy features of decentralized exchanges. Orders are matched through the proof orderbook. After orders are matched, the decentralized exchange operator has the sole ability to perform a transaction to the smart contract. This provides for the best UX as the exchange operator is the only party having to interact directly with the blockchain. Exchange users simply sign orders which are broadcasted to the orderbook. This enables users to cancel their orders without having to perform a blockchain transaction and pay the associated gas fees.
+>>>>>>> 9a4f631399727eee8bd964b2ca5d311205173cd1
 
 # Types
 
