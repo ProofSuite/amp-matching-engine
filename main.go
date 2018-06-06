@@ -5,7 +5,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/Dvisacker/matching-engine/dex"
+	"github.com/Proofsuite/matching-engine/dex"
 )
 
 var addr = flag.String("addr", "localhost:8080", "http service address")

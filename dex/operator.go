@@ -6,7 +6,7 @@ import (
 	"log"
 	"math/big"
 
-	"github.com/Dvisacker/matching-engine/dex/interfaces"
+	"github.com/Proofsuite/matching-engine/dex/interfaces"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	. "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -34,15 +34,11 @@ type Operator struct {
 	EthereumClient     *ethclient.Client
 	Params             *OperatorParams
 	Chain              bind.ContractBackend
-	TxLogs             []*types.Transaction
 	TxQueue            []Hash
 	ErrorChannel       chan *interfaces.ExchangeLogError
 	TradeChannel       chan *interfaces.ExchangeLogTrade
 	CancelOrderChannel chan *interfaces.ExchangeLogCancelOrder
 	OrderTradePairs    map[Hash]*OrderTradePair
-	ErrorLogs          []*interfaces.ExchangeLogError
-	TradeLogs          []*interfaces.ExchangeLogTrade
-	CancelOrderLogs    []*interfaces.ExchangeLogCancelOrder
 }
 
 // NewOperator creates a new operator struct. It creates an exchange contract instance from the
