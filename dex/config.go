@@ -12,6 +12,13 @@ var config = NewDefaultConfiguration()
 // Config holds the general configuration for the application
 // Currently some parameters are redundant as different type of
 // configurations need different (but similar) parameters
+// - Accounts is a list of ethereum address
+// - Admin is the ethereum account that is in charge of sending transactions to the exchange contract
+// - Wallets is a list of ethereum accounts that can be used for testing purposes. These accounts must be unlocked
+// - Exchange is the address of the Exchange.sol smart contract
+// - Tokens is a mapping of token symbols to token addresses (ERC-20 tokens)
+// - QuoteTokens is a list of tokens that have been registered as quote currencies for testing purposes.
+// - TokenPairs is a list of token pairs (base token + quote token) to be registered for testing purposes.
 type Config struct {
 	Accounts       []Address
 	Admin          *Wallet
@@ -264,6 +271,8 @@ func NewConfiguration() *Config {
 }
 
 // getTokens returns a mapping of token symbol to token addresses
+// These addresses correspond to the addresses of tokens that have been deployed on the private ethereum
+// network which you can find a repository on github.com/Proofsuite/private-geth-chain
 func getTokenAddresses() map[string]Address {
 	tokens := make(map[string]Address)
 	tokens["EOS"] = HexToAddress("0x5d564669ab4cfd96b785d3d05e8c7d66a073daf0")
@@ -273,12 +282,14 @@ func getTokenAddresses() map[string]Address {
 	return tokens
 }
 
+// getExchangeAddress returns the address that have been deployed on the private ethereum network that
+// you can find on github.com/Proofsuite/private-geth-chain
 func getExchangeAddress() Address {
 	return HexToAddress("0x29faee20f205c15c6c3004482f8996a468336b67")
 }
 
-// getAccounts returns default accounts. They can be used with the current localhost private
-// blockchain
+// getAccounts returns default accounts. These addresses can be funded and unlocked on the private ethereum
+// network that you can find on github.com/Proofsuite/private-geth-chain
 func getAccounts() []Address {
 	accountList := []Address{}
 
@@ -316,7 +327,8 @@ func getConstants() *Constants {
 	}
 }
 
-// getWallets() generates and returns a list of wallets that
+// getWallets returns a list of private keys that can be funded on the private ehtereum network
+// that you can find on github.com/Proofsuite/private-geth-chain
 func getWallets() []*Wallet {
 	walletList := []*Wallet{}
 
@@ -340,7 +352,8 @@ func getWallets() []*Wallet {
 	return walletList
 }
 
-// getQuoteTokens generates a mapping of quote tokens (arbitrary addresses)
+// getQuoteTokens generates a mapping of quote tokens (arbitrary addresses). These addresses correspond to
+// tokens that have been deployed on the github.com/Proofsuite/private-geth-chain private ethereum network
 func getQuoteTokens() Tokens {
 	quoteTokens := Tokens{}
 
@@ -354,7 +367,8 @@ func getQuoteTokens() Tokens {
 	return quoteTokens
 }
 
-// getTokenPairs() generates a mapping of token pairs (arbitrary addresses)
+// getTokenPairs generates a mapping of token pairs (arbitrary addresses). These addresses correspond to
+// tokens that have been deployed on the github.com/Proofsuite/private-geth-chain private ethereum network
 func getTokenPairs() TokenPairs {
 	tokenPairs := TokenPairs{}
 
