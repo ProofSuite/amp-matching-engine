@@ -155,8 +155,6 @@ func (c *Client) placeOrder(req *Message) {
 		log.Printf("Error: Could not place order. Payload: %#v\n", req.Payload)
 		return
 	}
-	// fmt.Printf("Log: Place Order Message sent:\n")
-	// fmt.Printf("%v\n\n", req.Payload)
 }
 
 func (c *Client) sendSignedData(req *Message) {
@@ -165,8 +163,6 @@ func (c *Client) sendSignedData(req *Message) {
 		log.Printf("Error: Could not send signed orders. Payload: %#v", req.Payload)
 		return
 	}
-	// fmt.Printf("Log: Signed Orders Message sent:\n")
-	// fmt.Printf("%v\n\n", req)
 }
 
 func (c *Client) cancelOrder(req *Message) {
@@ -175,8 +171,6 @@ func (c *Client) cancelOrder(req *Message) {
 		log.Printf("Error: Could not cancel order. Payload: %#v", req.Payload)
 		return
 	}
-	// fmt.Printf("Log: Cancel Orders Message sent:\n")
-	// fmt.Printf("%v\n\n", request)
 }
 
 func (c *Client) handleOrderPlaced(resp *Message) {

@@ -12,7 +12,7 @@ import (
 )
 
 func TestSocketBuyOrder(t *testing.T) {
-	os.Stdout, _ = os.Open(os.DevNull)
+	os.Stdout, _ = os.Open(os.DevNull) //this removes logs from the test output
 
 	wallet := testConfig.Wallets[1]
 	quotes := testConfig.QuoteTokens
@@ -47,7 +47,7 @@ func TestSocketBuyOrder(t *testing.T) {
 }
 
 func TestSocketOrderFill(t *testing.T) {
-	os.Stdout, _ = os.Open(os.DevNull)
+	os.Stdout, _ = os.Open(os.DevNull) //this removes logs from the test output
 
 	quotes := testConfig.QuoteTokens
 	pairs := testConfig.TokenPairs

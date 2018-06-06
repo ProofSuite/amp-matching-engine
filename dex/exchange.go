@@ -6,7 +6,7 @@ import (
 	"log"
 	"math/big"
 
-	"github.com/Dvisacker/matching-engine/dex/interfaces"
+	"github.com/Proofsuite/matching-engine/dex/interfaces"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	. "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -392,7 +392,3 @@ func PrintCancelTradeLog(log *interfaces.ExchangeLogCancelTrade) string {
 func PrintWithdrawalErrorLog(log *interfaces.ExchangeLogWithdrawalError) string {
 	return fmt.Sprintf("Error:\nError ID: %v\n, WithdrawalHash: %v\n\n", log.ErrorId, log.WithdrawalHash)
 }
-
-// func Print(log *interfaces.ExchangeLogError) string {
-// 	return fmt.Sprintf("Error:\nErrorID: %v\nOrderHash: %v\n\n", log.)
-// }

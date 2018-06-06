@@ -5,7 +5,7 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/Dvisacker/matching-engine/dex/interfaces"
+	"github.com/Proofsuite/matching-engine/dex/interfaces"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind/backends"
 )
 
