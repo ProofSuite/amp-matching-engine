@@ -1,4 +1,4 @@
-package dex
+package main
 
 import (
 	"testing"
