@@ -41,6 +41,7 @@ func (orderStatus *OrderStatus) UnmarshalJSON(data []byte) error {
 	if !ok {
 		return errors.New("Invalid Enum Status Value")
 	}
+
 	*orderStatus = value
 	return nil
 }
