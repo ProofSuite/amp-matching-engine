@@ -6,10 +6,10 @@ import (
 	"log"
 	"time"
 
-	"github.com/Proofsuite/matching-engine/ws"
+	"github.com/Proofsuite/amp-matching-engine/ws"
 
-	"github.com/Proofsuite/matching-engine/types"
-	"github.com/Proofsuite/matching-engine/utils"
+	"github.com/Proofsuite/amp-matching-engine/types"
+	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/gomodule/redigo/redis"
 )
 

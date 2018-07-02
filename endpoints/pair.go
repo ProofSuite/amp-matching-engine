@@ -5,9 +5,9 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/Proofsuite/matching-engine/errors"
-	"github.com/Proofsuite/matching-engine/services"
-	"github.com/Proofsuite/matching-engine/types"
+	"github.com/Proofsuite/amp-matching-engine/errors"
+	"github.com/Proofsuite/amp-matching-engine/services"
+	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/go-ozzo/ozzo-routing"
 	"labix.org/v2/mgo/bson"
 )
@@ -19,6 +19,7 @@ type pairEndpoint struct {
 // ServePair sets up the routing of pair endpoints and the corresponding handlers.
 func ServePairResource(rg *routing.RouteGroup, pairService *services.PairService) {
 	r := &pairEndpoint{pairService}
+	rg.Get("/pairs/book/<pairName>", r.orderBookEndpoint)
 	rg.Get("/pairs/<id>", r.get)
 	rg.Get("/pairs", r.query)
 	rg.Post("/pairs", r.create)
@@ -63,9 +64,7 @@ func (r *pairEndpoint) get(c *routing.Context) error {
 
 	return c.Write(response)
 }
-
 func (r *pairEndpoint) orderBook(w http.ResponseWriter, req *http.Request) {
-
 	conn, err := upgrader.Upgrade(w, req, nil)
 	if err != nil {
 		log.Println("==>" + err.Error())
@@ -83,4 +82,16 @@ func (r *pairEndpoint) orderBook(w http.ResponseWriter, req *http.Request) {
 		conn.Close()
 	}
 	r.pairService.RegisterForOrderBook(conn, list[0])
+}
+
+func (r *pairEndpoint) orderBookEndpoint(c *routing.Context) error {
+	pName := c.Param("pairName")
+	if pName == "" {
+		return errors.NewAPIError(401, "EMPTY_PAIR_NAME", map[string]interface{}{})
+	}
+	ob, err := r.pairService.GetOrderBook(pName)
+	if err != nil {
+		return err
+	}
+	return c.Write(ob)
 }

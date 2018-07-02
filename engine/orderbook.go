@@ -7,7 +7,7 @@ import (
 
 	"github.com/gomodule/redigo/redis"
 
-	"github.com/Proofsuite/matching-engine/types"
+	"github.com/Proofsuite/amp-matching-engine/types"
 )
 
 func (e *EngineResource) GetOrderBook(pair *types.Pair) (sellBook, buyBook []*map[string]float64) {

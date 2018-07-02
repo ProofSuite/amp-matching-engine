@@ -1,7 +1,7 @@
 package ws
 
 import (
-	"github.com/Proofsuite/matching-engine/types"
+	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/gorilla/websocket"
 	"labix.org/v2/mgo/bson"
 )

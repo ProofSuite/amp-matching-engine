@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/Proofsuite/matching-engine/utils"
+	"github.com/Proofsuite/amp-matching-engine/utils"
 
-	"github.com/Proofsuite/matching-engine/types"
+	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/gomodule/redigo/redis"
 )
 

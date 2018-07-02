@@ -7,13 +7,13 @@ import (
 	"log"
 	"math"
 
-	"github.com/Proofsuite/matching-engine/ws"
+	"github.com/Proofsuite/amp-matching-engine/ws"
 
 	"labix.org/v2/mgo/bson"
 
-	"github.com/Proofsuite/matching-engine/daos"
-	"github.com/Proofsuite/matching-engine/engine"
-	"github.com/Proofsuite/matching-engine/types"
+	"github.com/Proofsuite/amp-matching-engine/daos"
+	"github.com/Proofsuite/amp-matching-engine/engine"
+	"github.com/Proofsuite/amp-matching-engine/types"
 )
 
 type OrderService struct {

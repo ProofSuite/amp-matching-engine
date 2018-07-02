@@ -3,8 +3,8 @@ package daos
 import (
 	"time"
 
-	"github.com/Proofsuite/matching-engine/app"
-	"github.com/Proofsuite/matching-engine/types"
+	"github.com/Proofsuite/amp-matching-engine/app"
+	"github.com/Proofsuite/amp-matching-engine/types"
 	"labix.org/v2/mgo/bson"
 )
 

@@ -3,7 +3,7 @@ package main
 // import (
 // 	"flag"
 
-// 	"github.com/Proofsuite/matching-engine/dex"
+// 	"github.com/Proofsuite/amp-matching-engine/dex"
 // )
 
 // var addr = flag.String("addr", "localhost:8080", "http service address")
