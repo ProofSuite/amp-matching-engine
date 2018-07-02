@@ -2,25 +2,6 @@
 
 
 [[projects]]
-  branch = "develop"
-  name = "github.com/Proofsuite/amp-matching-engine"
-  packages = [
-    "app",
-    "daos",
-    "dex/interfaces",
-    "endpoints",
-    "engine",
-    "errors",
-    "rabbitmq",
-    "redisclient",
-    "services",
-    "types",
-    "utils",
-    "ws"
-  ]
-  revision = "39a312b11f1ff420b1a3c4065305e7c6b53eeace"
-
-[[projects]]
   name = "github.com/Sirupsen/logrus"
   packages = ["."]
   revision = "c155da19408a8799da419ed3eeb0cb5db0ad5dbc"
@@ -400,6 +381,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "0e37e86e2fd7a988b0df4f2c12355062c63f17067e043460a45136a96063c7a0"
+  inputs-digest = "370f6a1c8c34880c0cded4493832e7e1ed31033ec3993ea44eedad4ab54310d6"
   solver-name = "gps-cdcl"
   solver-version = 1

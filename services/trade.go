@@ -16,3 +16,7 @@ func NewTradeService(TradeDao *daos.TradeDao) *TradeService {
 func (t *TradeService) GetByPairName(pairName string) ([]*types.Trade, error) {
 	return t.tradeDao.GetByPairName(pairName)
 }
+
+func (t *TradeService) GetByUserAddress(addr string) ([]*types.Trade, error) {
+	return t.tradeDao.GetByUserAddress(addr)
+}
