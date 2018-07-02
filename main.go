@@ -1,16 +1,14 @@
 package main
 
-import (
-	"flag"
-	"log"
-	"net/http"
+// import (
+// 	"flag"
 
-	"github.com/Proofsuite/matching-engine/dex"
-)
+// 	"github.com/Proofsuite/matching-engine/dex"
+// )
 
-var addr = flag.String("addr", "localhost:8080", "http service address")
-var done = make(chan bool)
-var config = dex.NewDefaultConfiguration()
+// var addr = flag.String("addr", "localhost:8080", "http service address")
+// var done = make(chan bool)
+// var config = dex.NewDefaultConfiguration()
 
 // func main() {
 // 	flag.Parse()
@@ -29,4 +27,4 @@ var config = dex.NewDefaultConfiguration()
 // 	if err != nil {
 // 		log.Fatal("ListenAndServe: ", err)
 // 	}
-}
+// }
