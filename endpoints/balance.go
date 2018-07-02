@@ -1,8 +1,8 @@
 package endpoints
 
 import (
-	"github.com/Proofsuite/matching-engine/errors"
-	"github.com/Proofsuite/matching-engine/services"
+	"github.com/Proofsuite/amp-matching-engine/errors"
+	"github.com/Proofsuite/amp-matching-engine/services"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/go-ozzo/ozzo-routing"
 )

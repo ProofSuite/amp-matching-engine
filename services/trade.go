@@ -1,8 +1,8 @@
 package services
 
 import (
-	"github.com/Proofsuite/matching-engine/daos"
-	"github.com/Proofsuite/matching-engine/types"
+	"github.com/Proofsuite/amp-matching-engine/daos"
+	"github.com/Proofsuite/amp-matching-engine/types"
 )
 
 type TradeService struct {

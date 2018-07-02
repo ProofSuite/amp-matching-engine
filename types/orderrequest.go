@@ -3,7 +3,7 @@ package types
 import (
 	"math"
 
-	"github.com/Proofsuite/matching-engine/app"
+	"github.com/Proofsuite/amp-matching-engine/app"
 	validation "github.com/go-ozzo/ozzo-validation"
 )
 

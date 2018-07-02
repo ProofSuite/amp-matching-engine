@@ -5,13 +5,13 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/Proofsuite/matching-engine/errors"
+	"github.com/Proofsuite/amp-matching-engine/errors"
 	"github.com/ethereum/go-ethereum/common"
 
-	"github.com/Proofsuite/matching-engine/engine"
-	"github.com/Proofsuite/matching-engine/services"
-	"github.com/Proofsuite/matching-engine/types"
-	"github.com/Proofsuite/matching-engine/ws"
+	"github.com/Proofsuite/amp-matching-engine/engine"
+	"github.com/Proofsuite/amp-matching-engine/services"
+	"github.com/Proofsuite/amp-matching-engine/types"
+	"github.com/Proofsuite/amp-matching-engine/ws"
 	"github.com/go-ozzo/ozzo-routing"
 	"github.com/gorilla/websocket"
 )

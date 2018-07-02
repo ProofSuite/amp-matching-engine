@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Proofsuite/matching-engine/errors"
+	"github.com/Proofsuite/amp-matching-engine/errors"
 	"github.com/Sirupsen/logrus"
 	"github.com/go-ozzo/ozzo-routing"
 	"github.com/go-ozzo/ozzo-routing/access"

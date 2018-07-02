@@ -3,8 +3,8 @@ package services
 import (
 	"labix.org/v2/mgo/bson"
 
-	"github.com/Proofsuite/matching-engine/daos"
-	"github.com/Proofsuite/matching-engine/types"
+	"github.com/Proofsuite/amp-matching-engine/daos"
+	"github.com/Proofsuite/amp-matching-engine/types"
 )
 
 type TokenService struct {

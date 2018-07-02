@@ -1,7 +1,7 @@
 package daos
 
 import (
-	"github.com/Proofsuite/matching-engine/app"
+	"github.com/Proofsuite/amp-matching-engine/app"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 )

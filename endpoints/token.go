@@ -1,9 +1,9 @@
 package endpoints
 
 import (
-	"github.com/Proofsuite/matching-engine/errors"
-	"github.com/Proofsuite/matching-engine/services"
-	"github.com/Proofsuite/matching-engine/types"
+	"github.com/Proofsuite/amp-matching-engine/errors"
+	"github.com/Proofsuite/amp-matching-engine/services"
+	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/go-ozzo/ozzo-routing"
 	"labix.org/v2/mgo/bson"
 )

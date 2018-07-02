@@ -5,17 +5,17 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Proofsuite/matching-engine/engine"
+	"github.com/Proofsuite/amp-matching-engine/engine"
 
-	"github.com/Proofsuite/matching-engine/ws"
+	"github.com/Proofsuite/amp-matching-engine/ws"
 
 	"github.com/gorilla/websocket"
 
 	"labix.org/v2/mgo/bson"
 
-	"github.com/Proofsuite/matching-engine/daos"
-	aerrors "github.com/Proofsuite/matching-engine/errors"
-	"github.com/Proofsuite/matching-engine/types"
+	"github.com/Proofsuite/amp-matching-engine/daos"
+	aerrors "github.com/Proofsuite/amp-matching-engine/errors"
+	"github.com/Proofsuite/amp-matching-engine/types"
 )
 
 type PairService struct {
@@ -57,22 +57,37 @@ func (s *PairService) GetAll() ([]types.Pair, error) {
 	return s.pairDao.GetAll()
 }
 
-func (s *PairService) RegisterForOrderBook(conn *websocket.Conn, pairName string) {
+func (s *PairService) GetOrderBook(pairName string) (ob map[string]interface{}, err error) {
 	res, err := s.pairDao.GetByName(pairName)
 	if err != nil {
 		message := map[string]string{
 			"Code":    "Invalid_Pair_Name",
-			"Message": "Invalid Pair Name passed in query Params: " + err.Error(),
+			"Message": "Invalid Pair Name " + err.Error(),
 		}
 		mab, _ := json.Marshal(message)
-		conn.WriteMessage(1, mab)
-		conn.Close()
+		return nil, errors.New(string(mab))
 	}
 	sKey, bKey := res.GetOrderBookKeys()
 	fmt.Printf("\n Sell Key: %s \n Buy Key: %s \n", sKey, bKey)
-	// TODO: Get OrderBook from engine
 
-	if err := ws.PairSocketRegister(res.Name, conn); err != nil {
+	sBook, bBook := s.eng.GetOrderBook(res)
+	ob = map[string]interface{}{
+		"sell": sBook,
+		"buy":  bBook,
+	}
+	return
+}
+func (s *PairService) RegisterForOrderBook(conn *websocket.Conn, pairName string) {
+
+	ob, err := s.GetOrderBook(pairName)
+	if err != nil {
+		conn.WriteMessage(1, []byte(err.Error()))
+		conn.Close()
+	}
+	trades, _ := s.tradeService.GetByPairName(pairName)
+	ob["trades"] = trades
+
+	if err := ws.PairSocketRegister(pairName, conn); err != nil {
 		message := map[string]string{
 			"Code":    "UNABLE_TO_REGISTER",
 			"Message": "UNABLE_TO_REGISTER: " + err.Error(),
@@ -81,7 +96,7 @@ func (s *PairService) RegisterForOrderBook(conn *websocket.Conn, pairName string
 		conn.WriteMessage(1, mab)
 		conn.Close()
 	}
-	conn.SetCloseHandler(ws.PairSocketCloseHandler(res.Name, conn))
+	conn.SetCloseHandler(ws.PairSocketCloseHandler(pairName, conn))
 
 	go func() {
 		for {
@@ -91,13 +106,7 @@ func (s *PairService) RegisterForOrderBook(conn *websocket.Conn, pairName string
 			}
 		}
 	}()
-	sBook, bBook := s.eng.GetOrderBook(res)
-	trades, _ := s.tradeService.GetByPairName(res.Name)
-	response := map[string]interface{}{
-		"sell":   sBook,
-		"buy":    bBook,
-		"trades": trades,
-	}
-	rab, _ := json.Marshal(response)
+
+	rab, _ := json.Marshal(ob)
 	conn.WriteMessage(1, rab)
 }

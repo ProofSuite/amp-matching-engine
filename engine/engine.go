@@ -9,10 +9,10 @@ import (
 
 	"github.com/streadway/amqp"
 
-	"github.com/Proofsuite/matching-engine/rabbitmq"
-	"github.com/Proofsuite/matching-engine/types"
+	"github.com/Proofsuite/amp-matching-engine/rabbitmq"
+	"github.com/Proofsuite/amp-matching-engine/types"
 
-	"github.com/Proofsuite/matching-engine/daos"
+	"github.com/Proofsuite/amp-matching-engine/daos"
 )
 
 type EngineResource struct {

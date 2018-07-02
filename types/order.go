@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/Proofsuite/matching-engine/utils"
+	"github.com/Proofsuite/amp-matching-engine/utils"
 	"labix.org/v2/mgo/bson"
 )
 
