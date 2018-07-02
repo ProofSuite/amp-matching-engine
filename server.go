@@ -102,6 +102,7 @@ func buildRouter(logger *logrus.Logger) *routing.Router {
 	endpoints.ServePairResource(rg, pairService)
 	endpoints.ServeBalanceResource(rg, balanceService)
 	endpoints.ServeOrderResource(rg, orderService, e)
+	endpoints.ServeTradeResource(rg, tradeService)
 	endpoints.ServeAddressResource(rg, addressService)
 
 	return router

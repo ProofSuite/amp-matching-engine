@@ -55,3 +55,19 @@ func (dao *TradeDao) GetByPairName(name string) (response []*types.Trade, err er
 	}
 	return
 }
+func (dao *TradeDao) GetByUserAddress(addr string) (response []*types.Trade, err error) {
+	q := bson.M{"$or": []bson.M{
+		bson.M{"maker": bson.RegEx{
+			Pattern: addr,
+			Options: "i",
+		}}, bson.M{"taker": bson.RegEx{
+			Pattern: addr,
+			Options: "i",
+		}},
+	}}
+	err = DB.Get(dao.dbName, dao.collectionName, q, 0, 1, &response)
+	if err != nil {
+		return
+	}
+	return
+}
