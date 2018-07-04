@@ -8,7 +8,7 @@ import (
 
 type Ws struct {
 	Conn        *websocket.Conn
-	ReadChannel chan *types.WsMsg
+	ReadChannel chan *types.OrderMessage
 }
 
 var Connections map[string]*Ws
