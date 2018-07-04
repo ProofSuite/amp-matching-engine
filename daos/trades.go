@@ -44,6 +44,14 @@ func (dao *TradeDao) GetByID(id bson.ObjectId) (response *types.Trade, err error
 	err = DB.GetByID(dao.dbName, dao.collectionName, id, &response)
 	return
 }
+func (dao *TradeDao) Query(q bson.M) (response *map[string]interface{}, err error) {
+	err = DB.Get(dao.dbName, dao.collectionName, q, 0, 0, &response)
+	return
+}
+func (dao *TradeDao) Aggregate(q []bson.M) (response []interface{}, err error) {
+	err = DB.Aggregate(dao.dbName, dao.collectionName, q, &response)
+	return
+}
 func (dao *TradeDao) GetByPairName(name string) (response []*types.Trade, err error) {
 	q := bson.M{"pairName": bson.RegEx{
 		Pattern: name,

@@ -1,6 +1,8 @@
 package daos
 
 import (
+	"fmt"
+
 	"github.com/Proofsuite/amp-matching-engine/app"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
@@ -58,5 +60,14 @@ func (d *Database) Update(dbName, collection string, query interface{}, update i
 	defer sc.Close()
 
 	err = sc.DB(dbName).C(collection).Update(query, update)
+	return
+}
+func (d *Database) Aggregate(dbName, collection string, query []bson.M, response interface{}) (err error) {
+	sc := d.session.Copy()
+	defer sc.Close()
+	var a []interface{}
+	fmt.Println(query)
+	err = sc.DB(dbName).C(collection).Pipe(query).All(&a)
+	fmt.Println(a)
 	return
 }
