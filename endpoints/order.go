@@ -32,8 +32,9 @@ var upgrader = websocket.Upgrader{
 func ServeOrderResource(rg *routing.RouteGroup, orderService *services.OrderService, e *engine.EngineResource) {
 	r := &orderEndpoint{orderService}
 	rg.Get("/orders/<addr>", r.get)
-	http.HandleFunc("/orders/ws", r.ws)
-	http.HandleFunc("/orders/book/<pair>", r.ws)
+	// http.HandleFunc("/orders/ws", r.ws)
+	// http.HandleFunc("/orders/book/<pair>", r.ws)
+	ws.RegisterChannel("order_channel", r.ws)
 	e.SubscribeEngineResponse(r.engineResponse)
 }
 
@@ -49,67 +50,50 @@ func (r *orderEndpoint) get(c *routing.Context) error {
 	return c.Write(orders)
 }
 
-func (r *orderEndpoint) ws(w http.ResponseWriter, req *http.Request) {
-	conn, err := upgrader.Upgrade(w, req, nil)
-	if err != nil {
-		log.Println("==>" + err.Error())
-		return
-	}
-	// go func() {
+func (r *orderEndpoint) ws(input *interface{}, conn *websocket.Conn) {
+
 	ch := make(chan *types.WsMsg)
-	for {
-		messageType, p, err := conn.ReadMessage()
+	mab, _ := json.Marshal(input)
+	var msg *types.WsMsg
+	if err := json.Unmarshal(mab, &msg); err != nil {
+		log.Println("unmarshal to wsmsg <==>" + err.Error())
+	}
+	messageType := 1
+	if msg.MsgType == "new_order" {
+		oab, err := json.Marshal(msg.Data)
+
+		var model types.OrderRequest
+		if err := json.Unmarshal(oab, &model); err != nil {
+			conn.WriteMessage(messageType, []byte(err.Error()))
+
+			return
+		}
+		if err := model.Validate(); err != nil {
+			conn.WriteMessage(messageType, []byte(err.Error()))
+
+			return
+		}
+		order, err := model.ToOrder()
 		if err != nil {
-			log.Println("<==>" + err.Error())
-			conn.Close()
-			return
-		}
-		var msg *types.WsMsg
-		if err := json.Unmarshal(p, &msg); err != nil {
-			log.Println("unmarshal to wsmsg <==>" + err.Error())
+			conn.WriteMessage(messageType, []byte(err.Error()))
 			conn.Close()
 
 			return
 		}
-		if msg.MsgType == "new_order" {
-			oab, err := json.Marshal(msg.Data)
-
-			var model types.OrderRequest
-			if err := json.Unmarshal(oab, &model); err != nil {
-				conn.WriteMessage(messageType, []byte(err.Error()))
-				conn.Close()
-
-				return
-			}
-			if err := model.Validate(); err != nil {
-				conn.WriteMessage(messageType, []byte(err.Error()))
-				conn.Close()
-
-				return
-			}
-			order, err := model.ToOrder()
-			if err != nil {
-				conn.WriteMessage(messageType, []byte(err.Error()))
-				conn.Close()
-
-				return
-			}
-			err = r.orderService.Create(order)
-			if err != nil {
-				conn.WriteMessage(messageType, []byte(err.Error()))
-				conn.Close()
-				return
-			}
-			oab, _ = json.Marshal(order)
-			conn.WriteMessage(messageType, oab)
-			if ws.Connections == nil {
-				ws.Connections = make(map[string]*ws.Ws)
-			}
-			conn.SetCloseHandler(ws.OrderSocketCloseHandler(order.ID))
-			ws.Connections[order.ID.Hex()] = &ws.Ws{Conn: conn, ReadChannel: ch}
-		} else {
-			ws.Connections[msg.OrderID.Hex()].ReadChannel <- msg
+		err = r.orderService.Create(order)
+		if err != nil {
+			conn.WriteMessage(messageType, []byte(err.Error()))
+			return
 		}
+		oab, _ = json.Marshal(order)
+		conn.WriteMessage(messageType, oab)
+		if ws.Connections == nil {
+			ws.Connections = make(map[string]*ws.Ws)
+		}
+		conn.SetCloseHandler(ws.OrderSocketCloseHandler(order.ID))
+		ws.Connections[order.ID.Hex()] = &ws.Ws{Conn: conn, ReadChannel: ch}
+	} else {
+		ws.Connections[msg.OrderID.Hex()].ReadChannel <- msg
 	}
 }
 
