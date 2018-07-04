@@ -8,6 +8,7 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/rabbitmq"
 	"github.com/Proofsuite/amp-matching-engine/redisclient"
 	"github.com/Proofsuite/amp-matching-engine/services"
+	"github.com/Proofsuite/amp-matching-engine/ws"
 
 	"github.com/Proofsuite/amp-matching-engine/engine"
 
@@ -41,6 +42,8 @@ func main() {
 		panic(err)
 	}
 
+	// websocket endpoint
+	http.HandleFunc("/socket", ws.ConnectionEndpoint)
 	// wire up API routing
 	http.Handle("/", buildRouter(logger))
 
