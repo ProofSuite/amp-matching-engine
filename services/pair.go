@@ -82,7 +82,6 @@ func (s *PairService) RegisterForOrderBook(conn *websocket.Conn, pairName string
 	ob, err := s.GetOrderBook(pairName)
 	if err != nil {
 		conn.WriteMessage(1, []byte(err.Error()))
-		conn.Close()
 	}
 	trades, _ := s.tradeService.GetByPairName(pairName)
 	ob["trades"] = trades
@@ -94,19 +93,13 @@ func (s *PairService) RegisterForOrderBook(conn *websocket.Conn, pairName string
 		}
 		mab, _ := json.Marshal(message)
 		conn.WriteMessage(1, mab)
-		conn.Close()
 	}
 	conn.SetCloseHandler(ws.PairSocketCloseHandler(pairName, conn))
 
-	go func() {
-		for {
-			if _, _, err := conn.NextReader(); err != nil {
-				conn.Close()
-				break
-			}
-		}
-	}()
-
 	rab, _ := json.Marshal(ob)
 	conn.WriteMessage(1, rab)
+}
+
+func (s *PairService) UnRegisterForOrderBook(conn *websocket.Conn, pairName string) {
+	ws.PairSocketUnregisterConnection(pairName, conn)
 }

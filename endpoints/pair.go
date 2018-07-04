@@ -3,12 +3,13 @@ package endpoints
 import (
 	"encoding/json"
 	"log"
-	"net/http"
 
 	"github.com/Proofsuite/amp-matching-engine/errors"
 	"github.com/Proofsuite/amp-matching-engine/services"
 	"github.com/Proofsuite/amp-matching-engine/types"
+	"github.com/Proofsuite/amp-matching-engine/ws"
 	"github.com/go-ozzo/ozzo-routing"
+	"github.com/gorilla/websocket"
 	"labix.org/v2/mgo/bson"
 )
 
@@ -23,7 +24,8 @@ func ServePairResource(rg *routing.RouteGroup, pairService *services.PairService
 	rg.Get("/pairs/<id>", r.get)
 	rg.Get("/pairs", r.query)
 	rg.Post("/pairs", r.create)
-	http.HandleFunc("/pairs/book", r.orderBook)
+	// http.HandleFunc("/pairs/book", r.orderBook)
+	ws.RegisterChannel("order_book", r.orderBook)
 }
 
 func (r *pairEndpoint) create(c *routing.Context) error {
@@ -64,26 +66,28 @@ func (r *pairEndpoint) get(c *routing.Context) error {
 
 	return c.Write(response)
 }
-func (r *pairEndpoint) orderBook(w http.ResponseWriter, req *http.Request) {
-	conn, err := upgrader.Upgrade(w, req, nil)
-	if err != nil {
-		log.Println("==>" + err.Error())
-		return
+func (r *pairEndpoint) orderBook(input *interface{}, conn *websocket.Conn) {
+	mab, _ := json.Marshal(input)
+	var msg *types.Subscription
+	if err := json.Unmarshal(mab, &msg); err != nil {
+		log.Println("unmarshal to wsmsg <==>" + err.Error())
 	}
-	queryParams := req.URL.Query()
-	list := queryParams["pairName"]
-	if len(list) == 0 || len(list) > 1 {
+
+	if msg.Key == "" {
 		message := map[string]string{
 			"Code":    "Invalid_Pair_Name",
 			"Message": "Invalid Pair Name passed in query Params",
 		}
 		mab, _ := json.Marshal(message)
 		conn.WriteMessage(1, mab)
-		conn.Close()
 	}
-	r.pairService.RegisterForOrderBook(conn, list[0])
+	if msg.Event == types.SUBSCRIBE {
+		r.pairService.RegisterForOrderBook(conn, msg.Key)
+	}
+	if msg.Event == types.UNSUBSCRIBE {
+		
+	}
 }
-
 func (r *pairEndpoint) orderBookEndpoint(c *routing.Context) error {
 	pName := c.Param("pairName")
 	if pName == "" {

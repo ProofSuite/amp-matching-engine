@@ -42,7 +42,7 @@ func (e *EngineResource) matchOrder(order *types.Order) (err error) {
 	if match.FillStatus == NO_MATCH {
 		engineResponse.Order.Status = types.OPEN
 		e.addOrder(order)
-		msg := &types.WsMsg{MsgType: "added_to_orderbook"}
+		msg := &types.OrderMessage{MsgType: "added_to_orderbook"}
 		msg.OrderID = order.ID
 		msg.Data = engineResponse
 		erab, err := json.Marshal(msg)
@@ -58,7 +58,7 @@ func (e *EngineResource) matchOrder(order *types.Order) (err error) {
 		if err != nil {
 			log.Printf("\nexecute XXXXXXX\n%s\nXXXXXXX execute\n", err)
 		}
-		msg := &types.WsMsg{MsgType: "trade_remorder_sign"}
+		msg := &types.OrderMessage{MsgType: "trade_remorder_sign"}
 		msg.OrderID = order.ID
 		msg.Data = engineResponse
 		erab, err := json.Marshal(msg)

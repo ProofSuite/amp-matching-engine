@@ -237,7 +237,7 @@ func (s *OrderService) UpdateUsingEngineResponse(er *engine.EngineResponse) {
 // RelayUpdateOverSocket is responsible for notifying listening clients about new order/trade addition/deletion
 func (s *OrderService) RelayUpdateOverSocket(er *engine.EngineResponse) {
 	if len(er.Trades) > 0 {
-		message := &types.WsMsg{
+		message := &types.OrderMessage{
 			MsgType: "trades_added",
 			Data:    er.Trades,
 		}
@@ -245,7 +245,7 @@ func (s *OrderService) RelayUpdateOverSocket(er *engine.EngineResponse) {
 		ws.PairSocketWriteMessage(er.Order.PairName, mab)
 	}
 	if er.RemainingOrder != nil {
-		message := &types.WsMsg{
+		message := &types.OrderMessage{
 			MsgType: "order_added",
 			Data:    er.RemainingOrder,
 		}
