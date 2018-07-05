@@ -5,7 +5,7 @@ import (
 
 	"github.com/Proofsuite/amp-matching-engine/app"
 	"github.com/Proofsuite/amp-matching-engine/types"
-	"labix.org/v2/mgo/bson"
+	"gopkg.in/mgo.v2/bson"
 )
 
 type TradeDao struct {
@@ -49,8 +49,8 @@ func (dao *TradeDao) Query(q bson.M) (response *map[string]interface{}, err erro
 	return
 }
 func (dao *TradeDao) Aggregate(q []bson.M) (response []interface{}, err error) {
-	err = DB.Aggregate(dao.dbName, dao.collectionName, q, &response)
-	return
+	return DB.Aggregate(dao.dbName, dao.collectionName, q)
+
 }
 func (dao *TradeDao) GetByPairName(name string) (response []*types.Trade, err error) {
 	q := bson.M{"pairName": bson.RegEx{

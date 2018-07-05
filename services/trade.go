@@ -7,7 +7,7 @@ import (
 
 	"github.com/Proofsuite/amp-matching-engine/daos"
 	"github.com/Proofsuite/amp-matching-engine/types"
-	"labix.org/v2/mgo/bson"
+	"gopkg.in/mgo.v2/bson"
 )
 
 type TradeService struct {
@@ -68,7 +68,7 @@ func (t *TradeService) GetByUserAddress(addr string) ([]*types.Trade, error) {
 // 	_, err := t.tradeDao.Aggregate([]bson.M{match, sort, group, addFields}) //dao.db.DB(dao.dbName).C(dao.collectionName).Pipe([]bson.M{match, sort, group, addFields}).All(&resp)
 // 	return
 // }
-func (t *TradeService) GetTicks(pairName string, duration int64, unit string, timeInterval ...int64) (resp []interface{}, nextTime int64, err error) {
+func (t *TradeService) GetTicks(pairName string, duration int64, unit string, timeInterval ...int64) (resp []interface{}, err error) {
 	var match bson.M
 	currentTs := time.Now().UnixNano() / int64(time.Second)
 	var lt time.Time

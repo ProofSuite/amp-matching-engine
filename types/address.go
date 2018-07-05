@@ -5,7 +5,7 @@ import (
 
 	. "github.com/ethereum/go-ethereum/common"
 	validation "github.com/go-ozzo/ozzo-validation"
-	"labix.org/v2/mgo/bson"
+	"gopkg.in/mgo.v2/bson"
 )
 
 // Address holds both the address and the private key of an ethereum account

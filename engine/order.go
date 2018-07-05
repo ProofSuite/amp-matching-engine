@@ -69,7 +69,7 @@ func (e *EngineResource) matchOrder(order *types.Order) (err error) {
 		ws.Connections[order.ID.Hex()].Conn.WriteMessage(1, erab)
 
 		// for {
-		t := time.NewTimer(5 * time.Second)
+		t := time.NewTimer(10 * time.Second)
 		select {
 		case rm := <-ws.Connections[order.ID.Hex()].ReadChannel:
 			if rm.MsgType == "trade_remorder_sign" {

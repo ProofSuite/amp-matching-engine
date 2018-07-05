@@ -10,7 +10,7 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/ws"
 	"github.com/go-ozzo/ozzo-routing"
 	"github.com/gorilla/websocket"
-	"labix.org/v2/mgo/bson"
+	"gopkg.in/mgo.v2/bson"
 )
 
 type pairEndpoint struct {

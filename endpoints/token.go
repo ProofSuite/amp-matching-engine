@@ -5,7 +5,7 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/services"
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/go-ozzo/ozzo-routing"
-	"labix.org/v2/mgo/bson"
+	"gopkg.in/mgo.v2/bson"
 )
 
 type tokenEndpoint struct {

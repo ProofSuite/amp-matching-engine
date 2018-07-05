@@ -11,7 +11,7 @@ import (
 
 	"github.com/gorilla/websocket"
 
-	"labix.org/v2/mgo/bson"
+	"gopkg.in/mgo.v2/bson"
 
 	"github.com/Proofsuite/amp-matching-engine/daos"
 	aerrors "github.com/Proofsuite/amp-matching-engine/errors"

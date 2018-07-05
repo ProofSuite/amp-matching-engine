@@ -3,7 +3,7 @@ package services
 import (
 	"math"
 
-	"labix.org/v2/mgo/bson"
+	"gopkg.in/mgo.v2/bson"
 
 	"github.com/Proofsuite/amp-matching-engine/daos"
 	"github.com/Proofsuite/amp-matching-engine/types"

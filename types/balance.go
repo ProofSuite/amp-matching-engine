@@ -5,7 +5,7 @@ import (
 	"time"
 
 	. "github.com/ethereum/go-ethereum/common"
-	"labix.org/v2/mgo/bson"
+	"gopkg.in/mgo.v2/bson"
 )
 
 // Balance holds both the address and the private key of an ethereum account

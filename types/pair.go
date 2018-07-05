@@ -4,7 +4,7 @@ import (
 	"time"
 
 	validation "github.com/go-ozzo/ozzo-validation"
-	"labix.org/v2/mgo/bson"
+	"gopkg.in/mgo.v2/bson"
 )
 
 type Pair struct {
