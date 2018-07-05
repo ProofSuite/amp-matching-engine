@@ -74,6 +74,9 @@ func (r *tradeEndpoint) ticks(c *routing.Context) error {
 		return errors.NewAPIError(400, "INVALID_TO_TS", nil)
 	}
 
-	r.tradeService.GetTicks(pairName, d, unit, fromTs, toTs)
-	return c.Write("")
+	res, err := r.tradeService.GetTicks(pairName, d, unit, fromTs, toTs)
+	if err != nil {
+		return err
+	}
+	return c.Write(res)
 }

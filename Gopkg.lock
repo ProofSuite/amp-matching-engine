@@ -358,6 +358,18 @@
 
 [[projects]]
   branch = "v2"
+  name = "gopkg.in/mgo.v2"
+  packages = [
+    ".",
+    "bson",
+    "internal/json",
+    "internal/sasl",
+    "internal/scram"
+  ]
+  revision = "9856a29383ce1c59f308dd1cf0363a79b5bef6b5"
+
+[[projects]]
+  branch = "v2"
   name = "gopkg.in/natefinch/npipe.v2"
   packages = ["."]
   revision = "c1b8fa8bdccecb0b8db834ee0b92fdbcfa606dd6"
@@ -368,19 +380,9 @@
   revision = "5420a8b6744d3b0345ab293f6fcba19c978f1183"
   version = "v2.2.1"
 
-[[projects]]
-  branch = "(default)"
-  name = "labix.org/v2/mgo"
-  packages = [
-    ".",
-    "bson",
-    "sasl"
-  ]
-  revision = "gustavo@niemeyer.net-20140701140051-90be2tvk93pcczzi"
-
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "370f6a1c8c34880c0cded4493832e7e1ed31033ec3993ea44eedad4ab54310d6"
+  inputs-digest = "10000a6a7a5e77ba7052a10342705995be880ed8910614e444137bc5388f5207"
   solver-name = "gps-cdcl"
   solver-version = 1
