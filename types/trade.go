@@ -240,3 +240,17 @@ func NewTrade(o *Order, amount int64, price int64, taker string) *Trade {
 // 	p := &TxErrorPayload{Order: o, Trade: t, ErrorId: errId}
 // 	return &Event{eventType: TRADE_TX_ERROR, payload: p}
 // }
+type Tick struct {
+	ID    TickID `json:"_id,omitempty" bson:"_id"`
+	C     int64  `json:"c" bson:"c"`
+	Count int64  `json:"count" bson:"count"`
+	H     int64  `json:"h" bson:"h"`
+	L     int64  `json:"l" bson:"l"`
+	O     int64  `json:"o" bson:"o"`
+	Ts    int64  `json:"ts" bson:"ts"`
+	V     int64  `json:"v" bson:"v"`
+}
+
+type TickID struct {
+	Pair string `json:"pair" bson:"pair"`
+}

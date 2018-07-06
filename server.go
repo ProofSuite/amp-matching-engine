@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/Proofsuite/amp-matching-engine/crons"
 	"github.com/Proofsuite/amp-matching-engine/endpoints"
 	"github.com/Proofsuite/amp-matching-engine/rabbitmq"
 	"github.com/Proofsuite/amp-matching-engine/redisclient"
@@ -108,5 +109,7 @@ func buildRouter(logger *logrus.Logger) *routing.Router {
 	endpoints.ServeTradeResource(rg, tradeService)
 	endpoints.ServeAddressResource(rg, addressService)
 
+	cronService := crons.NewCronService(tradeService)
+	cronService.InitCrons()
 	return router
 }

@@ -118,7 +118,6 @@ func (e *EngineResource) SubscribeEngineResponse(fn func(*EngineResponse) error)
 			}
 		}()
 
-		log.Printf(" [*] Waiting for messages. To exit press CTRL+C")
 		<-forever
 	}()
 	return nil
@@ -155,7 +154,6 @@ func (e *EngineResource) subscribeOrder() error {
 			}
 		}()
 
-		log.Printf(" [*] Waiting for messages. To exit press CTRL+C")
 		<-forever
 	}()
 	return nil

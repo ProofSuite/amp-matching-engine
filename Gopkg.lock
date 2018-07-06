@@ -226,6 +226,12 @@
   revision = "d152f3ce359a5464dc41e84a8919fc67e55bbbf0"
 
 [[projects]]
+  name = "github.com/robfig/cron"
+  packages = ["."]
+  revision = "b41be1df696709bb6395fe435af20370037c0b4c"
+  version = "v1.1"
+
+[[projects]]
   name = "github.com/rs/cors"
   packages = ["."]
   revision = "ca016a06a5753f8ba03029c0aa5e54afb1bf713f"
@@ -383,6 +389,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "10000a6a7a5e77ba7052a10342705995be880ed8910614e444137bc5388f5207"
+  inputs-digest = "18e83b706c464778f8b41b2105e7d29b327a7ceab7bd7d8b4da513423668e4b5"
   solver-name = "gps-cdcl"
   solver-version = 1

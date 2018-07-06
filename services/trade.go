@@ -56,7 +56,7 @@ func (s *TradeService) RegisterForTicks(conn *websocket.Conn, pairName string, p
 	conn.WriteMessage(1, rab)
 }
 
-func (t *TradeService) GetTicks(pairName string, duration int64, unit string, timeInterval ...int64) (resp []interface{}, err error) {
+func (t *TradeService) GetTicks(pairName string, duration int64, unit string, timeInterval ...int64) (resp []*types.Tick, err error) {
 	var match bson.M
 	currentTs := time.Now().UnixNano() / int64(time.Second)
 	var lt time.Time
@@ -139,10 +139,15 @@ func (t *TradeService) GetTicks(pairName string, duration int64, unit string, ti
 	match = bson.M{"$match": match}
 	group = bson.M{"$group": group}
 	query := []bson.M{match, sort, group, addFields, bson.M{"$sort": bson.M{"ts": 1}}}
-	resp, err = t.tradeDao.Aggregate(query) // dao.db.DB(dao.dbName).C(dao.collectionName).Pipe(query).All(&resp)
+	aggregateResp, err := t.tradeDao.Aggregate(query) // dao.db.DB(dao.dbName).C(dao.collectionName).Pipe(query).All(&resp)
 	if err != nil {
 		return
 	}
+	arab, err := json.Marshal(aggregateResp)
+	if err != nil {
+		return
+	}
+	json.Unmarshal(arab, &resp)
 	return
 }
 

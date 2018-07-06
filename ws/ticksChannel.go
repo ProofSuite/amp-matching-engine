@@ -34,3 +34,16 @@ func TickCloseHandler(channel string) func(conn *websocket.Conn) {
 		}
 	}
 }
+func TickBroadcast(channel string, msg interface{}) {
+	go func() {
+		for conn, isActive := range tickSubscriptions[channel] {
+			var err error
+			if isActive {
+				err = conn.WriteJSON(msg)
+			}
+			if err != nil || !isActive {
+				conn.Close()
+			}
+		}
+	}()
+}
