@@ -94,7 +94,7 @@ func (s *PairService) RegisterForOrderBook(conn *websocket.Conn, pairName string
 		mab, _ := json.Marshal(message)
 		conn.WriteMessage(1, mab)
 	}
-	conn.SetCloseHandler(ws.PairSocketCloseHandler(pairName, conn))
+	ws.RegisterConnectionUnsubscribeHandler(conn, ws.PairSocketCloseHandler(pairName))
 
 	rab, _ := json.Marshal(ob)
 	conn.WriteMessage(1, rab)

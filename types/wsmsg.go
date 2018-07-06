@@ -18,6 +18,15 @@ type OrderMessage struct {
 }
 
 type Subscription struct {
-	Event SubsciptionEvent `json:"event"`
-	Key   string           `json:"key"`
+	Event  SubsciptionEvent `json:"event"`
+	Key    string           `json:"key"`
+	Params `json:"params"`
+}
+
+type Params struct {
+	From     int64  `json:"from"`
+	To       int64  `json:"to"`
+	Duration int64  `json:"duration"`
+	Units    string `json:"units"`
+	TickID   string `json:"tickID"`
 }
