@@ -11,6 +11,8 @@ import (
 	"github.com/robfig/cron"
 )
 
+// tickStreamingCron takes instance of cron.Cron and adds tickStreaming
+// crons according to the durations mentioned in config/app.yaml file
 func (s *CronService) tickStreamingCron(c *cron.Cron) {
 	for unit, durations := range app.Config.TickDuration {
 		for _, duration := range durations {
@@ -19,6 +21,9 @@ func (s *CronService) tickStreamingCron(c *cron.Cron) {
 		}
 	}
 }
+
+// tickStream function fetches latest tick based on unit and duration for each pair
+// and broadcasts the tick to the client subscribed to pair's respective channel
 func (s *CronService) tickStream(unit string, duration int64) func() {
 	return func() {
 		// log.Printf("TickStreaming Ran: unit: %s duration: %d\n", unit, duration)
@@ -33,6 +38,8 @@ func (s *CronService) tickStream(unit string, duration int64) func() {
 	}
 }
 
+// getCronScheduleString converts unit and duration to schedule string used for
+// cron addFunc to schedule crons
 func getCronScheduleString(unit string, duration int64) string {
 	switch unit {
 
