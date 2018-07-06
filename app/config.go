@@ -33,6 +33,8 @@ type appConfig struct {
 	JWTSigningKey string `mapstructure:"jwt_signing_key"`
 	// JWT verification key. required.
 	JWTVerificationKey string `mapstructure:"jwt_verification_key"`
+	// TickDuration is user by tick streaming cron
+	TickDuration map[string][]int64 `mapstructure:"tick_duration"`
 }
 
 func (config appConfig) Validate() error {

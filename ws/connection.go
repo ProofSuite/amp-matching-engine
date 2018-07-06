@@ -71,7 +71,6 @@ func RegisterChannel(channel string, fn func(*interface{}, *websocket.Conn)) err
 		return fmt.Errorf("channel %s already registered", channel)
 	}
 	ch[channel] = fn
-	fmt.Println(socketChannels)
 	return nil
 }
 
