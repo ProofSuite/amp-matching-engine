@@ -1,12 +1,16 @@
 package services
 
 import (
+	"encoding/json"
 	"fmt"
 	"math"
 	"time"
 
 	"github.com/Proofsuite/amp-matching-engine/daos"
 	"github.com/Proofsuite/amp-matching-engine/types"
+	"github.com/Proofsuite/amp-matching-engine/utils"
+	"github.com/Proofsuite/amp-matching-engine/ws"
+	"github.com/gorilla/websocket"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -26,48 +30,32 @@ func (t *TradeService) GetByUserAddress(addr string) ([]*types.Trade, error) {
 	return t.tradeDao.GetByUserAddress(addr)
 }
 
-// func (t *TradeService) GetMarketStats(pairName ...string) (resp map[string]interface{}, err error) {
-// 	var match bson.M
-// 	if len(pairName) == 0 {
-// 		match = bson.M{"$match": bson.M{"createdAt": bson.M{"$gte": time.Now().Add(-24*time.Hour).UnixNano() / int64(time.Millisecond)}}}
-// 	} else {
-// 		match = bson.M{"$match": bson.M{"createdAt": bson.M{"$gte": time.Now().Add(-24*time.Hour).UnixNano() / int64(time.Millisecond)}, "pairName": bson.M{"$in": pairName}}}
-// 	}
-// 	fmt.Sprintf("%s", match)
-// 	sort := bson.M{
-// 		"$sort": bson.M{"createdAt": -1},
-// 	}
-// 	group := bson.M{
-// 		"$group": bson.M{
-// 			"_id":              bson.M{"market": "$market"},
-// 			"volume":           bson.M{"$sum": "$tradeSize"},
-// 			"hourlyHigh":       bson.M{"$max": "$tradePrice"},
-// 			"hourlyLow":        bson.M{"$min": "$tradePrice"},
-// 			"lastPrice":        bson.M{"$last": "$tradePrice"},
-// 			"firstPrice":       bson.M{"$first": "$tradePrice"},
-// 			"baseCurrency":     bson.M{"$first": "$baseCurrency"},
-// 			"exchangeCurrency": bson.M{"$first": "$exchangeCurrency"},
-// 			"market":           bson.M{"$first": "$market"},
-// 		},
-// 	}
-// 	addFields := bson.M{
-// 		"$addFields": bson.M{
-// 			"change": bson.M{
-// 				"$multiply": []interface{}{
-// 					bson.M{"$divide": []interface{}{
-// 						bson.M{"$subtract": []interface{}{
-// 							"$lastPrice",
-// 							"$firstPrice",
-// 						},
-// 						}, "$firstPrice"},
-// 					}, 100},
-// 			},
-// 		},
-// 	}
+func (t *TradeService) UnregisterForTicks(conn *websocket.Conn, pairName string, params *types.Params) {
+	tickChannelID := utils.GetTickChannelID(pairName, params.Units, params.Duration)
+	ws.UnsubscribeTick(tickChannelID, conn)
+}
 
-// 	_, err := t.tradeDao.Aggregate([]bson.M{match, sort, group, addFields}) //dao.db.DB(dao.dbName).C(dao.collectionName).Pipe([]bson.M{match, sort, group, addFields}).All(&resp)
-// 	return
-// }
+func (s *TradeService) RegisterForTicks(conn *websocket.Conn, pairName string, params *types.Params) {
+
+	ob, err := s.GetTicks(pairName, params.Duration, params.Units, params.From, params.To)
+	if err != nil {
+		conn.WriteMessage(1, []byte(err.Error()))
+	}
+	tickChannelID := utils.GetTickChannelID(pairName, params.Units, params.Duration)
+	if err := ws.SubscribeTick(tickChannelID, conn); err != nil {
+		message := map[string]string{
+			"Code":    "UNABLE_TO_SUBSCRIBE",
+			"Message": "UNABLE_TO_SUBSCRIBE: " + err.Error(),
+		}
+		mab, _ := json.Marshal(message)
+		conn.WriteMessage(1, mab)
+	}
+	ws.RegisterConnectionUnsubscribeHandler(conn, ws.TickCloseHandler(tickChannelID))
+
+	rab, _ := json.Marshal(ob)
+	conn.WriteMessage(1, rab)
+}
+
 func (t *TradeService) GetTicks(pairName string, duration int64, unit string, timeInterval ...int64) (resp []interface{}, err error) {
 	var match bson.M
 	currentTs := time.Now().UnixNano() / int64(time.Second)
@@ -139,12 +127,16 @@ func (t *TradeService) GetTicks(pairName string, duration int64, unit string, ti
 		return
 	}
 	if len(timeInterval) == 0 {
-		match = bson.M{"$match": bson.M{"pairName": pairName, "createdAt": bson.M{"$lt": lt}}}
+		match = bson.M{"createdAt": bson.M{"$lt": lt}}
 	} else if len(timeInterval) >= 1 {
 		lt = time.Unix(timeInterval[1], 0)
 		gt = time.Unix(timeInterval[0], 0)
-		match = bson.M{"$match": bson.M{"pairName": pairName, "createdAt": bson.M{"$gte": gt, "$lt": lt}}}
+		match = bson.M{"createdAt": bson.M{"$gte": gt, "$lt": lt}}
 	}
+	if pairName != "" {
+		match["pairName"] = pairName
+	}
+	match = bson.M{"$match": match}
 	group = bson.M{"$group": group}
 	query := []bson.M{match, sort, group, addFields, bson.M{"$sort": bson.M{"ts": 1}}}
 	resp, err = t.tradeDao.Aggregate(query) // dao.db.DB(dao.dbName).C(dao.collectionName).Pipe(query).All(&resp)
@@ -301,5 +293,6 @@ func getGroupTsBson(key, units string, duration int64) (resp bson.M, addFields b
 		addFields = bson.M{"$addFields": bson.M{"ts": bson.M{"$subtract": []interface{}{bson.M{"$dateFromParts": bson.M{
 			"year": "$_id.year"}}, t}}}}
 	}
+	resp["pair"] = "$pairName"
 	return
 }

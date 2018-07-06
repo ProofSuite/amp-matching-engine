@@ -87,13 +87,13 @@ func (r *orderEndpoint) ws(input *interface{}, conn *websocket.Conn) {
 		}
 		oab, _ = json.Marshal(order)
 		conn.WriteMessage(messageType, oab)
-		if ws.Connections == nil {
-			ws.Connections = make(map[string]*ws.Ws)
-		}
-		conn.SetCloseHandler(ws.OrderSocketCloseHandler(order.ID))
-		ws.Connections[order.ID.Hex()] = &ws.Ws{Conn: conn, ReadChannel: ch}
+		ws.RegisterOrderConnection(order.ID, &ws.WsOrderConn{Conn: conn, ReadChannel: ch})
+		ws.RegisterConnectionUnsubscribeHandler(conn, ws.OrderSocketCloseHandler(order.ID))
 	} else {
-		ws.Connections[msg.OrderID.Hex()].ReadChannel <- msg
+		ch := ws.GetOrderChannel(msg.OrderID)
+		if ch != nil {
+			ch <- msg
+		}
 	}
 }
 

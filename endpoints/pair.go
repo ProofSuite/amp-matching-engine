@@ -85,7 +85,7 @@ func (r *pairEndpoint) orderBook(input *interface{}, conn *websocket.Conn) {
 		r.pairService.RegisterForOrderBook(conn, msg.Key)
 	}
 	if msg.Event == types.UNSUBSCRIBE {
-		
+		r.pairService.UnRegisterForOrderBook(conn, msg.Key)
 	}
 }
 func (r *pairEndpoint) orderBookEndpoint(c *routing.Context) error {

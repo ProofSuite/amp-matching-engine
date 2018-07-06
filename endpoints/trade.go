@@ -1,13 +1,18 @@
 package endpoints
 
 import (
+	"encoding/json"
+	"log"
 	"strconv"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/gorilla/websocket"
 
 	"github.com/Proofsuite/amp-matching-engine/errors"
 	"github.com/Proofsuite/amp-matching-engine/services"
+	"github.com/Proofsuite/amp-matching-engine/types"
+	"github.com/Proofsuite/amp-matching-engine/ws"
 	"github.com/go-ozzo/ozzo-routing"
 )
 
@@ -21,6 +26,7 @@ func ServeTradeResource(rg *routing.RouteGroup, tradeService *services.TradeServ
 	rg.Get("/trades/history/<pair>", r.history)
 	rg.Get("/trades/ticks", r.ticks)
 	rg.Get("/trades/<addr>", r.get)
+	ws.RegisterChannel("trade_ticks", r.wsTicks)
 }
 
 // history is reponsible for handling pair's trade history requests
@@ -79,4 +85,41 @@ func (r *tradeEndpoint) ticks(c *routing.Context) error {
 		return err
 	}
 	return c.Write(res)
+}
+func (r *tradeEndpoint) wsTicks(input *interface{}, conn *websocket.Conn) {
+	startTs := time.Date(1970, time.January, 1, 0, 0, 0, 0, time.UTC)
+
+	mab, _ := json.Marshal(input)
+	var msg *types.Subscription
+	if err := json.Unmarshal(mab, &msg); err != nil {
+		log.Println("unmarshal to wsmsg <==>" + err.Error())
+	}
+
+	if msg.Key == "" {
+		message := map[string]string{
+			"Code":    "Invalid_Pair_Name",
+			"Message": "Invalid Pair Name passed in query Params",
+		}
+		mab, _ := json.Marshal(message)
+		conn.WriteMessage(1, mab)
+	}
+	if msg.Params.From == 0 {
+		msg.Params.From = startTs.Unix()
+	}
+	if msg.Params.To == 0 {
+		msg.Params.To = time.Now().Unix()
+	}
+	if msg.Params.Duration == 0 {
+		msg.Params.Duration = 24
+	}
+	if msg.Params.Units == "" {
+		msg.Params.Units = "hour"
+	}
+	if msg.Event == types.SUBSCRIBE {
+		r.tradeService.RegisterForTicks(conn, msg.Key, &msg.Params)
+
+	}
+	if msg.Event == types.UNSUBSCRIBE {
+		r.tradeService.UnregisterForTicks(conn, msg.Key, &msg.Params)
+	}
 }

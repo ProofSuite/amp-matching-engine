@@ -49,7 +49,7 @@ func (e *EngineResource) matchOrder(order *types.Order) (err error) {
 		if err != nil {
 			log.Fatalf("%s", err)
 		}
-		ws.Connections[order.ID.Hex()].Conn.WriteMessage(1, erab)
+		ws.GetOrderConn(order.ID).WriteMessage(1, erab)
 
 	} else {
 
@@ -66,43 +66,48 @@ func (e *EngineResource) matchOrder(order *types.Order) (err error) {
 			log.Fatalf("%s", err)
 		}
 
-		ws.Connections[order.ID.Hex()].Conn.WriteMessage(1, erab)
+		ws.GetOrderConn(order.ID).WriteMessage(1, erab)
 
 		// for {
 		t := time.NewTimer(10 * time.Second)
-		select {
-		case rm := <-ws.Connections[order.ID.Hex()].ReadChannel:
-			if rm.MsgType == "trade_remorder_sign" {
-				mb, err := json.Marshal(rm.Data)
-				if err != nil {
-					ws.Connections[order.ID.Hex()].Conn.WriteMessage(1, []byte(err.Error()))
-					ws.Connections[order.ID.Hex()].Conn.Close()
-				}
-				var ersb *EngineResponse
-				err = json.Unmarshal(mb, &ersb)
-				if err != nil {
-					ws.Connections[order.ID.Hex()].Conn.WriteMessage(1, []byte(err.Error()))
-					ws.Connections[order.ID.Hex()].Conn.Close()
-				}
-				if engineResponse.FillStatus == PARTIAL {
-					order.OrderBook = &types.OrderSubDoc{Amount: ersb.RemainingOrder.Amount, Signature: ersb.RemainingOrder.Signature}
-					e.addOrder(order)
-				}
-			}
-			t.Stop()
-			break
-		case <-t.C:
-			fmt.Printf("\nTimeout\n")
+		ch := ws.GetOrderChannel(order.ID)
+		if ch == nil {
 			e.recoverOrders(engineResponse.MatchingOrders)
-			engineResponse.FillStatus = ERROR
-			engineResponse.Order.Status = types.ERROR
-			engineResponse.Trades = nil
-			engineResponse.RemainingOrder = nil
-			engineResponse.MatchingOrders = nil
-			t.Stop()
-			break
+		} else {
+			select {
+			case rm := <-ch:
+				if rm.MsgType == "trade_remorder_sign" {
+					mb, err := json.Marshal(rm.Data)
+					if err != nil {
+						ws.GetOrderConn(order.ID).WriteMessage(1, []byte(err.Error()))
+					}
+					var ersb *EngineResponse
+					err = json.Unmarshal(mb, &ersb)
+					if err != nil {
+						ws.GetOrderConn(order.ID).WriteMessage(1, []byte(err.Error()))
+					}
+					if engineResponse.FillStatus == PARTIAL {
+						order.OrderBook = &types.OrderSubDoc{Amount: ersb.RemainingOrder.Amount, Signature: ersb.RemainingOrder.Signature}
+						e.addOrder(order)
+					}
+				}
+				t.Stop()
+				break
+			case <-t.C:
+				fmt.Printf("\nTimeout\n")
+				e.recoverOrders(engineResponse.MatchingOrders)
+				engineResponse.FillStatus = ERROR
+				engineResponse.Order.Status = types.ERROR
+				engineResponse.Trades = nil
+				engineResponse.RemainingOrder = nil
+				engineResponse.MatchingOrders = nil
+				t.Stop()
+				break
+			}
 		}
 	}
+	ws.CloseOrderReadChannel(order.ID)
+
 	e.publishEngineResponse(engineResponse)
 	if err != nil {
 		log.Printf("\npublishEngineResponse XXXXXXX\n%s\nXXXXXXX publishEngineResponse\n", err)

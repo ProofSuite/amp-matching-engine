@@ -10,18 +10,17 @@ type PairWs map[*websocket.Conn]bool
 
 var pairSockets map[string]PairWs
 
-func PairSocketCloseHandler(pair string, conn *websocket.Conn) func(code int, text string) error {
-	return func(code int, text string) error {
-		return PairSocketUnregisterConnection(pair, conn)
+func PairSocketCloseHandler(pair string) func(conn *websocket.Conn) {
+	return func(conn *websocket.Conn) {
+		PairSocketUnregisterConnection(pair, conn)
 	}
 }
 
-func PairSocketUnregisterConnection(pair string, conn *websocket.Conn) error {
+func PairSocketUnregisterConnection(pair string, conn *websocket.Conn) {
 	if pairSockets[pair][conn] {
 		pairSockets[pair][conn] = false
 		delete(pairSockets[pair], conn)
 	}
-	return nil
 }
 func PairSocketWriteMessage(pair string, message []byte) error {
 	for conn, status := range pairSockets[pair] {
