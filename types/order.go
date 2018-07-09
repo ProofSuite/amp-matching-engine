@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Proofsuite/amp-matching-engine/utils"
+	"github.com/ethereum/go-ethereum/crypto/sha3"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -298,19 +299,19 @@ type OrderSubDoc struct {
 // }
 
 // ComputeHash calculates the order hash
-// func (o *Order) ComputeHash() (ch common.Hash) {
-// 	sha := sha3.NewKeccak256()
-// 	// sha.Write(o.ExchangeAddress.Bytes())
-// 	sha.Write([]byte(o.BuyToken))
-// 	sha.Write([]byte(o.SellToken))
-// 	// sha.Write(strconv.ParseUint(o.Price))
-// 	// sha.Write(BigToHash(o.Amount).Bytes())
-// 	// sha.Write(BigToHash(o.Expires).Bytes())
-// 	// sha.Write(BigToHash(o.Nonce).Bytes())
-// 	// sha.Write(o.Maker.Bytes())
-// 	// return BytesToHash(sha.Sum(nil))
-// 	return
-// }
+func (o *Order) ComputeHash() (ch string) {
+	sha := sha3.NewKeccak256()
+	// sha.Write(o.ExchangeAddress.Bytes())
+	sha.Write([]byte(o.BuyToken))
+	sha.Write([]byte(o.SellToken))
+	// sha.Write(strconv.ParseUint(o.Price))
+	// sha.Write(BigToHash(o.Amount).Bytes())
+	// sha.Write(BigToHash(o.Expires).Bytes())
+	// sha.Write(BigToHash(o.Nonce).Bytes())
+	// sha.Write(o.Maker.Bytes())
+	// return BytesToHash(sha.Sum(nil))
+	return
+}
 
 // VerifySignature checks that the order signature corresponds to the address in the maker field
 // func (o *Order) VerifySignature() (bool, error) {

@@ -86,8 +86,7 @@ func (e *EngineResource) execute(m *Match, er *EngineResponse) (err error) {
 			TakerOrderID: order.ID,
 			MakerOrderID: mo.ID,
 		}
-		// TODO: Implement compute hash functions
-		// t.Hash = t.ComputeHash()
+		t.Hash = t.ComputeHash()
 
 		er.Trades = append(er.Trades, t)
 

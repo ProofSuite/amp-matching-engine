@@ -1,7 +1,12 @@
 package types
 
 import (
+	"errors"
+	"fmt"
 	"time"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto/sha3"
 
 	"gopkg.in/mgo.v2/bson"
 )
@@ -60,17 +65,17 @@ func NewTrade(o *Order, amount int64, price int64, taker string) *Trade {
 
 // ComputeTradeHash returns hashes the trade
 //
-// The OrderHash, Aounot, Taker and TradeNonce attributes must be
+// The OrderHash, Amount, Taker and TradeNonce attributes must be
 // set before attempting to compute the trade hash
-// func (t *Trade) ComputeHash() Hash {
-// 	sha := sha3.NewKeccak256()
+func (t *Trade) ComputeHash() string {
+	sha := sha3.NewKeccak256()
 
-// 	sha.Write(t.OrderHash.Bytes())
-// 	sha.Write(BigToHash(t.Amount).Bytes())
-// 	sha.Write(t.Taker.Bytes())
-// 	sha.Write(BigToHash(t.TradeNonce).Bytes())
-// 	return BytesToHash(sha.Sum(nil))
-// }
+	sha.Write([]byte(t.OrderHash))
+	sha.Write([]byte(fmt.Sprintf("%d", t.Amount)))
+	sha.Write([]byte(t.Taker))
+	sha.Write([]byte(fmt.Sprintf("%d", t.TradeNonce)))
+	return common.BytesToHash(sha.Sum(nil)).Hex()
+}
 
 // Sign calculates ands sets the trade hash and signature with the
 // given wallet
@@ -114,18 +119,18 @@ func NewTrade(o *Order, amount int64, price int64, taker string) *Trade {
 
 // VerifySignature verifies that the trade is correct and corresponds
 // to the trade Taker address
-// func (t *Trade) VerifySignature() (bool, error) {
-// 	address, err := t.Signature.Verify(t.Hash)
-// 	if err != nil {
-// 		return false, err
-// 	}
+func (t *Trade) VerifySignature() (bool, error) {
+	address, err := t.Signature.Verify(common.HexToHash(t.Hash))
+	if err != nil {
+		return false, err
+	}
 
-// 	if address != t.Taker {
-// 		return false, errors.New("Recovered address is incorrect")
-// 	}
+	if address != common.HexToAddress(t.Taker) {
+		return false, errors.New("Recovered address is incorrect")
+	}
 
-// 	return true, nil
-// }
+	return true, nil
+}
 
 // MarshalJSON returns the json encoded byte array representing the trade struct
 // func (t *Trade) MarshalJSON() ([]byte, error) {

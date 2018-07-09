@@ -28,10 +28,10 @@ func NewOrderService(orderDao *daos.OrderDao, balanceDao *daos.BalanceDao, pairD
 }
 
 func (s *OrderService) Create(order *types.Order) (err error) {
-
+	
 	// Fill token and pair data
 
-	p, err := s.pairDao.GetByName(order.PairName)
+	p, err := s.pairDao.GetByTokenAddressPair(order.BuyTokenAddress, order.SellTokenAddress)
 	if err != nil {
 		return err
 	} else if p == nil {
@@ -44,8 +44,6 @@ func (s *OrderService) Create(order *types.Order) (err error) {
 	order.SellTokenAddress = p.SellTokenAddress
 
 	// Validate if order is valid
-
-	// TODO: Signature Validation
 
 	// balance validation
 	bal, err := s.balanceDao.GetByAddress(order.UserAddress)
