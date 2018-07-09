@@ -50,3 +50,22 @@ func (dao *PairDao) GetByName(name string) (response *types.Pair, err error) {
 	}
 	return
 }
+func (dao *PairDao) GetByTokenAddressPair(buyToken, sellToken string) (response *types.Pair, err error) {
+	var res []*types.Pair
+	q := bson.M{"buyTokenAddress": bson.RegEx{
+		Pattern: buyToken,
+		Options: "i",
+	}, "sellTokenAddress": bson.RegEx{
+		Pattern: sellToken,
+		Options: "i",
+	}}
+	err = DB.Get(dao.dbName, dao.collectionName, q, 0, 1, &res)
+	if err != nil {
+		return
+	} else if len(res) > 0 {
+		response = res[0]
+	} else {
+		err = errors.New("No Pair found")
+	}
+	return
+}

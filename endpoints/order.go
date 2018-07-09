@@ -73,6 +73,13 @@ func (r *orderEndpoint) ws(input *interface{}, conn *websocket.Conn) {
 
 			return
 		}
+		if ok, err := model.VerifySignature(); err != nil {
+			conn.WriteMessage(messageType, []byte(err.Error()))
+			return
+		} else if !ok {
+			conn.WriteMessage(messageType, []byte("Invalid Signature"))
+			return
+		}
 		order, err := model.ToOrder()
 		if err != nil {
 			conn.WriteMessage(messageType, []byte(err.Error()))
