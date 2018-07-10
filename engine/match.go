@@ -46,9 +46,9 @@ func (e *EngineResource) execute(m *Match, er *EngineResponse) (err error) {
 	var filledAmount int64
 
 	order := er.Order
-	MatchedOrders := m.MatchingOrders
+	matchedOrders := m.MatchingOrders
 
-	for i, o := range MatchedOrders {
+	for i, o := range matchedOrders {
 		mo := o.Order
 		ss, list := mo.GetOBKeys()
 		// POP the order from the top of list

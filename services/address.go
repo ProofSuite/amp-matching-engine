@@ -1,6 +1,8 @@
 package services
 
 import (
+	"fmt"
+
 	"gopkg.in/mgo.v2/bson"
 
 	"github.com/Proofsuite/amp-matching-engine/daos"
@@ -20,18 +22,18 @@ func NewAddressService(AddressDao *daos.AddressDao, balanceDao *daos.BalanceDao,
 }
 
 // Create validates the address and create wallet for the address
-func (s *AddressService) Create(Address *types.UserAddress) error {
-	ua, err := s.GetByAddress(Address.Address)
+func (s *AddressService) Create(address *types.UserAddress) error {
+	ua, err := s.GetByAddress(address.Address)
 	if err == nil && ua != nil {
-		Address = ua
+		address = ua
 		return nil
 	}
-	err = s.AddressDao.Create(Address)
+	err = s.AddressDao.Create(address)
 	if err != nil {
-		return err
+		return fmt.Errorf("%s<==", err)
 	}
 	balService := NewBalanceService(s.balanceDao, s.tokenDao)
-	bal := &types.Balance{Address: Address.Address}
+	bal := &types.Balance{Address: address.Address}
 	err = balService.Create(bal)
 	if err != nil {
 		return err
