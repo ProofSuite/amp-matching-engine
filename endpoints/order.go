@@ -2,8 +2,10 @@ package endpoints
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/Proofsuite/amp-matching-engine/errors"
 	"github.com/ethereum/go-ethereum/common"
@@ -104,12 +106,66 @@ func (r *orderEndpoint) ws(input *interface{}, conn *websocket.Conn) {
 	}
 }
 
-func (r *orderEndpoint) engineResponse(er *engine.EngineResponse) error {
+func (r *orderEndpoint) engineResponse(engineResponse *engine.EngineResponse) error {
 	// b, _ := json.Marshal(er)
 	// fmt.Printf("\n======> \n%s\n <======\n", b)
-	r.orderService.UpdateUsingEngineResponse(er)
+	// If NO_MATCH add to order book
+	if engineResponse.FillStatus == engine.NO_MATCH {
+
+		msg := &types.OrderMessage{MsgType: "added_to_orderbook"}
+		msg.OrderID = engineResponse.Order.ID
+		msg.Data = engineResponse
+		ws.GetOrderConn(engineResponse.Order.ID).WriteJSON(msg)
+
+	} else {
+		msg := &types.OrderMessage{MsgType: "trade_remorder_sign"}
+		msg.OrderID = engineResponse.Order.ID
+		msg.Data = engineResponse
+
+		ws.GetOrderConn(engineResponse.Order.ID).WriteJSON(msg)
+
+		// for {
+		t := time.NewTimer(10 * time.Second)
+		ch := ws.GetOrderChannel(engineResponse.Order.ID)
+		if ch == nil {
+			// e.recoverOrders(engineResponse.MatchingOrders)
+		} else {
+			select {
+			case rm := <-ch:
+				if rm.MsgType == "trade_remorder_sign" {
+					mb, err := json.Marshal(rm.Data)
+					if err != nil {
+						ws.GetOrderConn(engineResponse.Order.ID).WriteMessage(1, []byte(err.Error()))
+					}
+					var ersb *engine.EngineResponse
+					err = json.Unmarshal(mb, &ersb)
+					if err != nil {
+						ws.GetOrderConn(engineResponse.Order.ID).WriteMessage(1, []byte(err.Error()))
+					}
+					if engineResponse.FillStatus == engine.PARTIAL {
+						engineResponse.Order.OrderBook = &types.OrderSubDoc{Amount: ersb.RemainingOrder.Amount, Signature: ersb.RemainingOrder.Signature}
+						// e.addOrder(order)
+					}
+				}
+				t.Stop()
+				break
+			case <-t.C:
+				fmt.Printf("\nTimeout\n")
+				// e.recoverOrders(engineResponse.MatchingOrders)
+				engineResponse.FillStatus = engine.ERROR
+				engineResponse.Order.Status = types.ERROR
+				engineResponse.Trades = nil
+				engineResponse.RemainingOrder = nil
+				engineResponse.MatchingOrders = nil
+				t.Stop()
+				break
+			}
+		}
+	}
+	ws.CloseOrderReadChannel(engineResponse.Order.ID)
+	r.orderService.UpdateUsingEngineResponse(engineResponse)
 	// TODO: send to operator for blockchain execution
 
-	r.orderService.RelayUpdateOverSocket(er)
+	r.orderService.RelayUpdateOverSocket(engineResponse)
 	return nil
 }

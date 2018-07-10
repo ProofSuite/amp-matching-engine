@@ -4,9 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"time"
-
-	"github.com/Proofsuite/amp-matching-engine/ws"
 
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/Proofsuite/amp-matching-engine/utils"
@@ -19,94 +16,15 @@ type FillOrder struct {
 }
 
 func (e *EngineResource) matchOrder(order *types.Order) (err error) {
-	engineResponse := &EngineResponse{
-		Order: order,
-	}
-	engineResponse.Trades = make([]*types.Trade, 0)
-	engineResponse.RemainingOrder = order
-	engineResponse.MatchingOrders = make([]*FillOrder, 0)
 
-	match := &Match{
-		Order: order,
-	}
-
+	var engineResponse *EngineResponse
 	// for match.FillStatus != NO_MATCH {
 	if order.Type == types.SELL {
-		err = e.sellOrder(order, match)
+		engineResponse, err = e.sellOrder(order)
 	} else if order.Type == types.BUY {
-		err = e.buyOrder(order, match)
+		engineResponse, err = e.buyOrder(order)
 	}
 	// Note: Plug the option for orders like FOC, Limit, OnlyFill (If Required)
-
-	// If NO_MATCH add to order book
-	if match.FillStatus == NO_MATCH {
-		engineResponse.Order.Status = types.OPEN
-		e.addOrder(order)
-		msg := &types.OrderMessage{MsgType: "added_to_orderbook"}
-		msg.OrderID = order.ID
-		msg.Data = engineResponse
-		erab, err := json.Marshal(msg)
-		if err != nil {
-			log.Fatalf("%s", err)
-		}
-		ws.GetOrderConn(order.ID).WriteMessage(1, erab)
-
-	} else {
-
-		// Execute Trade
-		err = e.execute(match, engineResponse)
-		if err != nil {
-			log.Printf("\nexecute XXXXXXX\n%s\nXXXXXXX execute\n", err)
-		}
-		msg := &types.OrderMessage{MsgType: "trade_remorder_sign"}
-		msg.OrderID = order.ID
-		msg.Data = engineResponse
-		erab, err := json.Marshal(msg)
-		if err != nil {
-			log.Fatalf("%s", err)
-		}
-
-		ws.GetOrderConn(order.ID).WriteMessage(1, erab)
-
-		// for {
-		t := time.NewTimer(10 * time.Second)
-		ch := ws.GetOrderChannel(order.ID)
-		if ch == nil {
-			e.recoverOrders(engineResponse.MatchingOrders)
-		} else {
-			select {
-			case rm := <-ch:
-				if rm.MsgType == "trade_remorder_sign" {
-					mb, err := json.Marshal(rm.Data)
-					if err != nil {
-						ws.GetOrderConn(order.ID).WriteMessage(1, []byte(err.Error()))
-					}
-					var ersb *EngineResponse
-					err = json.Unmarshal(mb, &ersb)
-					if err != nil {
-						ws.GetOrderConn(order.ID).WriteMessage(1, []byte(err.Error()))
-					}
-					if engineResponse.FillStatus == PARTIAL {
-						order.OrderBook = &types.OrderSubDoc{Amount: ersb.RemainingOrder.Amount, Signature: ersb.RemainingOrder.Signature}
-						e.addOrder(order)
-					}
-				}
-				t.Stop()
-				break
-			case <-t.C:
-				fmt.Printf("\nTimeout\n")
-				e.recoverOrders(engineResponse.MatchingOrders)
-				engineResponse.FillStatus = ERROR
-				engineResponse.Order.Status = types.ERROR
-				engineResponse.Trades = nil
-				engineResponse.RemainingOrder = nil
-				engineResponse.MatchingOrders = nil
-				t.Stop()
-				break
-			}
-		}
-	}
-	ws.CloseOrderReadChannel(order.ID)
 
 	e.publishEngineResponse(engineResponse)
 	if err != nil {
@@ -115,11 +33,15 @@ func (e *EngineResource) matchOrder(order *types.Order) (err error) {
 	return
 }
 
-func (e *EngineResource) buyOrder(order *types.Order, match *Match) (err error) {
+func (e *EngineResource) buyOrder(order *types.Order) (engineResponse *EngineResponse, err error) {
 
-	if match.MatchingOrders == nil {
-		match.MatchingOrders = make([]*FillOrder, 0)
+	engineResponse = &EngineResponse{
+		Order:      order,
+		FillStatus: PARTIAL,
 	}
+	engineResponse.Trades = make([]*types.Trade, 0)
+	engineResponse.RemainingOrder = order
+	engineResponse.MatchingOrders = make([]*FillOrder, 0)
 
 	oskv := order.GetOBMatchKey()
 
@@ -134,43 +56,35 @@ func (e *EngineResource) buyOrder(order *types.Order, match *Match) (err error) 
 		log.Printf("Scan %s\n", err)
 	}
 
-	var filledAmount int64
-	var orderAmount = order.Amount
-
 	if len(priceRange) == 0 {
-		match.FillStatus = NO_MATCH
+		engineResponse.FillStatus = NO_MATCH
+		e.addOrder(order)
 	} else {
 		for _, pr := range priceRange {
 			bookEntries, err := redis.ByteSlices(e.redisConn.Do("SORT", oskv+"::"+utils.UintToPaddedString(pr), "GET", oskv+"::"+utils.UintToPaddedString(pr)+"::*", "ALPHA")) // "ZREVRANGEBYLEX" key max min
 			if err != nil {
 				log.Printf("LRANGE: %s\n", err)
-				return err
+				return nil, err
 			}
 			for _, o := range bookEntries {
-				var bookEntry types.Order
+				var bookEntry *types.Order
 				err = json.Unmarshal(o, &bookEntry)
 				if err != nil {
 					log.Printf("json.Unmarshal: %s\n", err)
-					return err
+					return nil, err
 				}
-				fmt.Println(bookEntry)
-
-				match.FillStatus = PARTIAL
-
-				// update filledAmount
-				beAmtAvailable := bookEntry.Amount - bookEntry.FilledAmount
-				if beAmtAvailable > order.Amount {
-					match.MatchingOrders = append(match.MatchingOrders, &FillOrder{order.Amount, &bookEntry})
-					filledAmount = order.Amount
-				} else {
-					match.MatchingOrders = append(match.MatchingOrders, &FillOrder{beAmtAvailable, &bookEntry})
-					filledAmount = beAmtAvailable
+				trade, fillOrder, err := e.execute(order, bookEntry)
+				if err != nil {
+					log.Printf("Error Executing Order: %s\n", err)
+					return nil, err
 				}
+				engineResponse.Trades = append(engineResponse.Trades, trade)
+				engineResponse.MatchingOrders = append(engineResponse.MatchingOrders, fillOrder)
+				engineResponse.RemainingOrder.FilledAmount = engineResponse.RemainingOrder.FilledAmount + fillOrder.Amount
 
-				if filledAmount == orderAmount {
-					match.FillStatus = FULL
-					// order filled return
-					return nil
+				if engineResponse.RemainingOrder.FilledAmount == engineResponse.RemainingOrder.FilledAmount {
+					engineResponse.FillStatus = FULL
+					return engineResponse, nil
 				}
 			}
 		}
@@ -178,10 +92,14 @@ func (e *EngineResource) buyOrder(order *types.Order, match *Match) (err error) 
 	return
 }
 
-func (e *EngineResource) sellOrder(order *types.Order, match *Match) (err error) {
-	if match.MatchingOrders == nil {
-		match.MatchingOrders = make([]*FillOrder, 0)
+func (e *EngineResource) sellOrder(order *types.Order) (engineResponse *EngineResponse, err error) {
+	engineResponse = &EngineResponse{
+		Order:      order,
+		FillStatus: PARTIAL,
 	}
+	engineResponse.Trades = make([]*types.Trade, 0)
+	engineResponse.RemainingOrder = order
+	engineResponse.MatchingOrders = make([]*FillOrder, 0)
 
 	obkv := order.GetOBMatchKey()
 	// GET Range of sellOrder between minimum Sell order and order.Price
@@ -196,42 +114,35 @@ func (e *EngineResource) sellOrder(order *types.Order, match *Match) (err error)
 		log.Printf("Scan %s\n", err)
 	}
 
-	var filledAmount int64
-	var orderAmount = order.Amount
-
 	if len(priceRange) == 0 {
-		match.FillStatus = NO_MATCH
+		engineResponse.FillStatus = NO_MATCH
+		e.addOrder(order)
 	} else {
 		for _, pr := range priceRange {
 			bookEntries, err := redis.ByteSlices(e.redisConn.Do("SORT", obkv+"::"+utils.UintToPaddedString(pr), "GET", obkv+"::"+utils.UintToPaddedString(pr)+"::*", "ALPHA")) // "ZREVRANGEBYLEX" key max min
 			if err != nil {
 				log.Printf("LRANGE: %s\n", err)
-				return err
+				return nil, err
 			}
 			for _, o := range bookEntries {
-				var bookEntry types.Order
+				var bookEntry *types.Order
 				err = json.Unmarshal(o, &bookEntry)
 				if err != nil {
 					log.Printf("json.Unmarshal: %s\n", err)
-					return err
+					return nil, err
 				}
-
-				match.FillStatus = PARTIAL
-
-				// update filledAmount
-				beAmtAvailable := bookEntry.Amount - bookEntry.FilledAmount
-				if beAmtAvailable > order.Amount {
-					match.MatchingOrders = append(match.MatchingOrders, &FillOrder{order.Amount, &bookEntry})
-					filledAmount = order.Amount
-				} else {
-					match.MatchingOrders = append(match.MatchingOrders, &FillOrder{beAmtAvailable, &bookEntry})
-					filledAmount = beAmtAvailable
+				trade, fillOrder, err := e.execute(order, bookEntry)
+				if err != nil {
+					log.Printf("Error Executing Order: %s\n", err)
+					return nil, err
 				}
+				engineResponse.Trades = append(engineResponse.Trades, trade)
+				engineResponse.MatchingOrders = append(engineResponse.MatchingOrders, fillOrder)
+				engineResponse.RemainingOrder.FilledAmount = engineResponse.RemainingOrder.FilledAmount + fillOrder.Amount
 
-				if filledAmount == orderAmount {
-					match.FillStatus = FULL
-					// order filled return
-					return nil
+				if engineResponse.RemainingOrder.FilledAmount == engineResponse.RemainingOrder.FilledAmount {
+					engineResponse.FillStatus = FULL
+					return engineResponse, nil
 				}
 			}
 		}
@@ -247,7 +158,7 @@ func (e *EngineResource) addOrder(order *types.Order) {
 		log.Printf("ZADD: %s", err)
 	}
 	fmt.Printf("ZADD: %s\n", res)
-	res, err = e.redisConn.Do("INCRBY", ssKey+"::book::"+utils.UintToPaddedString(order.Price), order.Amount) // Add price point to order book
+	res, err = e.redisConn.Do("INCRBY", ssKey+"::book::"+utils.UintToPaddedString(order.Price), order.Amount-order.FilledAmount) // Add price point to order book
 	if err != nil {
 		log.Printf("INCRBY: %s", err)
 	}
@@ -263,8 +174,39 @@ func (e *EngineResource) addOrder(order *types.Order) {
 		log.Printf("SET: %s", err)
 	}
 	// Add order reference to price sorted set
-	// res, err = e.redisConn.Do("RPUSH", listKey, orderAsBytes)
-	fmt.Println(order.CreatedAt.Unix())
+	res, err = e.redisConn.Do("ZADD", listKey, "NX", order.CreatedAt.Unix(), order.ID.Hex())
+	if err != nil {
+		log.Printf("ZADD: %s", err)
+	}
+
+	fmt.Printf("ZADD: %s\n", res)
+
+	return
+}
+func (e *EngineResource) updateOrder(order *types.Order, tradeAmount int64) {
+
+	ssKey, listKey := order.GetOBKeys()
+	res, err := e.redisConn.Do("ZADD", ssKey, "NX", 0, utils.UintToPaddedString(order.Price)) // Add price point to order book
+	if err != nil {
+		log.Printf("ZADD: %s", err)
+	}
+	fmt.Printf("ZADD: %s\n", res)
+	res, err = e.redisConn.Do("INCRBY", ssKey+"::book::"+utils.UintToPaddedString(order.Price), -1*tradeAmount) // Add price point to order book
+	if err != nil {
+		log.Printf("INCRBY: %s", err)
+	}
+	fmt.Printf("INCRBY: %s\n", res)
+
+	// Add order to list
+	orderAsBytes, err := json.Marshal(order)
+	if err != nil {
+		log.Printf("orderAsBytes: %s", err)
+	}
+	res, err = e.redisConn.Do("SET", listKey+"::"+order.ID.Hex(), string(orderAsBytes))
+	if err != nil {
+		log.Printf("SET: %s", err)
+	}
+	// Add order reference to price sorted set
 	res, err = e.redisConn.Do("ZADD", listKey, "NX", order.CreatedAt.Unix(), order.ID.Hex())
 	if err != nil {
 		log.Printf("ZADD: %s", err)
@@ -275,6 +217,63 @@ func (e *EngineResource) addOrder(order *types.Order) {
 	return
 }
 
+func (e *EngineResource) deleteOrder(order *types.Order, tradeAmount int64) {
+
+	ssKey, listKey := order.GetOBKeys()
+	remVolume, err := redis.Int64(e.redisConn.Do("GET", ssKey+"::book::"+utils.UintToPaddedString(order.Price)))
+	if err != nil {
+		log.Printf("GET remVolume: %s", err)
+	}
+	if remVolume == tradeAmount {
+		res, err := e.redisConn.Do("ZREM", ssKey, "NX", 0, utils.UintToPaddedString(order.Price)) // Add price point to order book
+		if err != nil {
+			log.Printf("ZREM: %s", err)
+		}
+		fmt.Printf("ZREM: %s\n", res)
+		res, err = e.redisConn.Do("DEL", ssKey+"::book::"+utils.UintToPaddedString(order.Price)) // Add price point to order book
+		if err != nil {
+			log.Printf("DEL: %s", err)
+		}
+		fmt.Printf("DEL: %s\n", res)
+
+		res, err = e.redisConn.Do("DEL", listKey+"::"+order.ID.Hex())
+		if err != nil {
+			log.Printf("DEL: %s", err)
+		}
+		// Add order reference to price sorted set
+		res, err = e.redisConn.Do("ZREM", listKey, order.ID.Hex())
+		if err != nil {
+			log.Printf("ZREM: %s", err)
+		}
+
+		fmt.Printf("ZREM: %s\n", res)
+	} else {
+		res, err := e.redisConn.Do("ZADD", ssKey, "NX", 0, utils.UintToPaddedString(order.Price)) // Add price point to order book
+		if err != nil {
+			log.Printf("ZADD: %s", err)
+		}
+		fmt.Printf("ZADD: %s\n", res)
+		res, err = e.redisConn.Do("INCRBY", ssKey+"::book::"+utils.UintToPaddedString(order.Price), -1*tradeAmount) // Add price point to order book
+		if err != nil {
+			log.Printf("INCRBY: %s", err)
+		}
+		fmt.Printf("INCRBY: %s\n", res)
+
+		res, err = e.redisConn.Do("DEL", listKey+"::"+order.ID.Hex())
+		if err != nil {
+			log.Printf("DEL: %s", err)
+		}
+		// Add order reference to price sorted set
+		res, err = e.redisConn.Do("ZREM", listKey, order.ID.Hex())
+		if err != nil {
+			log.Printf("ZREM: %s", err)
+		}
+
+		fmt.Printf("ZREM: %s\n", res)
+	}
+
+	return
+}
 func (e *EngineResource) recoverOrders(orders []*FillOrder) {
 	for _, o := range orders {
 		e.addOrder(o.Order)
