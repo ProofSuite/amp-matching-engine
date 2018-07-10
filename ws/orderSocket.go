@@ -39,7 +39,9 @@ func GetOrderConn(orderId bson.ObjectId) (conn *websocket.Conn) {
 	return orderConnections[orderId.Hex()].Conn
 }
 func GetOrderChannel(orderId bson.ObjectId) chan *types.OrderMessage {
-	if !orderConnections[orderId.Hex()].Active {
+	if orderConnections[orderId.Hex()] == nil {
+		return nil
+	} else if !orderConnections[orderId.Hex()].Active {
 		return nil
 	}
 	return orderConnections[orderId.Hex()].ReadChannel

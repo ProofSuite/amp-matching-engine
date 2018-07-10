@@ -35,7 +35,7 @@ func (m OrderRequest) Validate() error {
 		validation.Field(&m.UserAddress, validation.Required),
 		validation.Field(&m.TokenBuy, validation.Required, validation.NewStringRule(common.IsHexAddress, "Invalid Buy Token Address")),
 		validation.Field(&m.TokenSell, validation.Required, validation.NewStringRule(common.IsHexAddress, "Invalid Sell Token Address")),
-		validation.Field(&m.Signature, validation.Required),
+		// validation.Field(&m.Signature, validation.Required),
 		// validation.Field(&m.PairName, validation.Required),
 	)
 }
@@ -45,10 +45,10 @@ func (m *OrderRequest) ToOrder() (order *Order, err error) {
 	if err := m.Validate(); err != nil {
 		return nil, err
 	}
-	signature, err := NewSignature([]byte(m.Signature))
-	if err != nil {
-		return nil, fmt.Errorf("%s", err)
-	}
+	// signature, err := NewSignature([]byte(m.Signature))
+	// if err != nil {
+	// 	return nil, fmt.Errorf("%s", err)
+	// }
 	order = &Order{
 		Type:             OrderType(m.Type),
 		Amount:           int64(m.Amount * math.Pow10(8)),
@@ -60,7 +60,7 @@ func (m *OrderRequest) ToOrder() (order *Order, err error) {
 		AmountBuy:        int64(m.Amount * math.Pow10(8)),
 		AmountSell:       int64(m.Amount * m.Price * math.Pow10(8)),
 		Hash:             m.ComputeHash(),
-		Signature:        signature,
+		// Signature:        signature,
 	}
 	return
 }
@@ -79,6 +79,7 @@ func (m *OrderRequest) ComputeHash() (ch string) {
 
 // VerifySignature checks that the orderRequest signature corresponds to the address in the userAddress field
 func (m *OrderRequest) VerifySignature() (bool, error) {
+	return true, nil
 
 	if m.Hash == "" {
 		m.Hash = m.ComputeHash()

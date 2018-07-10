@@ -141,19 +141,19 @@ func (e *EngineResource) buyOrder(order *types.Order, match *Match) (err error) 
 		match.FillStatus = NO_MATCH
 	} else {
 		for _, pr := range priceRange {
-			reply, err := redis.ByteSlices(e.redisConn.Do("LRANGE", oskv+"::"+utils.UintToPaddedString(pr), 0, -1)) // "ZREVRANGEBYLEX" key max min
+			bookEntries, err := redis.ByteSlices(e.redisConn.Do("SORT", oskv+"::"+utils.UintToPaddedString(pr), "GET", oskv+"::"+utils.UintToPaddedString(pr)+"::*", "ALPHA")) // "ZREVRANGEBYLEX" key max min
 			if err != nil {
 				log.Printf("LRANGE: %s\n", err)
 				return err
 			}
-
-			for _, o := range reply {
+			for _, o := range bookEntries {
 				var bookEntry types.Order
 				err = json.Unmarshal(o, &bookEntry)
 				if err != nil {
 					log.Printf("json.Unmarshal: %s\n", err)
 					return err
 				}
+				fmt.Println(bookEntry)
 
 				match.FillStatus = PARTIAL
 
@@ -203,13 +203,12 @@ func (e *EngineResource) sellOrder(order *types.Order, match *Match) (err error)
 		match.FillStatus = NO_MATCH
 	} else {
 		for _, pr := range priceRange {
-			reply, err := redis.ByteSlices(e.redisConn.Do("LRANGE", obkv+"::"+utils.UintToPaddedString(pr), 0, -1)) // "ZREVRANGEBYLEX" key max min
+			bookEntries, err := redis.ByteSlices(e.redisConn.Do("SORT", obkv+"::"+utils.UintToPaddedString(pr), "GET", obkv+"::"+utils.UintToPaddedString(pr)+"::*", "ALPHA")) // "ZREVRANGEBYLEX" key max min
 			if err != nil {
 				log.Printf("LRANGE: %s\n", err)
 				return err
 			}
-
-			for _, o := range reply {
+			for _, o := range bookEntries {
 				var bookEntry types.Order
 				err = json.Unmarshal(o, &bookEntry)
 				if err != nil {
@@ -257,13 +256,21 @@ func (e *EngineResource) addOrder(order *types.Order) {
 	// Add order to list
 	orderAsBytes, err := json.Marshal(order)
 	if err != nil {
+		log.Printf("orderAsBytes: %s", err)
+	}
+	res, err = e.redisConn.Do("SET", listKey+"::"+order.ID.Hex(), string(orderAsBytes))
+	if err != nil {
+		log.Printf("SET: %s", err)
+	}
+	// Add order reference to price sorted set
+	// res, err = e.redisConn.Do("RPUSH", listKey, orderAsBytes)
+	fmt.Println(order.CreatedAt.Unix())
+	res, err = e.redisConn.Do("ZADD", listKey, "NX", order.CreatedAt.Unix(), order.ID.Hex())
+	if err != nil {
 		log.Printf("ZADD: %s", err)
 	}
-	res, err = e.redisConn.Do("RPUSH", listKey, orderAsBytes)
-	if err != nil {
-		log.Printf("RPUSH: %s", err)
-	}
-	fmt.Printf("RPUSH: %s\n", res)
+
+	fmt.Printf("ZADD: %s\n", res)
 
 	return
 }

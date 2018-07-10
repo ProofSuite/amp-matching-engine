@@ -28,7 +28,7 @@ func NewOrderService(orderDao *daos.OrderDao, balanceDao *daos.BalanceDao, pairD
 }
 
 func (s *OrderService) Create(order *types.Order) (err error) {
-	
+
 	// Fill token and pair data
 
 	p, err := s.pairDao.GetByTokenAddressPair(order.BuyTokenAddress, order.SellTokenAddress)
@@ -225,9 +225,11 @@ func (s *OrderService) UpdateUsingEngineResponse(er *engine.EngineResponse) {
 
 			}
 		}
-		err := s.tradeDao.Create(er.Trades...)
-		if err != nil {
-			log.Fatalf("\n Error adding trades to db: %s\n", err)
+		if len(er.Trades) != 0 {
+			err := s.tradeDao.Create(er.Trades...)
+			if err != nil {
+				log.Fatalf("\n Error adding trades to db: %s\n", err)
+			}
 		}
 	}
 }
