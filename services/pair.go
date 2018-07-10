@@ -86,7 +86,7 @@ func (s *PairService) RegisterForOrderBook(conn *websocket.Conn, pairName string
 	trades, _ := s.tradeService.GetByPairName(pairName)
 	ob["trades"] = trades
 
-	if err := ws.PairSocketRegister(pairName, conn); err != nil {
+	if err := ws.GetPairSockets().PairSocketRegister(pairName, conn); err != nil {
 		message := map[string]string{
 			"Code":    "UNABLE_TO_REGISTER",
 			"Message": "UNABLE_TO_REGISTER: " + err.Error(),
@@ -94,12 +94,12 @@ func (s *PairService) RegisterForOrderBook(conn *websocket.Conn, pairName string
 		mab, _ := json.Marshal(message)
 		conn.WriteMessage(1, mab)
 	}
-	ws.RegisterConnectionUnsubscribeHandler(conn, ws.PairSocketCloseHandler(pairName))
+	ws.RegisterConnectionUnsubscribeHandler(conn, ws.GetPairSockets().PairSocketCloseHandler(pairName))
 
 	rab, _ := json.Marshal(ob)
 	conn.WriteMessage(1, rab)
 }
 
 func (s *PairService) UnRegisterForOrderBook(conn *websocket.Conn, pairName string) {
-	ws.PairSocketUnregisterConnection(pairName, conn)
+	ws.GetPairSockets().PairSocketUnregisterConnection(pairName, conn)
 }

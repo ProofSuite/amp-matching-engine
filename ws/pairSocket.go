@@ -2,45 +2,59 @@ package ws
 
 import (
 	"errors"
+	"strings"
 
 	"github.com/gorilla/websocket"
 )
 
-type PairWs map[*websocket.Conn]bool
+type PairSockets struct {
+	connections map[string]map[*websocket.Conn]bool
+}
 
-var pairSockets map[string]PairWs
+var pairSockets *PairSockets
 
-func PairSocketCloseHandler(pair string) func(conn *websocket.Conn) {
+func GetPairSockets() *PairSockets {
+	if pairSockets == nil {
+		pairSockets = &PairSockets{make(map[string]map[*websocket.Conn]bool)}
+	}
+	return pairSockets
+}
+func (ps *PairSockets) PairSocketCloseHandler(pair string) func(conn *websocket.Conn) {
+	pair = strings.ToLower(pair)
 	return func(conn *websocket.Conn) {
-		PairSocketUnregisterConnection(pair, conn)
+		ps.PairSocketUnregisterConnection(pair, conn)
 	}
 }
 
-func PairSocketUnregisterConnection(pair string, conn *websocket.Conn) {
-	if pairSockets[pair][conn] {
-		pairSockets[pair][conn] = false
-		delete(pairSockets[pair], conn)
+func (ps *PairSockets) PairSocketUnregisterConnection(pair string, conn *websocket.Conn) {
+	pair = strings.ToLower(pair)
+	if ps.connections[pair][conn] {
+		ps.connections[pair][conn] = false
+		delete(ps.connections[pair], conn)
 	}
 }
-func PairSocketWriteMessage(pair string, message []byte) error {
-	for conn, status := range pairSockets[pair] {
+func (ps *PairSockets) PairSocketWriteMessage(pair string, message interface{}) error {
+	pair = strings.ToLower(pair)
+	for conn, status := range ps.connections[pair] {
+
 		if status {
-			conn.WriteMessage(1, message)
+			conn.WriteJSON(message)
 		}
 	}
 	return nil
 }
-func PairSocketRegister(pair string, conn *websocket.Conn) error {
+func (ps *PairSockets) PairSocketRegister(pair string, conn *websocket.Conn) error {
+
 	if conn == nil {
 		return errors.New("nil not allowed in arguments as *websocket.Conn")
-	} else if pairSockets == nil {
-		pairSockets = make(map[string]PairWs)
-		pairSockets[pair] = make(PairWs)
-	} else if pairSockets[pair] == nil {
-		pairSockets[pair] = make(PairWs)
+	} else if ps.connections == nil {
+		ps.connections = make(map[string]map[*websocket.Conn]bool)
+		ps.connections[pair] = make(map[*websocket.Conn]bool)
+	} else if ps.connections[pair] == nil {
+		ps.connections[pair] = make(map[*websocket.Conn]bool)
 	}
-	if !pairSockets[pair][conn] {
-		pairSockets[pair][conn] = true
+	if !ps.connections[pair][conn] {
+		ps.connections[pair][conn] = true
 	}
 	return nil
 }

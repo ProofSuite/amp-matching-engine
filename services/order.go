@@ -1,7 +1,6 @@
 package services
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -38,6 +37,7 @@ func (s *OrderService) Create(order *types.Order) (err error) {
 		return errors.New("Pair not found")
 	}
 	order.PairID = p.ID
+	order.PairName = p.Name
 	order.BuyToken = p.BuyTokenSymbol
 	order.BuyTokenAddress = p.BuyTokenSymbol
 	order.SellToken = p.SellTokenSymbol
@@ -237,19 +237,19 @@ func (s *OrderService) UpdateUsingEngineResponse(er *engine.EngineResponse) {
 // RelayUpdateOverSocket is responsible for notifying listening clients about new order/trade addition/deletion
 func (s *OrderService) RelayUpdateOverSocket(er *engine.EngineResponse) {
 	if len(er.Trades) > 0 {
+		fmt.Println("Trade relay over socket")
 		message := &types.OrderMessage{
 			MsgType: "trades_added",
 			Data:    er.Trades,
 		}
-		mab, _ := json.Marshal(message)
-		ws.PairSocketWriteMessage(er.Order.PairName, mab)
+		ws.GetPairSockets().PairSocketWriteMessage(er.Order.PairName, message)
 	}
 	if er.RemainingOrder != nil {
+		fmt.Println("Order added Relay over socket")
 		message := &types.OrderMessage{
 			MsgType: "order_added",
 			Data:    er.RemainingOrder,
 		}
-		mab, _ := json.Marshal(message)
-		ws.PairSocketWriteMessage(er.Order.PairName, mab)
+		ws.GetPairSockets().PairSocketWriteMessage(er.Order.PairName, message)
 	}
 }
