@@ -27,6 +27,11 @@ func (e *EngineResource) matchOrder(order *types.Order) (err error) {
 	} else if order.Type == types.BUY {
 		engineResponse, err = e.buyOrder(order)
 	}
+	if err != nil {
+		log.Printf("\n%s\n", err)
+		return err
+	}
+
 	// Note: Plug the option for orders like FOC, Limit
 
 	e.publishEngineResponse(engineResponse)
@@ -295,29 +300,32 @@ func (e *EngineResource) deleteOrder(order *types.Order, tradeAmount int64) (err
 
 	return
 }
-func (e *EngineResource) RecoverOrders(orders []*FillOrder) {
+func (e *EngineResource) RecoverOrders(orders []*FillOrder) error {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
 	for _, o := range orders {
 		_, listKey := o.Order.GetOBKeys()
-		res, err := redis.Bytes(e.redisConn.Do("GET", listKey+"::"+o.Order.ID.Hex()))
-		if err != nil {
-			log.Printf("GET: %s", err)
-		}
+		res, _ := redis.Bytes(e.redisConn.Do("GET", listKey+"::"+o.Order.ID.Hex()))
 		if res == nil {
-			e.addOrder(o.Order)
+			if err := e.addOrder(o.Order); err != nil {
+				return err
+			}
 		} else {
-			e.updateOrder(o.Order, -1*o.Amount)
+			if err := e.updateOrder(o.Order, -1*o.Amount); err != nil {
+				return err
+			}
 		}
 	}
+	return nil
 }
-func (e *EngineResource) CancelOrder(order *types.Order) {
+func (e *EngineResource) CancelOrder(order *types.Order) (engineResponse *EngineResponse, err error) {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
 	_, listKey := order.GetOBKeys()
 	res, err := redis.Bytes(e.redisConn.Do("GET", listKey+"::"+order.ID.Hex()))
 	if err != nil {
 		log.Printf("GET: %s", err)
+		return
 	}
 	if res == nil {
 		return
@@ -326,11 +334,20 @@ func (e *EngineResource) CancelOrder(order *types.Order) {
 
 	if err := json.Unmarshal(res, &storedOrder); err != nil {
 		log.Printf("GET: %s", err)
+		return nil, err
 	}
 	if err := e.deleteOrder(order, storedOrder.Amount-storedOrder.FilledAmount); err != nil {
 		log.Printf("\n%s\n", err)
+		return nil, err
 	} else {
-		// er:=
+		storedOrder.Status = types.CANCELLED
+		engineResponse = &EngineResponse{
+			Order:          storedOrder,
+			Trades:         nil,
+			RemainingOrder: nil,
+			FillStatus:     CANCELLED,
+			MatchingOrders: nil,
+		}
 	}
-
+	return
 }
