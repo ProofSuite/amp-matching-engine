@@ -119,8 +119,9 @@ func (e *EngineResource) SubscribeEngineResponse(fn func(*EngineResponse) error)
 				err := json.Unmarshal(d.Body, &er)
 				if err != nil {
 					log.Printf("error: %s", err)
+					continue
 				}
-				fn(er)
+				go fn(er)
 			}
 		}()
 
@@ -153,12 +154,14 @@ func (e *EngineResource) subscribeMessage() error {
 				var msg Message
 				err := json.Unmarshal(d.Body, &msg)
 				if err != nil {
-					log.Printf("error: %s", err)
+					log.Printf("Message Unmarshal error: %s", err)
+					continue
 				}
 				var order *types.Order
-				err = json.Unmarshal(d.Body, &order)
+				err = json.Unmarshal(msg.Data, &order)
 				if err != nil {
-					log.Printf("error: %s", err)
+					log.Printf("Order Unmarshal error: %s", err)
+					continue
 				}
 				if msg.Type == "new_order" {
 					e.matchOrder(order)

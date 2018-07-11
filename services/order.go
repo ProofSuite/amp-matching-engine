@@ -21,10 +21,11 @@ type OrderService struct {
 	balanceDao *daos.BalanceDao
 	pairDao    *daos.PairDao
 	tradeDao   *daos.TradeDao
+	engine     *engine.EngineResource
 }
 
-func NewOrderService(orderDao *daos.OrderDao, balanceDao *daos.BalanceDao, pairDao *daos.PairDao, tradeDao *daos.TradeDao) *OrderService {
-	return &OrderService{orderDao, balanceDao, pairDao, tradeDao}
+func NewOrderService(orderDao *daos.OrderDao, balanceDao *daos.BalanceDao, pairDao *daos.PairDao, tradeDao *daos.TradeDao, engine *engine.EngineResource) *OrderService {
+	return &OrderService{orderDao, balanceDao, pairDao, tradeDao, engine}
 }
 
 func (s *OrderService) Create(order *types.Order) (err error) {
@@ -87,7 +88,7 @@ func (s *OrderService) Create(order *types.Order) (err error) {
 
 	// Push order to queue
 	orderAsBytes, _ := json.Marshal(order)
-	engine.Engine.PublishMessage(&engine.Message{Type: "new_order", Data: orderAsBytes})
+	s.engine.PublishMessage(&engine.Message{Type: "new_order", Data: orderAsBytes})
 	return err
 }
 
@@ -101,43 +102,30 @@ func (s *OrderService) GetAll() ([]types.Order, error) {
 	return s.orderDao.GetAll()
 }
 
+func (s *OrderService) RecoverOrders(engineResponse *engine.EngineResponse) {
+	if err := s.engine.RecoverOrders(engineResponse.MatchingOrders); err != nil {
+		panic(err)
+	}
+	engineResponse.FillStatus = engine.ERROR
+	engineResponse.Order.Status = types.ERROR
+	engineResponse.Trades = nil
+	engineResponse.RemainingOrder = nil
+	engineResponse.MatchingOrders = nil
+}
+func (s *OrderService) CancelOrder(order *types.Order) error {
+	engineResponse, err := s.engine.CancelOrder(order)
+	if err != nil {
+		return err
+	}
+	s.orderDao.Update(engineResponse.Order.ID, engineResponse.Order)
+	s.cancelOrderUnlockAmount(engineResponse)
+	return nil
+}
 func (s *OrderService) UpdateUsingEngineResponse(er *engine.EngineResponse) {
 	if er.FillStatus == engine.ERROR {
 		fmt.Println("Error")
 		s.orderDao.Update(er.Order.ID, er.Order)
-		res, err := s.balanceDao.GetByAddress(er.Order.UserAddress)
-		if err != nil {
-			log.Fatalf("\n%s\n", err)
-		}
-
-		// Unlock Amount
-		if er.Order.Type == types.BUY {
-			bal := res.Tokens[er.Order.SellToken]
-			fmt.Println("===> buy bal")
-			fmt.Println(bal)
-			bal.Amount = bal.Amount + (er.Order.AmountSell)
-			bal.LockedAmount = bal.LockedAmount - (er.Order.AmountSell)
-
-			fmt.Println("===> updated bal")
-			fmt.Println(bal)
-			err = s.balanceDao.UpdateAmount(er.Order.UserAddress, er.Order.SellToken, &bal)
-			if err != nil {
-				log.Fatalf("\n%s\n", err)
-			}
-		}
-		if er.Order.Type == types.SELL {
-			bal := res.Tokens[er.Order.BuyToken]
-			fmt.Println("===> sell bal")
-			fmt.Println(bal)
-			bal.Amount = bal.Amount + (er.Order.AmountBuy)
-			bal.LockedAmount = bal.LockedAmount - (er.Order.AmountBuy)
-			fmt.Println("===> updated bal")
-			fmt.Println(bal)
-			err = s.balanceDao.UpdateAmount(er.Order.UserAddress, er.Order.BuyToken, &bal)
-			if err != nil {
-				log.Fatalf("\n%s\n", err)
-			}
-		}
+		s.cancelOrderUnlockAmount(er)
 	} else if er.FillStatus == engine.NO_MATCH {
 		fmt.Println("No Match")
 		s.orderDao.Update(er.Order.ID, er.Order)
@@ -253,5 +241,54 @@ func (s *OrderService) RelayUpdateOverSocket(er *engine.EngineResponse) {
 			Data:    er.RemainingOrder,
 		}
 		ws.GetPairSockets().PairSocketWriteMessage(er.Order.PairName, message)
+	}
+	if er.FillStatus == engine.CANCELLED {
+		fmt.Println("Order cancelled Relay over socket")
+		message := &types.OrderMessage{
+			MsgType: "order_cancelled",
+			Data:    er.Order,
+		}
+		ws.GetPairSockets().PairSocketWriteMessage(er.Order.PairName, message)
+	}
+}
+func (s *OrderService) SendMessage(msgType string, orderID bson.ObjectId, data interface{}) {
+	msg := &types.OrderMessage{MsgType: msgType}
+	msg.OrderID = orderID
+	msg.Data = data
+	ws.GetOrderConn(orderID).WriteJSON(msg)
+}
+
+func (s *OrderService) cancelOrderUnlockAmount(er *engine.EngineResponse) {
+	// Unlock Amount
+	res, err := s.balanceDao.GetByAddress(er.Order.UserAddress)
+	if err != nil {
+		log.Fatalf("\n%s\n", err)
+	}
+	if er.Order.Type == types.BUY {
+		bal := res.Tokens[er.Order.SellToken]
+		fmt.Println("===> buy bal")
+		fmt.Println(bal)
+		bal.Amount = bal.Amount + (er.Order.AmountSell)
+		bal.LockedAmount = bal.LockedAmount - (er.Order.AmountSell)
+
+		fmt.Println("===> updated bal")
+		fmt.Println(bal)
+		err = s.balanceDao.UpdateAmount(er.Order.UserAddress, er.Order.SellToken, &bal)
+		if err != nil {
+			log.Fatalf("\n%s\n", err)
+		}
+	}
+	if er.Order.Type == types.SELL {
+		bal := res.Tokens[er.Order.BuyToken]
+		fmt.Println("===> sell bal")
+		fmt.Println(bal)
+		bal.Amount = bal.Amount + (er.Order.AmountBuy)
+		bal.LockedAmount = bal.LockedAmount - (er.Order.AmountBuy)
+		fmt.Println("===> updated bal")
+		fmt.Println(bal)
+		err = s.balanceDao.UpdateAmount(er.Order.UserAddress, er.Order.BuyToken, &bal)
+		if err != nil {
+			log.Fatalf("\n%s\n", err)
+		}
 	}
 }

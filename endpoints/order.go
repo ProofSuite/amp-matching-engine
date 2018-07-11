@@ -99,6 +99,20 @@ func (r *orderEndpoint) ws(input *interface{}, conn *websocket.Conn) {
 		conn.WriteMessage(messageType, oab)
 		ws.RegisterOrderConnection(order.ID, &ws.WsOrderConn{Conn: conn, ReadChannel: ch})
 		ws.RegisterConnectionUnsubscribeHandler(conn, ws.OrderSocketCloseHandler(order.ID))
+	} else if msg.MsgType == "order_cancel" {
+		oab, err := json.Marshal(msg.Data)
+
+		var model *types.Order
+		if err := json.Unmarshal(oab, &model); err != nil {
+			conn.WriteMessage(messageType, []byte(err.Error()))
+
+			return
+		}
+		err = r.cancelOrder(model)
+		if err != nil {
+			conn.WriteMessage(messageType, []byte(err.Error()))
+			return
+		}
 	} else {
 		ch := ws.GetOrderChannel(msg.OrderID)
 		if ch != nil {
@@ -108,79 +122,59 @@ func (r *orderEndpoint) ws(input *interface{}, conn *websocket.Conn) {
 }
 
 func (r *orderEndpoint) engineResponse(engineResponse *engine.EngineResponse) error {
-	// b, _ := json.Marshal(er)
-	// fmt.Printf("\n======> \n%s\n <======\n", b)
-	// If NO_MATCH add to order book
 	if engineResponse.FillStatus == engine.NO_MATCH {
-
-		msg := &types.OrderMessage{MsgType: "added_to_orderbook"}
-		msg.OrderID = engineResponse.Order.ID
-		msg.Data = engineResponse
-		ws.GetOrderConn(engineResponse.Order.ID).WriteJSON(msg)
-
+		r.orderService.SendMessage("added_to_orderbook", engineResponse.Order.ID, engineResponse)
 	} else {
-		msg := &types.OrderMessage{MsgType: "trade_remorder_sign"}
-		msg.OrderID = engineResponse.Order.ID
-		msg.Data = engineResponse
-
-		ws.GetOrderConn(engineResponse.Order.ID).WriteJSON(msg)
+		r.orderService.SendMessage("trade_remorder_sign", engineResponse.Order.ID, engineResponse)
 
 		t := time.NewTimer(10 * time.Second)
 		ch := ws.GetOrderChannel(engineResponse.Order.ID)
+		fmt.Println(ch)
 		if ch == nil {
-			r.engine.RecoverOrders(engineResponse.MatchingOrders)
+			r.orderService.RecoverOrders(engineResponse)
 		} else {
+
 			select {
 			case rm := <-ch:
 				if rm.MsgType == "trade_remorder_sign" {
 					mb, err := json.Marshal(rm.Data)
 					if err != nil {
+						r.orderService.RecoverOrders(engineResponse)
 						ws.GetOrderConn(engineResponse.Order.ID).WriteMessage(1, []byte(err.Error()))
-						r.engine.RecoverOrders(engineResponse.MatchingOrders)
-						engineResponse.FillStatus = engine.ERROR
-						engineResponse.Order.Status = types.ERROR
-						engineResponse.Trades = nil
-						engineResponse.RemainingOrder = nil
-						engineResponse.MatchingOrders = nil
 					}
+
 					var ersb *engine.EngineResponse
 					err = json.Unmarshal(mb, &ersb)
 					if err != nil {
 						ws.GetOrderConn(engineResponse.Order.ID).WriteMessage(1, []byte(err.Error()))
-						r.engine.RecoverOrders(engineResponse.MatchingOrders)
-						engineResponse.FillStatus = engine.ERROR
-						engineResponse.Order.Status = types.ERROR
-						engineResponse.Trades = nil
-						engineResponse.RemainingOrder = nil
-						engineResponse.MatchingOrders = nil
+						r.orderService.RecoverOrders(engineResponse)
 					}
+
 					if engineResponse.FillStatus == engine.PARTIAL {
 						engineResponse.Order.OrderBook = &types.OrderSubDoc{Amount: ersb.RemainingOrder.Amount, Signature: ersb.RemainingOrder.Signature}
-						// e.addOrder(order)
 						orderAsBytes, _ := json.Marshal(engineResponse.Order)
 						r.engine.PublishMessage(&engine.Message{Type: "remaining_order_add", Data: orderAsBytes})
 					}
+					r.orderService.UpdateUsingEngineResponse(engineResponse)
+					// TODO: send to operator for blockchain execution
+
+					r.orderService.RelayUpdateOverSocket(engineResponse)
 				}
 				t.Stop()
 				break
+
 			case <-t.C:
 				fmt.Printf("\nTimeout\n")
-				r.engine.RecoverOrders(engineResponse.MatchingOrders)
-				engineResponse.FillStatus = engine.ERROR
-				engineResponse.Order.Status = types.ERROR
-				engineResponse.Trades = nil
-				engineResponse.RemainingOrder = nil
-				engineResponse.MatchingOrders = nil
+				r.orderService.RecoverOrders(engineResponse)
 				t.Stop()
 				break
 			}
 		}
 	}
 	ws.CloseOrderReadChannel(engineResponse.Order.ID)
-	
-	r.orderService.UpdateUsingEngineResponse(engineResponse)
-	// TODO: send to operator for blockchain execution
 
-	r.orderService.RelayUpdateOverSocket(engineResponse)
 	return nil
+}
+func (r *orderEndpoint) cancelOrder(order *types.Order) error {
+	return r.orderService.CancelOrder(order)
 }

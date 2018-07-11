@@ -21,12 +21,11 @@ const (
 	PARTIAL
 	FULL
 	ERROR
+	CANCELLED
 )
 
 func (e *EngineResource) execute(order *types.Order, bookEntry *types.Order) (trade *types.Trade, fillOrder *FillOrder, err error) {
-	fillOrder = &FillOrder{
-		Order: bookEntry,
-	}
+	fillOrder = &FillOrder{}
 	beAmtAvailable := bookEntry.Amount - bookEntry.FilledAmount
 	orderUnfilledAmt := order.Amount - order.FilledAmount
 	if beAmtAvailable > orderUnfilledAmt {
@@ -34,6 +33,7 @@ func (e *EngineResource) execute(order *types.Order, bookEntry *types.Order) (tr
 
 		bookEntry.FilledAmount = bookEntry.FilledAmount + orderUnfilledAmt
 		bookEntry.Status = types.PARTIAL_FILLED
+		fillOrder.Order = bookEntry
 
 		e.updateOrder(bookEntry, fillOrder.Amount)
 
@@ -42,6 +42,7 @@ func (e *EngineResource) execute(order *types.Order, bookEntry *types.Order) (tr
 
 		bookEntry.FilledAmount = bookEntry.FilledAmount + beAmtAvailable
 		bookEntry.Status = types.FILLED
+		fillOrder.Order = bookEntry
 
 		e.deleteOrder(bookEntry, fillOrder.Amount)
 
