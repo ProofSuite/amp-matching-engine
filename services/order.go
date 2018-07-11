@@ -1,6 +1,7 @@
 package services
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -85,7 +86,8 @@ func (s *OrderService) Create(order *types.Order) (err error) {
 	}
 
 	// Push order to queue
-	engine.Engine.PublishOrder(order)
+	orderAsBytes, _ := json.Marshal(order)
+	engine.Engine.PublishMessage(&engine.Message{Type: "new_order", Data: orderAsBytes})
 	return err
 }
 

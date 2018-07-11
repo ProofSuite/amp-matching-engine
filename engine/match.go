@@ -4,11 +4,6 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/types"
 )
 
-type Match struct {
-	Order          *types.Order
-	FillStatus     FillStatus
-	MatchingOrders []*FillOrder
-}
 type FillStatus int
 
 type EngineResponse struct {
