@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log"
+	"sync"
 
 	"github.com/gomodule/redigo/redis"
 
@@ -18,6 +19,11 @@ import (
 type EngineResource struct {
 	orderDao  *daos.OrderDao
 	redisConn redis.Conn
+	mutex     *sync.Mutex
+}
+type Message struct {
+	Type string `json:"type"`
+	Data []byte `json:"data"`
 }
 
 var channels = make(map[string]*amqp.Channel)
@@ -29,14 +35,14 @@ func InitEngine(orderDao *daos.OrderDao, redisConn redis.Conn) (engine *EngineRe
 		if orderDao == nil {
 			return nil, errors.New("Need pointer to struct of type daos.OrderDao")
 		}
-		Engine = &EngineResource{orderDao, redisConn}
-		Engine.subscribeOrder()
+		Engine = &EngineResource{orderDao, redisConn, &sync.Mutex{}}
+		Engine.subscribeMessage()
 	}
 	engine = Engine
 	return
 }
 
-func (e *EngineResource) PublishOrder(order *types.Order) error {
+func (e *EngineResource) PublishMessage(order *Message) error {
 	ch := getChannel("orderPublish")
 	q := getOrderQueue(ch, "order")
 
@@ -122,7 +128,7 @@ func (e *EngineResource) SubscribeEngineResponse(fn func(*EngineResponse) error)
 	}()
 	return nil
 }
-func (e *EngineResource) subscribeOrder() error {
+func (e *EngineResource) subscribeMessage() error {
 	ch := getChannel("orderSubscribe")
 	q := getOrderQueue(ch, "order")
 	go func() {
@@ -144,13 +150,21 @@ func (e *EngineResource) subscribeOrder() error {
 
 		go func() {
 			for d := range msgs {
-				// log.Printf("Received a message: %s", d.Body)
-				var order *types.Order
-				err := json.Unmarshal(d.Body, &order)
+				var msg Message
+				err := json.Unmarshal(d.Body, &msg)
 				if err != nil {
 					log.Printf("error: %s", err)
 				}
-				e.matchOrder(order)
+				var order *types.Order
+				err = json.Unmarshal(d.Body, &order)
+				if err != nil {
+					log.Printf("error: %s", err)
+				}
+				if msg.Type == "new_order" {
+					e.matchOrder(order)
+				} else if msg.Type == "remaining_order_add" {
+					e.addOrder(order)
+				}
 			}
 		}()
 

@@ -17,14 +17,17 @@ type FillOrder struct {
 
 func (e *EngineResource) matchOrder(order *types.Order) (err error) {
 
+	// Attain lock on engineResource, so that recovery or cancel order function doesn't interfere
+
+	e.mutex.Lock()
+	defer e.mutex.Unlock()
 	var engineResponse *EngineResponse
-	// for match.FillStatus != NO_MATCH {
 	if order.Type == types.SELL {
 		engineResponse, err = e.sellOrder(order)
 	} else if order.Type == types.BUY {
 		engineResponse, err = e.buyOrder(order)
 	}
-	// Note: Plug the option for orders like FOC, Limit, OnlyFill (If Required)
+	// Note: Plug the option for orders like FOC, Limit
 
 	e.publishEngineResponse(engineResponse)
 	if err != nil {
@@ -150,17 +153,19 @@ func (e *EngineResource) sellOrder(order *types.Order) (engineResponse *EngineRe
 	return
 }
 
-func (e *EngineResource) addOrder(order *types.Order) {
+func (e *EngineResource) addOrder(order *types.Order) error {
 
 	ssKey, listKey := order.GetOBKeys()
 	res, err := e.redisConn.Do("ZADD", ssKey, "NX", 0, utils.UintToPaddedString(order.Price)) // Add price point to order book
 	if err != nil {
 		log.Printf("ZADD: %s", err)
+		return err
 	}
 	fmt.Printf("ZADD: %s\n", res)
 	res, err = e.redisConn.Do("INCRBY", ssKey+"::book::"+utils.UintToPaddedString(order.Price), order.Amount-order.FilledAmount) // Add price point to order book
 	if err != nil {
 		log.Printf("INCRBY: %s", err)
+		return err
 	}
 	fmt.Printf("INCRBY: %s\n", res)
 
@@ -168,82 +173,94 @@ func (e *EngineResource) addOrder(order *types.Order) {
 	orderAsBytes, err := json.Marshal(order)
 	if err != nil {
 		log.Printf("orderAsBytes: %s", err)
+		return err
 	}
 	res, err = e.redisConn.Do("SET", listKey+"::"+order.ID.Hex(), string(orderAsBytes))
 	if err != nil {
 		log.Printf("SET: %s", err)
+		return err
 	}
 	// Add order reference to price sorted set
 	res, err = e.redisConn.Do("ZADD", listKey, "NX", order.CreatedAt.Unix(), order.ID.Hex())
 	if err != nil {
 		log.Printf("ZADD: %s", err)
+		return err
 	}
 
 	fmt.Printf("ZADD: %s\n", res)
 
-	return
+	return nil
 }
-func (e *EngineResource) updateOrder(order *types.Order, tradeAmount int64) {
+func (e *EngineResource) updateOrder(order *types.Order, tradeAmount int64) error {
 
 	ssKey, listKey := order.GetOBKeys()
-	res, err := e.redisConn.Do("ZADD", ssKey, "NX", 0, utils.UintToPaddedString(order.Price)) // Add price point to order book
+	var storedOrder *types.Order
+	storedOrderAsBytes, err := redis.Bytes(e.redisConn.Do("GET", listKey+"::"+order.ID.Hex()))
 	if err != nil {
-		log.Printf("ZADD: %s", err)
+		log.Printf("orderAsBytes: %s", err)
+		return err
 	}
-	fmt.Printf("ZADD: %s\n", res)
+	json.Unmarshal(storedOrderAsBytes, &storedOrder)
+
+	storedOrder.FilledAmount = storedOrder.FilledAmount + tradeAmount
+
+	// Add order to list
+	orderAsBytes, err := json.Marshal(storedOrder)
+	if err != nil {
+		log.Printf("orderAsBytes: %s", err)
+		return err
+	}
+
+	res, err := e.redisConn.Do("SET", listKey+"::"+order.ID.Hex(), string(orderAsBytes))
+	if err != nil {
+		log.Printf("SET: %s", err)
+		return err
+	}
+
 	res, err = e.redisConn.Do("INCRBY", ssKey+"::book::"+utils.UintToPaddedString(order.Price), -1*tradeAmount) // Add price point to order book
 	if err != nil {
 		log.Printf("INCRBY: %s", err)
+		return err
 	}
 	fmt.Printf("INCRBY: %s\n", res)
 
-	// Add order to list
-	orderAsBytes, err := json.Marshal(order)
-	if err != nil {
-		log.Printf("orderAsBytes: %s", err)
-	}
-	res, err = e.redisConn.Do("SET", listKey+"::"+order.ID.Hex(), string(orderAsBytes))
-	if err != nil {
-		log.Printf("SET: %s", err)
-	}
-	// Add order reference to price sorted set
-	res, err = e.redisConn.Do("ZADD", listKey, "NX", order.CreatedAt.Unix(), order.ID.Hex())
-	if err != nil {
-		log.Printf("ZADD: %s", err)
-	}
-
 	fmt.Printf("ZADD: %s\n", res)
 
-	return
+	return nil
 }
 
-func (e *EngineResource) deleteOrder(order *types.Order, tradeAmount int64) {
+func (e *EngineResource) deleteOrder(order *types.Order, tradeAmount int64) (err error) {
 
 	ssKey, listKey := order.GetOBKeys()
 	remVolume, err := redis.Int64(e.redisConn.Do("GET", ssKey+"::book::"+utils.UintToPaddedString(order.Price)))
 	if err != nil {
 		log.Printf("GET remVolume: %s", err)
+		return
 	}
 	if remVolume == tradeAmount {
 		res, err := e.redisConn.Do("ZREM", ssKey, "NX", 0, utils.UintToPaddedString(order.Price)) // Add price point to order book
 		if err != nil {
 			log.Printf("ZREM: %s", err)
+			return err
 		}
 		fmt.Printf("ZREM: %s\n", res)
 		res, err = e.redisConn.Do("DEL", ssKey+"::book::"+utils.UintToPaddedString(order.Price)) // Add price point to order book
 		if err != nil {
 			log.Printf("DEL: %s", err)
+			return err
 		}
 		fmt.Printf("DEL: %s\n", res)
 
 		res, err = e.redisConn.Do("DEL", listKey+"::"+order.ID.Hex())
 		if err != nil {
 			log.Printf("DEL: %s", err)
+			return err
 		}
 		// Add order reference to price sorted set
 		res, err = e.redisConn.Do("ZREM", listKey, order.ID.Hex())
 		if err != nil {
 			log.Printf("ZREM: %s", err)
+			return err
 		}
 
 		fmt.Printf("ZREM: %s\n", res)
@@ -251,22 +268,26 @@ func (e *EngineResource) deleteOrder(order *types.Order, tradeAmount int64) {
 		res, err := e.redisConn.Do("ZADD", ssKey, "NX", 0, utils.UintToPaddedString(order.Price)) // Add price point to order book
 		if err != nil {
 			log.Printf("ZADD: %s", err)
+			return err
 		}
 		fmt.Printf("ZADD: %s\n", res)
 		res, err = e.redisConn.Do("INCRBY", ssKey+"::book::"+utils.UintToPaddedString(order.Price), -1*tradeAmount) // Add price point to order book
 		if err != nil {
 			log.Printf("INCRBY: %s", err)
+			return err
 		}
 		fmt.Printf("INCRBY: %s\n", res)
 
 		res, err = e.redisConn.Do("DEL", listKey+"::"+order.ID.Hex())
 		if err != nil {
 			log.Printf("DEL: %s", err)
+			return err
 		}
 		// Add order reference to price sorted set
 		res, err = e.redisConn.Do("ZREM", listKey, order.ID.Hex())
 		if err != nil {
 			log.Printf("ZREM: %s", err)
+			return err
 		}
 
 		fmt.Printf("ZREM: %s\n", res)
@@ -274,8 +295,42 @@ func (e *EngineResource) deleteOrder(order *types.Order, tradeAmount int64) {
 
 	return
 }
-func (e *EngineResource) recoverOrders(orders []*FillOrder) {
+func (e *EngineResource) RecoverOrders(orders []*FillOrder) {
+	e.mutex.Lock()
+	defer e.mutex.Unlock()
 	for _, o := range orders {
-		e.addOrder(o.Order)
+		_, listKey := o.Order.GetOBKeys()
+		res, err := redis.Bytes(e.redisConn.Do("GET", listKey+"::"+o.Order.ID.Hex()))
+		if err != nil {
+			log.Printf("GET: %s", err)
+		}
+		if res == nil {
+			e.addOrder(o.Order)
+		} else {
+			e.updateOrder(o.Order, -1*o.Amount)
+		}
 	}
+}
+func (e *EngineResource) CancelOrder(order *types.Order) {
+	e.mutex.Lock()
+	defer e.mutex.Unlock()
+	_, listKey := order.GetOBKeys()
+	res, err := redis.Bytes(e.redisConn.Do("GET", listKey+"::"+order.ID.Hex()))
+	if err != nil {
+		log.Printf("GET: %s", err)
+	}
+	if res == nil {
+		return
+	}
+	var storedOrder *types.Order
+
+	if err := json.Unmarshal(res, &storedOrder); err != nil {
+		log.Printf("GET: %s", err)
+	}
+	if err := e.deleteOrder(order, storedOrder.Amount-storedOrder.FilledAmount); err != nil {
+		log.Printf("\n%s\n", err)
+	} else {
+		// er:=
+	}
+
 }

@@ -20,6 +20,7 @@ import (
 
 type orderEndpoint struct {
 	orderService *services.OrderService
+	engine       *engine.EngineResource
 }
 
 var upgrader = websocket.Upgrader{
@@ -32,7 +33,7 @@ var upgrader = websocket.Upgrader{
 
 // ServeOrder sets up the routing of order endpoints and the corresponding handlers.
 func ServeOrderResource(rg *routing.RouteGroup, orderService *services.OrderService, e *engine.EngineResource) {
-	r := &orderEndpoint{orderService}
+	r := &orderEndpoint{orderService, e}
 	rg.Get("/orders/<addr>", r.get)
 	// http.HandleFunc("/orders/ws", r.ws)
 	// http.HandleFunc("/orders/book/<pair>", r.ws)
@@ -124,11 +125,10 @@ func (r *orderEndpoint) engineResponse(engineResponse *engine.EngineResponse) er
 
 		ws.GetOrderConn(engineResponse.Order.ID).WriteJSON(msg)
 
-		// for {
 		t := time.NewTimer(10 * time.Second)
 		ch := ws.GetOrderChannel(engineResponse.Order.ID)
 		if ch == nil {
-			// e.recoverOrders(engineResponse.MatchingOrders)
+			r.engine.RecoverOrders(engineResponse.MatchingOrders)
 		} else {
 			select {
 			case rm := <-ch:
@@ -136,22 +136,36 @@ func (r *orderEndpoint) engineResponse(engineResponse *engine.EngineResponse) er
 					mb, err := json.Marshal(rm.Data)
 					if err != nil {
 						ws.GetOrderConn(engineResponse.Order.ID).WriteMessage(1, []byte(err.Error()))
+						r.engine.RecoverOrders(engineResponse.MatchingOrders)
+						engineResponse.FillStatus = engine.ERROR
+						engineResponse.Order.Status = types.ERROR
+						engineResponse.Trades = nil
+						engineResponse.RemainingOrder = nil
+						engineResponse.MatchingOrders = nil
 					}
 					var ersb *engine.EngineResponse
 					err = json.Unmarshal(mb, &ersb)
 					if err != nil {
 						ws.GetOrderConn(engineResponse.Order.ID).WriteMessage(1, []byte(err.Error()))
+						r.engine.RecoverOrders(engineResponse.MatchingOrders)
+						engineResponse.FillStatus = engine.ERROR
+						engineResponse.Order.Status = types.ERROR
+						engineResponse.Trades = nil
+						engineResponse.RemainingOrder = nil
+						engineResponse.MatchingOrders = nil
 					}
 					if engineResponse.FillStatus == engine.PARTIAL {
 						engineResponse.Order.OrderBook = &types.OrderSubDoc{Amount: ersb.RemainingOrder.Amount, Signature: ersb.RemainingOrder.Signature}
 						// e.addOrder(order)
+						orderAsBytes, _ := json.Marshal(engineResponse.Order)
+						r.engine.PublishMessage(&engine.Message{Type: "remaining_order_add", Data: orderAsBytes})
 					}
 				}
 				t.Stop()
 				break
 			case <-t.C:
 				fmt.Printf("\nTimeout\n")
-				// e.recoverOrders(engineResponse.MatchingOrders)
+				r.engine.RecoverOrders(engineResponse.MatchingOrders)
 				engineResponse.FillStatus = engine.ERROR
 				engineResponse.Order.Status = types.ERROR
 				engineResponse.Trades = nil
@@ -163,6 +177,7 @@ func (r *orderEndpoint) engineResponse(engineResponse *engine.EngineResponse) er
 		}
 	}
 	ws.CloseOrderReadChannel(engineResponse.Order.ID)
+	
 	r.orderService.UpdateUsingEngineResponse(engineResponse)
 	// TODO: send to operator for blockchain execution
 
