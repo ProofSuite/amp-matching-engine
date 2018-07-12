@@ -1,7 +1,6 @@
 package ws
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/Proofsuite/amp-matching-engine/types"
@@ -38,7 +37,6 @@ func RegisterOrderConnection(orderId bson.ObjectId, conn *WsOrderConn) {
 }
 
 func GetOrderConn(orderId bson.ObjectId) (conn *websocket.Conn) {
-	fmt.Println(orderConnections[orderId.Hex()].ReadChannel)
 	return orderConnections[orderId.Hex()].Conn
 }
 func GetOrderChannel(orderId bson.ObjectId) chan *types.OrderMessage {

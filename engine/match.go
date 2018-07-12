@@ -47,7 +47,7 @@ func (e *EngineResource) execute(order *types.Order, bookEntry *types.Order) (tr
 		e.deleteOrder(bookEntry, fillOrder.Amount)
 
 	}
-
+	order.FilledAmount = order.FilledAmount + fillOrder.Amount
 	// Create trade object to be passed to the system for further processing
 	trade = &types.Trade{
 		Amount:       fillOrder.Amount,

@@ -48,7 +48,8 @@ func (e *EngineResource) buyOrder(order *types.Order) (engineResponse *EngineRes
 		FillStatus: PARTIAL,
 	}
 	engineResponse.Trades = make([]*types.Trade, 0)
-	engineResponse.RemainingOrder = order
+	remOrder := *order
+	engineResponse.RemainingOrder = &remOrder
 	engineResponse.MatchingOrders = make([]*FillOrder, 0)
 
 	oskv := order.GetOBMatchKey()
@@ -67,6 +68,7 @@ func (e *EngineResource) buyOrder(order *types.Order) (engineResponse *EngineRes
 	if len(priceRange) == 0 {
 		engineResponse.FillStatus = NO_MATCH
 		e.addOrder(order)
+		order.Status = types.OPEN
 	} else {
 		for _, pr := range priceRange {
 			bookEntries, err := redis.ByteSlices(e.redisConn.Do("SORT", oskv+"::"+utils.UintToPaddedString(pr), "GET", oskv+"::"+utils.UintToPaddedString(pr)+"::*", "ALPHA")) // "ZREVRANGEBYLEX" key max min
@@ -88,12 +90,15 @@ func (e *EngineResource) buyOrder(order *types.Order) (engineResponse *EngineRes
 				}
 				engineResponse.Trades = append(engineResponse.Trades, trade)
 				engineResponse.MatchingOrders = append(engineResponse.MatchingOrders, fillOrder)
-				engineResponse.RemainingOrder.FilledAmount = engineResponse.RemainingOrder.FilledAmount + fillOrder.Amount
+				engineResponse.RemainingOrder.Amount = engineResponse.RemainingOrder.Amount - fillOrder.Amount
 
-				if engineResponse.RemainingOrder.FilledAmount == engineResponse.RemainingOrder.FilledAmount {
+				if engineResponse.RemainingOrder.Amount == 0 {
 					engineResponse.FillStatus = FULL
+					engineResponse.Order.Status = types.FILLED
+					engineResponse.RemainingOrder = nil
 					return engineResponse, nil
 				}
+				engineResponse.Order.Status = types.PARTIAL_FILLED
 			}
 		}
 	}
@@ -106,7 +111,8 @@ func (e *EngineResource) sellOrder(order *types.Order) (engineResponse *EngineRe
 		FillStatus: PARTIAL,
 	}
 	engineResponse.Trades = make([]*types.Trade, 0)
-	engineResponse.RemainingOrder = order
+	remOrder := *order
+	engineResponse.RemainingOrder = &remOrder
 	engineResponse.MatchingOrders = make([]*FillOrder, 0)
 
 	obkv := order.GetOBMatchKey()
@@ -125,6 +131,7 @@ func (e *EngineResource) sellOrder(order *types.Order) (engineResponse *EngineRe
 	if len(priceRange) == 0 {
 		engineResponse.FillStatus = NO_MATCH
 		e.addOrder(order)
+		order.Status = types.OPEN
 	} else {
 		for _, pr := range priceRange {
 			bookEntries, err := redis.ByteSlices(e.redisConn.Do("SORT", obkv+"::"+utils.UintToPaddedString(pr), "GET", obkv+"::"+utils.UintToPaddedString(pr)+"::*", "ALPHA")) // "ZREVRANGEBYLEX" key max min
@@ -146,12 +153,16 @@ func (e *EngineResource) sellOrder(order *types.Order) (engineResponse *EngineRe
 				}
 				engineResponse.Trades = append(engineResponse.Trades, trade)
 				engineResponse.MatchingOrders = append(engineResponse.MatchingOrders, fillOrder)
-				engineResponse.RemainingOrder.FilledAmount = engineResponse.RemainingOrder.FilledAmount + fillOrder.Amount
+				engineResponse.RemainingOrder.Amount = engineResponse.RemainingOrder.Amount - fillOrder.Amount
 
-				if engineResponse.RemainingOrder.FilledAmount == engineResponse.RemainingOrder.FilledAmount {
+				if engineResponse.RemainingOrder.Amount == 0 {
 					engineResponse.FillStatus = FULL
+					engineResponse.Order.Status = types.FILLED
+					engineResponse.RemainingOrder = nil
 					return engineResponse, nil
 				}
+				engineResponse.Order.Status = types.PARTIAL_FILLED
+
 			}
 		}
 	}
@@ -304,6 +315,14 @@ func (e *EngineResource) RecoverOrders(orders []*FillOrder) error {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
 	for _, o := range orders {
+
+		// update order's filled amount and status before updating in redis
+		o.Order.Status = types.PARTIAL_FILLED
+		o.Order.FilledAmount = o.Order.FilledAmount - o.Amount
+		if o.Order.FilledAmount == 0 {
+			o.Order.Status = types.OPEN
+		}
+
 		_, listKey := o.Order.GetOBKeys()
 		res, _ := redis.Bytes(e.redisConn.Do("GET", listKey+"::"+o.Order.ID.Hex()))
 		if res == nil {
