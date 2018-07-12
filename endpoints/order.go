@@ -99,20 +99,22 @@ func (r *orderEndpoint) ws(input *interface{}, conn *websocket.Conn) {
 		conn.WriteMessage(messageType, oab)
 		ws.RegisterOrderConnection(order.ID, &ws.WsOrderConn{Conn: conn, ReadChannel: ch})
 		ws.RegisterConnectionUnsubscribeHandler(conn, ws.OrderSocketCloseHandler(order.ID))
-	} else if msg.MsgType == "order_cancel" {
+	} else if msg.MsgType == "cancel_order" {
 		oab, err := json.Marshal(msg.Data)
 
-		var model *types.Order
-		if err := json.Unmarshal(oab, &model); err != nil {
+		var order *types.Order
+		if err := json.Unmarshal(oab, &order); err != nil {
 			conn.WriteMessage(messageType, []byte(err.Error()))
 
 			return
 		}
-		err = r.cancelOrder(model)
+		err = r.cancelOrder(order)
 		if err != nil {
 			conn.WriteMessage(messageType, []byte(err.Error()))
 			return
 		}
+		ws.RegisterOrderConnection(order.ID, &ws.WsOrderConn{Conn: conn, Active: true})
+		ws.RegisterConnectionUnsubscribeHandler(conn, ws.OrderSocketCloseHandler(order.ID))
 	} else {
 		ch := ws.GetOrderChannel(msg.OrderID)
 		if ch != nil {
@@ -129,7 +131,6 @@ func (r *orderEndpoint) engineResponse(engineResponse *engine.EngineResponse) er
 
 		t := time.NewTimer(10 * time.Second)
 		ch := ws.GetOrderChannel(engineResponse.Order.ID)
-		fmt.Println(ch)
 		if ch == nil {
 			r.orderService.RecoverOrders(engineResponse)
 		} else {
@@ -155,10 +156,7 @@ func (r *orderEndpoint) engineResponse(engineResponse *engine.EngineResponse) er
 						orderAsBytes, _ := json.Marshal(engineResponse.Order)
 						r.engine.PublishMessage(&engine.Message{Type: "remaining_order_add", Data: orderAsBytes})
 					}
-					r.orderService.UpdateUsingEngineResponse(engineResponse)
-					// TODO: send to operator for blockchain execution
 
-					r.orderService.RelayUpdateOverSocket(engineResponse)
 				}
 				t.Stop()
 				break
@@ -171,6 +169,10 @@ func (r *orderEndpoint) engineResponse(engineResponse *engine.EngineResponse) er
 			}
 		}
 	}
+	r.orderService.UpdateUsingEngineResponse(engineResponse)
+	// TODO: send to operator for blockchain execution
+
+	r.orderService.RelayUpdateOverSocket(engineResponse)
 	ws.CloseOrderReadChannel(engineResponse.Order.ID)
 
 	return nil

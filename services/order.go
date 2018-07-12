@@ -41,7 +41,7 @@ func (s *OrderService) Create(order *types.Order) (err error) {
 	order.PairID = p.ID
 	order.PairName = p.Name
 	order.BuyToken = p.BuyTokenSymbol
-	order.BuyTokenAddress = p.BuyTokenSymbol
+	order.BuyTokenAddress = p.BuyTokenAddress
 	order.SellToken = p.SellTokenSymbol
 	order.SellTokenAddress = p.SellTokenAddress
 
@@ -113,13 +113,24 @@ func (s *OrderService) RecoverOrders(engineResponse *engine.EngineResponse) {
 	engineResponse.MatchingOrders = nil
 }
 func (s *OrderService) CancelOrder(order *types.Order) error {
-	engineResponse, err := s.engine.CancelOrder(order)
+	dbOrder, err := s.orderDao.GetByID(order.ID)
 	if err != nil {
 		return err
 	}
-	s.orderDao.Update(engineResponse.Order.ID, engineResponse.Order)
-	s.cancelOrderUnlockAmount(engineResponse)
-	return nil
+	if dbOrder.Status == types.OPEN || dbOrder.Status == types.NEW {
+		engineResponse, err := s.engine.CancelOrder(dbOrder)
+		if err != nil {
+			return err
+		}
+		s.orderDao.Update(engineResponse.Order.ID, engineResponse.Order)
+		if err := s.cancelOrderUnlockAmount(engineResponse); err != nil {
+			return err
+		}
+		s.SendMessage("cancel_order", engineResponse.Order.ID, engineResponse)
+		return nil
+	}
+	return fmt.Errorf("Cannot cancel the order")
+
 }
 func (s *OrderService) UpdateUsingEngineResponse(er *engine.EngineResponse) {
 	if er.FillStatus == engine.ERROR {
@@ -258,11 +269,12 @@ func (s *OrderService) SendMessage(msgType string, orderID bson.ObjectId, data i
 	ws.GetOrderConn(orderID).WriteJSON(msg)
 }
 
-func (s *OrderService) cancelOrderUnlockAmount(er *engine.EngineResponse) {
+func (s *OrderService) cancelOrderUnlockAmount(er *engine.EngineResponse) error {
 	// Unlock Amount
 	res, err := s.balanceDao.GetByAddress(er.Order.UserAddress)
 	if err != nil {
 		log.Fatalf("\n%s\n", err)
+		return err
 	}
 	if er.Order.Type == types.BUY {
 		bal := res.Tokens[er.Order.SellToken]
@@ -276,6 +288,7 @@ func (s *OrderService) cancelOrderUnlockAmount(er *engine.EngineResponse) {
 		err = s.balanceDao.UpdateAmount(er.Order.UserAddress, er.Order.SellToken, &bal)
 		if err != nil {
 			log.Fatalf("\n%s\n", err)
+			return err
 		}
 	}
 	if er.Order.Type == types.SELL {
@@ -289,6 +302,8 @@ func (s *OrderService) cancelOrderUnlockAmount(er *engine.EngineResponse) {
 		err = s.balanceDao.UpdateAmount(er.Order.UserAddress, er.Order.BuyToken, &bal)
 		if err != nil {
 			log.Fatalf("\n%s\n", err)
+			return err
 		}
 	}
+	return nil
 }

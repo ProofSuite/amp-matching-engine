@@ -19,8 +19,8 @@ type OrderRequest struct {
 	Price       float64 `json:"price"`
 	Fee         float64 `json:"fee"`
 	Signature   string  `json:"signature"`
-	TokenBuy    string  `json:"tokenBuy"`
-	TokenSell   string  `json:"tokenSell"`
+	BuyToken    string  `json:"buyToken"`
+	SellToken   string  `json:"sellToken"`
 	PairName    string  `json:"pairName"`
 	Hash        string  `json:"hash"`
 	UserAddress string  `json:"userAddress"`
@@ -33,8 +33,8 @@ func (m OrderRequest) Validate() error {
 		validation.Field(&m.Amount, validation.Required),
 		validation.Field(&m.Price, validation.Required),
 		validation.Field(&m.UserAddress, validation.Required),
-		validation.Field(&m.TokenBuy, validation.Required, validation.NewStringRule(common.IsHexAddress, "Invalid Buy Token Address")),
-		validation.Field(&m.TokenSell, validation.Required, validation.NewStringRule(common.IsHexAddress, "Invalid Sell Token Address")),
+		validation.Field(&m.BuyToken, validation.Required, validation.NewStringRule(common.IsHexAddress, "Invalid Buy Token Address")),
+		validation.Field(&m.SellToken, validation.Required, validation.NewStringRule(common.IsHexAddress, "Invalid Sell Token Address")),
 		// validation.Field(&m.Signature, validation.Required),
 		// validation.Field(&m.PairName, validation.Required),
 	)
@@ -55,8 +55,8 @@ func (m *OrderRequest) ToOrder() (order *Order, err error) {
 		Price:            int64(m.Price * math.Pow10(8)),
 		Fee:              int64(m.Amount * m.Price * (app.Config.TakeFee / 100) * math.Pow10(8)), // amt*price + amt*price*takeFee/100
 		UserAddress:      m.UserAddress,
-		BuyTokenAddress:  m.TokenBuy,
-		SellTokenAddress: m.TokenSell,
+		BuyTokenAddress:  m.BuyToken,
+		SellTokenAddress: m.SellToken,
 		AmountBuy:        int64(m.Amount * math.Pow10(8)),
 		AmountSell:       int64(m.Amount * m.Price * math.Pow10(8)),
 		Hash:             m.ComputeHash(),
@@ -71,8 +71,8 @@ func (m *OrderRequest) ComputeHash() (ch string) {
 	sha.Write([]byte(fmt.Sprintf("%f", m.Price)))
 	sha.Write([]byte(fmt.Sprintf("%f", m.Amount)))
 	sha.Write([]byte(fmt.Sprintf("%d", m.Type)))
-	sha.Write([]byte(m.TokenBuy))
-	sha.Write([]byte(m.TokenSell))
+	sha.Write([]byte(m.BuyToken))
+	sha.Write([]byte(m.SellToken))
 	sha.Write([]byte(m.UserAddress))
 	return common.BytesToHash(sha.Sum(nil)).Hex()
 }
