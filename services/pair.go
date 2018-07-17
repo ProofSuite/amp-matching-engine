@@ -18,6 +18,8 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/types"
 )
 
+// PairService struct with daos required, responsible for communicating with daos.
+// PairService functions are responsible for interacting with daos and implements business logics.
 type PairService struct {
 	pairDao      *daos.PairDao
 	tokenDao     *daos.TokenDao
@@ -25,11 +27,14 @@ type PairService struct {
 	tradeService *TradeService
 }
 
+// NewPairService returns a new instance of balance service
 func NewPairService(pairDao *daos.PairDao, tokenDao *daos.TokenDao, eng *engine.EngineResource, tradeService *TradeService) *PairService {
 
 	return &PairService{pairDao, tokenDao, eng, tradeService}
 }
 
+// Create function is responsible for inserting new pair in DB.
+// It checks for existence of tokens in DB first
 func (s *PairService) Create(pair *types.Pair) error {
 	bt, err := s.tokenDao.GetByID(pair.BuyToken)
 	if err != nil {
@@ -49,14 +54,17 @@ func (s *PairService) Create(pair *types.Pair) error {
 
 }
 
+// GetByID fetches deyails of a pair using its mongo ID
 func (s *PairService) GetByID(id bson.ObjectId) (*types.Pair, error) {
 	return s.pairDao.GetByID(id)
 }
 
+// GetAll is reponsible for fetching all the pairs in the DB
 func (s *PairService) GetAll() ([]types.Pair, error) {
 	return s.pairDao.GetAll()
 }
 
+// GetOrderBook fetches orderbook from engine/redis and returns it as an map[string]interface
 func (s *PairService) GetOrderBook(pairName string) (ob map[string]interface{}, err error) {
 	res, err := s.pairDao.GetByName(pairName)
 	if err != nil {
@@ -77,6 +85,9 @@ func (s *PairService) GetOrderBook(pairName string) (ob map[string]interface{}, 
 	}
 	return
 }
+
+// RegisterForOrderBook is responsible for handling incoming orderbook subscription messages
+// It makes an entry of connection in pairSocket corresponding to pair,unit and duration
 func (s *PairService) RegisterForOrderBook(conn *websocket.Conn, pairName string) {
 
 	ob, err := s.GetOrderBook(pairName)
@@ -100,6 +111,7 @@ func (s *PairService) RegisterForOrderBook(conn *websocket.Conn, pairName string
 	conn.WriteMessage(1, rab)
 }
 
+// UnRegisterForOrderBook is responsible for handling incoming orderbook unsubscription messages
 func (s *PairService) UnRegisterForOrderBook(conn *websocket.Conn, pairName string) {
 	ws.GetPairSockets().PairSocketUnregisterConnection(pairName, conn)
 }

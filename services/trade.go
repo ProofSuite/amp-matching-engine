@@ -14,30 +14,38 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
+// TradeService struct with daos required, responsible for communicating with daos.
+// TradeService functions are responsible for interacting with daos and implements business logics.
 type TradeService struct {
 	tradeDao *daos.TradeDao
 }
 
+// NewTradeService returns a new instance of TradeService
 func NewTradeService(TradeDao *daos.TradeDao) *TradeService {
 	return &TradeService{TradeDao}
 }
 
+// GetByPairName fetches all the trades corresponding to a pair using pair's name
 func (t *TradeService) GetByPairName(pairName string) ([]*types.Trade, error) {
 	return t.tradeDao.GetByPairName(pairName)
 }
 
+// GetByUserAddress fetches all the trades corresponding to a user address
 func (t *TradeService) GetByUserAddress(addr string) ([]*types.Trade, error) {
 	return t.tradeDao.GetByUserAddress(addr)
 }
 
+// UnregisterForTicks handles all the unsubscription messages for ticks corresponding to a pair
 func (t *TradeService) UnregisterForTicks(conn *websocket.Conn, pairName string, params *types.Params) {
 	tickChannelID := utils.GetTickChannelID(pairName, params.Units, params.Duration)
 	ws.UnsubscribeTick(tickChannelID, conn)
 }
 
-func (s *TradeService) RegisterForTicks(conn *websocket.Conn, pairName string, params *types.Params) {
+// RegisterForTicks handles all the subscription messages for ticks corresponding to a pair
+// It calls the corresponding channel's subscription method and sends trade history back on the connection
+func (t *TradeService) RegisterForTicks(conn *websocket.Conn, pairName string, params *types.Params) {
 
-	ob, err := s.GetTicks(pairName, params.Duration, params.Units, params.From, params.To)
+	ob, err := t.GetTicks(pairName, params.Duration, params.Units, params.From, params.To)
 	if err != nil {
 		conn.WriteMessage(1, []byte(err.Error()))
 	}
@@ -56,6 +64,11 @@ func (s *TradeService) RegisterForTicks(conn *websocket.Conn, pairName string, p
 	conn.WriteMessage(1, rab)
 }
 
+// GetTicks fetches OHLCV data using
+// pairName: can be "" for fetching data for all pairs
+// duration: in integer
+// unit: sec,min,hour,day,week,month,yr
+// timeInterval: 0-2 entries (0 argument: latest data,1st argument: from timestamp, 2nd argument: to timestamp)
 func (t *TradeService) GetTicks(pairName string, duration int64, unit string, timeInterval ...int64) (resp []*types.Tick, err error) {
 	var match bson.M
 	currentTs := time.Now().UnixNano() / int64(time.Second)
@@ -151,6 +164,7 @@ func (t *TradeService) GetTicks(pairName string, duration int64, unit string, ti
 	return
 }
 
+// query for grouping of the documents and addition of required fields using aggregate pipeline
 func getGroupTsBson(key, units string, duration int64) (resp bson.M, addFields bson.M) {
 	t := time.Date(1970, time.January, 1, 0, 0, 0, 0, time.UTC)
 	var d interface{}
