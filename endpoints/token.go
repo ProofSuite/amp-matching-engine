@@ -12,7 +12,7 @@ type tokenEndpoint struct {
 	tokenService *services.TokenService
 }
 
-// ServeToken sets up the routing of token endpoints and the corresponding handlers.
+// ServeTokenResource sets up the routing of token endpoints and the corresponding handlers.
 func ServeTokenResource(rg *routing.RouteGroup, tokenService *services.TokenService) {
 	r := &tokenEndpoint{tokenService}
 	rg.Get("/tokens/<id>", r.get)

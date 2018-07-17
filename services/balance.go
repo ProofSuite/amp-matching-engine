@@ -3,8 +3,6 @@ package services
 import (
 	"math"
 
-	"gopkg.in/mgo.v2/bson"
-
 	"github.com/Proofsuite/amp-matching-engine/daos"
 	"github.com/Proofsuite/amp-matching-engine/types"
 )
@@ -38,12 +36,6 @@ func (s *BalanceService) Create(balance *types.Balance) error {
 
 }
 
-func (s *BalanceService) GetByID(id bson.ObjectId) (*types.Balance, error) {
-	return s.balanceDao.GetByID(id)
-}
 func (s *BalanceService) GetByAddress(addr string) (*types.Balance, error) {
 	return s.balanceDao.GetByAddress(addr)
-}
-func (s *BalanceService) GetAll() ([]types.Balance, error) {
-	return s.balanceDao.GetAll()
 }
