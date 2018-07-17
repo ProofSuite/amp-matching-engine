@@ -9,38 +9,51 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
+// PairDao contains:
+// collectionName: MongoDB collection name
+// dbName: name of mongodb to interact with
 type PairDao struct {
 	collectionName string
 	dbName         string
 }
 
+// NewPairDao returns a new instance of AddressDao
 func NewPairDao() *PairDao {
 	return &PairDao{"pairs", app.Config.DBName}
 }
 
+// Create function performs the DB insertion task for pair collection
 func (dao *PairDao) Create(pair *types.Pair) (err error) {
 
 	pair.ID = bson.NewObjectId()
 	pair.CreatedAt = time.Now()
 	pair.UpdatedAt = time.Now()
 
-	err = DB.Create(dao.dbName, dao.collectionName, pair)
+	err = db.Create(dao.dbName, dao.collectionName, pair)
 	return
 }
 
+// GetAll function fetches all the pairs in the pair collection of mongodb.
 func (dao *PairDao) GetAll() (response []types.Pair, err error) {
-	err = DB.Get(dao.dbName, dao.collectionName, bson.M{}, 0, 0, &response)
+	err = db.Get(dao.dbName, dao.collectionName, bson.M{}, 0, 0, &response)
 	return
 }
 
+// GetByID function fetches details of a pair using pair's mongo ID.
 func (dao *PairDao) GetByID(id bson.ObjectId) (response *types.Pair, err error) {
-	err = DB.GetByID(dao.dbName, dao.collectionName, id, &response)
+	err = db.GetByID(dao.dbName, dao.collectionName, id, &response)
 	return
 }
+
+// GetByName function fetches details of a pair using pair's name.
+// It makes CASE INSENSITIVE search query one pair's name
 func (dao *PairDao) GetByName(name string) (response *types.Pair, err error) {
 	var res []*types.Pair
-	q := bson.M{"name": bson.RegEx{name, "i"}}
-	err = DB.Get(dao.dbName, dao.collectionName, q, 0, 1, &res)
+	q := bson.M{"name": bson.RegEx{
+		Pattern: name,
+		Options: "i",
+	}}
+	err = db.Get(dao.dbName, dao.collectionName, q, 0, 1, &res)
 	if err != nil {
 		return
 	} else if len(res) > 0 {
@@ -50,7 +63,10 @@ func (dao *PairDao) GetByName(name string) (response *types.Pair, err error) {
 	}
 	return
 }
-func (dao *PairDao) GetByTokenAddressPair(buyToken, sellToken string) (response *types.Pair, err error) {
+
+// GetByTokenAddress function fetches pair based on
+// CONTRACT ADDRESS of buy token and sell token
+func (dao *PairDao) GetByTokenAddress(buyToken, sellToken string) (response *types.Pair, err error) {
 	var res []*types.Pair
 	q := bson.M{"buyTokenAddress": bson.RegEx{
 		Pattern: buyToken,
@@ -59,7 +75,7 @@ func (dao *PairDao) GetByTokenAddressPair(buyToken, sellToken string) (response 
 		Pattern: sellToken,
 		Options: "i",
 	}}
-	err = DB.Get(dao.dbName, dao.collectionName, q, 0, 1, &res)
+	err = db.Get(dao.dbName, dao.collectionName, q, 0, 1, &res)
 	if err != nil {
 		return
 	} else if len(res) > 0 {

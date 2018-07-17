@@ -17,14 +17,13 @@ type pairEndpoint struct {
 	pairService *services.PairService
 }
 
-// ServePair sets up the routing of pair endpoints and the corresponding handlers.
+// ServePairResource sets up the routing of pair endpoints and the corresponding handlers.
 func ServePairResource(rg *routing.RouteGroup, pairService *services.PairService) {
 	r := &pairEndpoint{pairService}
 	rg.Get("/pairs/book/<pairName>", r.orderBookEndpoint)
 	rg.Get("/pairs/<id>", r.get)
 	rg.Get("/pairs", r.query)
 	rg.Post("/pairs", r.create)
-	// http.HandleFunc("/pairs/book", r.orderBook)
 	ws.RegisterChannel("order_book", r.orderBook)
 }
 

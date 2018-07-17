@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"net/http"
 	"time"
 
 	"github.com/Proofsuite/amp-matching-engine/errors"
@@ -23,20 +22,10 @@ type orderEndpoint struct {
 	engine       *engine.EngineResource
 }
 
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-	CheckOrigin: func(r *http.Request) bool {
-		return true
-	},
-}
-
-// ServeOrder sets up the routing of order endpoints and the corresponding handlers.
+// ServeOrderResource sets up the routing of order endpoints and the corresponding handlers.
 func ServeOrderResource(rg *routing.RouteGroup, orderService *services.OrderService, e *engine.EngineResource) {
 	r := &orderEndpoint{orderService, e}
 	rg.Get("/orders/<addr>", r.get)
-	// http.HandleFunc("/orders/ws", r.ws)
-	// http.HandleFunc("/orders/book/<pair>", r.ws)
 	ws.RegisterChannel("order_channel", r.ws)
 	e.SubscribeEngineResponse(r.engineResponse)
 }

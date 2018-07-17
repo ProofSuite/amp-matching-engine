@@ -10,11 +10,9 @@ type addressEndpoint struct {
 	addressService *services.AddressService
 }
 
-// ServeAddress sets up the routing of address endpoints and the corresponding handlers.
+// ServeAddressResource sets up the routing of address endpoints and the corresponding handlers.
 func ServeAddressResource(rg *routing.RouteGroup, addressService *services.AddressService) {
 	r := &addressEndpoint{addressService}
-	// rg.Get("/addresses/<id>", r.get)
-	// rg.Get("/addresses", r.query)
 	rg.Post("/address", r.create)
 }
 

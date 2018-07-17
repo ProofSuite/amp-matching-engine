@@ -32,7 +32,7 @@ func (s *OrderService) Create(order *types.Order) (err error) {
 
 	// Fill token and pair data
 
-	p, err := s.pairDao.GetByTokenAddressPair(order.BuyTokenAddress, order.SellTokenAddress)
+	p, err := s.pairDao.GetByTokenAddress(order.BuyTokenAddress, order.SellTokenAddress)
 	if err != nil {
 		return err
 	} else if p == nil {
@@ -98,9 +98,6 @@ func (s *OrderService) GetByID(id bson.ObjectId) (*types.Order, error) {
 func (s *OrderService) GetByUserAddress(address string) ([]*types.Order, error) {
 	return s.orderDao.GetByUserAddress(address)
 }
-func (s *OrderService) GetAll() ([]types.Order, error) {
-	return s.orderDao.GetAll()
-}
 
 func (s *OrderService) RecoverOrders(engineResponse *engine.EngineResponse) {
 	if err := s.engine.RecoverOrders(engineResponse.MatchingOrders); err != nil {
@@ -151,80 +148,14 @@ func (s *OrderService) UpdateUsingEngineResponse(er *engine.EngineResponse) {
 		fmt.Printf("\nPartial Or filled: %d\n", er.FillStatus)
 
 		s.orderDao.Update(er.Order.ID, er.Order)
-		res, _ := s.balanceDao.GetByAddress(er.Order.UserAddress)
+		// Unlock and transfer Amount
+		s.transferAmount(er.Order, er.Order.FilledAmount)
 
-		// TODO: Move this code block to different function
-
-		if er.Order.Type == types.BUY {
-			sbal := res.Tokens[er.Order.SellToken]
-			sbal.LockedAmount = sbal.LockedAmount - int64((float64(er.Order.FilledAmount)/math.Pow10(8))*float64(er.Order.Price))
-			err := s.balanceDao.UpdateAmount(er.Order.UserAddress, er.Order.SellToken, &sbal)
-			if err != nil {
-				log.Fatalf("\n%s\n", err)
-			}
-			bbal := res.Tokens[er.Order.BuyToken]
-			bbal.Amount = bbal.Amount + er.Order.FilledAmount
-			err = s.balanceDao.UpdateAmount(er.Order.UserAddress, er.Order.BuyToken, &bbal)
-			if err != nil {
-				log.Fatalf("\n%s\n", err)
-			}
-			fmt.Printf("\n Order Buy\n==>sbal: %s \n==>bbal: %s\n==>Unlock Amount: %d\n", sbal, bbal, int64((float64(er.Order.FilledAmount)/math.Pow10(8))*float64(er.Order.Price)))
-		}
-		if er.Order.Type == types.SELL {
-			bbal := res.Tokens[er.Order.BuyToken]
-			bbal.LockedAmount = bbal.LockedAmount - er.Order.FilledAmount
-			err := s.balanceDao.UpdateAmount(er.Order.UserAddress, er.Order.BuyToken, &bbal)
-			if err != nil {
-				log.Fatalf("\n%s\n", err)
-			}
-
-			sbal := res.Tokens[er.Order.SellToken]
-			sbal.Amount = sbal.Amount + int64((float64(er.Order.FilledAmount)/math.Pow10(8))*float64(er.Order.Price))
-			err = s.balanceDao.UpdateAmount(er.Order.UserAddress, er.Order.SellToken, &sbal)
-			if err != nil {
-				log.Fatalf("\n%s\n", err)
-			}
-			fmt.Printf("\n Order Sell\n==>sbal: %s \n==>bbal: %s\n==>Unlock Amount: %d\n", sbal, bbal, er.Order.FilledAmount)
-
-		}
 		for _, mo := range er.MatchingOrders {
-			// fmt.Println(mo.Order)
 			s.orderDao.Update(mo.Order.ID, mo.Order)
-			res, _ := s.balanceDao.GetByAddress(mo.Order.UserAddress)
-			// Unlock Amount
-			if mo.Order.Type == types.BUY {
-				sbal := res.Tokens[mo.Order.SellToken]
-				sbal.LockedAmount = sbal.LockedAmount - int64((float64(mo.Amount)/math.Pow10(8))*float64(er.Order.Price))
-				err := s.balanceDao.UpdateAmount(er.Order.UserAddress, er.Order.SellToken, &sbal)
-				if err != nil {
-					log.Fatalf("\n%s\n", err)
-				}
-				bbal := res.Tokens[er.Order.BuyToken]
-				bbal.Amount = bbal.Amount + mo.Amount
-				err = s.balanceDao.UpdateAmount(er.Order.UserAddress, er.Order.BuyToken, &bbal)
-				if err != nil {
-					log.Fatalf("\n%s\n", err)
-				}
-				fmt.Printf("\n Match Buy\n==>sbal: %s \n==>bbal: %s\n==>Unlock Amount: %d\n", sbal, bbal, int64((float64(mo.Amount)/math.Pow10(8))*float64(er.Order.Price)))
 
-			}
-			if mo.Order.Type == types.SELL {
-				bbal := res.Tokens[mo.Order.BuyToken]
-				bbal.LockedAmount = bbal.LockedAmount - mo.Amount
-				err := s.balanceDao.UpdateAmount(er.Order.UserAddress, er.Order.BuyToken, &bbal)
-				if err != nil {
-					log.Fatalf("\n%s\n", err)
-				}
-
-				sbal := res.Tokens[er.Order.SellToken]
-				sbal.Amount = sbal.Amount + int64((float64(mo.Amount)/math.Pow10(8))*float64(er.Order.Price))
-				err = s.balanceDao.UpdateAmount(er.Order.UserAddress, er.Order.SellToken, &sbal)
-				if err != nil {
-					log.Fatalf("\n%s\n", err)
-				}
-				fmt.Printf("\n Match Sell\n==>sbal: %s \n==>bbal: %s\n==>Unlock Amount: %d\n", sbal, bbal, mo.Amount)
-
-			}
+			// Unlock and transfer Amount
+			s.transferAmount(mo.Order, mo.Amount)
 		}
 		if len(er.Trades) != 0 {
 			err := s.tradeDao.Create(er.Trades...)
@@ -262,6 +193,8 @@ func (s *OrderService) RelayUpdateOverSocket(er *engine.EngineResponse) {
 		ws.GetPairSockets().PairSocketWriteMessage(er.Order.PairName, message)
 	}
 }
+
+// SendMessage is responsible for sending message to socket linked to a particular order
 func (s *OrderService) SendMessage(msgType string, orderID bson.ObjectId, data interface{}) {
 	msg := &types.OrderMessage{MsgType: msgType}
 	msg.OrderID = orderID
@@ -306,4 +239,42 @@ func (s *OrderService) cancelOrderUnlockAmount(er *engine.EngineResponse) error 
 		}
 	}
 	return nil
+}
+
+func (s *OrderService) transferAmount(order *types.Order, filledAmount int64) {
+
+	res, _ := s.balanceDao.GetByAddress(order.UserAddress)
+
+	if order.Type == types.BUY {
+		sbal := res.Tokens[order.SellToken]
+		sbal.LockedAmount = sbal.LockedAmount - int64((float64(filledAmount)/math.Pow10(8))*float64(order.Price))
+		err := s.balanceDao.UpdateAmount(order.UserAddress, order.SellToken, &sbal)
+		if err != nil {
+			log.Fatalf("\n%s\n", err)
+		}
+		bbal := res.Tokens[order.BuyToken]
+		bbal.Amount = bbal.Amount + filledAmount
+		err = s.balanceDao.UpdateAmount(order.UserAddress, order.BuyToken, &bbal)
+		if err != nil {
+			log.Fatalf("\n%s\n", err)
+		}
+		fmt.Printf("\n Order Buy\n==>sbal: %s \n==>bbal: %s\n==>Unlock Amount: %d\n", sbal, bbal, int64((float64(filledAmount)/math.Pow10(8))*float64(order.Price)))
+	}
+	if order.Type == types.SELL {
+		bbal := res.Tokens[order.BuyToken]
+		bbal.LockedAmount = bbal.LockedAmount - filledAmount
+		err := s.balanceDao.UpdateAmount(order.UserAddress, order.BuyToken, &bbal)
+		if err != nil {
+			log.Fatalf("\n%s\n", err)
+		}
+
+		sbal := res.Tokens[order.SellToken]
+		sbal.Amount = sbal.Amount + int64((float64(filledAmount)/math.Pow10(8))*float64(order.Price))
+		err = s.balanceDao.UpdateAmount(order.UserAddress, order.SellToken, &sbal)
+		if err != nil {
+			log.Fatalf("\n%s\n", err)
+		}
+		fmt.Printf("\n Order Sell\n==>sbal: %s \n==>bbal: %s\n==>Unlock Amount: %d\n", sbal, bbal, filledAmount)
+
+	}
 }

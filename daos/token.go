@@ -8,15 +8,20 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
+// TokenDao contains:
+// collectionName: MongoDB collection name
+// dbName: name of mongodb to interact with
 type TokenDao struct {
 	collectionName string
 	dbName         string
 }
 
+// NewTokenDao returns a new instance of TokenDao.
 func NewTokenDao() *TokenDao {
 	return &TokenDao{"tokens", app.Config.DBName}
 }
 
+// Create function performs the DB insertion task for token collection
 func (dao *TokenDao) Create(token *types.Token) (err error) {
 
 	if err := token.Validate(); err != nil {
@@ -27,16 +32,18 @@ func (dao *TokenDao) Create(token *types.Token) (err error) {
 	token.CreatedAt = time.Now()
 	token.UpdatedAt = time.Now()
 
-	err = DB.Create(dao.dbName, dao.collectionName, token)
+	err = db.Create(dao.dbName, dao.collectionName, token)
 	return
 }
 
+// GetAll function fetches all the tokens in the token collection of mongodb.
 func (dao *TokenDao) GetAll() (response []types.Token, err error) {
-	err = DB.Get(dao.dbName, dao.collectionName, bson.M{}, 0, 0, &response)
+	err = db.Get(dao.dbName, dao.collectionName, bson.M{}, 0, 0, &response)
 	return
 }
 
+// GetByID function fetches details of a token based on its mongo id
 func (dao *TokenDao) GetByID(id bson.ObjectId) (response *types.Token, err error) {
-	err = DB.GetByID(dao.dbName, dao.collectionName, id, &response)
+	err = db.GetByID(dao.dbName, dao.collectionName, id, &response)
 	return
 }
