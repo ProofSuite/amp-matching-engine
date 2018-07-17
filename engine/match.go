@@ -32,7 +32,7 @@ func (e *EngineResource) execute(order *types.Order, bookEntry *types.Order) (tr
 		fillOrder.Amount = orderUnfilledAmt
 
 		bookEntry.FilledAmount = bookEntry.FilledAmount + orderUnfilledAmt
-		bookEntry.Status = types.PARTIAL_FILLED
+		bookEntry.Status = types.PARTIALFILLED
 		fillOrder.Order = bookEntry
 
 		e.updateOrder(bookEntry, fillOrder.Amount)

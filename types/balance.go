@@ -4,7 +4,7 @@ import (
 	"errors"
 	"time"
 
-	. "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -17,6 +17,9 @@ type Balance struct {
 	UpdatedAt time.Time               `json:"updatedAt" bson:"updatedAt"`
 }
 
+// TokenBalance is a subdocument
+// It contains the confirmed amount and locked amount
+// corresponding to a single token (identified using tokenID & token's contract address)
 type TokenBalance struct {
 	TokenID      bson.ObjectId `json:"tokenId" bson:"tokenId"`
 	TokenAddress string        `json:"tokenAddress" bson:"tokenAddress"`
@@ -26,7 +29,7 @@ type TokenBalance struct {
 
 // NewBalance returns a new wallet object corresponding to a random private key
 func NewBalance(address string) (w *Balance, err error) {
-	if !IsHexAddress(address) {
+	if !common.IsHexAddress(address) {
 		return nil, errors.New("Invalid Address")
 	}
 	return

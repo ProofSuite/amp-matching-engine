@@ -51,7 +51,7 @@ func NewTrade(o *Order, amount int64, price int64, taker string) *Trade {
 	return t
 }
 
-// ComputeTradeHash returns hashes the trade
+// ComputeHash returns hashes the trade
 //
 // The OrderHash, Amount, Taker and TradeNonce attributes must be
 // set before attempting to compute the trade hash
@@ -80,6 +80,7 @@ func (t *Trade) VerifySignature() (bool, error) {
 	return true, nil
 }
 
+// Tick is the format in which mongo aggregate pipeline returns data when queried for OHLCV data
 type Tick struct {
 	ID    TickID `json:"_id,omitempty" bson:"_id"`
 	C     int64  `json:"c" bson:"c"`
@@ -91,6 +92,7 @@ type Tick struct {
 	V     int64  `json:"v" bson:"v"`
 }
 
+// TickID is the subdocument for aggregate grouping for OHLCV data
 type TickID struct {
 	Pair string `json:"pair" bson:"pair"`
 }

@@ -13,6 +13,8 @@ import (
 	validation "github.com/go-ozzo/ozzo-validation"
 )
 
+// OrderRequest is the struct in which the order request sent by the
+// user is populated
 type OrderRequest struct {
 	Type        int     `json:"type" bson:"type"`
 	Amount      float64 `json:"amount"`
