@@ -16,6 +16,8 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/types"
 )
 
+// OrderService struct with daos required, responsible for communicating with daos.
+// OrderService functions are responsible for interacting with daos and implements business logics.
 type OrderService struct {
 	orderDao   *daos.OrderDao
 	balanceDao *daos.BalanceDao
@@ -24,10 +26,15 @@ type OrderService struct {
 	engine     *engine.EngineResource
 }
 
+// NewOrderService returns a new instance of orderservice
 func NewOrderService(orderDao *daos.OrderDao, balanceDao *daos.BalanceDao, pairDao *daos.PairDao, tradeDao *daos.TradeDao, engine *engine.EngineResource) *OrderService {
 	return &OrderService{orderDao, balanceDao, pairDao, tradeDao, engine}
 }
 
+// Create validates if the passed order is valid or not based on user's available
+// funds and order data.
+// If valid: Order is inserted in DB with order status as new and order is publiched
+// on rabbitmq queue for matching engine to process the order
 func (s *OrderService) Create(order *types.Order) (err error) {
 
 	// Fill token and pair data
@@ -92,13 +99,18 @@ func (s *OrderService) Create(order *types.Order) (err error) {
 	return err
 }
 
+// GetByID fetches the details of an order using order's mongo ID
 func (s *OrderService) GetByID(id bson.ObjectId) (*types.Order, error) {
 	return s.orderDao.GetByID(id)
 }
+
+// GetByUserAddress fetches all the orders placed by passed user address
 func (s *OrderService) GetByUserAddress(address string) ([]*types.Order, error) {
 	return s.orderDao.GetByUserAddress(address)
 }
 
+// RecoverOrders recovers orders i.e puts back matched orders to orderbook
+// in case of failure of trade signing by the maker
 func (s *OrderService) RecoverOrders(engineResponse *engine.EngineResponse) {
 	if err := s.engine.RecoverOrders(engineResponse.MatchingOrders); err != nil {
 		panic(err)
@@ -109,6 +121,10 @@ func (s *OrderService) RecoverOrders(engineResponse *engine.EngineResponse) {
 	engineResponse.RemainingOrder = nil
 	engineResponse.MatchingOrders = nil
 }
+
+// CancelOrder handles the cancellation order requests.
+// Only Orders which are OPEN or NEW i.e. Not yet filled/partially filled
+// can be cancelled
 func (s *OrderService) CancelOrder(order *types.Order) error {
 	dbOrder, err := s.orderDao.GetByID(order.ID)
 	if err != nil {
@@ -129,6 +145,10 @@ func (s *OrderService) CancelOrder(order *types.Order) error {
 	return fmt.Errorf("Cannot cancel the order")
 
 }
+
+// UpdateUsingEngineResponse is responsible for updating order status of maker
+// and taker orders and transfer/unlock amount based on the response sent by the
+// matching engine
 func (s *OrderService) UpdateUsingEngineResponse(er *engine.EngineResponse) {
 	if er.FillStatus == engine.ERROR {
 		fmt.Println("Error")
@@ -202,6 +222,8 @@ func (s *OrderService) SendMessage(msgType string, orderID bson.ObjectId, data i
 	ws.GetOrderConn(orderID).WriteJSON(msg)
 }
 
+// this function is responsible for unlocking of maker's amount in balance document
+// in case maker cancels the order or some error occurs
 func (s *OrderService) cancelOrderUnlockAmount(er *engine.EngineResponse) error {
 	// Unlock Amount
 	res, err := s.balanceDao.GetByAddress(er.Order.UserAddress)
@@ -241,6 +263,9 @@ func (s *OrderService) cancelOrderUnlockAmount(er *engine.EngineResponse) error 
 	return nil
 }
 
+// transferAmount is used to transfer amount from seller to buyer
+// it removes the lockedAmount of one token and adds confirmed amount for another token
+// based on the type of order i.e. buy/sell
 func (s *OrderService) transferAmount(order *types.Order, filledAmount int64) {
 
 	res, _ := s.balanceDao.GetByAddress(order.UserAddress)
