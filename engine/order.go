@@ -98,7 +98,7 @@ func (e *EngineResource) buyOrder(order *types.Order) (engineResponse *EngineRes
 					engineResponse.RemainingOrder = nil
 					return engineResponse, nil
 				}
-				engineResponse.Order.Status = types.PARTIAL_FILLED
+				engineResponse.Order.Status = types.PARTIALFILLED
 			}
 		}
 	}
@@ -161,7 +161,7 @@ func (e *EngineResource) sellOrder(order *types.Order) (engineResponse *EngineRe
 					engineResponse.RemainingOrder = nil
 					return engineResponse, nil
 				}
-				engineResponse.Order.Status = types.PARTIAL_FILLED
+				engineResponse.Order.Status = types.PARTIALFILLED
 
 			}
 		}
@@ -317,7 +317,7 @@ func (e *EngineResource) RecoverOrders(orders []*FillOrder) error {
 	for _, o := range orders {
 
 		// update order's filled amount and status before updating in redis
-		o.Order.Status = types.PARTIAL_FILLED
+		o.Order.Status = types.PARTIALFILLED
 		o.Order.FilledAmount = o.Order.FilledAmount - o.Amount
 		if o.Order.FilledAmount == 0 {
 			o.Order.Status = types.OPEN

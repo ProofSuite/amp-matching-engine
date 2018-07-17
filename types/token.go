@@ -8,6 +8,7 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
+// Token struct is used to model the token data in the system and DB
 type Token struct {
 	ID              bson.ObjectId `json:"id" bson:"_id"`
 	Name            string        `json:"name" bson:"name"`
@@ -21,11 +22,14 @@ type Token struct {
 	UpdatedAt time.Time `json:"updatedAt" bson:"updatedAt"`
 }
 
+// Image is a sub document used to store data related to images
 type Image struct {
 	URL  string                 `json:"url" bson:"url"`
 	Meta map[string]interface{} `json:"meta" bson:"meta"`
 }
 
+// Validate function is used to verify if an instance of
+// struct satisfies all the conditions for a valid instance
 func (t Token) Validate() error {
 	return validation.ValidateStruct(&t,
 		validation.Field(&t.Name, validation.Required),

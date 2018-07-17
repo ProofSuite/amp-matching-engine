@@ -8,13 +8,14 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
-// asdfasdf
+// Signature struct
 type Signature struct {
 	V byte
 	R common.Hash
 	S common.Hash
 }
 
+// NewSignature function decodes []byte to Signature type
 func NewSignature(b []byte) (*Signature, error) {
 	if len(b) != 64 {
 		return nil, errors.New("Signature length should be 64 bytes")
@@ -27,6 +28,7 @@ func NewSignature(b []byte) (*Signature, error) {
 	}, nil
 }
 
+// MarshalSignature marshals the signature struct to []byte
 func (s *Signature) MarshalSignature() ([]byte, error) {
 	sigBytes1 := s.R.Bytes()
 	sigBytes2 := s.S.Bytes()

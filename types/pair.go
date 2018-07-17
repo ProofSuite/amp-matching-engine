@@ -7,6 +7,7 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
+// Pair struct is used to model the pair data in the system and DB
 type Pair struct {
 	ID               bson.ObjectId `json:"id" bson:"_id"`
 	Name             string        `json:"name" bson:"name"`
@@ -24,15 +25,20 @@ type Pair struct {
 	UpdatedAt time.Time `json:"updatedAt" bson:"updatedAt"`
 }
 
-func (t Pair) Validate() error {
-	return validation.ValidateStruct(&t,
-		validation.Field(&t.Name, validation.Required),
-		validation.Field(&t.BuyToken, validation.Required),
-		validation.Field(&t.BuyTokenSymbol, validation.Required),
-		validation.Field(&t.SellToken, validation.Required),
-		validation.Field(&t.SellTokenSymbol, validation.Required),
+// Validate function is used to verify if an instance of
+// struct satisfies all the conditions for a valid instance
+func (p Pair) Validate() error {
+	return validation.ValidateStruct(&p,
+		validation.Field(&p.Name, validation.Required),
+		validation.Field(&p.BuyToken, validation.Required),
+		validation.Field(&p.BuyTokenSymbol, validation.Required),
+		validation.Field(&p.SellToken, validation.Required),
+		validation.Field(&p.SellTokenSymbol, validation.Required),
 	)
 }
+
+// GetOrderBookKeys returns the orderbook price point keys for corresponding pair
+// It is used to fetch the orderbook from redis of a pair
 func (p *Pair) GetOrderBookKeys() (sell, buy string) {
 	return p.BuyTokenSymbol + "::" + p.SellTokenSymbol + "::sell", p.BuyTokenSymbol + "::" + p.SellTokenSymbol + "::buy"
 }
