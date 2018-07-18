@@ -23,12 +23,12 @@ import (
 type PairService struct {
 	pairDao      *daos.PairDao
 	tokenDao     *daos.TokenDao
-	eng          *engine.EngineResource
+	eng          *engine.Resource
 	tradeService *TradeService
 }
 
 // NewPairService returns a new instance of balance service
-func NewPairService(pairDao *daos.PairDao, tokenDao *daos.TokenDao, eng *engine.EngineResource, tradeService *TradeService) *PairService {
+func NewPairService(pairDao *daos.PairDao, tokenDao *daos.TokenDao, eng *engine.Resource, tradeService *TradeService) *PairService {
 
 	return &PairService{pairDao, tokenDao, eng, tradeService}
 }

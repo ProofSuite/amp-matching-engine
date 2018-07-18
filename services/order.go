@@ -23,11 +23,11 @@ type OrderService struct {
 	balanceDao *daos.BalanceDao
 	pairDao    *daos.PairDao
 	tradeDao   *daos.TradeDao
-	engine     *engine.EngineResource
+	engine     *engine.Resource
 }
 
 // NewOrderService returns a new instance of orderservice
-func NewOrderService(orderDao *daos.OrderDao, balanceDao *daos.BalanceDao, pairDao *daos.PairDao, tradeDao *daos.TradeDao, engine *engine.EngineResource) *OrderService {
+func NewOrderService(orderDao *daos.OrderDao, balanceDao *daos.BalanceDao, pairDao *daos.PairDao, tradeDao *daos.TradeDao, engine *engine.Resource) *OrderService {
 	return &OrderService{orderDao, balanceDao, pairDao, tradeDao, engine}
 }
 
@@ -111,7 +111,7 @@ func (s *OrderService) GetByUserAddress(address string) ([]*types.Order, error) 
 
 // RecoverOrders recovers orders i.e puts back matched orders to orderbook
 // in case of failure of trade signing by the maker
-func (s *OrderService) RecoverOrders(engineResponse *engine.EngineResponse) {
+func (s *OrderService) RecoverOrders(engineResponse *engine.Response) {
 	if err := s.engine.RecoverOrders(engineResponse.MatchingOrders); err != nil {
 		panic(err)
 	}
@@ -149,12 +149,12 @@ func (s *OrderService) CancelOrder(order *types.Order) error {
 // UpdateUsingEngineResponse is responsible for updating order status of maker
 // and taker orders and transfer/unlock amount based on the response sent by the
 // matching engine
-func (s *OrderService) UpdateUsingEngineResponse(er *engine.EngineResponse) {
+func (s *OrderService) UpdateUsingEngineResponse(er *engine.Response) {
 	if er.FillStatus == engine.ERROR {
 		fmt.Println("Error")
 		s.orderDao.Update(er.Order.ID, er.Order)
 		s.cancelOrderUnlockAmount(er)
-	} else if er.FillStatus == engine.NO_MATCH {
+	} else if er.FillStatus == engine.NOMATCH {
 		fmt.Println("No Match")
 		s.orderDao.Update(er.Order.ID, er.Order)
 
@@ -187,7 +187,7 @@ func (s *OrderService) UpdateUsingEngineResponse(er *engine.EngineResponse) {
 }
 
 // RelayUpdateOverSocket is responsible for notifying listening clients about new order/trade addition/deletion
-func (s *OrderService) RelayUpdateOverSocket(er *engine.EngineResponse) {
+func (s *OrderService) RelayUpdateOverSocket(er *engine.Response) {
 	if len(er.Trades) > 0 {
 		fmt.Println("Trade relay over socket")
 		message := &types.OrderMessage{
@@ -224,7 +224,7 @@ func (s *OrderService) SendMessage(msgType string, orderID bson.ObjectId, data i
 
 // this function is responsible for unlocking of maker's amount in balance document
 // in case maker cancels the order or some error occurs
-func (s *OrderService) cancelOrderUnlockAmount(er *engine.EngineResponse) error {
+func (s *OrderService) cancelOrderUnlockAmount(er *engine.Response) error {
 	// Unlock Amount
 	res, err := s.balanceDao.GetByAddress(er.Order.UserAddress)
 	if err != nil {

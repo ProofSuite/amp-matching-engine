@@ -16,11 +16,14 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/daos"
 )
 
-type EngineResource struct {
+// Resource contains daos and redis connection required for engine to work
+type Resource struct {
 	orderDao  *daos.OrderDao
 	redisConn redis.Conn
 	mutex     *sync.Mutex
 }
+
+// Message is the structure of message that matching engine expects
 type Message struct {
 	Type string `json:"type"`
 	Data []byte `json:"data"`
@@ -28,23 +31,27 @@ type Message struct {
 
 var channels = make(map[string]*amqp.Channel)
 var queues = make(map[string]*amqp.Queue)
-var Engine *EngineResource
 
-func InitEngine(orderDao *daos.OrderDao, redisConn redis.Conn) (engine *EngineResource, err error) {
+// Engine is singleton Resource instance
+var Engine *Resource
+
+// InitEngine initializes the engine singleton instance
+func InitEngine(orderDao *daos.OrderDao, redisConn redis.Conn) (engine *Resource, err error) {
 	if Engine == nil {
 		if orderDao == nil {
 			return nil, errors.New("Need pointer to struct of type daos.OrderDao")
 		}
-		Engine = &EngineResource{orderDao, redisConn, &sync.Mutex{}}
+		Engine = &Resource{orderDao, redisConn, &sync.Mutex{}}
 		Engine.subscribeMessage()
 	}
 	engine = Engine
 	return
 }
 
-func (e *EngineResource) PublishMessage(order *Message) error {
+// PublishMessage is used to publish order message over the rabbitmq.
+func (e *Resource) PublishMessage(order *Message) error {
 	ch := getChannel("orderPublish")
-	q := getOrderQueue(ch, "order")
+	q := getQueue(ch, "order")
 
 	orderAsBytes, err := json.Marshal(order)
 	if err != nil {
@@ -67,9 +74,12 @@ func (e *EngineResource) PublishMessage(order *Message) error {
 	}
 	return nil
 }
-func (e *EngineResource) publishEngineResponse(er *EngineResponse) error {
+
+// publishEngineResponse is used by matching engine to publish or send response of matching engine to
+// system for further processing
+func (e *Resource) publishEngineResponse(er *Response) error {
 	ch := getChannel("erPub")
-	q := getOrderQueue(ch, "engineResponse")
+	q := getQueue(ch, "engineResponse")
 
 	erAsBytes, err := json.Marshal(er)
 	if err != nil {
@@ -92,9 +102,12 @@ func (e *EngineResource) publishEngineResponse(er *EngineResponse) error {
 	}
 	return nil
 }
-func (e *EngineResource) SubscribeEngineResponse(fn func(*EngineResponse) error) error {
+
+// SubscribeEngineResponse subscribes to engineResponse queue and triggers the function
+// passed as arguments for each message.
+func (e *Resource) SubscribeEngineResponse(fn func(*Response) error) error {
 	ch := getChannel("erSub")
-	q := getOrderQueue(ch, "engineResponse")
+	q := getQueue(ch, "engineResponse")
 	go func() {
 		msgs, err := ch.Consume(
 			q.Name, // queue
@@ -115,7 +128,7 @@ func (e *EngineResource) SubscribeEngineResponse(fn func(*EngineResponse) error)
 		go func() {
 			for d := range msgs {
 				// log.Printf("Received a message: %s", d.Body)
-				var er *EngineResponse
+				var er *Response
 				err := json.Unmarshal(d.Body, &er)
 				if err != nil {
 					log.Printf("error: %s", err)
@@ -129,9 +142,12 @@ func (e *EngineResource) SubscribeEngineResponse(fn func(*EngineResponse) error)
 	}()
 	return nil
 }
-func (e *EngineResource) subscribeMessage() error {
+
+// subscribeMessage is called by matching engine while initializing,
+// it subscribes to order message queue and triggers the fn according to message type.
+func (e *Resource) subscribeMessage() error {
 	ch := getChannel("orderSubscribe")
-	q := getOrderQueue(ch, "order")
+	q := getQueue(ch, "order")
 	go func() {
 		msgs, err := ch.Consume(
 			q.Name, // queue
@@ -176,7 +192,7 @@ func (e *EngineResource) subscribeMessage() error {
 	return nil
 }
 
-func getOrderQueue(ch *amqp.Channel, queue string) *amqp.Queue {
+func getQueue(ch *amqp.Channel, queue string) *amqp.Queue {
 	if queues[queue] == nil {
 		q, err := ch.QueueDeclare(queue, false, false, false, false, nil)
 		if err != nil {
