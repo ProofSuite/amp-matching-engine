@@ -86,8 +86,8 @@ func (r *orderEndpoint) ws(input *interface{}, conn *websocket.Conn) {
 		}
 		oab, _ = json.Marshal(order)
 		conn.WriteMessage(messageType, oab)
-		ws.RegisterOrderConnection(order.ID, &ws.WsOrderConn{Conn: conn, ReadChannel: ch})
-		ws.RegisterConnectionUnsubscribeHandler(conn, ws.OrderSocketCloseHandler(order.ID))
+		ws.RegisterOrderConnection(order.ID, &ws.OrderConn{Conn: conn, ReadChannel: ch})
+		ws.RegisterConnectionUnsubscribeHandler(conn, ws.OrderSocketUnsubscribeHandler(order.ID))
 	} else if msg.MsgType == "cancel_order" {
 		oab, err := json.Marshal(msg.Data)
 
@@ -102,8 +102,8 @@ func (r *orderEndpoint) ws(input *interface{}, conn *websocket.Conn) {
 			conn.WriteMessage(messageType, []byte(err.Error()))
 			return
 		}
-		ws.RegisterOrderConnection(order.ID, &ws.WsOrderConn{Conn: conn, Active: true})
-		ws.RegisterConnectionUnsubscribeHandler(conn, ws.OrderSocketCloseHandler(order.ID))
+		ws.RegisterOrderConnection(order.ID, &ws.OrderConn{Conn: conn, Active: true})
+		ws.RegisterConnectionUnsubscribeHandler(conn, ws.OrderSocketUnsubscribeHandler(order.ID))
 	} else {
 		ch := ws.GetOrderChannel(msg.OrderID)
 		if ch != nil {

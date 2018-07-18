@@ -4,6 +4,7 @@ import "github.com/gorilla/websocket"
 
 var tickSubscriptions map[string]map[*websocket.Conn]bool
 
+// SubscribeTick handles the subscription to ohlcv data streaming
 func SubscribeTick(channel string, conn *websocket.Conn) error {
 	if tickSubscriptions == nil {
 		tickSubscriptions = make(map[string]map[*websocket.Conn]bool)
@@ -14,6 +15,8 @@ func SubscribeTick(channel string, conn *websocket.Conn) error {
 	tickSubscriptions[channel][conn] = true
 	return nil
 }
+
+// UnsubscribeTick handles the unsubscription from ohlcv data streaming
 func UnsubscribeTick(channel string, conn *websocket.Conn) {
 	if tickSubscriptions == nil {
 		tickSubscriptions = make(map[string]map[*websocket.Conn]bool)
@@ -23,6 +26,8 @@ func UnsubscribeTick(channel string, conn *websocket.Conn) {
 		delete(tickSubscriptions[channel], conn)
 	}
 }
+
+// TickCloseHandler handles the unsubscription from ohlcv data streaming in case of connection close
 func TickCloseHandler(channel string) func(conn *websocket.Conn) {
 	return func(conn *websocket.Conn) {
 		if tickSubscriptions == nil {
@@ -34,6 +39,8 @@ func TickCloseHandler(channel string) func(conn *websocket.Conn) {
 		}
 	}
 }
+
+// TickBroadcast broadcasts the ohlcv data to all the subscribed connections
 func TickBroadcast(channel string, msg interface{}) {
 	go func() {
 		for conn, isActive := range tickSubscriptions[channel] {
