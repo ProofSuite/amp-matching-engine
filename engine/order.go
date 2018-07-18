@@ -10,18 +10,22 @@ import (
 	"github.com/gomodule/redigo/redis"
 )
 
+// FillOrder is structure holds the matching order and
+// the amount that has been filled by taker order
 type FillOrder struct {
 	Amount int64
 	Order  *types.Order
 }
 
-func (e *EngineResource) matchOrder(order *types.Order) (err error) {
+// matchOrder calls buyOrder/sellOrder based on type of order recieved and
+// publishes the response back to rabbitmq
+func (e *Resource) matchOrder(order *types.Order) (err error) {
 
 	// Attain lock on engineResource, so that recovery or cancel order function doesn't interfere
 
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
-	var engineResponse *EngineResponse
+	var engineResponse *Response
 	if order.Type == types.SELL {
 		engineResponse, err = e.sellOrder(order)
 	} else if order.Type == types.BUY {
@@ -41,9 +45,13 @@ func (e *EngineResource) matchOrder(order *types.Order) (err error) {
 	return
 }
 
-func (e *EngineResource) buyOrder(order *types.Order) (engineResponse *EngineResponse, err error) {
+// buyOrder is triggered when a buy order comes in, it fetches the ask list
+// from orderbook. First it checks ths price point list to check whether the order can be matched
+// or not, if there are pricepoints that can satisfy the order then corresponding list of orders
+// are fetched and trade is executed
+func (e *Resource) buyOrder(order *types.Order) (engineResponse *Response, err error) {
 
-	engineResponse = &EngineResponse{
+	engineResponse = &Response{
 		Order:      order,
 		FillStatus: PARTIAL,
 	}
@@ -66,7 +74,7 @@ func (e *EngineResource) buyOrder(order *types.Order) (engineResponse *EngineRes
 	}
 
 	if len(priceRange) == 0 {
-		engineResponse.FillStatus = NO_MATCH
+		engineResponse.FillStatus = NOMATCH
 		e.addOrder(order)
 		order.Status = types.OPEN
 	} else {
@@ -105,8 +113,12 @@ func (e *EngineResource) buyOrder(order *types.Order) (engineResponse *EngineRes
 	return
 }
 
-func (e *EngineResource) sellOrder(order *types.Order) (engineResponse *EngineResponse, err error) {
-	engineResponse = &EngineResponse{
+// sellOrder is triggered when a sell order comes in, it fetches the bid list
+// from orderbook. First it checks ths price point list to check whether the order can be matched
+// or not, if there are pricepoints that can satisfy the order then corresponding list of orders
+// are fetched and trade is executed
+func (e *Resource) sellOrder(order *types.Order) (engineResponse *Response, err error) {
+	engineResponse = &Response{
 		Order:      order,
 		FillStatus: PARTIAL,
 	}
@@ -129,7 +141,7 @@ func (e *EngineResource) sellOrder(order *types.Order) (engineResponse *EngineRe
 	}
 
 	if len(priceRange) == 0 {
-		engineResponse.FillStatus = NO_MATCH
+		engineResponse.FillStatus = NOMATCH
 		e.addOrder(order)
 		order.Status = types.OPEN
 	} else {
@@ -169,7 +181,8 @@ func (e *EngineResource) sellOrder(order *types.Order) (engineResponse *EngineRe
 	return
 }
 
-func (e *EngineResource) addOrder(order *types.Order) error {
+// addOrder adds an order to redis
+func (e *Resource) addOrder(order *types.Order) error {
 
 	ssKey, listKey := order.GetOBKeys()
 	res, err := e.redisConn.Do("ZADD", ssKey, "NX", 0, utils.UintToPaddedString(order.Price)) // Add price point to order book
@@ -207,7 +220,9 @@ func (e *EngineResource) addOrder(order *types.Order) error {
 
 	return nil
 }
-func (e *EngineResource) updateOrder(order *types.Order, tradeAmount int64) error {
+
+// updateOrder updates the order in redis
+func (e *Resource) updateOrder(order *types.Order, tradeAmount int64) error {
 
 	ssKey, listKey := order.GetOBKeys()
 	var storedOrder *types.Order
@@ -245,7 +260,8 @@ func (e *EngineResource) updateOrder(order *types.Order, tradeAmount int64) erro
 	return nil
 }
 
-func (e *EngineResource) deleteOrder(order *types.Order, tradeAmount int64) (err error) {
+// deleteOrder deletes the order in redis
+func (e *Resource) deleteOrder(order *types.Order, tradeAmount int64) (err error) {
 
 	ssKey, listKey := order.GetOBKeys()
 	remVolume, err := redis.Int64(e.redisConn.Do("GET", ssKey+"::book::"+utils.UintToPaddedString(order.Price)))
@@ -311,7 +327,10 @@ func (e *EngineResource) deleteOrder(order *types.Order, tradeAmount int64) (err
 
 	return
 }
-func (e *EngineResource) RecoverOrders(orders []*FillOrder) error {
+
+// RecoverOrders is responsible for recovering the orders that failed to execute after matching
+// Orders are updated or added to orderbook based on whether that order exists in orderbook or not.
+func (e *Resource) RecoverOrders(orders []*FillOrder) error {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
 	for _, o := range orders {
@@ -337,7 +356,9 @@ func (e *EngineResource) RecoverOrders(orders []*FillOrder) error {
 	}
 	return nil
 }
-func (e *EngineResource) CancelOrder(order *types.Order) (engineResponse *EngineResponse, err error) {
+
+// CancelOrder is used to cancel the order from orderbook
+func (e *Resource) CancelOrder(order *types.Order) (engineResponse *Response, err error) {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
 	_, listKey := order.GetOBKeys()
@@ -358,15 +379,14 @@ func (e *EngineResource) CancelOrder(order *types.Order) (engineResponse *Engine
 	if err := e.deleteOrder(order, storedOrder.Amount-storedOrder.FilledAmount); err != nil {
 		log.Printf("\n%s\n", err)
 		return nil, err
-	} else {
-		storedOrder.Status = types.CANCELLED
-		engineResponse = &EngineResponse{
-			Order:          storedOrder,
-			Trades:         nil,
-			RemainingOrder: nil,
-			FillStatus:     CANCELLED,
-			MatchingOrders: nil,
-		}
+	}
+	storedOrder.Status = types.CANCELLED
+	engineResponse = &Response{
+		Order:          storedOrder,
+		Trades:         nil,
+		RemainingOrder: nil,
+		FillStatus:     CANCELLED,
+		MatchingOrders: nil,
 	}
 	return
 }

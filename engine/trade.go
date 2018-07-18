@@ -4,9 +4,11 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/types"
 )
 
+// FillStatus is enum used to signify the filled status of order in engineResponse
 type FillStatus int
 
-type EngineResponse struct {
+// Response is the structure of message response sent by engine
+type Response struct {
 	Order          *types.Order
 	Trades         []*types.Trade
 	RemainingOrder *types.Order
@@ -15,16 +17,20 @@ type EngineResponse struct {
 	MatchingOrders []*FillOrder
 }
 
+// this const block holds the possible valued of FillStatus
 const (
 	_ FillStatus = iota
-	NO_MATCH
+	NOMATCH
 	PARTIAL
 	FULL
 	ERROR
 	CANCELLED
 )
 
-func (e *EngineResource) execute(order *types.Order, bookEntry *types.Order) (trade *types.Trade, fillOrder *FillOrder, err error) {
+// execute function is responsible for executing of matched orders
+// i.e it deletes/updates orders in case of order matching and responds 
+// with trade instance and fillOrder
+func (e *Resource) execute(order *types.Order, bookEntry *types.Order) (trade *types.Trade, fillOrder *FillOrder, err error) {
 	fillOrder = &FillOrder{}
 	beAmtAvailable := bookEntry.Amount - bookEntry.FilledAmount
 	orderUnfilledAmt := order.Amount - order.FilledAmount

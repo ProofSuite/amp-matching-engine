@@ -19,11 +19,11 @@ import (
 
 type orderEndpoint struct {
 	orderService *services.OrderService
-	engine       *engine.EngineResource
+	engine       *engine.Resource
 }
 
 // ServeOrderResource sets up the routing of order endpoints and the corresponding handlers.
-func ServeOrderResource(rg *routing.RouteGroup, orderService *services.OrderService, e *engine.EngineResource) {
+func ServeOrderResource(rg *routing.RouteGroup, orderService *services.OrderService, e *engine.Resource) {
 	r := &orderEndpoint{orderService, e}
 	rg.Get("/orders/<addr>", r.get)
 	ws.RegisterChannel("order_channel", r.ws)
@@ -112,8 +112,8 @@ func (r *orderEndpoint) ws(input *interface{}, conn *websocket.Conn) {
 	}
 }
 
-func (r *orderEndpoint) engineResponse(engineResponse *engine.EngineResponse) error {
-	if engineResponse.FillStatus == engine.NO_MATCH {
+func (r *orderEndpoint) engineResponse(engineResponse *engine.Response) error {
+	if engineResponse.FillStatus == engine.NOMATCH {
 		r.orderService.SendMessage("added_to_orderbook", engineResponse.Order.ID, engineResponse)
 	} else {
 		r.orderService.SendMessage("trade_remorder_sign", engineResponse.Order.ID, engineResponse)
@@ -133,7 +133,7 @@ func (r *orderEndpoint) engineResponse(engineResponse *engine.EngineResponse) er
 						ws.GetOrderConn(engineResponse.Order.ID).WriteMessage(1, []byte(err.Error()))
 					}
 
-					var ersb *engine.EngineResponse
+					var ersb *engine.Response
 					err = json.Unmarshal(mb, &ersb)
 					if err != nil {
 						ws.GetOrderConn(engineResponse.Order.ID).WriteMessage(1, []byte(err.Error()))
