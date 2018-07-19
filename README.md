@@ -13,10 +13,78 @@ The proof decentralized exchange is a hybrid decentralized exchange that aims at
 - **mongoDB** version 3.6 or newer
 - **rabbitmq** version 3.7.7 or newer
 - **redis** version 4.0 or newer
+- **dep** latest
 
 ## Booting up the server
 
+**Install the dependencies**
+```
+dep ensure
+```
 
+**Start the Server**
+```
+go run server.go
+```
+
+# API Endpoints
+
+## Tokens
+- `GET /tokens` : returns list of all the tokens from the database
+- `GET /tokens/<id>`: returns details of a token from db using token's mongo ID
+- `POST /tokens`: Create/Insert token in DB. Sample input:
+```
+{
+	"code":"hpc",
+	"name":"HotPotCoin",
+	"symbol":"HPC",
+	"decimal":18,
+	"contractAddress":"0x1888a8db0b7db59413ce07150b3373972bf818d3"
+}
+```
+
+## Pairs
+- `GET /pairs` : returns list of all the pairs from the database
+- `GET /pairs/<id>`: returns details of a pair from db using pair's mongo ID
+- `GET /pairs/book/<pairName>`: Returns orderbook for the pair using pair name
+- `POST /pairs`: Create/Insert pair in DB. Sample input:
+```
+{
+	"name":"HPC-AUT",
+	"symbol":"HPC-AUT",
+	"buyToken":"5b3e82587b44576ba8000001",
+	"buyTokenSymbol":"aut",
+	"sellToken":"5b3e82607b44576ba8000002",
+	"sellTokenSymbol":"hpc"
+}
+```
+
+## Address
+- `POST /address`: Create/Insert address and corresponding balance entry in DB. Sample input:
+```
+{
+	"address":"0xefD7eB287CeeFCE8256Dd46e25F398acEA7C4b63"
+}
+```
+
+## Balance
+- `GET /balances/<addr>`: Fetch the balance details from db of the given address.
+
+## Order
+- `GET /orders/<addr>`: Fetch all the orders placed by the given address
+
+## Trade
+- `GET /trades/history/<pair>`: Fetch complete trade history of given pair using pair name
+- `GET /trades/<addr>`: Fetch all the trades in which the given address is either maker or taker
+- `GET /trades/ticks`: Fetch ohlcv data. Query Params:
+```
+// Query Params for /trades/ticks
+pairName: name of pair. (Required)
+unit: sec,min,hour,day,week,month,yr. (default:hour)
+duration: in int. (default: 24)
+from: unix timestamp of from time.(default: start of timestamp)
+to: unix timestamp of to time. (default: current timestamp)
+```
 
 # Types
 
