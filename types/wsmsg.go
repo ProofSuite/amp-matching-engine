@@ -11,6 +11,7 @@ type SubsciptionEvent string
 const (
 	SUBSCRIBE   SubsciptionEvent = "subscribe"
 	UNSUBSCRIBE SubsciptionEvent = "unsubscribe"
+	Fetch       SubsciptionEvent = "fetch"
 )
 
 // OrderMessage is the model used to send message over order_channel

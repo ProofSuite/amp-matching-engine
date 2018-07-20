@@ -347,6 +347,91 @@ Payload:
 	}
 }
 ```
+ORDER_BOOK_SUBSCRIBE (client->engine) 
+
+To subscribe to orderbook channel for any given pair. client needs to send message with payload:
+**Payload**:
+```
+{
+	"channel": "order_book",
+	"message": {
+		"event":"subscribe",
+		"key":"hpc-aut"
+	}
+}
+```
+**Response**
+```
+{
+  "buy": null,
+  "sell": [{
+    "price": 2.2,
+    "volume": 60
+  }],
+  "trades": [{
+    "id": "5b46ead87b445743bb0ffb03",
+    "orderHash": "0x23e38e470bd683414f2fad7916811c35050e43ff3d71b0c053ef5ae22e41708d",
+    "amount": 2000000000,
+    "price": 220000000,
+    "type": "BUY",
+    "tradeNonce": 0,
+    "taker": "0xefD7eB287CeeFCE8256Dd46e25F398acEA7C4b63",
+    "maker": "0xefD7eB287CeeFCE8256Dd46e25F398acEA7C4b63",
+    "takerOrderId": "5b46ead37b445743bb0ffb02",
+    "makerOrderId": "5b46ea8c7b445743bb0ffafd",
+    "signature": null,
+    "hash": "0x293b6d2aa83841af6e56c1ae86b8fbb953c1f8b19f482fc7b2df64109c320920",
+    "pairName": "HPC-AUT",
+    "createdAt": "2018-07-12T11:14:56.443+05:30",
+    "updatedAt": "2018-07-12T11:14:56.443+05:30"
+  }, {
+    "id": "5b46ead87b445743bb0ffb04",
+    "orderHash": "0x23e38e470bd683414f2fad7916811c35050e43ff3d71b0c053ef5ae22e41708d",
+    "amount": 2000000000,
+    "price": 220000000,
+    "type": "BUY",
+    "tradeNonce": 0,
+    "taker": "0xefD7eB287CeeFCE8256Dd46e25F398acEA7C4b63",
+    "maker": "0xefD7eB287CeeFCE8256Dd46e25F398acEA7C4b63",
+    "takerOrderId": "5b46ead37b445743bb0ffb02",
+    "makerOrderId": "5b46ea8e7b445743bb0ffafe",
+    "signature": null,
+    "hash": "0x293b6d2aa83841af6e56c1ae86b8fbb953c1f8b19f482fc7b2df64109c320920",
+    "pairName": "HPC-AUT",
+    "createdAt": "2018-07-12T11:14:56.443+05:30",
+    "updatedAt": "2018-07-12T11:14:56.443+05:30"
+  }, {
+    "id": "5b46ead87b445743bb0ffb05",
+    "orderHash": "0x23e38e470bd683414f2fad7916811c35050e43ff3d71b0c053ef5ae22e41708d",
+    "amount": 1000000000,
+    "price": 220000000,
+    "type": "BUY",
+    "tradeNonce": 0,
+    "taker": "0xefD7eB287CeeFCE8256Dd46e25F398acEA7C4b63",
+    "maker": "0xefD7eB287CeeFCE8256Dd46e25F398acEA7C4b63",
+    "takerOrderId": "5b46ead37b445743bb0ffb02",
+    "makerOrderId": "5b46ea917b445743bb0ffaff",
+    "signature": null,
+    "hash": "0xf43c261f49a2fe2398830024f32ac86b1ee5abfd9b7299ac1a64df19ec961bd7",
+    "pairName": "HPC-AUT",
+    "createdAt": "2018-07-12T11:14:56.443+05:30",
+    "updatedAt": "2018-07-12T11:14:56.443+05:30"
+  }]
+}
+```
+
+ORDER_BOOK_UNSUBSCRIBE (client->engine) 
+To unsubscribe from orderbook channel for any given pair. client needs to send message with payload:
+**Payload**
+```
+{
+	"channel": "order_book",
+	"message": {
+		"event":"unsubscribe",
+		"key":"hpc-aut"
+	}
+}
+```
 
 ORDER_PLACED (engine -> client)
 
