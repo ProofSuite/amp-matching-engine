@@ -36,24 +36,31 @@ func ConnectionEndpoint(w http.ResponseWriter, r *http.Request) {
 		log.Println("==>" + err.Error())
 		return
 	}
-	for {
-		_, p, err := conn.ReadMessage()
-		if err != nil {
-			conn.Close()
+	initConnection(conn)
+	go func() {
+		for {
+			messageType, p, err := conn.ReadMessage()
+			if err != nil {
+				conn.Close()
+			}
+
+			if messageType != 1 {
+				return
+			}
+			var msg *channelMessage
+			if err := json.Unmarshal(p, &msg); err != nil {
+				log.Println("unmarshal to channelMessage <==>" + err.Error())
+				conn.WriteJSON(map[string]interface{}{"channelMessage": err.Error()})
+			}
+			conn.SetCloseHandler(wsCloseHandler(conn))
+
+			if socketChannels[msg.Channel] != nil {
+				go socketChannels[msg.Channel](msg.Message, conn)
+			} else {
+				conn.WriteJSON(map[string]interface{}{"channel": "INVALID_CHANNEL"})
+			}
 		}
-		initConnection(conn)
-		var msg *channelMessage
-		if err := json.Unmarshal(p, &msg); err != nil {
-			log.Println("unmarshal to channelMessage <==>" + err.Error())
-			conn.WriteJSON(map[string]interface{}{"channelMessage": err.Error()})
-		}
-		conn.SetCloseHandler(wsCloseHandler(conn))
-		if socketChannels[msg.Channel] != nil {
-			go socketChannels[msg.Channel](msg.Message, conn)
-		} else {
-			conn.WriteJSON(map[string]interface{}{"channel": "INVALID_CHANNEL"})
-		}
-	}
+	}()
 }
 
 // initConnection initializes connection in connectionUnsubscribtions map
@@ -93,8 +100,8 @@ func getChannelMap() map[string]func(*interface{}, *websocket.Conn) {
 	return socketChannels
 }
 
-// RegisterConnectionUnsubscribeHandler needs to be called whenever a connection subscribes to 
-// a new channel. 
+// RegisterConnectionUnsubscribeHandler needs to be called whenever a connection subscribes to
+// a new channel.
 // At the time of connection closing the ConnectionUnsubscribeHandler handlers associated with
 // that connection are triggered.
 func RegisterConnectionUnsubscribeHandler(conn *websocket.Conn, fn func(*websocket.Conn)) {
