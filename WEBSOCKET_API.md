@@ -433,6 +433,40 @@ To unsubscribe from orderbook channel for any given pair. client needs to send m
 }
 ```
 
+TRADE_TICKS_SUBSCRIBE (client->engine)
+**Payload**
+```
+{
+	"channel": "trade_ticks",
+	"message": {
+		"event":"subscribe",
+		"key":"hpc-aut",
+		"params":{
+		  "from":1531440000,
+		  "to":1532075163,
+		  "duration":30,
+		  "units":"min"
+		}
+	}
+}
+```
+TRADE_TICKS_UNSUBSCRIBE (client->engine)
+**Payload**
+```
+{
+	"channel": "trade_ticks",
+	"message": {
+		"event":"unsubscribe",
+		"key":"hpc-aut",
+		"params":{
+		  "from":1531440000,
+		  "to":1532075163,
+		  "duration":30,
+		  "units":"min"
+		}
+	}
+}
+```
 ORDER_PLACED (engine -> client)
 
 Payload:
