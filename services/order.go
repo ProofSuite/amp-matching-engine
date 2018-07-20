@@ -140,6 +140,7 @@ func (s *OrderService) CancelOrder(order *types.Order) error {
 			return err
 		}
 		s.SendMessage("cancel_order", engineResponse.Order.ID, engineResponse)
+		s.RelayUpdateOverSocket(engineResponse)
 		return nil
 	}
 	return fmt.Errorf("Cannot cancel the order")

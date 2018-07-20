@@ -116,7 +116,7 @@ func (r *orderEndpoint) engineResponse(engineResponse *engine.Response) error {
 	if engineResponse.FillStatus == engine.NOMATCH {
 		r.orderService.SendMessage("added_to_orderbook", engineResponse.Order.ID, engineResponse)
 	} else {
-		r.orderService.SendMessage("trade_remorder_sign", engineResponse.Order.ID, engineResponse)
+		r.orderService.SendMessage("trade_remaining_order_sign", engineResponse.Order.ID, engineResponse)
 
 		t := time.NewTimer(10 * time.Second)
 		ch := ws.GetOrderChannel(engineResponse.Order.ID)
@@ -126,7 +126,7 @@ func (r *orderEndpoint) engineResponse(engineResponse *engine.Response) error {
 
 			select {
 			case rm := <-ch:
-				if rm.MsgType == "trade_remorder_sign" {
+				if rm.MsgType == "trade_remaining_order_sign" {
 					mb, err := json.Marshal(rm.Data)
 					if err != nil {
 						r.orderService.RecoverOrders(engineResponse)
