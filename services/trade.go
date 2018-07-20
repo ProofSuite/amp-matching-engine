@@ -44,7 +44,6 @@ func (t *TradeService) UnregisterForTicks(conn *websocket.Conn, pairName string,
 // RegisterForTicks handles all the subscription messages for ticks corresponding to a pair
 // It calls the corresponding channel's subscription method and sends trade history back on the connection
 func (t *TradeService) RegisterForTicks(conn *websocket.Conn, pairName string, params *types.Params) {
-
 	ob, err := t.GetTicks(pairName, params.Duration, params.Units, params.From, params.To)
 	if err != nil {
 		conn.WriteMessage(1, []byte(err.Error()))
@@ -59,9 +58,7 @@ func (t *TradeService) RegisterForTicks(conn *websocket.Conn, pairName string, p
 		conn.WriteMessage(1, mab)
 	}
 	ws.RegisterConnectionUnsubscribeHandler(conn, ws.TickCloseHandler(tickChannelID))
-
-	rab, _ := json.Marshal(ob)
-	conn.WriteMessage(1, rab)
+	conn.WriteJSON(ob)
 }
 
 // GetTicks fetches OHLCV data using
@@ -147,7 +144,7 @@ func (t *TradeService) GetTicks(pairName string, duration int64, unit string, ti
 		match = bson.M{"createdAt": bson.M{"$gte": gt, "$lt": lt}}
 	}
 	if pairName != "" {
-		match["pairName"] = pairName
+		match["pairName"] = bson.RegEx{Pattern: pairName, Options: "i"}
 	}
 	match = bson.M{"$match": match}
 	group = bson.M{"$group": group}

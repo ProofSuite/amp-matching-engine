@@ -472,25 +472,30 @@ ORDER_PLACED (engine -> client)
 Payload:
 ```
 {
-  "order": {
-    "id": [Number],
-    "exchangeAddress": [String],
-    "maker": [String],
-    "tokenBuy": [String],
-    "tokenSell": [String],
-    "amountBuy": [String],
-    "amountSell": [String],
-    "expires": [String],
-    "nonce": [String],
-    "feeMake": [String],
-    "feeTake": [String],
-    "signature": {
-      "R": [Number],
-      "S": [String],
-      "V": [String]
-    },
-    "pairID": [String],
-    "hash": [String]
+  "msgType": "order_added",
+  "orderId": "",
+  "data": {
+    "id": "5b523800dbd89c85aee3dcaf",
+    "buyToken": "AUT",
+    "sellToken": "HPC",
+    "buyTokenAddress": "0x2034842261b82651885751fc293bba7ba5398156",
+    "sellTokenAddress": "0x1888a8db0b7db59413ce07150b3373972bf818d3",
+    "filledAmount": 0,
+    "amount": 6000000000,
+    "price": 220000000,
+    "fee": 0,
+    "type": "SELL",
+    "amountBuy": 6000000000,
+    "amountSell": 13200000000,
+    "exchangeAddress": "",
+    "status": "NEW",
+    "pairID": "5b3e82a07b44576ba8000003",
+    "pairName": "HPC-AUT",
+    "hash": "0xfc4c476cb2166d520a28ec1d4d4a42f1ef1ce5d7ac10433b03a39c99320a69d0",
+    "userAddress": "0xefD7eB287CeeFCE8256Dd46e25F398acEA7C4b63",
+    "orderBook": null,
+    "createdAt": "2018-07-21T00:59:04.290048711+05:30",
+    "updatedAt": "2018-07-21T00:59:04.290048765+05:30"
   }
 }
 ```
