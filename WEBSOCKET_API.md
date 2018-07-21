@@ -237,9 +237,7 @@ Payload:
       "pairName": "HPC-AUT",
       "hash": "0xf9f05bf18c6e43c1622b9613707fe931546bf7207341b34cab33a14c0d5a8a10",
       "userAddress": "0xefD7eB287CeeFCE8256Dd46e25F398acEA7C4b63",
-      "orderBook": null,
-      "createdAt": "2018-07-19T23:27:19.878444154+05:30",
-      "updatedAt": "2018-07-19T23:27:19.878444175+05:30"
+      "signature":""
     },
     "Trades": [{
       "orderHash": "0x23e38e470bd683414f2fad7916811c35050e43ff3d71b0c053ef5ae22e41708d",
@@ -251,11 +249,9 @@ Payload:
       "maker": "0xefD7eB287CeeFCE8256Dd46e25F398acEA7C4b63",
       "takerOrderId": "5b50d0ff7b44578e7e436816",
       "makerOrderId": "5b46ea917b445743bb0ffaff",
-      "signature": null,
+      "signature": "",
       "hash": "0xf43c261f49a2fe2398830024f32ac86b1ee5abfd9b7299ac1a64df19ec961bd7",
-      "pairName": "HPC-AUT",
-      "createdAt": "0001-01-01T00:00:00Z",
-      "updatedAt": "0001-01-01T00:00:00Z"
+      "pairName": "HPC-AUT"
     }, {
       "orderHash": "0xa9a89346cc62330626c5853b74493a1f8e933db582c444bf2288bd6a211586ee",
       "amount": 5000000000,
@@ -266,11 +262,9 @@ Payload:
       "maker": "0xefD7eB287CeeFCE8256Dd46e25F398acEA7C4b63",
       "takerOrderId": "5b50d0ff7b44578e7e436816",
       "makerOrderId": "5b50d0ac7b44578e7e436815",
-      "signature": null,
+      "signature": "",
       "hash": "0x0902fa3e6c4e6bd3045fe4081b75cc17c12c2fa6135a30e45d203f2e731133b3",
-      "pairName": "HPC-AUT",
-      "createdAt": "0001-01-01T00:00:00Z",
-      "updatedAt": "0001-01-01T00:00:00Z"
+      "pairName": "HPC-AUT"
     }],
     "RemainingOrder": null,
     "FillStatus": 3,
@@ -295,9 +289,7 @@ Payload:
         "pairName": "HPC-AUT",
         "hash": "0x23e38e470bd683414f2fad7916811c35050e43ff3d71b0c053ef5ae22e41708d",
         "userAddress": "0xefD7eB287CeeFCE8256Dd46e25F398acEA7C4b63",
-        "orderBook": null,
-        "createdAt": "2018-07-12T11:13:45.031963564+05:30",
-        "updatedAt": "2018-07-12T11:13:45.031963664+05:30"
+        "signature":""
       }
     }, {
       "Amount": 5000000000,
@@ -316,13 +308,10 @@ Payload:
         "amountSell": 11000000000,
         "exchangeAddress": "",
         "status": "FILLED",
-        "pairID": "5b3e82a07b44576ba8000003",
         "pairName": "HPC-AUT",
         "hash": "0xa9a89346cc62330626c5853b74493a1f8e933db582c444bf2288bd6a211586ee",
         "userAddress": "0xefD7eB287CeeFCE8256Dd46e25F398acEA7C4b63",
-        "orderBook": null,
-        "createdAt": "2018-07-19T23:25:56.28077166+05:30",
-        "updatedAt": "2018-07-19T23:25:56.280771695+05:30"
+        "signature":""
       }
     }]
   }
@@ -342,7 +331,9 @@ Payload:
 		"msgType": "cancel_order",
 		"data": {
 		  "id":"5b46eb9f7b445747d1673b21",
+      "hash":"",
 			"userAddress": "0xefD7eB287CeeFCE8256Dd46e25F398acEA7C4b63"
+      "signature":""
 		}
 	}
 }
