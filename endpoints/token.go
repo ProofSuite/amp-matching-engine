@@ -4,8 +4,8 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/errors"
 	"github.com/Proofsuite/amp-matching-engine/services"
 	"github.com/Proofsuite/amp-matching-engine/types"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/go-ozzo/ozzo-routing"
-	"gopkg.in/mgo.v2/bson"
 )
 
 type tokenEndpoint struct {
@@ -15,7 +15,7 @@ type tokenEndpoint struct {
 // ServeTokenResource sets up the routing of token endpoints and the corresponding handlers.
 func ServeTokenResource(rg *routing.RouteGroup, tokenService *services.TokenService) {
 	r := &tokenEndpoint{tokenService}
-	rg.Get("/tokens/<id>", r.get)
+	rg.Get("/tokens/<addr>", r.get)
 	rg.Get("/tokens", r.query)
 	rg.Post("/tokens", r.create)
 }
@@ -44,11 +44,11 @@ func (r *tokenEndpoint) query(c *routing.Context) error {
 }
 
 func (r *tokenEndpoint) get(c *routing.Context) error {
-	id := c.Param("id")
-	if !bson.IsObjectIdHex(id) {
+	addr := c.Param("addr")
+	if !common.IsHexAddress(addr) {
 		return errors.NewAPIError(400, "INVALID_ID", nil)
 	}
-	response, err := r.tokenService.GetByID(bson.ObjectIdHex(id))
+	response, err := r.tokenService.GetByAddress(addr)
 	if err != nil {
 		return err
 	}

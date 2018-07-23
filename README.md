@@ -31,7 +31,7 @@ go run server.go
 
 ## Tokens
 - `GET /tokens` : returns list of all the tokens from the database
-- `GET /tokens/<id>`: returns details of a token from db using token's mongo ID
+- `GET /tokens/<addr>`: returns details of a token from db using token's contract address
 - `POST /tokens`: Create/Insert token in DB. Sample input:
 ```
 {
@@ -45,7 +45,7 @@ go run server.go
 
 ## Pairs
 - `GET /pairs` : returns list of all the pairs from the database
-- `GET /pairs/<id>`: returns details of a pair from db using pair's mongo ID
+- `GET /pairs/<buyToken>/<sellToken>`: returns details of a pair from db using using contract address of its constituting tokens
 - `GET /pairs/book/<pairName>`: Returns orderbook for the pair using pair name
 - `POST /pairs`: Create/Insert pair in DB. Sample input:
 ```
