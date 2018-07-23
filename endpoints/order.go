@@ -86,8 +86,8 @@ func (r *orderEndpoint) ws(input *interface{}, conn *websocket.Conn) {
 		}
 		oab, _ = json.Marshal(order)
 		conn.WriteMessage(messageType, oab)
-		ws.RegisterOrderConnection(order.ID, &ws.OrderConn{Conn: conn, ReadChannel: ch})
-		ws.RegisterConnectionUnsubscribeHandler(conn, ws.OrderSocketUnsubscribeHandler(order.ID))
+		ws.RegisterOrderConnection(order.Hash, &ws.OrderConn{Conn: conn, ReadChannel: ch})
+		ws.RegisterConnectionUnsubscribeHandler(conn, ws.OrderSocketUnsubscribeHandler(order.Hash))
 	} else if msg.MsgType == "cancel_order" {
 		oab, err := json.Marshal(msg.Data)
 
@@ -102,10 +102,10 @@ func (r *orderEndpoint) ws(input *interface{}, conn *websocket.Conn) {
 			conn.WriteMessage(messageType, []byte(err.Error()))
 			return
 		}
-		ws.RegisterOrderConnection(order.ID, &ws.OrderConn{Conn: conn, Active: true})
-		ws.RegisterConnectionUnsubscribeHandler(conn, ws.OrderSocketUnsubscribeHandler(order.ID))
+		ws.RegisterOrderConnection(order.Hash, &ws.OrderConn{Conn: conn, Active: true})
+		ws.RegisterConnectionUnsubscribeHandler(conn, ws.OrderSocketUnsubscribeHandler(order.Hash))
 	} else {
-		ch := ws.GetOrderChannel(msg.OrderID)
+		ch := ws.GetOrderChannel(msg.Hash)
 		if ch != nil {
 			ch <- msg
 		}
@@ -114,12 +114,12 @@ func (r *orderEndpoint) ws(input *interface{}, conn *websocket.Conn) {
 
 func (r *orderEndpoint) engineResponse(engineResponse *engine.Response) error {
 	if engineResponse.FillStatus == engine.NOMATCH {
-		r.orderService.SendMessage("added_to_orderbook", engineResponse.Order.ID, engineResponse)
+		r.orderService.SendMessage("added_to_orderbook", engineResponse.Order.Hash, engineResponse)
 	} else {
-		r.orderService.SendMessage("trade_remaining_order_sign", engineResponse.Order.ID, engineResponse)
+		r.orderService.SendMessage("trade_remaining_order_sign", engineResponse.Order.Hash, engineResponse)
 
 		t := time.NewTimer(10 * time.Second)
-		ch := ws.GetOrderChannel(engineResponse.Order.ID)
+		ch := ws.GetOrderChannel(engineResponse.Order.Hash)
 		if ch == nil {
 			r.orderService.RecoverOrders(engineResponse)
 		} else {
@@ -130,13 +130,13 @@ func (r *orderEndpoint) engineResponse(engineResponse *engine.Response) error {
 					mb, err := json.Marshal(rm.Data)
 					if err != nil {
 						r.orderService.RecoverOrders(engineResponse)
-						ws.GetOrderConn(engineResponse.Order.ID).WriteMessage(1, []byte(err.Error()))
+						ws.GetOrderConn(engineResponse.Order.Hash).WriteMessage(1, []byte(err.Error()))
 					}
 
 					var ersb *engine.Response
 					err = json.Unmarshal(mb, &ersb)
 					if err != nil {
-						ws.GetOrderConn(engineResponse.Order.ID).WriteMessage(1, []byte(err.Error()))
+						ws.GetOrderConn(engineResponse.Order.Hash).WriteMessage(1, []byte(err.Error()))
 						r.orderService.RecoverOrders(engineResponse)
 					}
 
@@ -162,7 +162,7 @@ func (r *orderEndpoint) engineResponse(engineResponse *engine.Response) error {
 	// TODO: send to operator for blockchain execution
 
 	r.orderService.RelayUpdateOverSocket(engineResponse)
-	ws.CloseOrderReadChannel(engineResponse.Order.ID)
+	ws.CloseOrderReadChannel(engineResponse.Order.Hash)
 
 	return nil
 }

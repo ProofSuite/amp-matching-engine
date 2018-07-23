@@ -4,13 +4,14 @@ import (
 	"encoding/json"
 	"log"
 
+	"github.com/ethereum/go-ethereum/common"
+
 	"github.com/Proofsuite/amp-matching-engine/errors"
 	"github.com/Proofsuite/amp-matching-engine/services"
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/Proofsuite/amp-matching-engine/ws"
 	"github.com/go-ozzo/ozzo-routing"
 	"github.com/gorilla/websocket"
-	"gopkg.in/mgo.v2/bson"
 )
 
 type pairEndpoint struct {
@@ -21,7 +22,7 @@ type pairEndpoint struct {
 func ServePairResource(rg *routing.RouteGroup, pairService *services.PairService) {
 	r := &pairEndpoint{pairService}
 	rg.Get("/pairs/book/<pairName>", r.orderBookEndpoint)
-	rg.Get("/pairs/<id>", r.get)
+	rg.Get("/pairs/<bt>/<st>", r.get)
 	rg.Get("/pairs", r.query)
 	rg.Post("/pairs", r.create)
 	ws.RegisterChannel("order_book", r.orderBook)
@@ -54,11 +55,15 @@ func (r *pairEndpoint) query(c *routing.Context) error {
 }
 
 func (r *pairEndpoint) get(c *routing.Context) error {
-	id := c.Param("id")
-	if !bson.IsObjectIdHex(id) {
-		return errors.NewAPIError(400, "INVALID_ID", nil)
+	buyToken := c.Param("bt")
+	if !common.IsHexAddress(buyToken) {
+		return errors.NewAPIError(400, "INVALID_HEX_ADDRESS", nil)
 	}
-	response, err := r.pairService.GetByID(bson.ObjectIdHex(id))
+	sellToken := c.Param("st")
+	if !common.IsHexAddress(sellToken) {
+		return errors.NewAPIError(400, "INVALID_HEX_ADDRESS", nil)
+	}
+	response, err := r.pairService.GetByTokenAddress(buyToken, sellToken)
 	if err != nil {
 		return err
 	}

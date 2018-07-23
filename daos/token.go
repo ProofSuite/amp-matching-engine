@@ -47,3 +47,14 @@ func (dao *TokenDao) GetByID(id bson.ObjectId) (response *types.Token, err error
 	err = db.GetByID(dao.dbName, dao.collectionName, id, &response)
 	return
 }
+
+// GetByAddress function fetches details of a token based on its contract address
+func (dao *TokenDao) GetByAddress(addr string) (response *types.Token, err error) {
+	q := bson.M{"contractAddress": bson.RegEx{Pattern: addr, Options: "i"}}
+	var resp []types.Token
+	err = db.Get(dao.dbName, dao.collectionName, q, 0, 1, &resp)
+	if err != nil || len(resp) == 0 {
+		return
+	}
+	return &resp[0], nil
+}
