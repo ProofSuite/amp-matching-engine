@@ -54,9 +54,15 @@ func (s *PairService) Create(pair *types.Pair) error {
 
 }
 
-// GetByID fetches deyails of a pair using its mongo ID
+// GetByID fetches details of a pair using its mongo ID
 func (s *PairService) GetByID(id bson.ObjectId) (*types.Pair, error) {
 	return s.pairDao.GetByID(id)
+}
+
+// GetByTokenAddress fetches details of a pair using contract address of
+// its constituting tokens
+func (s *PairService) GetByTokenAddress(bt, st string) (*types.Pair, error) {
+	return s.pairDao.GetByTokenAddress(bt, st)
 }
 
 // GetAll is reponsible for fetching all the pairs in the DB

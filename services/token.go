@@ -29,6 +29,11 @@ func (s *TokenService) GetByID(id bson.ObjectId) (*types.Token, error) {
 	return s.tokenDao.GetByID(id)
 }
 
+// GetByAddress fetches the detailed document of a token using its contract address
+func (s *TokenService) GetByAddress(addr string) (*types.Token, error) {
+	return s.tokenDao.GetByAddress(addr)
+}
+
 // GetAll fetches all the tokens from db
 func (s *TokenService) GetAll() ([]types.Token, error) {
 	return s.tokenDao.GetAll()

@@ -1,9 +1,5 @@
 package types
 
-import (
-	"gopkg.in/mgo.v2/bson"
-)
-
 // SubsciptionEvent is an enum signifies whether the incoming message is of type Subscribe or unsubscribe
 type SubsciptionEvent string
 
@@ -16,9 +12,9 @@ const (
 
 // OrderMessage is the model used to send message over order_channel
 type OrderMessage struct {
-	MsgType string        `json:"msgType"`
-	OrderID bson.ObjectId `json:"orderId"`
-	Data    interface{}   `json:"data"`
+	MsgType string      `json:"msgType"`
+	Hash    string      `json:"hash"`
+	Data    interface{} `json:"data"`
 }
 
 // Subscription is the model used to send message for subscription to any streaming channel

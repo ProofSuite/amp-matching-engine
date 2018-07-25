@@ -18,6 +18,15 @@ type OrderDao struct {
 
 // NewOrderDao returns a new instance of OrderDao
 func NewOrderDao() *OrderDao {
+	// index := mgo.Index{
+	// 	Key:    []string{"code"},
+	// 	Unique: true,
+	// }
+
+	// err := db.C("currency").EnsureIndex(index)
+	// if err != nil {
+	// 	panic(err)
+	// }
 	return &OrderDao{"orders", app.Config.DBName}
 }
 
@@ -46,6 +55,18 @@ func (dao *OrderDao) Update(id bson.ObjectId, order *types.Order) (response []ty
 func (dao *OrderDao) GetByID(id bson.ObjectId) (response *types.Order, err error) {
 	err = db.GetByID(dao.dbName, dao.collectionName, id, &response)
 	return
+}
+
+// GetByHash function fetches a single document from order collection based on mongoDB ID.
+// Returns Order type struct
+func (dao *OrderDao) GetByHash(hash string) (response *types.Order, err error) {
+	q := bson.M{"hash": hash}
+	var resp []types.Order
+	err = db.Get(dao.dbName, dao.collectionName, q, 0, 1, &resp)
+	if err != nil || len(resp) == 0 {
+		return
+	}
+	return &resp[0], nil
 }
 
 // GetByUserAddress function fetches list of orders from order collection based on user address.
