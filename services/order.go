@@ -126,7 +126,7 @@ func (s *OrderService) RecoverOrders(engineResponse *engine.Response) {
 // Only Orders which are OPEN or NEW i.e. Not yet filled/partially filled
 // can be cancelled
 func (s *OrderService) CancelOrder(order *types.Order) error {
-	dbOrder, err := s.orderDao.GetByID(order.ID)
+	dbOrder, err := s.orderDao.GetByHash(order.Hash)
 	if err != nil {
 		return err
 	}
@@ -139,7 +139,7 @@ func (s *OrderService) CancelOrder(order *types.Order) error {
 		if err := s.cancelOrderUnlockAmount(engineResponse); err != nil {
 			return err
 		}
-		s.SendMessage("cancel_order", engineResponse.Order.ID, engineResponse)
+		s.SendMessage("cancel_order", engineResponse.Order.Hash, engineResponse)
 		s.RelayUpdateOverSocket(engineResponse)
 		return nil
 	}
@@ -216,11 +216,11 @@ func (s *OrderService) RelayUpdateOverSocket(er *engine.Response) {
 }
 
 // SendMessage is responsible for sending message to socket linked to a particular order
-func (s *OrderService) SendMessage(msgType string, orderID bson.ObjectId, data interface{}) {
+func (s *OrderService) SendMessage(msgType string, hash string, data interface{}) {
 	msg := &types.OrderMessage{MsgType: msgType}
-	msg.OrderID = orderID
+	msg.Hash = hash
 	msg.Data = data
-	ws.GetOrderConn(orderID).WriteJSON(msg)
+	ws.GetOrderConn(hash).WriteJSON(msg)
 }
 
 // this function is responsible for unlocking of maker's amount in balance document
