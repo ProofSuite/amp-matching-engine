@@ -20,6 +20,7 @@ type Pair struct {
 	SellTokenAddress string        `json:"sellTokenAddress" bson:"sellTokenAddress"`
 	SellTokenSymbol  string        `json:"sellTokenSymbol" bson:"sellTokenSymbol"`
 
+	Active   bool    `json:"active" bson:"active"`
 	MakerFee float64 `json:"makerFee" bson:"makerFee"`
 	TakerFee float64 `json:"takerFee" bson:"takerFee"`
 

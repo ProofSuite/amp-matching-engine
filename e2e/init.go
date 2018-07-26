@@ -36,13 +36,6 @@ type apiTestCase struct {
 
 func Init(t *testing.T) {
 	// the test may be started from the home directory or a subdirectory
-
-	testToken(t)
-}
-
-func buildRouter() *routing.Router {
-
-	// connect to the database
 	// connect to the database
 	if session, err := daos.InitSession(); err != nil {
 		panic(err)
@@ -50,6 +43,13 @@ func buildRouter() *routing.Router {
 		err = session.DB(app.Config.DBName).DropDatabase()
 
 	}
+
+	tokens := testToken(t)
+	_ = testPair(t, tokens)
+}
+
+func buildRouter() *routing.Router {
+
 	logger := logrus.New()
 	logger.SetLevel(logrus.PanicLevel)
 	router := routing.New()

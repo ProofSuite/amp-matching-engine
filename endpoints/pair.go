@@ -36,6 +36,7 @@ func (r *pairEndpoint) create(c *routing.Context) error {
 	if err := model.Validate(); err != nil {
 		return err
 	}
+
 	err := r.pairService.Create(&model)
 	if err != nil {
 		return err

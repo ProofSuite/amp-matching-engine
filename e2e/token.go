@@ -10,10 +10,11 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func testToken(t *testing.T) {
+func testToken(t *testing.T) []types.Token {
 	fmt.Printf("\n=== Starting Token test ===\n")
 	router := buildRouter()
 	listTokens := make([]types.Token, 0)
+	dbTokensList := make([]types.Token, 0)
 
 	// create token test
 	res := testAPI(router, "POST", "/tokens", `{  "name":"HotPotCoin", "symbol":"HPC", "decimal":18, "contractAddress":"0x1888a8db0b7db59413ce07150b3373972bf818d3","active":true}`)
@@ -29,6 +30,7 @@ func testToken(t *testing.T) {
 	}
 
 	listTokens = append(listTokens, types.Token{Name: "HotPotCoin", Symbol: "HPC", Decimal: 18, ContractAddress: "0x1888a8db0b7db59413ce07150b3373972bf818d3", Active: true})
+	dbTokensList = append(dbTokensList, resp)
 
 	// Duplicate token test
 	res = testAPI(router, "POST", "/tokens", `{  "name":"HotPotCoin", "symbol":"HPC", "decimal":18, "contractAddress":"0x1888a8db0b7db59413ce07150b3373972bf818d3","active":true }`)
@@ -52,6 +54,7 @@ func testToken(t *testing.T) {
 	}
 
 	listTokens = append(listTokens, types.Token{Name: "Aura.Test", Symbol: "AUT", Decimal: 18, ContractAddress: "0x2034842261b82651885751fc293bba7ba5398156", Active: true})
+	dbTokensList = append(dbTokensList, resp)
 
 	// fetch token detail test
 	res = testAPI(router, "GET", "/tokens/0x1888a8db0b7db59413ce07150b3373972bf818d3", "")
@@ -88,6 +91,7 @@ func testToken(t *testing.T) {
 		fmt.Println("FAIL  't5 - fetch token list'")
 	}
 
+	return dbTokensList
 }
 
 func compareToken(t *testing.T, actual, expected types.Token, msgs ...string) bool {
