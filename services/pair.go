@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/Proofsuite/amp-matching-engine/engine"
 
@@ -36,18 +37,28 @@ func NewPairService(pairDao *daos.PairDao, tokenDao *daos.TokenDao, eng *engine.
 // Create function is responsible for inserting new pair in DB.
 // It checks for existence of tokens in DB first
 func (s *PairService) Create(pair *types.Pair) error {
-	bt, err := s.tokenDao.GetByID(pair.BuyToken)
+	bt, err := s.tokenDao.GetByAddress(pair.BuyTokenAddress)
 	if err != nil {
-		return aerrors.InvalidData(map[string]error{"buyToken": errors.New("Token with id " + pair.BuyToken.Hex() + " doesn't exists")})
+		return aerrors.InvalidData(map[string]error{"buyToken": errors.New("Token with id " + pair.BuyTokenAddress + " doesn't exists")})
 	}
-	st, err := s.tokenDao.GetByID(pair.SellToken)
+	if bt == nil {
+		return aerrors.InvalidData(map[string]error{"buyToken": errors.New("Token with id " + pair.BuyTokenAddress + " doesn't exists")})
+	}
+	st, err := s.tokenDao.GetByAddress(pair.SellTokenAddress)
 	if err != nil {
-		return aerrors.InvalidData(map[string]error{"buyToken": errors.New("Token with id " + pair.SellToken.Hex() + " doesn't exists")})
+		return aerrors.InvalidData(map[string]error{"buyToken": errors.New("Token with id " + pair.SellTokenAddress + " doesn't exists")})
 	}
+	if st == nil {
+		return aerrors.InvalidData(map[string]error{"buyToken": errors.New("Token with id " + pair.SellTokenAddress + " doesn't exists")})
+	}
+
 	pair.SellTokenSymbol = st.Symbol
+	pair.SellToken = st.ID
 	pair.SellTokenAddress = st.ContractAddress
 	pair.BuyTokenSymbol = bt.Symbol
+	pair.BuyToken = bt.ID
 	pair.BuyTokenAddress = bt.ContractAddress
+	pair.Name = strings.ToUpper(st.Symbol + "-" + bt.Symbol)
 
 	err = s.pairDao.Create(pair)
 	return err
