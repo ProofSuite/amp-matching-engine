@@ -1,60 +1,57 @@
-package main
+package e2e
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
+	"testing"
 
-	"github.com/Proofsuite/amp-matching-engine/crons"
-	"github.com/Proofsuite/amp-matching-engine/endpoints"
-	"github.com/Proofsuite/amp-matching-engine/rabbitmq"
-	"github.com/Proofsuite/amp-matching-engine/redisclient"
-	"github.com/Proofsuite/amp-matching-engine/services"
-	"github.com/Proofsuite/amp-matching-engine/ws"
-
-	"github.com/Proofsuite/amp-matching-engine/engine"
+	"github.com/Sirupsen/logrus"
 
 	"github.com/Proofsuite/amp-matching-engine/app"
+	"github.com/Proofsuite/amp-matching-engine/crons"
 	"github.com/Proofsuite/amp-matching-engine/daos"
-	"github.com/Proofsuite/amp-matching-engine/errors"
-	"github.com/Sirupsen/logrus"
-	"github.com/go-ozzo/ozzo-routing"
+	"github.com/Proofsuite/amp-matching-engine/endpoints"
+	"github.com/Proofsuite/amp-matching-engine/engine"
+	"github.com/Proofsuite/amp-matching-engine/redisclient"
+	"github.com/Proofsuite/amp-matching-engine/services"
+	routing "github.com/go-ozzo/ozzo-routing"
 	"github.com/go-ozzo/ozzo-routing/content"
 	"github.com/go-ozzo/ozzo-routing/cors"
+	"github.com/stretchr/testify/assert"
 )
 
-func main() {
-	// load application configurations
-	if err := app.LoadConfig("./config"); err != nil {
-		panic(fmt.Errorf("Invalid application configuration: %s", err))
-	}
-
-	// load error messages
-	if err := errors.LoadMessages(app.Config.ErrorFile); err != nil {
-		panic(fmt.Errorf("Failed to read the error message file: %s", err))
-	}
-
-	// create the logger
-	logger := logrus.New()
-
-	rabbitmq.InitConnection(app.Config.Rabbitmq)
-
-	// connect to the database
-	if _, err := daos.InitSession(); err != nil {
-		panic(err)
-	}
-
-	// websocket endpoint
-	http.HandleFunc("/socket", ws.ConnectionEndpoint)
-	// wire up API routing
-	http.Handle("/", buildRouter(logger))
-
-	// start the server
-	address := fmt.Sprintf(":%v", app.Config.ServerPort)
-	logger.Infof("server %v is started at %v\n", app.Version, address)
-	panic(http.ListenAndServe(address, nil))
+type apiTestCase struct {
+	tag         string
+	method      string
+	url         string
+	body        string
+	status      int
+	response    interface{}
+	checkMethod string
+	compareFn   func(t *testing.T, actual, expected interface{})
 }
 
-func buildRouter(logger *logrus.Logger) *routing.Router {
+func Init(t *testing.T) {
+	// the test may be started from the home directory or a subdirectory
+
+	testToken(t)
+}
+
+func buildRouter() *routing.Router {
+
+	// connect to the database
+	// connect to the database
+	if session, err := daos.InitSession(); err != nil {
+		panic(err)
+	} else {
+		err = session.DB(app.Config.DBName).DropDatabase()
+
+	}
+	logger := logrus.New()
+	logger.SetLevel(logrus.ErrorLevel)
 	router := routing.New()
 
 	router.To("GET,HEAD", "/ping", func(c *routing.Context) error {
@@ -73,12 +70,6 @@ func buildRouter(logger *logrus.Logger) *routing.Router {
 	)
 
 	rg := router.Group("")
-
-	// rg.Post("/auth", apis.Auth(app.Config.JWTSigningKey))
-	// rg.Use(auth.JWT(app.Config.JWTVerificationKey, auth.JWTOptions{
-	// 	SigningMethod: app.Config.JWTSigningMethod,
-	// 	TokenHandler:  apis.JWTHandler,
-	// }))
 
 	// get daos for dependency injection
 	orderDao := daos.NewOrderDao()
@@ -112,4 +103,35 @@ func buildRouter(logger *logrus.Logger) *routing.Router {
 	cronService := crons.NewCronService(tradeService)
 	cronService.InitCrons()
 	return router
+}
+
+func testAPI(router *routing.Router, method, URL, body string) *httptest.ResponseRecorder {
+	req, _ := http.NewRequest(method, URL, bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	res := httptest.NewRecorder()
+	router.ServeHTTP(res, req)
+	httptest.NewServer(router)
+	return res
+}
+
+func runAPITests(t *testing.T, router *routing.Router, tests []apiTestCase) {
+	for _, test := range tests {
+		res := testAPI(router, test.method, test.url, test.body)
+		if test.response != "" {
+			var resp interface{}
+			if err := json.Unmarshal(res.Body.Bytes(), &resp); err != nil {
+				fmt.Errorf("%s", err)
+			}
+			switch test.checkMethod {
+			case "contains":
+				assert.Contains(t, resp, test.response, test.tag)
+			case "equals":
+				assert.JSONEq(t, test.response.(string), res.Body.String(), test.tag)
+			case "subset":
+				assert.Subset(t, resp, test.response, test.tag)
+			case "custom":
+				test.compareFn(t, resp, test.response)
+			}
+		}
+	}
 }

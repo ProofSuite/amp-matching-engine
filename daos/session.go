@@ -16,15 +16,15 @@ type Database struct {
 var db *Database
 
 // InitSession initializes a new session with mongodb
-func InitSession() error {
+func InitSession() (*mgo.Session, error) {
 	if db == nil {
 		db1, err := mgo.Dial(app.Config.DSN)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		db = &Database{db1}
 	}
-	return nil
+	return db.session, nil
 }
 
 // Create is a wrapper for mgo.Insert function.
