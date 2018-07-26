@@ -37,19 +37,26 @@ func NewPairService(pairDao *daos.PairDao, tokenDao *daos.TokenDao, eng *engine.
 // Create function is responsible for inserting new pair in DB.
 // It checks for existence of tokens in DB first
 func (s *PairService) Create(pair *types.Pair) error {
+	p, err := s.GetByTokenAddress(pair.BuyTokenAddress, pair.SellTokenAddress)
+	if err != nil && err.Error() != "No Pair found" {
+		return aerrors.NewAPIError(400, err.Error(), nil)
+	} else if p != nil {
+		return aerrors.NewAPIError(401, "PAIR_ALREADY_EXISTS", nil)
+	}
 	bt, err := s.tokenDao.GetByAddress(pair.BuyTokenAddress)
 	if err != nil {
-		return aerrors.InvalidData(map[string]error{"buyToken": errors.New("Token with id " + pair.BuyTokenAddress + " doesn't exists")})
+		return aerrors.NewAPIError(400, err.Error(), nil)
 	}
 	if bt == nil {
-		return aerrors.InvalidData(map[string]error{"buyToken": errors.New("Token with id " + pair.BuyTokenAddress + " doesn't exists")})
+		return aerrors.NewAPIError(401, "BuyTokenAddress_DOESNT_EXISTS", nil)
 	}
+
 	st, err := s.tokenDao.GetByAddress(pair.SellTokenAddress)
 	if err != nil {
-		return aerrors.InvalidData(map[string]error{"buyToken": errors.New("Token with id " + pair.SellTokenAddress + " doesn't exists")})
+		return aerrors.NewAPIError(400, err.Error(), nil)
 	}
 	if st == nil {
-		return aerrors.InvalidData(map[string]error{"buyToken": errors.New("Token with id " + pair.SellTokenAddress + " doesn't exists")})
+		return aerrors.NewAPIError(401, "SellTokenAddress_DOESNT_EXISTS", nil)
 	}
 
 	pair.SellTokenSymbol = st.Symbol
