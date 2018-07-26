@@ -11,40 +11,63 @@ import (
 )
 
 func testToken(t *testing.T) {
+	fmt.Printf("\n=== Starting Token test ===\n")
 	router := buildRouter()
 	listTokens := make([]types.Token, 0)
 
-	fmt.Printf("\n=== Starting Token test ===\n")
 	// create token test
-	res := testAPI(router, "POST", "/tokens", `{  "name":"ABC", "symbol":"ABC", "decimal":18, "contractAddress":"0x1888a8db0b7db59413ce07150b3373972bf818d3" }`)
+	res := testAPI(router, "POST", "/tokens", `{  "name":"HotPotCoin", "symbol":"HPC", "decimal":18, "contractAddress":"0x1888a8db0b7db59413ce07150b3373972bf818d3","active":true}`)
 	assert.Equal(t, http.StatusOK, res.Code, "t1 - create token")
 	var resp types.Token
 	if err := json.Unmarshal(res.Body.Bytes(), &resp); err != nil {
 		fmt.Printf("%v", err)
 	}
-	if compareToken(t, resp, types.Token{Name: "ABC", Symbol: "ABC", Decimal: 18, ContractAddress: "0x1888a8db0b7db59413ce07150b3373972bf818d3"}) {
+	if compareToken(t, resp, types.Token{Name: "HotPotCoin", Symbol: "HPC", Decimal: 18, ContractAddress: "0x1888a8db0b7db59413ce07150b3373972bf818d3", Active: true}) {
 		fmt.Println("PASS  't1 - create token'")
 	} else {
 		fmt.Println("FAIL  't1 - create token'")
 	}
 
-	listTokens = append(listTokens, types.Token{Name: "ABC", Symbol: "ABC", Decimal: 18, ContractAddress: "0x1888a8db0b7db59413ce07150b3373972bf818d3"})
+	listTokens = append(listTokens, types.Token{Name: "HotPotCoin", Symbol: "HPC", Decimal: 18, ContractAddress: "0x1888a8db0b7db59413ce07150b3373972bf818d3", Active: true})
 
-	// fetch token detail test
-	res = testAPI(router, "GET", "/tokens/0x1888a8db0b7db59413ce07150b3373972bf818d3", "")
-	assert.Equal(t, http.StatusOK, res.Code, "t2 - fetch token")
+	// Duplicate token test
+	res = testAPI(router, "POST", "/tokens", `{  "name":"HotPotCoin", "symbol":"HPC", "decimal":18, "contractAddress":"0x1888a8db0b7db59413ce07150b3373972bf818d3","active":true }`)
+
+	if assert.Equal(t, 401, res.Code, "t2 - create duplicate token") {
+		fmt.Println("PASS  't2 - create duplicate token'")
+	} else {
+		fmt.Println("FAIL  't2 - create duplicate token'")
+	}
+
+	// create second token test
+	res = testAPI(router, "POST", "/tokens", `{  "name":"Aura.Test", "symbol":"AUT", "decimal":18, "contractAddress":"0x2034842261b82651885751fc293bba7ba5398156","active":true }`)
+	assert.Equal(t, http.StatusOK, res.Code, "t3 - create second token")
 	if err := json.Unmarshal(res.Body.Bytes(), &resp); err != nil {
 		fmt.Printf("%v", err)
 	}
-	if compareToken(t, resp, types.Token{Name: "ABC", Symbol: "ABC", Decimal: 18, ContractAddress: "0x1888a8db0b7db59413ce07150b3373972bf818d3"}) {
-		fmt.Println("PASS  't2 - fetch token'")
+	if compareToken(t, resp, types.Token{Name: "Aura.Test", Symbol: "AUT", Decimal: 18, ContractAddress: "0x2034842261b82651885751fc293bba7ba5398156", Active: true}) {
+		fmt.Println("PASS  't3 - create second token'")
 	} else {
-		fmt.Println("FAIL  't2 - fetch token'")
+		fmt.Println("FAIL  't3 - create second token'")
+	}
+
+	listTokens = append(listTokens, types.Token{Name: "Aura.Test", Symbol: "AUT", Decimal: 18, ContractAddress: "0x2034842261b82651885751fc293bba7ba5398156", Active: true})
+
+	// fetch token detail test
+	res = testAPI(router, "GET", "/tokens/0x1888a8db0b7db59413ce07150b3373972bf818d3", "")
+	assert.Equal(t, http.StatusOK, res.Code, "t4 - fetch token")
+	if err := json.Unmarshal(res.Body.Bytes(), &resp); err != nil {
+		fmt.Printf("%v", err)
+	}
+	if compareToken(t, resp, types.Token{Name: "HotPotCoin", Symbol: "HPC", Decimal: 18, ContractAddress: "0x1888a8db0b7db59413ce07150b3373972bf818d3", Active: true}) {
+		fmt.Println("PASS  't4 - fetch token'")
+	} else {
+		fmt.Println("FAIL  't4 - fetch token'")
 	}
 
 	// fetch tokens list
 	res = testAPI(router, "GET", "/tokens", "")
-	assert.Equal(t, http.StatusOK, res.Code, "t3 - fetch token list")
+	assert.Equal(t, http.StatusOK, res.Code, "t5 - fetch token list")
 	var respArray []types.Token
 	if err := json.Unmarshal(res.Body.Bytes(), &respArray); err != nil {
 		fmt.Printf("%v", err)
@@ -54,30 +77,23 @@ func testToken(t *testing.T) {
 		rb := true
 		for i, r := range respArray {
 			if rb = rb && compareToken(t, r, listTokens[i]); !rb {
-				fmt.Println("FAIL  't3 - fetch token list'")
+				fmt.Println("FAIL  't5 - fetch token list'")
 				break
 			}
 		}
 		if rb {
-			fmt.Println("PASS  't3 - fetch token list'")
+			fmt.Println("PASS  't5 - fetch token list'")
 		}
 	} else {
-		fmt.Println("FAIL  't3 - fetch token list'")
+		fmt.Println("FAIL  't5 - fetch token list'")
 	}
 
 }
 
-func compareToken(t *testing.T, result, testResult interface{}, msgs ...string) bool {
+func compareToken(t *testing.T, actual, expected types.Token, msgs ...string) bool {
 	for _, msg := range msgs {
 		fmt.Println(msg)
 	}
-	var actual types.Token
-	actualAsBytes, _ := json.Marshal(result)
-	json.Unmarshal(actualAsBytes, &actual)
-	var expected types.Token
-	expectedAsBytes, _ := json.Marshal(testResult)
-	json.Unmarshal(expectedAsBytes, &expected)
-
 	response := true
 	response = response && assert.Equalf(t, actual.Symbol, expected.Symbol, fmt.Sprintf("Token Symbol doesn't match. Expected: %v , Got: %v", expected.Symbol, actual.Symbol))
 	response = response && assert.Equalf(t, actual.Name, expected.Name, fmt.Sprintf("Token Name doesn't match. Expected: %v , Got: %v", expected.Name, actual.Name))

@@ -51,7 +51,7 @@ func buildRouter() *routing.Router {
 
 	}
 	logger := logrus.New()
-	logger.SetLevel(logrus.ErrorLevel)
+	logger.SetLevel(logrus.PanicLevel)
 	router := routing.New()
 
 	router.To("GET,HEAD", "/ping", func(c *routing.Context) error {

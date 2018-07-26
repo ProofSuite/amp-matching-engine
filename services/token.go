@@ -1,6 +1,7 @@
 package services
 
 import (
+	"github.com/Proofsuite/amp-matching-engine/errors"
 	"gopkg.in/mgo.v2/bson"
 
 	"github.com/Proofsuite/amp-matching-engine/daos"
@@ -20,8 +21,14 @@ func NewTokenService(tokenDao *daos.TokenDao) *TokenService {
 
 // Create inserts a new token into the database
 func (s *TokenService) Create(token *types.Token) error {
+	t, err := s.tokenDao.GetByAddress(token.ContractAddress)
+	if err != nil {
+		return err
+	}
+	if t != nil {
+		return errors.NewAPIError(401, "TOKEN_ALREADY_EXISTS", nil)
+	}
 	return s.tokenDao.Create(token)
-
 }
 
 // GetByID fetches the detailed document of a token using its mongo ID

@@ -3,6 +3,8 @@ package types
 import (
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
+
 	validation "github.com/go-ozzo/ozzo-validation"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -29,11 +31,8 @@ type Pair struct {
 // struct satisfies all the conditions for a valid instance
 func (p Pair) Validate() error {
 	return validation.ValidateStruct(&p,
-		validation.Field(&p.Name, validation.Required),
-		validation.Field(&p.BuyToken, validation.Required),
-		validation.Field(&p.BuyTokenSymbol, validation.Required),
-		validation.Field(&p.SellToken, validation.Required),
-		validation.Field(&p.SellTokenSymbol, validation.Required),
+		validation.Field(&p.BuyTokenAddress, validation.Required, validation.NewStringRule(common.IsHexAddress, "BuyTokenAddress must be of type HexAddress")),
+		validation.Field(&p.SellTokenAddress, validation.Required, validation.NewStringRule(common.IsHexAddress, "SellTokenAddress must be of type HexAddress")),
 	)
 }
 
