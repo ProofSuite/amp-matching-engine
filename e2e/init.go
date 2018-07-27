@@ -45,7 +45,9 @@ func Init(t *testing.T) {
 	}
 
 	tokens := testToken(t)
-	_ = testPair(t, tokens)
+	testPair(t, tokens)
+	address := testAddress(t, tokens)
+	testBalance(t, tokens, address)
 }
 
 func buildRouter() *routing.Router {

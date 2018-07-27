@@ -25,7 +25,11 @@ func NewAddressService(AddressDao *daos.AddressDao, balanceDao *daos.BalanceDao,
 func (s *AddressService) Create(address *types.UserAddress) error {
 	ua, err := s.GetByAddress(address.Address)
 	if err == nil && ua != nil {
-		address = ua
+		address.ID = ua.ID
+		address.Address = ua.Address
+		address.IsBlocked = ua.IsBlocked
+		address.CreatedAt = ua.CreatedAt
+		address.UpdatedAt = ua.UpdatedAt
 		return nil
 	}
 	err = s.AddressDao.Create(address)
