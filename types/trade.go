@@ -19,7 +19,7 @@ type Trade struct {
 	OrderHash    string        `json:"orderHash" bson:"orderHash"`
 	Amount       int64         `json:"amount" bson:"amount"`
 	Price        int64         `json:"price" bson:"price"`
-	Type         OrderType     `json:"type" bson:"type"`
+	Type         OrderSide     `json:"type" bson:"type"`
 	TradeNonce   int64         `json:"tradeNonce" bson:"tradeNonce"`
 	Taker        string        `json:"taker" bson:"taker"`
 	Maker        string        `json:"maker" bson:"maker"`
@@ -43,7 +43,7 @@ func NewTrade(o *Order, amount int64, price int64, taker string) *Trade {
 		Taker:      taker,
 		Signature:  &Signature{},
 	}
-	if o.Type == SELL {
+	if o.Side == SELL {
 		t.Type = BUY
 	} else {
 		t.Type = SELL

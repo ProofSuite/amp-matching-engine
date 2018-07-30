@@ -34,6 +34,7 @@ type apiTestCase struct {
 	compareFn   func(t *testing.T, actual, expected interface{})
 }
 
+// Init function initializes the e2e testing
 func Init(t *testing.T) {
 	// the test may be started from the home directory or a subdirectory
 	// connect to the database
@@ -122,7 +123,7 @@ func runAPITests(t *testing.T, router *routing.Router, tests []apiTestCase) {
 		if test.response != "" {
 			var resp interface{}
 			if err := json.Unmarshal(res.Body.Bytes(), &resp); err != nil {
-				fmt.Errorf("%s", err)
+				fmt.Printf("%v", err)
 			}
 			switch test.checkMethod {
 			case "contains":

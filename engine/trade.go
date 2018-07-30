@@ -28,7 +28,7 @@ const (
 )
 
 // execute function is responsible for executing of matched orders
-// i.e it deletes/updates orders in case of order matching and responds 
+// i.e it deletes/updates orders in case of order matching and responds
 // with trade instance and fillOrder
 func (e *Resource) execute(order *types.Order, bookEntry *types.Order) (trade *types.Trade, fillOrder *FillOrder, err error) {
 	fillOrder = &FillOrder{}
@@ -59,7 +59,7 @@ func (e *Resource) execute(order *types.Order, bookEntry *types.Order) (trade *t
 		Amount:       fillOrder.Amount,
 		Price:        order.Price,
 		OrderHash:    bookEntry.Hash,
-		Type:         order.Type,
+		Type:         order.Side,
 		Taker:        order.UserAddress,
 		PairName:     order.PairName,
 		Maker:        bookEntry.UserAddress,

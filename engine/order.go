@@ -26,9 +26,9 @@ func (e *Resource) matchOrder(order *types.Order) (err error) {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
 	var engineResponse *Response
-	if order.Type == types.SELL {
+	if order.Side == types.SELL {
 		engineResponse, err = e.sellOrder(order)
-	} else if order.Type == types.BUY {
+	} else if order.Side == types.BUY {
 		engineResponse, err = e.buyOrder(order)
 	}
 	if err != nil {
