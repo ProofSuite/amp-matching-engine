@@ -41,7 +41,7 @@ func newRouter() *routing.Router {
 		panic(err)
 	}
 	// connect to the database
-	if err := daos.InitSession(); err != nil {
+	if _, err := daos.InitSession(); err != nil {
 		panic(err)
 	}
 
@@ -96,4 +96,3 @@ func runAPITests(t *testing.T, router *routing.Router, tests []apiTestCase) {
 		}
 	}
 }
-

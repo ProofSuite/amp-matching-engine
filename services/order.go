@@ -59,7 +59,7 @@ func (s *OrderService) Create(order *types.Order) (err error) {
 	if err != nil {
 		return err
 	}
-	if order.Type == types.BUY {
+	if order.Side == types.BUY {
 		amt := bal.Tokens[order.SellToken]
 		if amt.Amount < order.AmountSell+order.Fee {
 			return errors.New("Insufficient Balance")
@@ -74,7 +74,7 @@ func (s *OrderService) Create(order *types.Order) (err error) {
 			return err
 		}
 
-	} else if order.Type == types.SELL {
+	} else if order.Side == types.SELL {
 		amt := bal.Tokens[order.BuyToken]
 		if amt.Amount < order.AmountBuy+order.Fee {
 			return errors.New("Insufficient Balance")
@@ -232,7 +232,7 @@ func (s *OrderService) cancelOrderUnlockAmount(er *engine.Response) error {
 		log.Fatalf("\n%s\n", err)
 		return err
 	}
-	if er.Order.Type == types.BUY {
+	if er.Order.Side == types.BUY {
 		bal := res.Tokens[er.Order.SellToken]
 		fmt.Println("===> buy bal")
 		fmt.Println(bal)
@@ -247,7 +247,7 @@ func (s *OrderService) cancelOrderUnlockAmount(er *engine.Response) error {
 			return err
 		}
 	}
-	if er.Order.Type == types.SELL {
+	if er.Order.Side == types.SELL {
 		bal := res.Tokens[er.Order.BuyToken]
 		fmt.Println("===> sell bal")
 		fmt.Println(bal)
@@ -271,7 +271,7 @@ func (s *OrderService) transferAmount(order *types.Order, filledAmount int64) {
 
 	res, _ := s.balanceDao.GetByAddress(order.UserAddress)
 
-	if order.Type == types.BUY {
+	if order.Side == types.BUY {
 		sbal := res.Tokens[order.SellToken]
 		sbal.LockedAmount = sbal.LockedAmount - int64((float64(filledAmount)/math.Pow10(8))*float64(order.Price))
 		err := s.balanceDao.UpdateAmount(order.UserAddress, order.SellToken, &sbal)
@@ -286,7 +286,7 @@ func (s *OrderService) transferAmount(order *types.Order, filledAmount int64) {
 		}
 		fmt.Printf("\n Order Buy\n==>sbal: %s \n==>bbal: %s\n==>Unlock Amount: %d\n", sbal, bbal, int64((float64(filledAmount)/math.Pow10(8))*float64(order.Price)))
 	}
-	if order.Type == types.SELL {
+	if order.Side == types.SELL {
 		bbal := res.Tokens[order.BuyToken]
 		bbal.LockedAmount = bbal.LockedAmount - filledAmount
 		err := s.balanceDao.UpdateAmount(order.UserAddress, order.BuyToken, &bbal)

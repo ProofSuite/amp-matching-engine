@@ -16,22 +16,22 @@ import (
 // OrderRequest is the struct in which the order request sent by the
 // user is populated
 type OrderRequest struct {
-	Type        int     `json:"type" bson:"type"`
-	Amount      float64 `json:"amount"`
-	Price       float64 `json:"price"`
-	Fee         float64 `json:"fee"`
-	Signature   string  `json:"signature"`
-	BuyToken    string  `json:"buyToken"`
-	SellToken   string  `json:"sellToken"`
-	PairName    string  `json:"pairName"`
-	Hash        string  `json:"hash"`
-	UserAddress string  `json:"userAddress"`
+	Side        OrderSide `json:"side" bson:"side"`
+	Amount      float64   `json:"amount"`
+	Price       float64   `json:"price"`
+	Fee         float64   `json:"fee"`
+	Signature   string    `json:"signature"`
+	BuyToken    string    `json:"buyToken"`
+	SellToken   string    `json:"sellToken"`
+	PairName    string    `json:"pairName"`
+	Hash        string    `json:"hash"`
+	UserAddress string    `json:"userAddress"`
 }
 
 // Validate validates the OrderRequest fields.
 func (m OrderRequest) Validate() error {
 	return validation.ValidateStruct(&m,
-		validation.Field(&m.Type, validation.Required, validation.In(1, 2)),
+		validation.Field(&m.Side, validation.Required, validation.In(1, 2)),
 		validation.Field(&m.Amount, validation.Required),
 		validation.Field(&m.Price, validation.Required),
 		validation.Field(&m.UserAddress, validation.Required),
@@ -52,7 +52,7 @@ func (m *OrderRequest) ToOrder() (order *Order, err error) {
 	// 	return nil, fmt.Errorf("%s", err)
 	// }
 	order = &Order{
-		Type:             OrderType(m.Type),
+		Side:             OrderSide(m.Side),
 		Amount:           int64(m.Amount * math.Pow10(8)),
 		Price:            int64(m.Price * math.Pow10(8)),
 		Fee:              int64(m.Amount * m.Price * (app.Config.TakeFee / 100) * math.Pow10(8)), // amt*price + amt*price*takeFee/100
@@ -72,7 +72,7 @@ func (m *OrderRequest) ComputeHash() (ch string) {
 	sha := sha3.NewKeccak256()
 	sha.Write([]byte(fmt.Sprintf("%f", m.Price)))
 	sha.Write([]byte(fmt.Sprintf("%f", m.Amount)))
-	sha.Write([]byte(fmt.Sprintf("%d", m.Type)))
+	sha.Write([]byte(fmt.Sprintf("%d", m.Side)))
 	sha.Write([]byte(m.BuyToken))
 	sha.Write([]byte(m.SellToken))
 	sha.Write([]byte(m.UserAddress))

@@ -78,26 +78,26 @@ func (orderStatus *OrderStatus) MarshalJSON() ([]byte, error) {
 	return json.Marshal(value)
 }
 
-// OrderType is an enum of various buy/sell type of orders
-type OrderType int
+// OrderSide is an enum of various buy/sell type of orders
+type OrderSide int
 
 // This block declares various members of enum OrderType.
 // Value starts from 1 because 0 is default or empty value for int.
 const (
-	_ OrderType = iota
+	_ OrderSide = iota
 	BUY
 	SELL
 )
 
 // UnmarshalJSON unmarshals []byte to type OrderType
-func (orderType *OrderType) UnmarshalJSON(data []byte) error {
+func (orderType *OrderSide) UnmarshalJSON(data []byte) error {
 	var s string
 	err := json.Unmarshal(data, &s)
 	if err != nil {
 		return err
 	}
 
-	value, ok := map[string]OrderType{"BUY": BUY, "SELL": SELL}[s]
+	value, ok := map[string]OrderSide{"BUY": BUY, "SELL": SELL}[s]
 	if !ok {
 		return errors.New("Invalid Enum Type Value")
 	}
@@ -106,8 +106,8 @@ func (orderType *OrderType) UnmarshalJSON(data []byte) error {
 }
 
 // MarshalJSON marshals type OrderType to []byte
-func (orderType *OrderType) MarshalJSON() ([]byte, error) {
-	value, ok := map[OrderType]string{BUY: "BUY", SELL: "SELL"}[*orderType]
+func (orderType *OrderSide) MarshalJSON() ([]byte, error) {
+	value, ok := map[OrderSide]string{BUY: "BUY", SELL: "SELL"}[*orderType]
 	if !ok {
 		return nil, errors.New("Invalid Enum Type")
 	}
@@ -127,7 +127,7 @@ type Order struct {
 	Fee                     int64         `json:"fee" bson:"fee" redis:"fee"`
 	MakeFee                 int64         `json:"makeFee" bson:"makeFee"`
 	TakeFee                 int64         `json:"takeFee" bson:"takeFee"`
-	Type                    OrderType     `json:"type" bson:"type" redis:"type"`
+	Side                    OrderSide     `json:"side" bson:"side" redis:"side"`
 	AmountBuy               int64         `json:"amountBuy" bson:"amountBuy" redis:"amountBuy"`
 	AmountSell              int64         `json:"amountSell" bson:"amountSell" redis:"amountSell"`
 	ExchangeContractAddress string        `json:"exchangeContractAddress" bson:"exchangeContractAddress" redis:"exchangeContractAddress"`
@@ -177,9 +177,9 @@ func (o *Order) GetKVPrefix() string {
 // orderbook list key corresponding to order price.
 func (o *Order) GetOBKeys() (ss, list string) {
 	var k string
-	if o.Type == BUY {
+	if o.Side == BUY {
 		k = "buy"
-	} else if o.Type == SELL {
+	} else if o.Side == SELL {
 		k = "sell"
 	}
 	ss = o.GetKVPrefix() + "::" + k
@@ -191,9 +191,9 @@ func (o *Order) GetOBKeys() (ss, list string) {
 // aginst which the order needs to be matched
 func (o *Order) GetOBMatchKey() (ss string) {
 	var k string
-	if o.Type == BUY {
+	if o.Side == BUY {
 		k = "sell"
-	} else if o.Type == SELL {
+	} else if o.Side == SELL {
 		k = "buy"
 	}
 
