@@ -12,21 +12,21 @@ import (
 
 // OrderStatus is used to represent the current status of order.
 // It is an enum
-type OrderStatus int
+type OrderStatus string
 
 // This block declares an enum of type OrderStatus
 // containing all possible status of an order.
 const (
-	NEW OrderStatus = iota
-	OPEN
-	MATCHED
-	SUBMITTED
-	PARTIALFILLED
-	FILLED
-	CANCELLED
-	PENDING
-	INVALIDORDER
-	ERROR
+	NEW           OrderStatus = "NEW"
+	OPEN                      = "OPEN"
+	MATCHED                   = "MATCHED"
+	SUBMITTED                 = "SUBMITTED"
+	PARTIALFILLED             = "PARTIAL_FILLED"
+	FILLED                    = "FILLED"
+	CANCELLED                 = "CANCELLED"
+	PENDING                   = "PENDING"
+	INVALIDORDER              = "INVALID_ORDER"
+	ERROR                     = "ERROR"
 )
 
 // UnmarshalJSON unmarshals []byte to type orderStatus
@@ -79,14 +79,12 @@ func (orderStatus *OrderStatus) MarshalJSON() ([]byte, error) {
 }
 
 // OrderSide is an enum of various buy/sell type of orders
-type OrderSide int
+type OrderSide string
 
 // This block declares various members of enum OrderType.
-// Value starts from 1 because 0 is default or empty value for int.
 const (
-	_ OrderSide = iota
-	BUY
-	SELL
+	BUY  OrderSide = "buy"
+	SELL OrderSide = "sell"
 )
 
 // UnmarshalJSON unmarshals []byte to type OrderType

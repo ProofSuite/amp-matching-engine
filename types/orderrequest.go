@@ -72,7 +72,7 @@ func (m *OrderRequest) ComputeHash() (ch string) {
 	sha := sha3.NewKeccak256()
 	sha.Write([]byte(fmt.Sprintf("%f", m.Price)))
 	sha.Write([]byte(fmt.Sprintf("%f", m.Amount)))
-	sha.Write([]byte(fmt.Sprintf("%d", m.Side)))
+	sha.Write([]byte(fmt.Sprintf("%s", m.Side)))
 	sha.Write([]byte(m.BuyToken))
 	sha.Write([]byte(m.SellToken))
 	sha.Write([]byte(m.UserAddress))
