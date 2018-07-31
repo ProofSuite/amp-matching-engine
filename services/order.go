@@ -47,10 +47,10 @@ func (s *OrderService) Create(order *types.Order) (err error) {
 	}
 	order.PairID = p.ID
 	order.PairName = p.Name
-	order.BuyToken = p.BuyTokenSymbol
-	order.BuyTokenAddress = p.BuyTokenAddress
-	order.SellToken = p.SellTokenSymbol
-	order.SellTokenAddress = p.SellTokenAddress
+	order.BuyToken = p.BaseTokenSymbol
+	order.BuyTokenAddress = p.BaseTokenAddress
+	order.SellToken = p.QuoteTokenSymbol
+	order.SellTokenAddress = p.QuoteTokenAddress
 
 	// Validate if order is valid
 
