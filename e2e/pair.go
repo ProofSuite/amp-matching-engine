@@ -16,16 +16,16 @@ func testPair(t *testing.T, tokens []types.Token) []types.Pair {
 	router := buildRouter()
 	listPairs := make([]types.Pair, 0)
 	neededPair := types.Pair{
-		Name:             strings.ToUpper(tokens[0].Symbol + "-" + tokens[1].Symbol),
-		BuyToken:         tokens[1].ID,
-		BuyTokenAddress:  tokens[1].ContractAddress,
-		BuyTokenSymbol:   tokens[1].Symbol,
-		SellToken:        tokens[0].ID,
-		SellTokenAddress: tokens[0].ContractAddress,
-		SellTokenSymbol:  tokens[0].Symbol,
-		Active:           true,
-		MakerFee:         0,
-		TakerFee:         0,
+		Name:              strings.ToUpper(tokens[0].Symbol + "-" + tokens[1].Symbol),
+		BaseToken:         tokens[1].ID,
+		BaseTokenAddress:  tokens[1].ContractAddress,
+		BaseTokenSymbol:   tokens[1].Symbol,
+		QuoteToken:        tokens[0].ID,
+		QuoteTokenAddress: tokens[0].ContractAddress,
+		QuoteTokenSymbol:  tokens[0].Symbol,
+		Active:            true,
+		MakerFee:          0,
+		TakerFee:          0,
 	}
 
 	// create pair test
@@ -96,14 +96,14 @@ func comparePair(t *testing.T, actual, expected types.Pair, msgs ...string) bool
 	response := true
 	response = response && assert.Equalf(t, actual.Name, expected.Name, fmt.Sprintf("Pair Name doesn't match. Expected: %v , Got: %v", expected.Name, actual.Name))
 
-	response = response && assert.Equalf(t, actual.BuyToken.Hex(), expected.BuyToken.Hex(), fmt.Sprintf("Pair BuyToken ID doesn't match. Expected: %v , Got: %v", expected.BuyToken, actual.BuyToken))
-	response = response && assert.Equalf(t, actual.SellToken.Hex(), expected.SellToken.Hex(), fmt.Sprintf("Pair SellToken ID doesn't match. Expected: %v , Got: %v", expected.SellToken.Hex(), actual.SellToken.Hex()))
+	response = response && assert.Equalf(t, actual.BaseToken.Hex(), expected.BaseToken.Hex(), fmt.Sprintf("Pair BuyToken ID doesn't match. Expected: %v , Got: %v", expected.BaseToken, actual.BaseToken))
+	response = response && assert.Equalf(t, actual.QuoteToken.Hex(), expected.QuoteToken.Hex(), fmt.Sprintf("Pair SellToken ID doesn't match. Expected: %v , Got: %v", expected.QuoteToken.Hex(), actual.QuoteToken.Hex()))
 
-	response = response && assert.Equalf(t, actual.BuyTokenAddress, expected.BuyTokenAddress, fmt.Sprintf("Pair BuyToken Address doesn't match. Expected: %v , Got: %v", expected.BuyTokenAddress, actual.BuyTokenAddress))
-	response = response && assert.Equalf(t, actual.SellTokenAddress, expected.SellTokenAddress, fmt.Sprintf("Pair SellToken Address doesn't match. Expected: %v , Got: %v", expected.SellTokenAddress, actual.SellTokenAddress))
+	response = response && assert.Equalf(t, actual.BaseTokenAddress, expected.BaseTokenAddress, fmt.Sprintf("Pair BuyToken Address doesn't match. Expected: %v , Got: %v", expected.BaseTokenAddress, actual.BaseTokenAddress))
+	response = response && assert.Equalf(t, actual.QuoteTokenAddress, expected.QuoteTokenAddress, fmt.Sprintf("Pair SellToken Address doesn't match. Expected: %v , Got: %v", expected.QuoteTokenAddress, actual.QuoteTokenAddress))
 
-	response = response && assert.Equalf(t, actual.BuyTokenSymbol, expected.BuyTokenSymbol, fmt.Sprintf("Pair BuyTokenSymbol doesn't match. Expected: %v , Got: %v", expected.BuyTokenSymbol, actual.BuyTokenSymbol))
-	response = response && assert.Equalf(t, actual.SellTokenSymbol, expected.SellTokenSymbol, fmt.Sprintf("Pair SellTokenSymbol doesn't match. Expected: %v , Got: %v", expected.SellTokenSymbol, actual.SellTokenSymbol))
+	response = response && assert.Equalf(t, actual.BaseTokenSymbol, expected.BaseTokenSymbol, fmt.Sprintf("Pair BuyTokenSymbol doesn't match. Expected: %v , Got: %v", expected.BaseTokenSymbol, actual.BaseTokenSymbol))
+	response = response && assert.Equalf(t, actual.QuoteTokenSymbol, expected.QuoteTokenSymbol, fmt.Sprintf("Pair SellTokenSymbol doesn't match. Expected: %v , Got: %v", expected.QuoteTokenSymbol, actual.QuoteTokenSymbol))
 
 	response = response && assert.Equalf(t, actual.Active, expected.Active, fmt.Sprintf("Pair Active doesn't match. Expected: %v , Got: %v", expected.Active, actual.Active))
 	response = response && assert.Equalf(t, actual.MakerFee, expected.MakerFee, fmt.Sprintf("Pair MakerFee doesn't match. Expected: %v , Got: %v", expected.MakerFee, actual.MakerFee))
