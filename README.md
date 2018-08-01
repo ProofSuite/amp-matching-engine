@@ -35,28 +35,28 @@ go run server.go
 - `POST /tokens`: Create/Insert token in DB. Sample input:
 ```
 {
-	"code":"hpc",
 	"name":"HotPotCoin",
 	"symbol":"HPC",
 	"decimal":18,
-	"contractAddress":"0x1888a8db0b7db59413ce07150b3373972bf818d3"
+	"contractAddress":"0x1888a8db0b7db59413ce07150b3373972bf818d3",
+	"active":true,
+	"quote":true
 }
 ```
 
 ## Pairs
 - `GET /pairs` : returns list of all the pairs from the database
-- `GET /pairs/<buyToken>/<sellToken>`: returns details of a pair from db using using contract address of its constituting tokens
+- `GET /pairs/<baseToken>/<quoteToken>`: returns details of a pair from db using using contract address of its constituting tokens
 - `GET /pairs/book/<pairName>`: Returns orderbook for the pair using pair name
 - `POST /pairs`: Create/Insert pair in DB. Sample input:
 ```
 {
-	"name":"HPC-AUT",
-	"symbol":"HPC-AUT",
-	"buyToken":"5b3e82587b44576ba8000001",
-	"buyTokenSymbol":"aut",
-	"sellToken":"5b3e82607b44576ba8000002",
-	"sellTokenSymbol":"hpc"
+    "baseToken":"5b3e82587b44576ba8000001",
+    "quoteToken":"5b3e82607b44576ba8000002",
+    "active":true,
+    "quoteTokenSymbol":"hpc"
 }
+
 ```
 
 ## Address
@@ -79,7 +79,7 @@ go run server.go
 - `GET /trades/ticks`: Fetch ohlcv data. Query Params:
 ```
 // Query Params for /trades/ticks
-pairName: name of pair. (Required)
+pairName: names of pair separated by comma(,) ex: "hpc/aut,abc/xyz". (Atleast 1 Required)
 unit: sec,min,hour,day,week,month,yr. (default:hour)
 duration: in int. (default: 24)
 from: unix timestamp of from time.(default: start of timestamp)

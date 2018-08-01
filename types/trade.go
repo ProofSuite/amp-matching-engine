@@ -28,6 +28,8 @@ type Trade struct {
 	Signature    *Signature    `json:"signature" bson:"signature"`
 	Hash         string        `json:"hash" bson:"hash"`
 	PairName     string        `json:"pairName" bson:"pairName"`
+	BaseToken    string        `json:"baseToken" bson:"baseToken"`
+	QuoteToken   string        `json:"quoteToken" bson:"quoteToken"`
 	CreatedAt    time.Time     `json:"createdAt" bson:"createdAt" redis:"createdAt"`
 	UpdatedAt    time.Time     `json:"updatedAt" bson:"updatedAt" redis:"updatedAt"`
 }
@@ -94,5 +96,15 @@ type Tick struct {
 
 // TickID is the subdocument for aggregate grouping for OHLCV data
 type TickID struct {
-	Pair string `json:"pair" bson:"pair"`
+	Pair       string `json:"pair" bson:"pair"`
+	BaseToken  string `json:"baseToken" bson:"baseToken"`
+	QuoteToken string `json:"quoteToken" bson:"quoteToken"`
+}
+
+type TickRequest struct {
+	Pair     []PairSubDoc `json:"pair"`
+	From     int64        `json:"from"`
+	To       int64        `json:"to"`
+	Duration int64        `json:"duration"`
+	Units    string       `json:"units"`
 }

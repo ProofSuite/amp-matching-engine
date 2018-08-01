@@ -44,9 +44,9 @@ func (r *orderEndpoint) get(c *routing.Context) error {
 
 func (r *orderEndpoint) ws(input *interface{}, conn *websocket.Conn) {
 
-	ch := make(chan *types.OrderMessage)
+	ch := make(chan *types.Message)
 	mab, _ := json.Marshal(input)
-	var msg *types.OrderMessage
+	var msg *types.Message
 	if err := json.Unmarshal(mab, &msg); err != nil {
 		log.Println("unmarshal to wsmsg <==>" + err.Error())
 	}

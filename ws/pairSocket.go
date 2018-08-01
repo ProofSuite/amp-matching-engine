@@ -2,8 +2,8 @@ package ws
 
 import (
 	"errors"
-	"strings"
 
+	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/gorilla/websocket"
 )
 
@@ -23,20 +23,19 @@ func GetPairSockets() *PairSockets {
 	return pairSockets
 }
 
-// PairUnsubscribeHandler returns function of type unsubscribe handler, 
+// PairUnsubscribeHandler returns function of type unsubscribe handler,
 // it handles the unsubscription of pair in case of connection closing.
-func (ps *PairSockets) PairUnsubscribeHandler(pair string) func(conn *websocket.Conn) {
-	pair = strings.ToLower(pair)
+func (ps *PairSockets) PairUnsubscribeHandler(bt, qt string) func(conn *websocket.Conn) {
 	return func(conn *websocket.Conn) {
-		ps.PairSocketUnregisterConnection(pair, conn)
+		ps.PairSocketUnregisterConnection(bt, qt, conn)
 	}
 }
 
-// PairSocketUnregisterConnection is used to unsubscribe the connection from listening to the key 
-// subscribed to. It can be called on unsubscription message from user or due to some other reason by 
+// PairSocketUnregisterConnection is used to unsubscribe the connection from listening to the key
+// subscribed to. It can be called on unsubscription message from user or due to some other reason by
 // system
-func (ps *PairSockets) PairSocketUnregisterConnection(pair string, conn *websocket.Conn) {
-	pair = strings.ToLower(pair)
+func (ps *PairSockets) PairSocketUnregisterConnection(bt, qt string, conn *websocket.Conn) {
+	pair := utils.GetPairKey(bt, qt)
 	if ps.connections[pair][conn] {
 		ps.connections[pair][conn] = false
 		delete(ps.connections[pair], conn)
@@ -44,8 +43,8 @@ func (ps *PairSockets) PairSocketUnregisterConnection(pair string, conn *websock
 }
 
 // PairSocketWriteMessage streams message to all the connections subscribed to the pair
-func (ps *PairSockets) PairSocketWriteMessage(pair string, message interface{}) error {
-	pair = strings.ToLower(pair)
+func (ps *PairSockets) PairSocketWriteMessage(bt, qt string, message interface{}) error {
+	pair := utils.GetPairKey(bt, qt)
 	for conn, status := range ps.connections[pair] {
 
 		if status {
@@ -55,10 +54,10 @@ func (ps *PairSockets) PairSocketWriteMessage(pair string, message interface{}) 
 	return nil
 }
 
-// PairSocketRegister handles the registration of connection to get 
+// PairSocketRegister handles the registration of connection to get
 // streaming data over the socker for any pair.
-func (ps *PairSockets) PairSocketRegister(pair string, conn *websocket.Conn) error {
-
+func (ps *PairSockets) PairSocketRegister(bt, qt string, conn *websocket.Conn) error {
+	pair := utils.GetPairKey(bt, qt)
 	if conn == nil {
 		return errors.New("nil not allowed in arguments as *websocket.Conn")
 	} else if ps.connections == nil {

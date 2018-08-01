@@ -65,14 +65,14 @@ func (dao *PairDao) GetByName(name string) (response *types.Pair, err error) {
 }
 
 // GetByTokenAddress function fetches pair based on
-// CONTRACT ADDRESS of buy token and sell token
-func (dao *PairDao) GetByTokenAddress(buyToken, sellToken string) (response *types.Pair, err error) {
+// CONTRACT ADDRESS of base token and quote token
+func (dao *PairDao) GetByTokenAddress(baseToken, quoteToken string) (response *types.Pair, err error) {
 	var res []*types.Pair
-	q := bson.M{"buyTokenAddress": bson.RegEx{
-		Pattern: buyToken,
+	q := bson.M{"baseTokenAddress": bson.RegEx{
+		Pattern: baseToken,
 		Options: "i",
-	}, "sellTokenAddress": bson.RegEx{
-		Pattern: sellToken,
+	}, "quoteTokenAddress": bson.RegEx{
+		Pattern: quoteToken,
 		Options: "i",
 	}}
 	err = db.Get(dao.dbName, dao.collectionName, q, 0, 1, &res)
