@@ -58,6 +58,8 @@ func (e *Resource) execute(order *types.Order, bookEntry *types.Order) (trade *t
 	trade = &types.Trade{
 		Amount:       fillOrder.Amount,
 		Price:        order.Price,
+		BaseToken:    order.BaseToken,
+		QuoteToken:   order.QuoteToken,
 		OrderHash:    bookEntry.Hash,
 		Type:         order.Side,
 		Taker:        order.UserAddress,

@@ -52,17 +52,24 @@ func (m *OrderRequest) ToOrder() (order *Order, err error) {
 	// 	return nil, fmt.Errorf("%s", err)
 	// }
 	order = &Order{
-		Side:             OrderSide(m.Side),
-		Amount:           int64(m.Amount * math.Pow10(8)),
-		Price:            int64(m.Price * math.Pow10(8)),
-		Fee:              int64(m.Amount * m.Price * (app.Config.TakeFee / 100) * math.Pow10(8)), // amt*price + amt*price*takeFee/100
-		UserAddress:      m.UserAddress,
-		BuyTokenAddress:  m.BuyToken,
-		SellTokenAddress: m.SellToken,
-		AmountBuy:        int64(m.Amount * math.Pow10(8)),
-		AmountSell:       int64(m.Amount * m.Price * math.Pow10(8)),
-		Hash:             m.ComputeHash(),
+		Side:        OrderSide(m.Side),
+		Amount:      int64(m.Amount * math.Pow10(8)),
+		Price:       int64(m.Price * math.Pow10(8)),
+		Fee:         int64(m.Amount * m.Price * (app.Config.TakeFee / 100) * math.Pow10(8)), // amt*price + amt*price*takeFee/100
+		UserAddress: m.UserAddress,
+		BuyToken:    m.BuyToken,
+		SellToken:   m.SellToken,
+		AmountBuy:   int64(m.Amount * math.Pow10(8)),
+		AmountSell:  int64(m.Amount * m.Price * math.Pow10(8)),
+		Hash:        m.ComputeHash(),
 		// Signature:        signature,
+	}
+	if m.Side == SELL {
+		order.QuoteToken = order.BuyToken
+		order.BaseToken = order.SellToken
+	} else {
+		order.BaseToken = order.BuyToken
+		order.QuoteToken = order.SellToken
 	}
 	return
 }

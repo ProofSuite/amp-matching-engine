@@ -81,7 +81,7 @@ func runAPITests(t *testing.T, router *routing.Router, tests []apiTestCase) {
 		if test.response != "" {
 			var resp interface{}
 			if err := json.Unmarshal(res.Body.Bytes(), &resp); err != nil {
-				fmt.Errorf("%s", err)
+				fmt.Printf("%s", err)
 			}
 			switch test.checkMethod {
 			case "contains":

@@ -28,17 +28,22 @@ type Pair struct {
 	UpdatedAt time.Time `json:"updatedAt" bson:"updatedAt"`
 }
 
+type PairSubDoc struct {
+	BaseToken  string `json:"baseToken" bson:"baseToken"`
+	QuoteToken string `json:"quoteToken" bson:"quoteToken"`
+}
+
 // Validate function is used to verify if an instance of
 // struct satisfies all the conditions for a valid instance
 func (p Pair) Validate() error {
 	return validation.ValidateStruct(&p,
-		validation.Field(&p.BaseTokenAddress, validation.Required, validation.NewStringRule(common.IsHexAddress, "BuyTokenAddress must be of type HexAddress")),
-		validation.Field(&p.QuoteTokenAddress, validation.Required, validation.NewStringRule(common.IsHexAddress, "SellTokenAddress must be of type HexAddress")),
+		validation.Field(&p.BaseTokenAddress, validation.Required, validation.NewStringRule(common.IsHexAddress, "BaseTokenAddress must be of type HexAddress")),
+		validation.Field(&p.QuoteTokenAddress, validation.Required, validation.NewStringRule(common.IsHexAddress, "QuoteTokenAddress must be of type HexAddress")),
 	)
 }
 
 // GetOrderBookKeys returns the orderbook price point keys for corresponding pair
 // It is used to fetch the orderbook from redis of a pair
 func (p *Pair) GetOrderBookKeys() (sell, buy string) {
-	return p.BaseTokenSymbol + "::" + p.QuoteTokenSymbol + "::sell", p.BaseTokenSymbol + "::" + p.QuoteTokenSymbol + "::buy"
+	return p.BaseTokenAddress + "::" + p.QuoteTokenAddress + "::sell", p.BaseTokenAddress + "::" + p.QuoteTokenAddress + "::buy"
 }

@@ -43,12 +43,20 @@ func (s *PairService) Create(pair *types.Pair) error {
 	} else if p != nil {
 		return aerrors.NewAPIError(401, "PAIR_ALREADY_EXISTS", nil)
 	}
+
+	p, err = s.GetByTokenAddress(pair.QuoteTokenAddress, pair.BaseTokenAddress)
+	if err != nil && err.Error() != "No Pair found" {
+		return aerrors.NewAPIError(400, err.Error(), nil)
+	} else if p != nil {
+		return aerrors.NewAPIError(401, "PAIR_ALREADY_EXISTS", nil)
+	}
+
 	bt, err := s.tokenDao.GetByAddress(pair.BaseTokenAddress)
 	if err != nil {
 		return aerrors.NewAPIError(400, err.Error(), nil)
 	}
 	if bt == nil {
-		return aerrors.NewAPIError(401, "BuyTokenAddress_DOESNT_EXISTS", nil)
+		return aerrors.NewAPIError(401, "BaseTokenAddress_DOESNT_EXISTS", nil)
 	}
 
 	st, err := s.tokenDao.GetByAddress(pair.QuoteTokenAddress)
@@ -56,7 +64,10 @@ func (s *PairService) Create(pair *types.Pair) error {
 		return aerrors.NewAPIError(400, err.Error(), nil)
 	}
 	if st == nil {
-		return aerrors.NewAPIError(401, "SellTokenAddress_DOESNT_EXISTS", nil)
+		return aerrors.NewAPIError(401, "QuoteTokenAddress_DOESNT_EXISTS", nil)
+	}
+	if !st.Quote {
+		return aerrors.NewAPIError(401, "QuoteTokenAddress_CAN_NOT_BE_USED_AS_QUOTE_TOKEN", nil)
 	}
 
 	pair.QuoteTokenSymbol = st.Symbol
@@ -79,8 +90,8 @@ func (s *PairService) GetByID(id bson.ObjectId) (*types.Pair, error) {
 
 // GetByTokenAddress fetches details of a pair using contract address of
 // its constituting tokens
-func (s *PairService) GetByTokenAddress(bt, st string) (*types.Pair, error) {
-	return s.pairDao.GetByTokenAddress(bt, st)
+func (s *PairService) GetByTokenAddress(bt, qt string) (*types.Pair, error) {
+	return s.pairDao.GetByTokenAddress(bt, qt)
 }
 
 // GetAll is reponsible for fetching all the pairs in the DB
@@ -89,8 +100,8 @@ func (s *PairService) GetAll() ([]types.Pair, error) {
 }
 
 // GetOrderBook fetches orderbook from engine/redis and returns it as an map[string]interface
-func (s *PairService) GetOrderBook(pairName string) (ob map[string]interface{}, err error) {
-	res, err := s.pairDao.GetByName(pairName)
+func (s *PairService) GetOrderBook(bt, qt string) (ob map[string]interface{}, err error) {
+	res, err := s.GetByTokenAddress(bt, qt)
 	if err != nil {
 		message := map[string]string{
 			"Code":    "Invalid_Pair_Name",
@@ -112,30 +123,34 @@ func (s *PairService) GetOrderBook(pairName string) (ob map[string]interface{}, 
 
 // RegisterForOrderBook is responsible for handling incoming orderbook subscription messages
 // It makes an entry of connection in pairSocket corresponding to pair,unit and duration
-func (s *PairService) RegisterForOrderBook(conn *websocket.Conn, pairName string) {
+func (s *PairService) RegisterForOrderBook(conn *websocket.Conn, bt, qt string) {
 
-	ob, err := s.GetOrderBook(pairName)
+	ob, err := s.GetOrderBook(bt, qt)
 	if err != nil {
 		conn.WriteMessage(1, []byte(err.Error()))
 	}
-	trades, _ := s.tradeService.GetByPairName(pairName)
+	trades, _ := s.tradeService.GetByPairAddress(bt, qt)
 	ob["trades"] = trades
 
-	if err := ws.GetPairSockets().PairSocketRegister(pairName, conn); err != nil {
+	if err := ws.GetPairSockets().PairSocketRegister(bt, qt, conn); err != nil {
 		message := map[string]string{
 			"Code":    "UNABLE_TO_REGISTER",
 			"Message": "UNABLE_TO_REGISTER: " + err.Error(),
 		}
 		mab, _ := json.Marshal(message)
-		conn.WriteMessage(1, mab)
+		conn.WriteJSON(mab)
 	}
-	ws.RegisterConnectionUnsubscribeHandler(conn, ws.GetPairSockets().PairUnsubscribeHandler(pairName))
+	ws.RegisterConnectionUnsubscribeHandler(conn, ws.GetPairSockets().PairUnsubscribeHandler(bt, qt))
 
-	rab, _ := json.Marshal(ob)
-	conn.WriteMessage(1, rab)
+	response := types.Message{
+		MsgType: "order_book",
+		Data:    ob,
+	}
+	rab, _ := json.Marshal(response)
+	conn.WriteJSON(rab)
 }
 
 // UnRegisterForOrderBook is responsible for handling incoming orderbook unsubscription messages
-func (s *PairService) UnRegisterForOrderBook(conn *websocket.Conn, pairName string) {
-	ws.GetPairSockets().PairSocketUnregisterConnection(pairName, conn)
+func (s *PairService) UnRegisterForOrderBook(conn *websocket.Conn, bt, qt string) {
+	ws.GetPairSockets().PairSocketUnregisterConnection(bt, qt, conn)
 }

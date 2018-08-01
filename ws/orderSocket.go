@@ -11,7 +11,7 @@ import (
 // It holds the reference to connection and the channel of type OrderMessage
 type OrderConn struct {
 	Conn        *websocket.Conn
-	ReadChannel chan *types.OrderMessage
+	ReadChannel chan *types.Message
 	Active      bool
 	Once        sync.Once
 }
@@ -46,7 +46,7 @@ func GetOrderConn(hash string) (conn *websocket.Conn) {
 }
 
 // GetOrderChannel returns the channel associated with an order ID
-func GetOrderChannel(hash string) chan *types.OrderMessage {
+func GetOrderChannel(hash string) chan *types.Message {
 	if orderConnections[hash] == nil {
 		return nil
 	} else if !orderConnections[hash].Active {

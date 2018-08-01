@@ -3,8 +3,6 @@ package endpoints
 import (
 	"encoding/json"
 	"log"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -25,9 +23,9 @@ type tradeEndpoint struct {
 func ServeTradeResource(rg *routing.RouteGroup, tradeService *services.TradeService) {
 	r := &tradeEndpoint{tradeService}
 	rg.Get("/trades/history/<pair>", r.history)
-	rg.Get("/trades/ticks", r.ticks)
+	rg.Post("/trades/ticks", r.ticks)
 	rg.Get("/trades/<addr>", r.get)
-	ws.RegisterChannel("trade_ticks", r.wsTicks)
+	ws.RegisterChannel("trades", r.wsTicks)
 }
 
 // history is reponsible for handling pair's trade history requests
@@ -59,30 +57,25 @@ func (r *tradeEndpoint) get(c *routing.Context) error {
 }
 
 func (r *tradeEndpoint) ticks(c *routing.Context) error {
-	startTs := time.Date(1970, time.January, 1, 0, 0, 0, 0, time.UTC)
-	unit := c.Query("unit", "hour")
-	duration := c.Query("duration", "24")
-	from := c.Query("from", strconv.FormatInt(startTs.Unix(), 10))
-	to := c.Query("to", strconv.FormatInt(time.Now().Unix(), 10))
-	pairName := c.Query("pairName", "")
-	if pairName == "" {
-		return errors.NewAPIError(400, "EMPTY_PAIR_NAME", nil)
-	}
-	pairNames := strings.Split(pairName, ",")
-	d, err := strconv.ParseInt(duration, 10, 64)
-	if err != nil {
-		return errors.NewAPIError(400, "INVALID_DURATION", nil)
-	}
-	fromTs, err := strconv.ParseInt(from, 10, 64)
-	if err != nil {
-		return errors.NewAPIError(400, "INVALID_FROM_TS", nil)
-	}
-	toTs, err := strconv.ParseInt(to, 10, 64)
-	if err != nil {
-		return errors.NewAPIError(400, "INVALID_TO_TS", nil)
+	var model types.TickRequest
+	if err := c.Read(&model); err != nil {
+		return err
 	}
 
-	res, err := r.tradeService.GetTicks(pairNames, d, unit, fromTs, toTs)
+	startTs := time.Date(1970, time.January, 1, 0, 0, 0, 0, time.UTC)
+	if model.Units == "" {
+		model.Units = "hour"
+	}
+	if model.Duration == 0 {
+		model.Duration = 24
+	}
+	if model.From == 0 {
+		model.From = startTs.Unix()
+	}
+	if model.To == 0 {
+		model.To = time.Now().Unix()
+	}
+	res, err := r.tradeService.GetTicks(model.Pair, model.Duration, model.Units, model.From, model.To)
 	if err != nil {
 		return err
 	}
@@ -97,13 +90,24 @@ func (r *tradeEndpoint) wsTicks(input *interface{}, conn *websocket.Conn) {
 		log.Println("unmarshal to wsmsg <==>" + err.Error())
 	}
 
-	if msg.Key == "" {
+	if msg.Pair.BaseToken == "" {
 		message := map[string]string{
-			"Code":    "Invalid_Pair_Name",
-			"Message": "Invalid Pair Name passed in query Params",
+			"Code":    "Invalid_Pair_BaseToken",
+			"Message": "Invalid Pair BaseToken passed in Params",
 		}
 		mab, _ := json.Marshal(message)
 		conn.WriteMessage(1, mab)
+		return
+
+	}
+	if msg.Pair.QuoteToken == "" {
+		message := map[string]string{
+			"Code":    "Invalid_Pair_BaseToken",
+			"Message": "Invalid Pair BaseToken passed in Params",
+		}
+		mab, _ := json.Marshal(message)
+		conn.WriteMessage(1, mab)
+		return
 	}
 	if msg.Params.From == 0 {
 		msg.Params.From = startTs.Unix()
@@ -118,10 +122,10 @@ func (r *tradeEndpoint) wsTicks(input *interface{}, conn *websocket.Conn) {
 		msg.Params.Units = "hour"
 	}
 	if msg.Event == types.SUBSCRIBE {
-		r.tradeService.RegisterForTicks(conn, msg.Key, &msg.Params)
+		r.tradeService.RegisterForTicks(conn, msg.Pair.BaseToken, msg.Pair.QuoteToken, &msg.Params)
 
 	}
 	if msg.Event == types.UNSUBSCRIBE {
-		r.tradeService.UnregisterForTicks(conn, msg.Key, &msg.Params)
+		r.tradeService.UnregisterForTicks(conn, msg.Pair.BaseToken, msg.Pair.QuoteToken, &msg.Params)
 	}
 }

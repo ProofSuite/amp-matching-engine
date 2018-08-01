@@ -63,6 +63,22 @@ func (dao *TradeDao) GetByPairName(name string) (response []*types.Trade, err er
 	return
 }
 
+// GetByPairAddress fetches all the trades corresponding to a particular pair token address.
+func (dao *TradeDao) GetByPairAddress(bt, qt string) (response []*types.Trade, err error) {
+	q := bson.M{"baseToken": bson.RegEx{
+		Pattern: bt,
+		Options: "i",
+	}, "quoteToken": bson.RegEx{
+		Pattern: qt,
+		Options: "i",
+	}}
+	err = db.Get(dao.dbName, dao.collectionName, q, 0, 0, &response)
+	if err != nil {
+		return
+	}
+	return
+}
+
 // GetByUserAddress fetches all the trades corresponding to a particular user address.
 func (dao *TradeDao) GetByUserAddress(addr string) (response []*types.Trade, err error) {
 	q := bson.M{"$or": []bson.M{

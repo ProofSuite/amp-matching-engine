@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/Proofsuite/amp-matching-engine/ws"
 
@@ -27,13 +28,14 @@ func (s *CronService) tickStreamingCron(c *cron.Cron) {
 func (s *CronService) tickStream(unit string, duration int64) func() {
 	return func() {
 		// log.Printf("TickStreaming Ran: unit: %s duration: %d\n", unit, duration)
-		ticks, err := s.tradeService.GetTicks("", duration, unit)
+		p := make([]types.PairSubDoc, 0)
+		ticks, err := s.tradeService.GetTicks(p, duration, unit)
 		if err != nil {
 			log.Printf("%s", err)
 			return
 		}
 		for _, tick := range ticks {
-			ws.TickBroadcast(utils.GetTickChannelID(tick.ID.Pair, unit, duration), tick)
+			ws.TickBroadcast(utils.GetTickChannelID(tick.ID.BaseToken, tick.ID.QuoteToken, unit, duration), tick)
 		}
 	}
 }

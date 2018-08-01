@@ -10,17 +10,17 @@ const (
 	Fetch       SubsciptionEvent = "fetch"
 )
 
-// OrderMessage is the model used to send message over order_channel
-type OrderMessage struct {
+// Message is the model used to send message over socket channel
+type Message struct {
 	MsgType string      `json:"msgType"`
-	Hash    string      `json:"hash"`
+	Hash    string      `json:"hash,omitempty"`
 	Data    interface{} `json:"data"`
 }
 
 // Subscription is the model used to send message for subscription to any streaming channel
 type Subscription struct {
 	Event  SubsciptionEvent `json:"event"`
-	Key    string           `json:"key"`
+	Pair   PairSubDoc       `json:"pair"`
 	Params `json:"params"`
 }
 

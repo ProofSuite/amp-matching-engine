@@ -12,7 +12,10 @@ func UintToPaddedString(num int64) string {
 
 // GetTickChannelID is used to get the channel id for OHLCV data streaming
 // it takes pairname, duration and units of data streaming
-func GetTickChannelID(pairName, unit string, duration int64) string {
-	pairName = strings.ToLower(pairName)
-	return fmt.Sprintf("%s::%d::%s", pairName, duration, unit)
+func GetTickChannelID(bt, qt string, unit string, duration int64) string {
+	pair := GetPairKey(bt, qt)
+	return fmt.Sprintf("%s::%d::%s", pair, duration, unit)
+}
+func GetPairKey(bt, qt string) string {
+	return strings.ToLower(fmt.Sprintf("%s::%s", bt, qt))
 }

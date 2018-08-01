@@ -17,6 +17,7 @@ type Token struct {
 	ContractAddress string        `json:"contractAddress" bson:"contractAddress"`
 	Decimal         int           `json:"decimal" bson:"decimal"`
 	Active          bool          `json:"active" bson:"active"`
+	Quote           bool          `json:"quote" bson:"quote"`
 
 	CreatedAt time.Time `json:"createdAt" bson:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt" bson:"updatedAt"`
