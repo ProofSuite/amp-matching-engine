@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -67,6 +68,7 @@ func (r *tradeEndpoint) ticks(c *routing.Context) error {
 	if pairName == "" {
 		return errors.NewAPIError(400, "EMPTY_PAIR_NAME", nil)
 	}
+	pairNames := strings.Split(pairName, ",")
 	d, err := strconv.ParseInt(duration, 10, 64)
 	if err != nil {
 		return errors.NewAPIError(400, "INVALID_DURATION", nil)
@@ -80,7 +82,7 @@ func (r *tradeEndpoint) ticks(c *routing.Context) error {
 		return errors.NewAPIError(400, "INVALID_TO_TS", nil)
 	}
 
-	res, err := r.tradeService.GetTicks(pairName, d, unit, fromTs, toTs)
+	res, err := r.tradeService.GetTicks(pairNames, d, unit, fromTs, toTs)
 	if err != nil {
 		return err
 	}

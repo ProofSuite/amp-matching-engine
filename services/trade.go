@@ -44,7 +44,7 @@ func (t *TradeService) UnregisterForTicks(conn *websocket.Conn, pairName string,
 // RegisterForTicks handles all the subscription messages for ticks corresponding to a pair
 // It calls the corresponding channel's subscription method and sends trade history back on the connection
 func (t *TradeService) RegisterForTicks(conn *websocket.Conn, pairName string, params *types.Params) {
-	ob, err := t.GetTicks(pairName, params.Duration, params.Units, params.From, params.To)
+	ob, err := t.GetTicks([]string{pairName}, params.Duration, params.Units, params.From, params.To)
 	if err != nil {
 		conn.WriteMessage(1, []byte(err.Error()))
 	}
@@ -66,7 +66,7 @@ func (t *TradeService) RegisterForTicks(conn *websocket.Conn, pairName string, p
 // duration: in integer
 // unit: sec,min,hour,day,week,month,yr
 // timeInterval: 0-2 entries (0 argument: latest data,1st argument: from timestamp, 2nd argument: to timestamp)
-func (t *TradeService) GetTicks(pairName string, duration int64, unit string, timeInterval ...int64) (resp []*types.Tick, err error) {
+func (t *TradeService) GetTicks(pairNames []string, duration int64, unit string, timeInterval ...int64) (resp []*types.Tick, err error) {
 	var match bson.M
 	currentTs := time.Now().UnixNano() / int64(time.Second)
 	var lt time.Time
@@ -143,8 +143,12 @@ func (t *TradeService) GetTicks(pairName string, duration int64, unit string, ti
 		gt = time.Unix(timeInterval[0], 0)
 		match = bson.M{"createdAt": bson.M{"$gte": gt, "$lt": lt}}
 	}
-	if pairName != "" {
-		match["pairName"] = bson.RegEx{Pattern: pairName, Options: "i"}
+	if len(pairNames) >= 1 {
+		in := make([]bson.RegEx, 0)
+		for _, pairName := range pairNames {
+			in = append(in, bson.RegEx{Pattern: pairName, Options: "i"})
+		}
+		match["pairName"] = bson.M{"$in": in}
 	}
 	match = bson.M{"$match": match}
 	group = bson.M{"$group": group}
