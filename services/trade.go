@@ -53,7 +53,7 @@ func (t *TradeService) RegisterForTicks(conn *websocket.Conn, bt, qt string, par
 		params.Duration,
 		params.Units,
 		params.From, params.To)
-		
+
 	if err != nil {
 		conn.WriteMessage(1, []byte(err.Error()))
 	}
@@ -63,10 +63,10 @@ func (t *TradeService) RegisterForTicks(conn *websocket.Conn, bt, qt string, par
 			"Code":    "UNABLE_TO_SUBSCRIBE",
 			"Message": "UNABLE_TO_SUBSCRIBE: " + err.Error(),
 		}
-		mab, _ := json.Marshal(message)
-		conn.WriteMessage(1, mab)
+		conn.WriteJSON(message)
 	}
 	ws.RegisterConnectionUnsubscribeHandler(conn, ws.TickCloseHandler(tickChannelID))
+	fmt.Println(bt, qt)
 	conn.WriteJSON(ob)
 }
 
@@ -155,15 +155,16 @@ func (t *TradeService) GetTicks(pairs []types.PairSubDoc, duration int64, unit s
 	if len(pairs) >= 1 {
 		or := make([]bson.M, 0)
 		for _, pair := range pairs {
-			or = append(or, bson.M{"baseToken": bson.RegEx{
+			or = append(or, bson.M{"$and": []bson.M{bson.M{"baseToken": bson.RegEx{
 				Pattern: pair.BaseToken,
 				Options: "i",
 			}, "quoteToken": bson.RegEx{
 				Pattern: pair.QuoteToken,
 				Options: "i",
-			}})
+			}}}})
 		}
-		match["pairName"] = bson.M{"$or": or}
+		match["$or"] = or
+		fmt.Println(or)
 	}
 	match = bson.M{"$match": match}
 	group = bson.M{"$group": group}
@@ -329,5 +330,7 @@ func getGroupTsBson(key, units string, duration int64) (resp bson.M, addFields b
 			"year": "$_id.year"}}, t}}}}
 	}
 	resp["pair"] = "$pairName"
+	resp["baseToken"] = "$baseToken"
+	resp["quoteToken"] = "$quoteToken"
 	return
 }

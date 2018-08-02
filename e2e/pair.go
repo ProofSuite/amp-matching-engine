@@ -16,7 +16,7 @@ func testPair(t *testing.T, tokens []types.Token) []types.Pair {
 	router := buildRouter()
 	listPairs := make([]types.Pair, 0)
 	neededPair := types.Pair{
-		Name:              strings.ToUpper(tokens[0].Symbol + "-" + tokens[1].Symbol),
+		Name:              strings.ToUpper(tokens[0].Symbol + "/" + tokens[1].Symbol),
 		BaseToken:         tokens[1].ID,
 		BaseTokenAddress:  tokens[1].ContractAddress,
 		BaseTokenSymbol:   tokens[1].Symbol,

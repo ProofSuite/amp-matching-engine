@@ -36,19 +36,21 @@ type apiTestCase struct {
 
 // Init function initializes the e2e testing
 func Init(t *testing.T) {
-	// the test may be started from the home directory or a subdirectory
-	// connect to the database
+	// the test may be started from the home dire
 	if session, err := daos.InitSession(); err != nil {
 		panic(err)
 	} else {
 		err = session.DB(app.Config.DBName).DropDatabase()
 
+		// === drop database on test end ===
+		// defer session.DB(app.Config.DBName).DropDatabase()
 	}
 
 	tokens := testToken(t)
 	testPair(t, tokens)
 	address := testAddress(t, tokens)
 	testBalance(t, tokens, address)
+
 }
 
 func buildRouter() *routing.Router {

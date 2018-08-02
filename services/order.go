@@ -38,6 +38,7 @@ func NewOrderService(orderDao *daos.OrderDao, balanceDao *daos.BalanceDao, pairD
 func (s *OrderService) Create(order *types.Order) (err error) {
 
 	// Fill token and pair data
+	fmt.Printf("\n %v === %v\n", order.BaseToken, order.QuoteToken)
 
 	p, err := s.pairDao.GetByTokenAddress(order.BaseTokenAddress, order.QuoteTokenAddress)
 	if err != nil {
@@ -130,6 +131,11 @@ func (s *OrderService) CancelOrder(order *types.Order) error {
 	if err != nil {
 		return err
 	}
+	if dbOrder == nil {
+		return fmt.Errorf("No order with this hash present")
+	}
+	dab, _ := json.Marshal(dbOrder)
+	fmt.Printf("%s", dab)
 	if dbOrder.Status == types.OPEN || dbOrder.Status == types.NEW {
 		engineResponse, err := s.engine.CancelOrder(dbOrder)
 		if err != nil {
@@ -195,7 +201,7 @@ func (s *OrderService) RelayUpdateOverSocket(er *engine.Response) {
 			MsgType: "trades_added",
 			Data:    er.Trades,
 		}
-		ws.GetPairSockets().PairSocketWriteMessage(er.Order.BaseToken, er.Order.SellToken, message)
+		ws.GetPairSockets().PairSocketWriteMessage(er.Order.BaseTokenAddress, er.Order.QuoteTokenAddress, message)
 	}
 	if er.RemainingOrder != nil {
 		fmt.Println("Order added Relay over socket")
@@ -203,7 +209,7 @@ func (s *OrderService) RelayUpdateOverSocket(er *engine.Response) {
 			MsgType: "order_added",
 			Data:    er.RemainingOrder,
 		}
-		ws.GetPairSockets().PairSocketWriteMessage(er.Order.BaseToken, er.Order.SellToken, message)
+		ws.GetPairSockets().PairSocketWriteMessage(er.Order.BaseTokenAddress, er.Order.QuoteTokenAddress, message)
 	}
 	if er.FillStatus == engine.CANCELLED {
 		fmt.Println("Order cancelled Relay over socket")
@@ -211,7 +217,7 @@ func (s *OrderService) RelayUpdateOverSocket(er *engine.Response) {
 			MsgType: "order_cancelled",
 			Data:    er.Order,
 		}
-		ws.GetPairSockets().PairSocketWriteMessage(er.Order.BaseToken, er.Order.SellToken, message)
+		ws.GetPairSockets().PairSocketWriteMessage(er.Order.BaseTokenAddress, er.Order.QuoteTokenAddress, message)
 	}
 }
 

@@ -16,22 +16,22 @@ import (
 // OrderRequest is the struct in which the order request sent by the
 // user is populated
 type OrderRequest struct {
-	Side        OrderSide `json:"side" bson:"side"`
-	Amount      float64   `json:"amount"`
-	Price       float64   `json:"price"`
-	Fee         float64   `json:"fee"`
-	Signature   string    `json:"signature"`
-	BuyToken    string    `json:"buyToken"`
-	SellToken   string    `json:"sellToken"`
-	PairName    string    `json:"pairName"`
-	Hash        string    `json:"hash"`
-	UserAddress string    `json:"userAddress"`
+	Side        string  `json:"side" bson:"side"`
+	Amount      float64 `json:"amount"`
+	Price       float64 `json:"price"`
+	Fee         float64 `json:"fee"`
+	Signature   string  `json:"signature"`
+	BuyToken    string  `json:"buyToken"`
+	SellToken   string  `json:"sellToken"`
+	PairName    string  `json:"pairName"`
+	Hash        string  `json:"hash"`
+	UserAddress string  `json:"userAddress"`
 }
 
 // Validate validates the OrderRequest fields.
 func (m OrderRequest) Validate() error {
 	return validation.ValidateStruct(&m,
-		validation.Field(&m.Side, validation.Required, validation.In(1, 2)),
+		validation.Field(&m.Side, validation.Required),
 		validation.Field(&m.Amount, validation.Required),
 		validation.Field(&m.Price, validation.Required),
 		validation.Field(&m.UserAddress, validation.Required),
@@ -47,10 +47,12 @@ func (m *OrderRequest) ToOrder() (order *Order, err error) {
 	if err := m.Validate(); err != nil {
 		return nil, err
 	}
+
 	// signature, err := NewSignature([]byte(m.Signature))
 	// if err != nil {
 	// 	return nil, fmt.Errorf("%s", err)
 	// }
+
 	order = &Order{
 		Side:        OrderSide(m.Side),
 		Amount:      int64(m.Amount * math.Pow10(8)),
@@ -64,12 +66,12 @@ func (m *OrderRequest) ToOrder() (order *Order, err error) {
 		Hash:        m.ComputeHash(),
 		// Signature:        signature,
 	}
-	if m.Side == SELL {
-		order.QuoteToken = order.BuyToken
-		order.BaseToken = order.SellToken
+	if m.Side == string(SELL) {
+		order.BaseTokenAddress = order.SellToken
+		order.QuoteTokenAddress = order.BuyToken
 	} else {
-		order.BaseToken = order.BuyToken
-		order.QuoteToken = order.SellToken
+		order.BaseTokenAddress = order.BuyToken
+		order.QuoteTokenAddress = order.SellToken
 	}
 	return
 }
