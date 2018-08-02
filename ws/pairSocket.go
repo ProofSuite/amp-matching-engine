@@ -46,7 +46,6 @@ func (ps *PairSockets) PairSocketUnregisterConnection(bt, qt string, conn *webso
 func (ps *PairSockets) PairSocketWriteMessage(bt, qt string, message interface{}) error {
 	pair := utils.GetPairKey(bt, qt)
 	for conn, status := range ps.connections[pair] {
-
 		if status {
 			conn.WriteJSON(message)
 		}

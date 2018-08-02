@@ -21,8 +21,8 @@ type pairEndpoint struct {
 // ServePairResource sets up the routing of pair endpoints and the corresponding handlers.
 func ServePairResource(rg *routing.RouteGroup, pairService *services.PairService) {
 	r := &pairEndpoint{pairService}
-	rg.Get("/pairs/book/<bt>/<st>", r.orderBookEndpoint)
-	rg.Get("/pairs/<bt>/<st>", r.get)
+	rg.Get("/pairs/book/<bt>/<qt>", r.orderBookEndpoint)
+	rg.Get("/pairs/<bt>/<qt>", r.get)
 	rg.Get("/pairs", r.query)
 	rg.Post("/pairs", r.create)
 	ws.RegisterChannel("order_book", r.orderBook)
@@ -60,7 +60,7 @@ func (r *pairEndpoint) get(c *routing.Context) error {
 	if !common.IsHexAddress(baseToken) {
 		return errors.NewAPIError(400, "INVALID_HEX_ADDRESS", nil)
 	}
-	quoteToken := c.Param("st")
+	quoteToken := c.Param("qt")
 	if !common.IsHexAddress(quoteToken) {
 		return errors.NewAPIError(400, "INVALID_HEX_ADDRESS", nil)
 	}
@@ -90,8 +90,8 @@ func (r *pairEndpoint) orderBook(input *interface{}, conn *websocket.Conn) {
 	}
 	if msg.Pair.QuoteToken == "" {
 		message := map[string]string{
-			"Code":    "Invalid_Pair_BaseToken",
-			"Message": "Invalid Pair BaseToken passed in query Params",
+			"Code":    "Invalid_Pair_QuoteToken",
+			"Message": "Invalid Pair QuoteToken passed in query Params",
 		}
 		mab, _ := json.Marshal(message)
 		conn.WriteMessage(1, mab)
@@ -113,7 +113,7 @@ func (r *pairEndpoint) orderBookEndpoint(c *routing.Context) error {
 	if !common.IsHexAddress(baseToken) {
 		return errors.NewAPIError(400, "INVALID_HEX_ADDRESS", nil)
 	}
-	quoteToken := c.Param("st")
+	quoteToken := c.Param("qt")
 	if !common.IsHexAddress(quoteToken) {
 		return errors.NewAPIError(400, "INVALID_HEX_ADDRESS", nil)
 	}

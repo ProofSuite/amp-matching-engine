@@ -57,7 +57,6 @@ func (r *orderEndpoint) ws(input *interface{}, conn *websocket.Conn) {
 		var model types.OrderRequest
 		if err := json.Unmarshal(oab, &model); err != nil {
 			conn.WriteMessage(messageType, []byte(err.Error()))
-
 			return
 		}
 		if err := model.Validate(); err != nil {
@@ -79,6 +78,9 @@ func (r *orderEndpoint) ws(input *interface{}, conn *websocket.Conn) {
 
 			return
 		}
+		ws.RegisterOrderConnection(order.Hash, &ws.OrderConn{Conn: conn, ReadChannel: ch})
+		ws.RegisterConnectionUnsubscribeHandler(conn, ws.OrderSocketUnsubscribeHandler(order.Hash))
+
 		err = r.orderService.Create(order)
 		if err != nil {
 			conn.WriteMessage(messageType, []byte(err.Error()))
@@ -86,8 +88,7 @@ func (r *orderEndpoint) ws(input *interface{}, conn *websocket.Conn) {
 		}
 		oab, _ = json.Marshal(order)
 		conn.WriteMessage(messageType, oab)
-		ws.RegisterOrderConnection(order.Hash, &ws.OrderConn{Conn: conn, ReadChannel: ch})
-		ws.RegisterConnectionUnsubscribeHandler(conn, ws.OrderSocketUnsubscribeHandler(order.Hash))
+
 	} else if msg.MsgType == "cancel_order" {
 		oab, err := json.Marshal(msg.Data)
 
@@ -97,13 +98,15 @@ func (r *orderEndpoint) ws(input *interface{}, conn *websocket.Conn) {
 
 			return
 		}
+
+		ws.RegisterOrderConnection(order.Hash, &ws.OrderConn{Conn: conn, Active: true})
+		ws.RegisterConnectionUnsubscribeHandler(conn, ws.OrderSocketUnsubscribeHandler(order.Hash))
+
 		err = r.cancelOrder(order)
 		if err != nil {
 			conn.WriteMessage(messageType, []byte(err.Error()))
 			return
 		}
-		ws.RegisterOrderConnection(order.Hash, &ws.OrderConn{Conn: conn, Active: true})
-		ws.RegisterConnectionUnsubscribeHandler(conn, ws.OrderSocketUnsubscribeHandler(order.Hash))
 	} else {
 		ch := ws.GetOrderChannel(msg.Hash)
 		if ch != nil {
@@ -129,6 +132,8 @@ func (r *orderEndpoint) engineResponse(engineResponse *engine.Response) error {
 				if rm.MsgType == "trade_remaining_order_sign" {
 					mb, err := json.Marshal(rm.Data)
 					if err != nil {
+						fmt.Printf("=== Error while marshaling EngineResponse===")
+
 						r.orderService.RecoverOrders(engineResponse)
 						ws.GetOrderConn(engineResponse.Order.Hash).WriteMessage(1, []byte(err.Error()))
 					}
@@ -136,6 +141,7 @@ func (r *orderEndpoint) engineResponse(engineResponse *engine.Response) error {
 					var ersb *engine.Response
 					err = json.Unmarshal(mb, &ersb)
 					if err != nil {
+						fmt.Printf("=== Error while unmarshaling EngineResponse===")
 						ws.GetOrderConn(engineResponse.Order.Hash).WriteMessage(1, []byte(err.Error()))
 						r.orderService.RecoverOrders(engineResponse)
 					}

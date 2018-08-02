@@ -137,8 +137,7 @@ func (s *PairService) RegisterForOrderBook(conn *websocket.Conn, bt, qt string) 
 			"Code":    "UNABLE_TO_REGISTER",
 			"Message": "UNABLE_TO_REGISTER: " + err.Error(),
 		}
-		mab, _ := json.Marshal(message)
-		conn.WriteJSON(mab)
+		conn.WriteJSON(message)
 	}
 	ws.RegisterConnectionUnsubscribeHandler(conn, ws.GetPairSockets().PairUnsubscribeHandler(bt, qt))
 
@@ -146,8 +145,7 @@ func (s *PairService) RegisterForOrderBook(conn *websocket.Conn, bt, qt string) 
 		MsgType: "order_book",
 		Data:    ob,
 	}
-	rab, _ := json.Marshal(response)
-	conn.WriteJSON(rab)
+	conn.WriteJSON(response)
 }
 
 // UnRegisterForOrderBook is responsible for handling incoming orderbook unsubscription messages

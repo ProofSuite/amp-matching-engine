@@ -22,7 +22,7 @@ type tradeEndpoint struct {
 // ServeTradeResource sets up the routing of trade endpoints and the corresponding handlers.
 func ServeTradeResource(rg *routing.RouteGroup, tradeService *services.TradeService) {
 	r := &tradeEndpoint{tradeService}
-	rg.Get("/trades/history/<pair>", r.history)
+	rg.Get("/trades/history/<bt>/<qt>", r.history)
 	rg.Post("/trades/ticks", r.ticks)
 	rg.Get("/trades/<addr>", r.get)
 	ws.RegisterChannel("trades", r.wsTicks)
@@ -34,7 +34,15 @@ func (r *tradeEndpoint) history(c *routing.Context) error {
 	if pair == "" {
 		return errors.NewAPIError(400, "INVALID_PAIR_NAME", nil)
 	}
-	response, err := r.tradeService.GetByPairName(pair)
+	baseToken := c.Param("bt")
+	if !common.IsHexAddress(baseToken) {
+		return errors.NewAPIError(400, "INVALID_HEX_ADDRESS", nil)
+	}
+	quoteToken := c.Param("qt")
+	if !common.IsHexAddress(quoteToken) {
+		return errors.NewAPIError(400, "INVALID_HEX_ADDRESS", nil)
+	}
+	response, err := r.tradeService.GetByPairAddress(baseToken, quoteToken)
 	if err != nil {
 		return err
 	}

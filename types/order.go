@@ -83,8 +83,8 @@ type OrderSide string
 
 // This block declares various members of enum OrderType.
 const (
-	BUY  OrderSide = "buy"
-	SELL OrderSide = "sell"
+	BUY  OrderSide = "BUY"
+	SELL OrderSide = "SELL"
 )
 
 // UnmarshalJSON unmarshals []byte to type OrderType
