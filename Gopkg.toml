@@ -1,6 +1,6 @@
 # Gopkg.toml example
 #
-# Refer to https://github.com/golang/dep/blob/master/docs/Gopkg.toml.md
+# Refer to https://golang.github.io/dep/docs/Gopkg.toml.html
 # for detailed Gopkg.toml documentation.
 #
 # required = ["github.com/user/thing/cmd/thing"]
@@ -26,12 +26,32 @@
 
 
 [[constraint]]
+  name = "github.com/Sirupsen/logrus"
+  version = "1.0.6"
+
+[[constraint]]
   name = "github.com/ethereum/go-ethereum"
-  version = "1.8.10"
+  version = "1.8.13"
+
+[[constraint]]
+  name = "github.com/go-ozzo/ozzo-dbx"
+  version = "1.1.0"
+
+[[constraint]]
+  name = "github.com/go-ozzo/ozzo-routing"
+  version = "2.1.4"
+
+[[constraint]]
+  name = "github.com/go-ozzo/ozzo-validation"
+  version = "3.4.0"
 
 [[constraint]]
   name = "github.com/go-test/deep"
   version = "1.0.1"
+
+[[constraint]]
+  name = "github.com/gomodule/redigo"
+  version = "2.0.0"
 
 [[constraint]]
   name = "github.com/gorilla/websocket"
@@ -45,5 +65,30 @@
   name = "github.com/posener/wstest"
   version = "1.1.0"
 
+[[constraint]]
+  name = "github.com/robfig/cron"
+  version = "1.1.0"
+
+[[constraint]]
+  name = "github.com/spf13/viper"
+  version = "1.0.2"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/streadway/amqp"
+
+[[constraint]]
+  name = "github.com/stretchr/testify"
+  version = "1.2.2"
+
+[[constraint]]
+  branch = "v2"
+  name = "gopkg.in/mgo.v2"
+
+[[constraint]]
+  name = "gopkg.in/yaml.v2"
+  version = "2.2.1"
+
 [prune]
   go-tests = true
+  unused-packages = true

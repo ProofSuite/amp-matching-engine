@@ -50,12 +50,10 @@ func (s *Signature) Verify(hash common.Hash) (common.Address, error) {
 		return common.Address{}, err
 	}
 
-	rpk, err := crypto.Ecrecover(hashBytes, sigBytes)
+	pubKey, err := crypto.SigToPub(hashBytes, sigBytes)
 	if err != nil {
 		return common.Address{}, err
 	}
-
-	pubKey := crypto.ToECDSAPub(rpk)
 	address := crypto.PubkeyToAddress(*pubKey)
 	return address, nil
 }

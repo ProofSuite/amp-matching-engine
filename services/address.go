@@ -60,3 +60,9 @@ func (s *AddressService) GetAll() ([]types.UserAddress, error) {
 func (s *AddressService) GetByAddress(addr string) (*types.UserAddress, error) {
 	return s.AddressDao.GetByAddress(addr)
 }
+
+// GetNonce fetches the address's valid nonce to be used for next order
+func (s *AddressService) GetNonce(addr string) (int64, error) {
+
+	return s.AddressDao.GetNonce(addr)
+}
