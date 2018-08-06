@@ -23,12 +23,13 @@ type OrderService struct {
 	balanceDao *daos.BalanceDao
 	pairDao    *daos.PairDao
 	tradeDao   *daos.TradeDao
+	addressDao *daos.AddressDao
 	engine     *engine.Resource
 }
 
 // NewOrderService returns a new instance of orderservice
-func NewOrderService(orderDao *daos.OrderDao, balanceDao *daos.BalanceDao, pairDao *daos.PairDao, tradeDao *daos.TradeDao, engine *engine.Resource) *OrderService {
-	return &OrderService{orderDao, balanceDao, pairDao, tradeDao, engine}
+func NewOrderService(orderDao *daos.OrderDao, balanceDao *daos.BalanceDao, pairDao *daos.PairDao, tradeDao *daos.TradeDao, addressDao *daos.AddressDao, engine *engine.Resource) *OrderService {
+	return &OrderService{orderDao, balanceDao, pairDao, tradeDao, addressDao, engine}
 }
 
 // Create validates if the passed order is valid or not based on user's available
@@ -54,6 +55,15 @@ func (s *OrderService) Create(order *types.Order) (err error) {
 	order.QuoteTokenAddress = p.QuoteTokenAddress
 
 	// Validate if order is valid
+
+	addr, err := s.addressDao.GetByAddress(order.UserAddress)
+	if err != nil {
+		return err
+	} else if addr.IsBlocked {
+		return fmt.Errorf("Address: %s isBlocked", addr)
+	} else if addr.Nonce != order.Nonce {
+		return fmt.Errorf("Order Nonce: %v is not valid expecting nonce: %v", order.Nonce, addr.Nonce)
+	}
 
 	// balance validation
 	bal, err := s.balanceDao.GetByAddress(order.UserAddress)
@@ -89,8 +99,11 @@ func (s *OrderService) Create(order *types.Order) (err error) {
 			return err
 		}
 	}
-	
+
 	if err = s.orderDao.Create(order); err != nil {
+		return
+	}
+	if err = s.addressDao.IncrNonce(order.UserAddress); err != nil {
 		return
 	}
 

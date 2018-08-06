@@ -66,9 +66,14 @@ func (dao *AddressDao) GetByAddress(addr string) (response *types.UserAddress, e
 // GetNonce function fetches document from address collection based on user address.
 // Returns nonce int64
 func (dao *AddressDao) GetNonce(addr string) (nonce int64, err error) {
-	if res, err := dao.GetByAddress(addr); err != nil {
+	res, err := dao.GetByAddress(addr)
+	if err != nil {
 		return 0, err
-	} else {
-		return res.Nonce, nil
 	}
+	return res.Nonce, nil
+}
+
+// IncrNonce function increaments the nonce of the address
+func (dao *AddressDao) IncrNonce(addr string) (err error) {
+	return db.Update(dao.dbName, dao.collectionName, bson.M{"address": addr}, bson.M{"$inc": bson.M{"nonce": 1}})
 }

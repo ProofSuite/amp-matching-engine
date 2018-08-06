@@ -130,6 +130,7 @@ type Order struct {
 	Side              OrderSide     `json:"side" bson:"side" redis:"side"`
 	AmountBuy         int64         `json:"amountBuy" bson:"amountBuy" redis:"amountBuy"`
 	AmountSell        int64         `json:"amountSell" bson:"amountSell" redis:"amountSell"`
+	Nonce             int64         `json:"nonce" bson:"nonce"`
 	ExchangeAddress   string        `json:"exchangeAddress" bson:"exchangeAddress" redis:"exchangeAddress"`
 	Status            OrderStatus   `json:"status" bson:"status" redis:"status"`
 	Signature         *Signature    `json:"signature,omitempty" bson:"signature" redis:"signature"`
