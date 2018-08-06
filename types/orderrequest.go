@@ -24,6 +24,7 @@ type OrderRequest struct {
 	BuyToken    string  `json:"buyToken"`
 	SellToken   string  `json:"sellToken"`
 	PairName    string  `json:"pairName"`
+	Nonce       int64   `json:"nonce" bson:"nonce"`
 	Hash        string  `json:"hash"`
 	UserAddress string  `json:"userAddress"`
 }
@@ -64,6 +65,7 @@ func (m *OrderRequest) ToOrder() (order *Order, err error) {
 		AmountBuy:   int64(m.Amount * math.Pow10(8)),
 		AmountSell:  int64(m.Amount * m.Price * math.Pow10(8)),
 		Hash:        m.ComputeHash(),
+		Nonce:       m.Nonce,
 		// Signature:        signature,
 	}
 	if m.Side == string(SELL) {
@@ -85,6 +87,7 @@ func (m *OrderRequest) ComputeHash() (ch string) {
 	sha.Write([]byte(m.BuyToken))
 	sha.Write([]byte(m.SellToken))
 	sha.Write([]byte(m.UserAddress))
+	sha.Write([]byte(fmt.Sprintf("%d", m.Nonce)))
 	return common.BytesToHash(sha.Sum(nil)).Hex()
 }
 
