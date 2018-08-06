@@ -62,3 +62,13 @@ func (dao *AddressDao) GetByAddress(addr string) (response *types.UserAddress, e
 	}
 	return
 }
+
+// GetNonce function fetches document from address collection based on user address.
+// Returns nonce int64
+func (dao *AddressDao) GetNonce(addr string) (nonce int64, err error) {
+	if res, err := dao.GetByAddress(addr); err != nil {
+		return 0, err
+	} else {
+		return res.Nonce, nil
+	}
+}

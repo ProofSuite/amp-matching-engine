@@ -12,6 +12,7 @@ import (
 type UserAddress struct {
 	ID        bson.ObjectId `json:"id" bson:"_id"`
 	Address   string        `json:"address" bson:"address"`
+	Nonce     int64         `json:"nonce" bson:"nonce"`
 	IsBlocked bool          `json:"isBlocked" bson:"isBlocked"`
 	CreatedAt time.Time     `json:"createdAt" bson:"createdAt"`
 	UpdatedAt time.Time     `json:"updatedAt" bson:"updatedAt"`

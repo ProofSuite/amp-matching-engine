@@ -89,7 +89,7 @@ func (s *OrderService) Create(order *types.Order) (err error) {
 			return err
 		}
 	}
-
+	
 	if err = s.orderDao.Create(order); err != nil {
 		return
 	}
