@@ -114,34 +114,33 @@ func (orderType *OrderSide) MarshalJSON() ([]byte, error) {
 
 // Order contains the data related to an order sent by the user
 type Order struct {
-	ID                bson.ObjectId `json:"id" bson:"_id" redis:"_id"`
-	BaseToken         string        `json:"baseToken" bson:"baseToken" redis:"baseToken"`
-	QuoteToken        string        `json:"quoteToken" bson:"quoteToken" redis:"quoteToken"`
-	BuyToken          string        `json:"buyToken" bson:"buyToken" redis:"buyToken"`
-	SellToken         string        `json:"sellToken" bson:"sellToken" redis:"sellToken"`
-	BaseTokenAddress  string        `json:"baseTokenAddress" bson:"baseTokenAddress" redis:"baseTokenAddress"`
-	QuoteTokenAddress string        `json:"quoteTokenAddress" bson:"quoteTokenAddress" redis:"quoteTokenAddress"`
-	FilledAmount      int64         `json:"filledAmount" bson:"filledAmount" redis:"filledAmount"`
-	Amount            int64         `json:"amount" bson:"amount" redis:"amount"`
-	Price             int64         `json:"price" bson:"price" redis:"price"`
-	Fee               int64         `json:"fee" bson:"fee" redis:"fee"`
+	ID                bson.ObjectId `json:"id" bson:"_id"`
+	BaseToken         string        `json:"baseToken" bson:"baseToken"`
+	QuoteToken        string        `json:"quoteToken" bson:"quoteToken"`
+	BuyToken          string        `json:"buyToken" bson:"buyToken"`
+	SellToken         string        `json:"sellToken" bson:"sellToken"`
+	BaseTokenAddress  string        `json:"baseTokenAddress" bson:"baseTokenAddress"`
+	QuoteTokenAddress string        `json:"quoteTokenAddress" bson:"quoteTokenAddress"`
+	FilledAmount      int64         `json:"filledAmount" bson:"filledAmount"`
+	Amount            int64         `json:"amount" bson:"amount"`
+	Price             int64         `json:"price" bson:"price"`
+	Fee               int64         `json:"fee" bson:"fee"`
 	MakeFee           int64         `json:"makeFee" bson:"makeFee"`
 	TakeFee           int64         `json:"takeFee" bson:"takeFee"`
-	Side              OrderSide     `json:"side" bson:"side" redis:"side"`
-	AmountBuy         int64         `json:"amountBuy" bson:"amountBuy" redis:"amountBuy"`
-	AmountSell        int64         `json:"amountSell" bson:"amountSell" redis:"amountSell"`
+	Side              OrderSide     `json:"side" bson:"side"`
+	AmountBuy         int64         `json:"amountBuy" bson:"amountBuy"`
+	AmountSell        int64         `json:"amountSell" bson:"amountSell"`
 	Nonce             int64         `json:"nonce" bson:"nonce"`
-	ExchangeAddress   string        `json:"exchangeAddress" bson:"exchangeAddress" redis:"exchangeAddress"`
-	Status            OrderStatus   `json:"status" bson:"status" redis:"status"`
-	Signature         *Signature    `json:"signature,omitempty" bson:"signature" redis:"signature"`
-	PairID            bson.ObjectId `json:"pairID" bson:"pairID" redis:"pairID"`
-	PairName          string        `json:"pairName" bson:"pairName" redis:"pairName"`
-	Hash              string        `json:"hash" bson:"hash" redis:"hash"`
-	UserAddress       string        `json:"userAddress" bson:"userAddress" redis:"userAddress"`
+	ExchangeAddress   string        `json:"exchangeAddress" bson:"exchangeAddress"`
+	Status            OrderStatus   `json:"status" bson:"status"`
+	Signature         *Signature    `json:"signature,omitempty" bson:"signature"`
+	PairID            bson.ObjectId `json:"pairID" bson:"pairID"`
+	PairName          string        `json:"pairName" bson:"pairName"`
+	Hash              string        `json:"hash" bson:"hash"`
+	UserAddress       string        `json:"userAddress" bson:"userAddress"`
 	OrderBook         *OrderSubDoc  `json:"orderBook" bson:"orderBook"`
-
-	CreatedAt time.Time `json:"createdAt" bson:"createdAt" redis:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt" bson:"updatedAt" redis:"updatedAt"`
+	CreatedAt         time.Time     `json:"createdAt" bson:"createdAt"`
+	UpdatedAt         time.Time     `json:"updatedAt" bson:"updatedAt"`
 }
 
 // OrderSubDoc is a sub document, it is used to store the order in order book

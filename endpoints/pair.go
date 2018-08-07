@@ -25,7 +25,7 @@ func ServePairResource(rg *routing.RouteGroup, pairService *services.PairService
 	rg.Get("/pairs/<bt>/<qt>", r.get)
 	rg.Get("/pairs", r.query)
 	rg.Post("/pairs", r.create)
-	ws.RegisterChannel("order_book", r.orderBook)
+	ws.RegisterChannel(ws.OrderbookChannel, r.orderBook)
 }
 
 func (r *pairEndpoint) create(c *routing.Context) error {
@@ -71,7 +71,7 @@ func (r *pairEndpoint) get(c *routing.Context) error {
 
 	return c.Write(response)
 }
-func (r *pairEndpoint) orderBook(input *interface{}, conn *websocket.Conn) {
+func (r *pairEndpoint) orderBook(input interface{}, conn *websocket.Conn) {
 	mab, _ := json.Marshal(input)
 	var msg *types.Subscription
 	if err := json.Unmarshal(mab, &msg); err != nil {
@@ -83,8 +83,7 @@ func (r *pairEndpoint) orderBook(input *interface{}, conn *websocket.Conn) {
 			"Code":    "Invalid_Pair_BaseToken",
 			"Message": "Invalid Pair BaseToken passed in query Params",
 		}
-		mab, _ := json.Marshal(message)
-		conn.WriteMessage(1, mab)
+		ws.GetPairSockets().SendErrorMessage(conn, message)
 		return
 
 	}
@@ -93,8 +92,7 @@ func (r *pairEndpoint) orderBook(input *interface{}, conn *websocket.Conn) {
 			"Code":    "Invalid_Pair_QuoteToken",
 			"Message": "Invalid Pair QuoteToken passed in query Params",
 		}
-		mab, _ := json.Marshal(message)
-		conn.WriteMessage(1, mab)
+		ws.GetPairSockets().SendErrorMessage(conn, message)
 		return
 	}
 	if msg.Event == types.SUBSCRIBE {

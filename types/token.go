@@ -33,7 +33,6 @@ type Image struct {
 // struct satisfies all the conditions for a valid instance
 func (t Token) Validate() error {
 	return validation.ValidateStruct(&t,
-		validation.Field(&t.Name, validation.Required),
 		validation.Field(&t.Symbol, validation.Required),
 		validation.Field(&t.ContractAddress, validation.Required, validation.NewStringRule(common.IsHexAddress, "Invalid Address")),
 		validation.Field(&t.Decimal, validation.Required),

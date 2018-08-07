@@ -55,7 +55,7 @@ func (t *TradeService) RegisterForTicks(conn *websocket.Conn, bt, qt string, par
 		params.From, params.To)
 
 	if err != nil {
-		conn.WriteMessage(1, []byte(err.Error()))
+		ws.TradeSendErrorMessage(conn, err.Error())
 	}
 	tickChannelID := utils.GetTickChannelID(bt, qt, params.Units, params.Duration)
 	if err := ws.SubscribeTick(tickChannelID, conn); err != nil {
@@ -63,11 +63,11 @@ func (t *TradeService) RegisterForTicks(conn *websocket.Conn, bt, qt string, par
 			"Code":    "UNABLE_TO_SUBSCRIBE",
 			"Message": "UNABLE_TO_SUBSCRIBE: " + err.Error(),
 		}
-		conn.WriteJSON(message)
+		ws.TradeSendErrorMessage(conn, message)
 	}
 	ws.RegisterConnectionUnsubscribeHandler(conn, ws.TickCloseHandler(tickChannelID))
 	fmt.Println(bt, qt)
-	conn.WriteJSON(ob)
+	ws.TradeSendTicksMessage(conn, ob)
 }
 
 // GetTicks fetches OHLCV data using

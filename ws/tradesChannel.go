@@ -44,13 +44,29 @@ func TickCloseHandler(channel string) func(conn *websocket.Conn) {
 func TickBroadcast(channel string, msg interface{}) {
 	go func() {
 		for conn, isActive := range tickSubscriptions[channel] {
-			var err error
 			if isActive {
-				err = conn.WriteJSON(msg)
-			}
-			if err != nil || !isActive {
-				conn.Close()
+				TradeSendTickMessage(conn, msg)
 			}
 		}
 	}()
+}
+
+// TradeSendMessage is responsible for sending message on trade ohlcv channel
+func TradeSendMessage(conn *websocket.Conn, msgType string, msg interface{}) {
+	SendMessage(conn, TradeChannel, msgType, msg)
+}
+
+// TradeSendErrorMessage is responsible for sending error messages on trade channel
+func TradeSendErrorMessage(conn *websocket.Conn, msg interface{}) {
+	TradeSendMessage(conn, "Error", msg)
+}
+
+// TradeSendTicksMessage is responsible for sending message on trade ohlcv channel at subscription
+func TradeSendTicksMessage(conn *websocket.Conn, msg interface{}) {
+	SendMessage(conn, TradeChannel, "trade_ticks", msg)
+}
+
+// TradeSendTickMessage is responsible for sending message on trade ohlcv channel at subscription
+func TradeSendTickMessage(conn *websocket.Conn, msg interface{}) {
+	SendMessage(conn, TradeChannel, "trade_tick", msg)
 }

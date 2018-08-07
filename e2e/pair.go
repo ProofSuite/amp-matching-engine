@@ -17,10 +17,10 @@ func testPair(t *testing.T, tokens []types.Token) []types.Pair {
 	listPairs := make([]types.Pair, 0)
 	neededPair := types.Pair{
 		Name:              strings.ToUpper(tokens[0].Symbol + "/" + tokens[1].Symbol),
-		BaseToken:         tokens[1].ID,
+		BaseTokenID:       tokens[1].ID,
 		BaseTokenAddress:  tokens[1].ContractAddress,
 		BaseTokenSymbol:   tokens[1].Symbol,
-		QuoteToken:        tokens[0].ID,
+		QuoteTokenID:      tokens[0].ID,
 		QuoteTokenAddress: tokens[0].ContractAddress,
 		QuoteTokenSymbol:  tokens[0].Symbol,
 		Active:            true,
@@ -96,8 +96,8 @@ func comparePair(t *testing.T, actual, expected types.Pair, msgs ...string) bool
 	response := true
 	response = response && assert.Equalf(t, actual.Name, expected.Name, fmt.Sprintf("Pair Name doesn't match. Expected: %v , Got: %v", expected.Name, actual.Name))
 
-	response = response && assert.Equalf(t, actual.BaseToken.Hex(), expected.BaseToken.Hex(), fmt.Sprintf("Pair BaseToken ID doesn't match. Expected: %v , Got: %v", expected.BaseToken, actual.BaseToken))
-	response = response && assert.Equalf(t, actual.QuoteToken.Hex(), expected.QuoteToken.Hex(), fmt.Sprintf("Pair QuoteToken ID doesn't match. Expected: %v , Got: %v", expected.QuoteToken.Hex(), actual.QuoteToken.Hex()))
+	response = response && assert.Equalf(t, actual.BaseTokenID.Hex(), expected.BaseTokenID.Hex(), fmt.Sprintf("Pair BaseToken ID doesn't match. Expected: %v , Got: %v", expected.BaseTokenID, actual.BaseTokenID))
+	response = response && assert.Equalf(t, actual.QuoteTokenID.Hex(), expected.QuoteTokenID.Hex(), fmt.Sprintf("Pair QuoteToken ID doesn't match. Expected: %v , Got: %v", expected.QuoteTokenID.Hex(), actual.QuoteTokenID.Hex()))
 
 	response = response && assert.Equalf(t, actual.BaseTokenAddress, expected.BaseTokenAddress, fmt.Sprintf("Pair BaseToken Address doesn't match. Expected: %v , Got: %v", expected.BaseTokenAddress, actual.BaseTokenAddress))
 	response = response && assert.Equalf(t, actual.QuoteTokenAddress, expected.QuoteTokenAddress, fmt.Sprintf("Pair QuoteToken Address doesn't match. Expected: %v , Got: %v", expected.QuoteTokenAddress, actual.QuoteTokenAddress))

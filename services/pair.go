@@ -71,10 +71,10 @@ func (s *PairService) Create(pair *types.Pair) error {
 	}
 
 	pair.QuoteTokenSymbol = st.Symbol
-	pair.QuoteToken = st.ID
+	pair.QuoteTokenID = st.ID
 	pair.QuoteTokenAddress = st.ContractAddress
 	pair.BaseTokenSymbol = bt.Symbol
-	pair.BaseToken = bt.ID
+	pair.BaseTokenID = bt.ID
 	pair.BaseTokenAddress = bt.ContractAddress
 	pair.Name = strings.ToUpper(st.Symbol + "/" + bt.Symbol)
 
@@ -127,28 +127,26 @@ func (s *PairService) RegisterForOrderBook(conn *websocket.Conn, bt, qt string) 
 
 	ob, err := s.GetOrderBook(bt, qt)
 	if err != nil {
-		conn.WriteMessage(1, []byte(err.Error()))
+		ws.GetPairSockets().SendErrorMessage(conn, err.Error())
+		return
 	}
 	trades, _ := s.tradeService.GetByPairAddress(bt, qt)
 	ob["trades"] = trades
 
-	if err := ws.GetPairSockets().PairSocketRegister(bt, qt, conn); err != nil {
+	if err := ws.GetPairSockets().Register(bt, qt, conn); err != nil {
 		message := map[string]string{
 			"Code":    "UNABLE_TO_REGISTER",
 			"Message": "UNABLE_TO_REGISTER: " + err.Error(),
 		}
-		conn.WriteJSON(message)
+		ws.GetPairSockets().SendErrorMessage(conn, message)
+		return
 	}
-	ws.RegisterConnectionUnsubscribeHandler(conn, ws.GetPairSockets().PairUnsubscribeHandler(bt, qt))
+	ws.RegisterConnectionUnsubscribeHandler(conn, ws.GetPairSockets().UnsubscribeHandler(bt, qt))
 
-	response := types.Message{
-		MsgType: "order_book",
-		Data:    ob,
-	}
-	conn.WriteJSON(response)
+	ws.GetPairSockets().SendBookMessage(conn, ob)
 }
 
 // UnRegisterForOrderBook is responsible for handling incoming orderbook unsubscription messages
 func (s *PairService) UnRegisterForOrderBook(conn *websocket.Conn, bt, qt string) {
-	ws.GetPairSockets().PairSocketUnregisterConnection(bt, qt, conn)
+	ws.GetPairSockets().UnregisterConnection(bt, qt, conn)
 }
