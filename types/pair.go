@@ -13,10 +13,10 @@ import (
 type Pair struct {
 	ID                bson.ObjectId `json:"id" bson:"_id"`
 	Name              string        `json:"name" bson:"name"`
-	BaseToken         bson.ObjectId `json:"baseToken" bson:"baseToken"`
+	BaseTokenID       bson.ObjectId `json:"baseTokenId" bson:"baseTokenId"`
 	BaseTokenSymbol   string        `json:"baseTokenSymbol" bson:"baseTokenSymbol"`
 	BaseTokenAddress  string        `json:"baseTokenAddress" bson:"baseTokenAddress"`
-	QuoteToken        bson.ObjectId `json:"quoteToken" bson:"quoteToken"`
+	QuoteTokenID      bson.ObjectId `json:"quoteTokenId" bson:"quoteTokenId"`
 	QuoteTokenAddress string        `json:"quoteTokenAddress" bson:"quoteTokenAddress"`
 	QuoteTokenSymbol  string        `json:"quoteTokenSymbol" bson:"quoteTokenSymbol"`
 

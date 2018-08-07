@@ -26,7 +26,7 @@ type orderEndpoint struct {
 func ServeOrderResource(rg *routing.RouteGroup, orderService *services.OrderService, e *engine.Resource) {
 	r := &orderEndpoint{orderService, e}
 	rg.Get("/orders/<addr>", r.get)
-	ws.RegisterChannel("order_channel", r.ws)
+	ws.RegisterChannel(ws.OrderChannel, r.ws)
 	e.SubscribeEngineResponse(r.engineResponse)
 }
 
@@ -42,7 +42,7 @@ func (r *orderEndpoint) get(c *routing.Context) error {
 	return c.Write(orders)
 }
 
-func (r *orderEndpoint) ws(input *interface{}, conn *websocket.Conn) {
+func (r *orderEndpoint) ws(input interface{}, conn *websocket.Conn) {
 
 	ch := make(chan *types.Message)
 	mab, _ := json.Marshal(input)
@@ -50,32 +50,28 @@ func (r *orderEndpoint) ws(input *interface{}, conn *websocket.Conn) {
 	if err := json.Unmarshal(mab, &msg); err != nil {
 		log.Println("unmarshal to wsmsg <==>" + err.Error())
 	}
-	messageType := 1
 	if msg.MsgType == "new_order" {
 		oab, err := json.Marshal(msg.Data)
 
 		var model types.OrderRequest
 		if err := json.Unmarshal(oab, &model); err != nil {
-			conn.WriteMessage(messageType, []byte(err.Error()))
+			ws.OrderSendErrorMessage(conn, model.ComputeHash(), err.Error())
 			return
 		}
 		if err := model.Validate(); err != nil {
-			conn.WriteMessage(messageType, []byte(err.Error()))
-
+			ws.OrderSendErrorMessage(conn, model.ComputeHash(), err.Error())
 			return
 		}
 		if ok, err := model.VerifySignature(); err != nil {
-			conn.WriteMessage(messageType, []byte(err.Error()))
+			ws.OrderSendErrorMessage(conn, model.ComputeHash(), err.Error())
 			return
 		} else if !ok {
-			conn.WriteMessage(messageType, []byte("Invalid Signature"))
+			ws.OrderSendErrorMessage(conn, model.ComputeHash(), "Invalid Signature")
 			return
 		}
 		order, err := model.ToOrder()
 		if err != nil {
-			conn.WriteMessage(messageType, []byte(err.Error()))
-			conn.Close()
-
+			ws.OrderSendErrorMessage(conn, model.ComputeHash(), err.Error())
 			return
 		}
 		ws.RegisterOrderConnection(order.Hash, &ws.OrderConn{Conn: conn, ReadChannel: ch})
@@ -83,19 +79,17 @@ func (r *orderEndpoint) ws(input *interface{}, conn *websocket.Conn) {
 
 		err = r.orderService.Create(order)
 		if err != nil {
-			conn.WriteMessage(messageType, []byte(err.Error()))
+			ws.OrderSendErrorMessage(conn, model.ComputeHash(), err.Error())
 			return
 		}
-		oab, _ = json.Marshal(order)
-		conn.WriteMessage(messageType, oab)
+		r.orderService.SendMessage("added_to_orderbook", order.Hash, order)
 
 	} else if msg.MsgType == "cancel_order" {
 		oab, err := json.Marshal(msg.Data)
 
 		var order *types.Order
 		if err := json.Unmarshal(oab, &order); err != nil {
-			conn.WriteMessage(messageType, []byte(err.Error()))
-
+			ws.OrderSendErrorMessage(conn, order.Hash, err.Error())
 			return
 		}
 
@@ -104,7 +98,7 @@ func (r *orderEndpoint) ws(input *interface{}, conn *websocket.Conn) {
 
 		err = r.cancelOrder(order)
 		if err != nil {
-			conn.WriteMessage(messageType, []byte(err.Error()))
+			ws.OrderSendErrorMessage(conn, order.Hash, err.Error())
 			return
 		}
 	} else {
@@ -133,16 +127,15 @@ func (r *orderEndpoint) engineResponse(engineResponse *engine.Response) error {
 					mb, err := json.Marshal(rm.Data)
 					if err != nil {
 						fmt.Printf("=== Error while marshaling EngineResponse===")
-
 						r.orderService.RecoverOrders(engineResponse)
-						ws.GetOrderConn(engineResponse.Order.Hash).WriteMessage(1, []byte(err.Error()))
+						ws.OrderSendErrorMessage(ws.GetOrderConn(engineResponse.Order.Hash), engineResponse.Order.Hash, err.Error())
 					}
 
 					var ersb *engine.Response
 					err = json.Unmarshal(mb, &ersb)
 					if err != nil {
 						fmt.Printf("=== Error while unmarshaling EngineResponse===")
-						ws.GetOrderConn(engineResponse.Order.Hash).WriteMessage(1, []byte(err.Error()))
+						ws.OrderSendErrorMessage(ws.GetOrderConn(engineResponse.Order.Hash), engineResponse.Order.Hash, err.Error())
 						r.orderService.RecoverOrders(engineResponse)
 					}
 

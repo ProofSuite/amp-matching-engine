@@ -163,7 +163,6 @@ func (s *OrderService) CancelOrder(order *types.Order) error {
 		return nil
 	}
 	return fmt.Errorf("Cannot cancel the order")
-
 }
 
 // UpdateUsingEngineResponse is responsible for updating order status of maker
@@ -210,36 +209,21 @@ func (s *OrderService) UpdateUsingEngineResponse(er *engine.Response) {
 func (s *OrderService) RelayUpdateOverSocket(er *engine.Response) {
 	if len(er.Trades) > 0 {
 		fmt.Println("Trade relay over socket")
-		message := &types.Message{
-			MsgType: "trades_added",
-			Data:    er.Trades,
-		}
-		ws.GetPairSockets().PairSocketWriteMessage(er.Order.BaseTokenAddress, er.Order.QuoteTokenAddress, message)
+		ws.GetPairSockets().WriteMessage(er.Order.BaseTokenAddress, er.Order.QuoteTokenAddress, "trades_added", er.Trades)
 	}
 	if er.RemainingOrder != nil {
 		fmt.Println("Order added Relay over socket")
-		message := &types.Message{
-			MsgType: "order_added",
-			Data:    er.RemainingOrder,
-		}
-		ws.GetPairSockets().PairSocketWriteMessage(er.Order.BaseTokenAddress, er.Order.QuoteTokenAddress, message)
+		ws.GetPairSockets().WriteMessage(er.Order.BaseTokenAddress, er.Order.QuoteTokenAddress, "order_added", er.RemainingOrder)
 	}
 	if er.FillStatus == engine.CANCELLED {
 		fmt.Println("Order cancelled Relay over socket")
-		message := &types.Message{
-			MsgType: "order_cancelled",
-			Data:    er.Order,
-		}
-		ws.GetPairSockets().PairSocketWriteMessage(er.Order.BaseTokenAddress, er.Order.QuoteTokenAddress, message)
+		ws.GetPairSockets().WriteMessage(er.Order.BaseTokenAddress, er.Order.QuoteTokenAddress, "order_cancelled", er.Order)
 	}
 }
 
 // SendMessage is responsible for sending message to socket linked to a particular order
 func (s *OrderService) SendMessage(msgType string, hash string, data interface{}) {
-	msg := &types.Message{MsgType: msgType}
-	msg.Hash = hash
-	msg.Data = data
-	ws.GetOrderConn(hash).WriteJSON(msg)
+	ws.OrderSendMessage(ws.GetOrderConn(hash), msgType, hash, data)
 }
 
 // this function is responsible for unlocking of maker's amount in balance document
