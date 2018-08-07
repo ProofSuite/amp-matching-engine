@@ -66,11 +66,11 @@ func CloseOrderReadChannel(hash string) error {
 }
 
 // OrderSendMessage is responsible for sending message on order channel
-func OrderSendMessage(conn *websocket.Conn, msgType string, hash string, msg interface{}) {
-	SendMessage(conn, OrderChannel, msgType, msg)
+func OrderSendMessage(conn *websocket.Conn, msgType string, msg interface{}, hash ...string) {
+	SendMessage(conn, OrderChannel, msgType, msg, hash...)
 }
 
 // OrderSendErrorMessage is responsible for sending error message on order channel
-func OrderSendErrorMessage(conn *websocket.Conn, hash string, msg interface{}) {
-	OrderSendMessage(conn, "Error", hash, msg)
+func OrderSendErrorMessage(conn *websocket.Conn, msg interface{}, hash ...string) {
+	OrderSendMessage(conn, "Error", msg, hash...)
 }

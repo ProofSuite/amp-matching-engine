@@ -223,7 +223,7 @@ func (s *OrderService) RelayUpdateOverSocket(er *engine.Response) {
 
 // SendMessage is responsible for sending message to socket linked to a particular order
 func (s *OrderService) SendMessage(msgType string, hash string, data interface{}) {
-	ws.OrderSendMessage(ws.GetOrderConn(hash), msgType, hash, data)
+	ws.OrderSendMessage(ws.GetOrderConn(hash), msgType, data, hash)
 }
 
 // this function is responsible for unlocking of maker's amount in balance document
