@@ -16,7 +16,7 @@ type addressEndpoint struct {
 func ServeAddressResource(rg *routing.RouteGroup, addressService *services.AddressService) {
 	r := &addressEndpoint{addressService}
 	rg.Post("/address", r.create)
-	rg.Post("/address/<addr>/nonce", r.getNonce)
+	rg.Get("/address/<addr>/nonce", r.getNonce)
 }
 
 func (r *addressEndpoint) create(c *routing.Context) error {

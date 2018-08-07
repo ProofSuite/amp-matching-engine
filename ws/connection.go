@@ -43,6 +43,19 @@ func ConnectionEndpoint(w http.ResponseWriter, r *http.Request) {
 	}
 	initConnection(conn)
 	go func() {
+		// Recover in case of any panic in websocket. So that the app doesn't crash ===
+		defer func() {
+			if r := recover(); r != nil {
+				var ok bool
+				err, ok = r.(error)
+				if !ok {
+					err = fmt.Errorf("Panic in websocket: %v", r)
+				}
+				log.Fatal(err)
+			}
+		}()
+		// ===
+
 		for {
 			messageType, p, err := conn.ReadMessage()
 			if err != nil {
@@ -56,6 +69,7 @@ func ConnectionEndpoint(w http.ResponseWriter, r *http.Request) {
 			if err := json.Unmarshal(p, &msg); err != nil {
 				log.Println("unmarshal to channelMessage <==>" + err.Error())
 				SendMessage(conn, msg.Channel, "Error", err.Error())
+				return
 			}
 			conn.SetCloseHandler(wsCloseHandler(conn))
 
@@ -126,14 +140,21 @@ func wsCloseHandler(conn *websocket.Conn) func(code int, text string) error {
 }
 
 // SendMessage constructs the message with proper structure to be sent over websocket
-func SendMessage(conn *websocket.Conn, channel string, msgType string, msg interface{}) {
+func SendMessage(conn *websocket.Conn, channel string, msgType string, msg interface{}, hash ...string) {
+	message := types.Message{
+		MsgType: msgType,
+		Data:    msg,
+	}
+
+	if len(hash) > 0 {
+		message.Hash = hash[0]
+	}
+
 	temp := channelMessage{
 		Channel: channel,
-		Message: types.Message{
-			MsgType: msgType,
-			Data:    msg,
-		},
+		Message: message,
 	}
+
 	err := conn.WriteJSON(temp)
 	if err != nil {
 		conn.Close()
