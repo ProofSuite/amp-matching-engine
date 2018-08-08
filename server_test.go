@@ -15,7 +15,7 @@ func TestApp(t *testing.T) {
 	if err := app.LoadConfig("./config"); err != nil {
 		panic(fmt.Errorf("Invalid application configuration: %s", err))
 	}
-	app.Config.DBName = "proofdex"
+	app.Config.DBName = "proofdextest"
 	// load error messages
 	if err := errors.LoadMessages(app.Config.ErrorFile); err != nil {
 		panic(fmt.Errorf("Failed to read the error message file: %s", err))
