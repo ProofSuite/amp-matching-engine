@@ -62,18 +62,18 @@ func (m *OrderRequest) ToOrder() (order *Order, err error) {
 		UserAddress: m.UserAddress,
 		BuyToken:    m.BuyToken,
 		SellToken:   m.SellToken,
-		AmountBuy:   int64(m.Amount * math.Pow10(8)),
-		AmountSell:  int64(m.Amount * m.Price * math.Pow10(8)),
+		BuyAmount:   int64(m.Amount * math.Pow10(8)),
+		SellAmount:  int64(m.Amount * m.Price * math.Pow10(8)),
 		Hash:        m.ComputeHash(),
 		Nonce:       m.Nonce,
 		// Signature:        signature,
 	}
 	if m.Side == string(SELL) {
-		order.BaseTokenAddress = order.SellToken
-		order.QuoteTokenAddress = order.BuyToken
+		order.BaseToken = order.SellToken
+		order.QuoteToken = order.BuyToken
 	} else {
-		order.BaseTokenAddress = order.BuyToken
-		order.QuoteTokenAddress = order.SellToken
+		order.BaseToken = order.BuyToken
+		order.QuoteToken = order.SellToken
 	}
 	return
 }

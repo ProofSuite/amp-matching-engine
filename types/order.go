@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/Proofsuite/amp-matching-engine/utils"
-	"github.com/ethereum/go-ethereum/crypto/sha3"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -114,33 +113,35 @@ func (orderType *OrderSide) MarshalJSON() ([]byte, error) {
 
 // Order contains the data related to an order sent by the user
 type Order struct {
-	ID                bson.ObjectId `json:"id" bson:"_id"`
-	BaseToken         string        `json:"baseToken" bson:"baseToken"`
-	QuoteToken        string        `json:"quoteToken" bson:"quoteToken"`
-	BuyToken          string        `json:"buyToken" bson:"buyToken"`
-	SellToken         string        `json:"sellToken" bson:"sellToken"`
-	BaseTokenAddress  string        `json:"baseTokenAddress" bson:"baseTokenAddress"`
-	QuoteTokenAddress string        `json:"quoteTokenAddress" bson:"quoteTokenAddress"`
-	FilledAmount      int64         `json:"filledAmount" bson:"filledAmount"`
-	Amount            int64         `json:"amount" bson:"amount"`
-	Price             int64         `json:"price" bson:"price"`
-	Fee               int64         `json:"fee" bson:"fee"`
-	MakeFee           int64         `json:"makeFee" bson:"makeFee"`
-	TakeFee           int64         `json:"takeFee" bson:"takeFee"`
-	Side              OrderSide     `json:"side" bson:"side"`
-	AmountBuy         int64         `json:"amountBuy" bson:"amountBuy"`
-	AmountSell        int64         `json:"amountSell" bson:"amountSell"`
-	Nonce             int64         `json:"nonce" bson:"nonce"`
-	ExchangeAddress   string        `json:"exchangeAddress" bson:"exchangeAddress"`
-	Status            OrderStatus   `json:"status" bson:"status"`
-	Signature         *Signature    `json:"signature,omitempty" bson:"signature"`
-	PairID            bson.ObjectId `json:"pairID" bson:"pairID"`
-	PairName          string        `json:"pairName" bson:"pairName"`
-	Hash              string        `json:"hash" bson:"hash"`
-	UserAddress       string        `json:"userAddress" bson:"userAddress"`
-	OrderBook         *OrderSubDoc  `json:"orderBook" bson:"orderBook"`
-	CreatedAt         time.Time     `json:"createdAt" bson:"createdAt"`
-	UpdatedAt         time.Time     `json:"updatedAt" bson:"updatedAt"`
+	ID          bson.ObjectId `json:"id" bson:"_id"`
+	BuyToken    string        `json:"buyToken" bson:"buyToken"`
+	SellToken   string        `json:"sellToken" bson:"sellToken"`
+	BaseToken   string        `json:"baseToken" bson:"baseToken"`
+	QuoteToken  string        `json:"quoteToken" bson:"quoteToken"`
+	BuyAmount   int64         `json:"buyAmount" bson:"buyAmount"`
+	SellAmount  int64         `json:"sellAmount" bson:"sellAmount"`
+	Nonce       int64         `json:"nonce" bson:"nonce"`
+	UserAddress string        `json:"userAddress" bson:"userAddress"`
+	Hash        string        `json:"hash" bson:"hash"`
+	Signature   *Signature    `json:"signature,omitempty" bson:"signature"`
+
+	Side         OrderSide    `json:"side" bson:"side"`
+	Amount       int64        `json:"amount" bson:"amount"`
+	Price        int64        `json:"price" bson:"price"`
+	FilledAmount int64        `json:"filledAmount" bson:"filledAmount"`
+	Status       OrderStatus  `json:"status" bson:"status"`
+	OrderBook    *OrderSubDoc `json:"orderBook" bson:"orderBook"`
+
+	Fee     int64 `json:"fee" bson:"fee"`
+	MakeFee int64 `json:"makeFee" bson:"makeFee"`
+	TakeFee int64 `json:"takeFee" bson:"takeFee"`
+
+	PairID          bson.ObjectId `json:"pairID" bson:"pairID"`
+	PairName        string        `json:"pairName" bson:"pairName"`
+	ExchangeAddress string        `json:"exchangeAddress" bson:"exchangeAddress"`
+
+	CreatedAt time.Time `json:"createdAt" bson:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt" bson:"updatedAt"`
 }
 
 // OrderSubDoc is a sub document, it is used to store the order in order book
@@ -152,24 +153,24 @@ type OrderSubDoc struct {
 }
 
 // ComputeHash calculates the order hash
-func (o *Order) ComputeHash() (ch string) {
-	sha := sha3.NewKeccak256()
-	// sha.Write(o.ExchangeAddress.Bytes())
-	sha.Write([]byte(o.BaseToken))
-	sha.Write([]byte(o.QuoteToken))
-	// sha.Write(strconv.ParseUint(o.Price))
-	// sha.Write(BigToHash(o.Amount).Bytes())
-	// sha.Write(BigToHash(o.Expires).Bytes())
-	// sha.Write(BigToHash(o.Nonce).Bytes())
-	// sha.Write(o.Maker.Bytes())
-	// return BytesToHash(sha.Sum(nil))
-	return
-}
+// func (o *Order) ComputeHash() (ch string) {
+// 	sha := sha3.NewKeccak256()
+// sha.Write(o.ExchangeAddress.Bytes())
+// sha.Write([]byte(o.BaseToken))
+// sha.Write([]byte(o.QuoteToken))
+// sha.Write(strconv.ParseUint(o.Price))
+// sha.Write(BigToHash(o.Amount).Bytes())
+// sha.Write(BigToHash(o.Expires).Bytes())
+// sha.Write(BigToHash(o.Nonce).Bytes())
+// sha.Write(o.Maker.Bytes())
+// return BytesToHash(sha.Sum(nil))
+// 	return
+// }
 
 // GetKVPrefix returns the key value store(redis) prefix to be used
 // by matching engine correspondind to a particular order.
 func (o *Order) GetKVPrefix() string {
-	return o.BaseTokenAddress + "::" + o.QuoteTokenAddress
+	return o.BaseToken + "::" + o.QuoteToken
 }
 
 // GetOBKeys returns the keys corresponding to an order

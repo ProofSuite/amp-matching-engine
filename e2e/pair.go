@@ -24,8 +24,8 @@ func testPair(t *testing.T, tokens []types.Token) []types.Pair {
 		QuoteTokenAddress: tokens[0].ContractAddress,
 		QuoteTokenSymbol:  tokens[0].Symbol,
 		Active:            true,
-		MakerFee:          0,
-		TakerFee:          0,
+		MakeFee:           0,
+		TakeFee:           0,
 	}
 
 	// create pair test
@@ -106,8 +106,8 @@ func comparePair(t *testing.T, actual, expected types.Pair, msgs ...string) bool
 	response = response && assert.Equalf(t, actual.QuoteTokenSymbol, expected.QuoteTokenSymbol, fmt.Sprintf("Pair QuoteTokenSymbol doesn't match. Expected: %v , Got: %v", expected.QuoteTokenSymbol, actual.QuoteTokenSymbol))
 
 	response = response && assert.Equalf(t, actual.Active, expected.Active, fmt.Sprintf("Pair Active doesn't match. Expected: %v , Got: %v", expected.Active, actual.Active))
-	response = response && assert.Equalf(t, actual.MakerFee, expected.MakerFee, fmt.Sprintf("Pair MakerFee doesn't match. Expected: %v , Got: %v", expected.MakerFee, actual.MakerFee))
-	response = response && assert.Equalf(t, actual.TakerFee, expected.TakerFee, fmt.Sprintf("Pair TakerFee doesn't match. Expected: %v , Got: %v", expected.TakerFee, actual.TakerFee))
+	response = response && assert.Equalf(t, actual.MakeFee, expected.MakeFee, fmt.Sprintf("Pair MakerFee doesn't match. Expected: %v , Got: %v", expected.MakeFee, actual.MakeFee))
+	response = response && assert.Equalf(t, actual.TakeFee, expected.TakeFee, fmt.Sprintf("Pair TakerFee doesn't match. Expected: %v , Got: %v", expected.TakeFee, actual.TakeFee))
 
 	return response
 }
