@@ -16,7 +16,6 @@ import (
 // OrderRequest is the struct in which the order request sent by the
 // user is populated
 type OrderRequest struct {
-	Side        string  `json:"side" bson:"side"`
 	Amount      float64 `json:"amount"`
 	Price       float64 `json:"price"`
 	Fee         float64 `json:"fee"`
@@ -32,7 +31,6 @@ type OrderRequest struct {
 // Validate validates the OrderRequest fields.
 func (m OrderRequest) Validate() error {
 	return validation.ValidateStruct(&m,
-		validation.Field(&m.Side, validation.Required),
 		validation.Field(&m.Amount, validation.Required),
 		validation.Field(&m.Price, validation.Required),
 		validation.Field(&m.UserAddress, validation.Required),
@@ -55,7 +53,6 @@ func (m *OrderRequest) ToOrder() (order *Order, err error) {
 	// }
 
 	order = &Order{
-		Side:        OrderSide(m.Side),
 		Amount:      int64(m.Amount * math.Pow10(8)),
 		Price:       int64(m.Price * math.Pow10(8)),
 		Fee:         int64(m.Amount * m.Price * (app.Config.TakeFee / 100) * math.Pow10(8)), // amt*price + amt*price*takeFee/100
@@ -68,13 +65,6 @@ func (m *OrderRequest) ToOrder() (order *Order, err error) {
 		Nonce:       m.Nonce,
 		// Signature:        signature,
 	}
-	if m.Side == string(SELL) {
-		order.BaseToken = order.SellToken
-		order.QuoteToken = order.BuyToken
-	} else {
-		order.BaseToken = order.BuyToken
-		order.QuoteToken = order.SellToken
-	}
 	return
 }
 
@@ -83,7 +73,6 @@ func (m *OrderRequest) ComputeHash() (ch string) {
 	sha := sha3.NewKeccak256()
 	sha.Write([]byte(fmt.Sprintf("%f", m.Price)))
 	sha.Write([]byte(fmt.Sprintf("%f", m.Amount)))
-	sha.Write([]byte(fmt.Sprintf("%s", m.Side)))
 	sha.Write([]byte(m.BuyToken))
 	sha.Write([]byte(m.SellToken))
 	sha.Write([]byte(m.UserAddress))

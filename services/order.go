@@ -42,18 +42,24 @@ func (s *OrderService) Create(order *types.Order) (err error) {
 	// Fill token and pair data
 	fmt.Printf("\n %v === %v\n", order.BaseToken, order.QuoteToken)
 
-	p, err := s.pairDao.GetByTokenAddress(order.BaseToken, order.QuoteToken)
+	p, err := s.pairDao.GetByBuySellTokenAddress(order.BaseToken, order.QuoteToken)
 	if err != nil {
 		return err
 	} else if p == nil {
 		return errors.New("Pair not found")
 	}
+
+	if order.SellToken == p.QuoteTokenAddress {
+		order.Side = types.BUY
+	} else {
+		order.Side = types.SELL
+	}
+
+	order.BaseToken = p.BaseTokenAddress
+	order.QuoteToken = p.QuoteTokenAddress
+
 	order.PairID = p.ID
 	order.PairName = p.Name
-	// order.BaseTokenSymbol = p.BaseTokenSymbol
-	order.BaseToken = p.BaseTokenAddress
-	// order.QuoteTokenSymbol = p.QuoteTokenSymbol
-	order.QuoteToken = p.QuoteTokenAddress
 
 	// Validate if order is valid
 
