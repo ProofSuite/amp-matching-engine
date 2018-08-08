@@ -16,8 +16,8 @@ import (
 // OrderRequest is the struct in which the order request sent by the
 // user is populated
 type OrderRequest struct {
-	Amount      float64 `json:"amount"`
-	Price       float64 `json:"price"`
+	BuyAmount   float64 `json:"buyAmount"`
+	SellAmount  float64 `json:"sellAmount"`
 	Fee         float64 `json:"fee"`
 	Signature   string  `json:"signature"`
 	BuyToken    string  `json:"buyToken"`
@@ -31,8 +31,8 @@ type OrderRequest struct {
 // Validate validates the OrderRequest fields.
 func (m OrderRequest) Validate() error {
 	return validation.ValidateStruct(&m,
-		validation.Field(&m.Amount, validation.Required),
-		validation.Field(&m.Price, validation.Required),
+		validation.Field(&m.BuyAmount, validation.Required),
+		validation.Field(&m.SellAmount, validation.Required),
 		validation.Field(&m.UserAddress, validation.Required),
 		validation.Field(&m.BuyToken, validation.Required, validation.NewStringRule(common.IsHexAddress, "Invalid Buy Token Address")),
 		validation.Field(&m.SellToken, validation.Required, validation.NewStringRule(common.IsHexAddress, "Invalid Sell Token Address")),
@@ -53,14 +53,12 @@ func (m *OrderRequest) ToOrder() (order *Order, err error) {
 	// }
 
 	order = &Order{
-		Amount:      int64(m.Amount * math.Pow10(8)),
-		Price:       int64(m.Price * math.Pow10(8)),
-		Fee:         int64(m.Amount * m.Price * (app.Config.TakeFee / 100) * math.Pow10(8)), // amt*price + amt*price*takeFee/100
+		Fee:         int64(m.BuyAmount * m.SellAmount * (app.Config.TakeFee / 100) * math.Pow10(8)), // amt*price + amt*price*takeFee/100
 		UserAddress: m.UserAddress,
 		BuyToken:    m.BuyToken,
 		SellToken:   m.SellToken,
-		BuyAmount:   int64(m.Amount * math.Pow10(8)),
-		SellAmount:  int64(m.Amount * m.Price * math.Pow10(8)),
+		BuyAmount:   int64(m.BuyAmount * math.Pow10(8)),
+		SellAmount:  int64(m.SellAmount * math.Pow10(8)),
 		Hash:        m.ComputeHash(),
 		Nonce:       m.Nonce,
 		// Signature:        signature,
@@ -71,8 +69,8 @@ func (m *OrderRequest) ToOrder() (order *Order, err error) {
 // ComputeHash calculates the orderRequest hash
 func (m *OrderRequest) ComputeHash() (ch string) {
 	sha := sha3.NewKeccak256()
-	sha.Write([]byte(fmt.Sprintf("%f", m.Price)))
-	sha.Write([]byte(fmt.Sprintf("%f", m.Amount)))
+	sha.Write([]byte(fmt.Sprintf("%f", m.SellAmount)))
+	sha.Write([]byte(fmt.Sprintf("%f", m.BuyAmount)))
 	sha.Write([]byte(m.BuyToken))
 	sha.Write([]byte(m.SellToken))
 	sha.Write([]byte(m.UserAddress))
