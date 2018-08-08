@@ -13,7 +13,7 @@ message is send in order to provide
 	"channel": "order_channel",
 	"message": 
 	{
-		"msgType": "new_order",
+		"msgType": "NEW_ORDER",
 		"data": {
 			"userAddress": "0xefD7eB287CeeFCE8256Dd46e25F398acEA7C4b63",
 			"amount": 50,
@@ -31,7 +31,7 @@ If order added to orderbook:
 
 ```
 {
-  "msgType": "added_to_orderbook",
+  "msgType": "ORDER_ADDED",
   "orderId": "5b50d0ac7b44578e7e436815",
   "data": {
     "Order": {
@@ -91,7 +91,7 @@ If order filled/partially filled, Then we need to send a new message with payloa
 
 ```
 {
-  "msgType": "trade_remaining_order_sign",
+  "msgType": "REQUEST_SIGNATURE",
   "orderId": "5b50d0ff7b44578e7e436816",
   "data": {
     "Order": {
@@ -215,7 +215,7 @@ Payload:
 	"channel": "order_channel",
 	"message": 
 	{
-  "msgType": "trade_remaining_order_sign",
+  "msgType": "REQUEST_SIGNATURE",
   "orderId": "5b50d0ff7b44578e7e436816",
   "data": {
     "Order": {
@@ -328,7 +328,7 @@ Payload:
 	"channel": "order_channel",
 	"message": 
 	{
-		"msgType": "cancel_order",
+		"msgType": "CANCEL_ORDER",
 		"data": {
 		  "id":"5b46eb9f7b445747d1673b21",
       "hash":"",
@@ -463,7 +463,7 @@ ORDER_PLACED (engine -> client)
 Payload:
 ```
 {
-  "msgType": "order_added",
+  "msgType": "ORDER_ADDED",
   "orderId": "",
   "data": {
     "id": "5b523800dbd89c85aee3dcaf",

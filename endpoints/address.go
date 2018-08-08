@@ -22,7 +22,9 @@ func ServeAddressResource(rg *routing.RouteGroup, addressService *services.Addre
 func (r *addressEndpoint) create(c *routing.Context) error {
 	var model types.UserAddress
 	if err := c.Read(&model); err != nil {
-		return err
+		return errors.NewAPIError(400, "INVALID_DATA", map[string]interface{}{
+			"details": err.Error(),
+		})
 	}
 	if err := model.Validate(); err != nil {
 		return err

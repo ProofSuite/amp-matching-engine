@@ -13,7 +13,7 @@ import (
 
 const TradeChannel = "trades"
 const OrderbookChannel = "order_book"
-const OrderChannel = "order_channel"
+const OrderChannel = "orders"
 
 // gorilla websocket upgrader instance with configuration
 var upgrader = websocket.Upgrader{
@@ -68,7 +68,7 @@ func ConnectionEndpoint(w http.ResponseWriter, r *http.Request) {
 			var msg *channelMessage
 			if err := json.Unmarshal(p, &msg); err != nil {
 				log.Println("unmarshal to channelMessage <==>" + err.Error())
-				SendMessage(conn, msg.Channel, "Error", err.Error())
+				SendMessage(conn, msg.Channel, "ERROR", err.Error())
 				return
 			}
 			conn.SetCloseHandler(wsCloseHandler(conn))
@@ -76,7 +76,7 @@ func ConnectionEndpoint(w http.ResponseWriter, r *http.Request) {
 			if socketChannels[msg.Channel] != nil {
 				go socketChannels[msg.Channel](msg.Message, conn)
 			} else {
-				SendMessage(conn, msg.Channel, "Error", "INVALID_CHANNEL")
+				SendMessage(conn, msg.Channel, "ERROR", "INVALID_CHANNEL")
 			}
 		}
 	}()

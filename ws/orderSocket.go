@@ -72,5 +72,5 @@ func OrderSendMessage(conn *websocket.Conn, msgType string, msg interface{}, has
 
 // OrderSendErrorMessage is responsible for sending error message on order channel
 func OrderSendErrorMessage(conn *websocket.Conn, msg interface{}, hash ...string) {
-	OrderSendMessage(conn, "Error", msg, hash...)
+	OrderSendMessage(conn, "ERROR", msg, hash...)
 }

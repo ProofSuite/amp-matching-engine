@@ -58,15 +58,15 @@ func TradeSendMessage(conn *websocket.Conn, msgType string, msg interface{}) {
 
 // TradeSendErrorMessage is responsible for sending error messages on trade channel
 func TradeSendErrorMessage(conn *websocket.Conn, msg interface{}) {
-	TradeSendMessage(conn, "Error", msg)
+	TradeSendMessage(conn, "ERROR", msg)
 }
 
 // TradeSendTicksMessage is responsible for sending message on trade ohlcv channel at subscription
 func TradeSendTicksMessage(conn *websocket.Conn, msg interface{}) {
-	SendMessage(conn, TradeChannel, "trade_ticks", msg)
+	SendMessage(conn, TradeChannel, "INIT", msg)
 }
 
 // TradeSendTickMessage is responsible for sending message on trade ohlcv channel at subscription
 func TradeSendTickMessage(conn *websocket.Conn, msg interface{}) {
-	SendMessage(conn, TradeChannel, "trade_tick", msg)
+	SendMessage(conn, TradeChannel, "UPDATE", msg)
 }

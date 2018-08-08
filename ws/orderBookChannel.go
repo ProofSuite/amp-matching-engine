@@ -80,10 +80,10 @@ func (ps *PairSockets) SendMessage(conn *websocket.Conn, msgType string, msg int
 
 // SendErrorMessage is responsible for sending error messages on orderbook channel
 func (ps *PairSockets) SendErrorMessage(conn *websocket.Conn, msg interface{}) {
-	ps.SendMessage(conn, "Error", msg)
+	ps.SendMessage(conn, "ERROR", msg)
 }
 
 // SendBookMessage is responsible for sending complete order book on subscription request
 func (ps *PairSockets) SendBookMessage(conn *websocket.Conn, msg interface{}) {
-	ps.SendMessage(conn, "order_book", msg)
+	ps.SendMessage(conn, "INIT", msg)
 }

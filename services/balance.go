@@ -28,11 +28,12 @@ func (s *BalanceService) Create(balance *types.Balance) error {
 		return err
 	}
 	for _, token := range tokens {
-		tb[token.Symbol] = types.TokenBalance{
+		tb[token.ContractAddress] = types.TokenBalance{
 			Amount:       int64(10000 * math.Pow10(8)),
 			LockedAmount: 0,
 			TokenID:      token.ID,
 			TokenAddress: token.ContractAddress,
+			TokenSymbol:  token.Symbol,
 		}
 	}
 	balance.Tokens = tb

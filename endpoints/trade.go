@@ -30,10 +30,6 @@ func ServeTradeResource(rg *routing.RouteGroup, tradeService *services.TradeServ
 
 // history is reponsible for handling pair's trade history requests
 func (r *tradeEndpoint) history(c *routing.Context) error {
-	pair := c.Param("pair")
-	if pair == "" {
-		return errors.NewAPIError(400, "INVALID_PAIR_NAME", nil)
-	}
 	baseToken := c.Param("bt")
 	if !common.IsHexAddress(baseToken) {
 		return errors.NewAPIError(400, "INVALID_HEX_ADDRESS", nil)
