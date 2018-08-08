@@ -51,8 +51,12 @@ func (s *OrderService) Create(order *types.Order) (err error) {
 
 	if order.SellToken == p.QuoteTokenAddress {
 		order.Side = types.BUY
+		order.Amount = order.BuyAmount
+		order.Price = int64((float64(order.SellAmount) / float64(order.BuyAmount)) * math.Pow10(8))
 	} else {
 		order.Side = types.SELL
+		order.Amount = order.SellAmount
+		order.Price = int64((float64(order.BuyAmount) / float64(order.SellAmount)) * math.Pow10(8))
 	}
 
 	order.BaseToken = p.BaseTokenAddress
