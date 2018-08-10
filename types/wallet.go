@@ -7,10 +7,12 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
+	"gopkg.in/mgo.v2/bson"
 )
 
 // Wallet holds both the address and the private key of an ethereum account
 type Wallet struct {
+	ID         bson.ObjectId
 	Address    common.Address
 	PrivateKey *ecdsa.PrivateKey
 }
@@ -48,6 +50,72 @@ func (w *Wallet) GetAddress() string {
 // GetPrivateKey returns the wallet private key
 func (w *Wallet) GetPrivateKey() string {
 	return hex.EncodeToString(w.PrivateKey.D.Bytes())
+}
+
+func (w *Wallet) Validate() error {
+	return nil
+}
+
+func (w *Wallet) GetBSON() interface{} {
+	return struct {
+		Address    string `json:"address" bson: "address"`
+		PrivateKey string `json:"privateKey" bson: "privateKey"`
+	}{
+		Address:    w.Address.Hex(),
+		PrivateKey: hex.EncodeToString(w.PrivateKey.D.Bytes()),
+	}
+}
+
+func (w *Wallet) SetBSON(raw bson.Raw) error {
+	decoded := new(struct {
+		Address    string `json:"address" bson:"address"`
+		PrivateKey string `json:"privateKey" bson:"privateKey"`
+	})
+
+	err := raw.Unmarshal(decoded)
+	if err != nil {
+		return err
+	}
+
+	w.Address = common.HexToAddress(decoded.Address)
+	w.PrivateKey, _ = crypto.HexToECDSA(decoded.PrivateKey)
+	return nil
+}
+
+// SignHash signs a hashed message with a wallet private key
+// and returns it as a Signature object
+func (w *Wallet) SignHash(h common.Hash) (*Signature, error) {
+	message := crypto.Keccak256(
+		[]byte("\x19Ethereum Signed Message:\n32"),
+		h.Bytes(),
+	)
+
+	sigBytes, err := crypto.Sign(message, w.PrivateKey)
+	if err != nil {
+		return &Signature{}, err
+	}
+
+	sig := &Signature{
+		R: common.BytesToHash(sigBytes[0:32]),
+		S: common.BytesToHash(sigBytes[32:64]),
+		V: sigBytes[64] + 27,
+	}
+
+	return sig, nil
+}
+
+// SignTrade signs and sets the signature of a trade with a wallet private key
+func (w *Wallet) SignTrade(t *Trade) error {
+	hash := t.ComputeHash()
+	t.Hash = hash.Hex()
+
+	sig, err := w.SignHash(hash)
+	if err != nil {
+		return err
+	}
+
+	t.Signature = sig
+	return nil
 }
 
 // NewOrder (DEPRECATED - use the order factory instead) creates a new
@@ -117,39 +185,3 @@ func (w *Wallet) GetPrivateKey() string {
 // 	trade.Signature = sig
 // 	return trade, nil
 // }
-
-// SignHash signs a hashed message with a wallet private key
-// and returns it as a Signature object
-func (w *Wallet) SignHash(h common.Hash) (*Signature, error) {
-	message := crypto.Keccak256(
-		[]byte("\x19Ethereum Signed Message:\n32"),
-		h.Bytes(),
-	)
-
-	sigBytes, err := crypto.Sign(message, w.PrivateKey)
-	if err != nil {
-		return &Signature{}, err
-	}
-
-	sig := &Signature{
-		R: common.BytesToHash(sigBytes[0:32]),
-		S: common.BytesToHash(sigBytes[32:64]),
-		V: sigBytes[64] + 27,
-	}
-
-	return sig, nil
-}
-
-// SignTrade signs and sets the signature of a trade with a wallet private key
-func (w *Wallet) SignTrade(t *Trade) error {
-	hash := t.ComputeHash()
-	t.Hash = hash.Hex()
-
-	sig, err := w.SignHash(hash)
-	if err != nil {
-		return err
-	}
-
-	t.Signature = sig
-	return nil
-}

@@ -40,7 +40,7 @@ func (dao *TradeDao) Create(trades ...*types.Trade) (err error) {
 
 func (dao *TradeDao) Update(trade *types.Trade) (err error) {
 	trade.UpdatedAt = time.Now()
-	err = db.Update(dao.dbName, dao.collectionName, bson.M{"_id": trade.id}, trade)
+	err = db.Update(dao.dbName, dao.collectionName, bson.M{"_id": trade.ID}, trade)
 	if err != nil {
 		return err
 	}
