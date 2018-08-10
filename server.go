@@ -6,8 +6,9 @@ import (
 
 	"github.com/Proofsuite/amp-matching-engine/crons"
 	"github.com/Proofsuite/amp-matching-engine/endpoints"
+	"github.com/Proofsuite/amp-matching-engine/ethereum"
 	"github.com/Proofsuite/amp-matching-engine/rabbitmq"
-	"github.com/Proofsuite/amp-matching-engine/redisclient"
+	"github.com/Proofsuite/amp-matching-engine/redis"
 	"github.com/Proofsuite/amp-matching-engine/services"
 	"github.com/Proofsuite/amp-matching-engine/ws"
 
@@ -40,7 +41,7 @@ func main() {
 	// connect to the database
 	if _, err := daos.InitSession(); err != nil {
 		panic(err)
-	p
+	}
 	http.Handle("/", buildRouter(logger))
 	http.HandleFunc("/socket", ws.ConnectionEndpoint)
 
@@ -83,9 +84,9 @@ func buildRouter(logger *logrus.Logger) *routing.Router {
 	balanceDao := daos.NewBalanceDao()
 	addressDao := daos.NewAddressDao()
 	tradesDao := daos.NewTradeDao()
-	walletDao := daos.NewWalletDao()
+	// walletDao := daos.NewWalletDao()
 
-	redisClient := redisclient.InitConnection(app.Config.Redis)
+	redisClient := redis.InitConnection(app.Config.Redis)
 
 	// instantiate engine
 	e, err := engine.InitEngine(orderDao, redisClient)
@@ -100,15 +101,8 @@ func buildRouter(logger *logrus.Logger) *routing.Router {
 	balanceService := services.NewBalanceService(balanceDao, tokenDao)
 	orderService := services.NewOrderService(orderDao, balanceDao, pairDao, tradesDao, addressDao, e)
 	addressService := services.NewAddressService(addressDao, balanceDao, tokenDao)
-	walletService := services.NewWalletService(walletDao, balanceDao)
+	// walletService := services.NewWalletService(walletDao, balanceDao)
 	cronService := crons.NewCronService(tradeService)
-
-	exchangeContract = contracts.NewExchange()
-
-	exchangeContract = contracts.NewExchange(walletService, app.Config.ExchangeContractAddress, ethereumClient)
-
-
-
 
 	endpoints.ServeTokenResource(rg, tokenService)
 	endpoints.ServePairResource(rg, pairService)
@@ -116,11 +110,6 @@ func buildRouter(logger *logrus.Logger) *routing.Router {
 	endpoints.ServeOrderResource(rg, orderService, e)
 	endpoints.ServeTradeResource(rg, tradeService)
 	endpoints.ServeAddressResource(rg, addressService)
-
-
-
-
-
 
 	cronService.InitCrons()
 	return router

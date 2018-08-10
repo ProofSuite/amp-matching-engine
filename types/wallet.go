@@ -15,6 +15,7 @@ type Wallet struct {
 	ID         bson.ObjectId
 	Address    common.Address
 	PrivateKey *ecdsa.PrivateKey
+	Admin      bool
 }
 
 // NewWallet returns a new wallet object corresponding to a random private key
@@ -58,8 +59,8 @@ func (w *Wallet) Validate() error {
 
 func (w *Wallet) GetBSON() interface{} {
 	return struct {
-		Address    string `json:"address" bson: "address"`
-		PrivateKey string `json:"privateKey" bson: "privateKey"`
+		Address    string `json:"address" bson:"address"`
+		PrivateKey string `json:"privateKey" bson:"privateKey"`
 	}{
 		Address:    w.Address.Hex(),
 		PrivateKey: hex.EncodeToString(w.PrivateKey.D.Bytes()),
@@ -107,14 +108,14 @@ func (w *Wallet) SignHash(h common.Hash) (*Signature, error) {
 // SignTrade signs and sets the signature of a trade with a wallet private key
 func (w *Wallet) SignTrade(t *Trade) error {
 	hash := t.ComputeHash()
-	t.Hash = hash.Hex()
+	t.Hash = hash
 
-	sig, err := w.SignHash(hash)
-	if err != nil {
-		return err
-	}
+	// sig, err := w.SignHash(hash)
+	// if err != nil {
+	// 	return err
+	// }
 
-	t.Signature = sig
+	// t.Signature = sig
 	return nil
 }
 

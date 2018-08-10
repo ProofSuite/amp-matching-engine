@@ -1,51 +1,45 @@
-package ethereum
+package operator
 
 import (
 	"encoding/json"
-	"context"
 	"errors"
 	"log"
-	"math/big"
 
-	"github.com/Proofsuite/amp-matching-engine/dex/interfaces"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	. "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/Proofsuite/amp-matching-engine/contracts"
+	"github.com/Proofsuite/amp-matching-engine/rabbitmq"
+	"github.com/Proofsuite/amp-matching-engine/services"
+	"github.com/Proofsuite/amp-matching-engine/types"
+	"github.com/ethereum/go-ethereum/common"
+	eth "github.com/ethereum/go-ethereum/core/types"
+	"github.com/streadway/amqp"
 )
 
 // Operator manages the transaction queue that will eventually be
 // sent to the exchange contract. The Operator Wallet must be equal to the
 // account that initially deployed the exchange contract or an address with operator rights
 // on the contract
-// - Admin is the wallet that sends the transactions to the exchange smart-contract
-// - EthereumClient contains
-// - Params contains the
-// - Chain seems to be deprecated
-// - TxLogs seems to be deprecated
-// - ErrorChannel, TradeChannel and CancelOrderChannel listen and pipes smart-contract to the engine handler goroutine
-// - ErrorLogs, TradeLogs and CancelOrderLogs listen on the
-// - OrderTradePairs contains a mapping of the current trade hashes that have been sent to the contract.
-// - ErrorLogs, TradeLogs and CancelOrderLogs don't seem to be used as of now
 type Operator struct {
-	WalletService *services.walletService,
-	TxService *services.txService,
-	TradeServoce *services.tradeService
-	Exchange *contracts.Exchange,
+	WalletService   *services.WalletService
+	TxService       *services.TxService
+	TradeService    *services.TradeService
+	EthereumService *services.EthereumService
+	Exchange        *contracts.Exchange
 }
 
 type OperatorMessage struct {
-	MessageType string,
-	Order *types.Order,
-	Trade *types.Trade
-	ErrID int
+	MessageType string
+	Order       *types.Order
+	Trade       *types.Trade
+	ErrID       int
 }
 
 type PendingTradeMessage struct {
-	Order *types.Order,
+	Order *types.Order
 	Trade *types.Trade
 }
+
+var channels = make(map[string]*amqp.Channel)
+var queues = make(map[string]*amqp.Queue)
 
 // NewOperator creates a new operator struct. It creates an exchange contract instance from the
 // provided address. The error and trade events are received in the ErrorChannel and TradeChannel.
@@ -55,24 +49,26 @@ type PendingTradeMessage struct {
 func InitOperator(
 	walletService *services.WalletService,
 	txService *services.TxService,
-	tradeService *services.TradeService
+	tradeService *services.TradeService,
+	ethereumService *services.EthereumService,
 	exchange *contracts.Exchange,
-) {
-	op := &Operator {
-		WalletService: walletService,
-		TxService: txService,
-		TradeService: tradeService,
-		Exchange: *contracts
+) (*Operator, error) {
+	op := &Operator{
+		WalletService:   walletService,
+		TxService:       txService,
+		TradeService:    tradeService,
+		EthereumService: ethereumService,
+		Exchange:        exchange,
 	}
 
 	tradeEvents, err := exchange.ListenToTrades()
 	if err != nil {
-		return
+		return nil, err
 	}
 
 	errorEvents, err := exchange.ListenToErrors()
 	if err != nil {
-		return
+		return nil, err
 	}
 
 	err = op.Validate()
@@ -90,23 +86,26 @@ func InitOperator(
 			select {
 			case event := <-errorEvents:
 				tradeHash := event.TradeHash
-					tr, ok := pendingTradeService.getTrade(tradeHash)
-					if !ok {
-						log.Printf("Could not retrieve hash")
-						return
-					}
+				errID := int(event.ErrorId)
+				//TODO add this function in the trade service
+				tr, ok := op.TradeService.getTradeByHash(tradeHash)
+				if !ok {
+					log.Printf("Could not retrieve hash")
+					return
+				}
 
-					err := PublishTxErrorMessage(tr, errID)
-					if err != nil {
-						log.Printf("Could not publish tx error message")
-					}
+				err := op.PublishTxErrorMessage(tr, errID)
+				if err != nil {
+					log.Printf("Could not publish tx error message")
+				}
 
-					err := PublishCancelTradeMessage(tr)
-					if err != nil {
-						log.Printf("Could not publish cancel trade message")
-					}
+				err = op.PublishTradeCancelMessage(tr)
+				if err != nil {
+					log.Printf("Could not publish cancel trade message")
+				}
 
 			case event := <-tradeEvents:
+				//TODO add this function in the trade service
 				tr, ok := tradeService.getTradeByHash(event.TradeHash)
 				if !ok {
 					log.Printf("Could not retrieve initial hash")
@@ -120,7 +119,7 @@ func InitOperator(
 						log.Printf("Could not execute trade: %v\n", err)
 					}
 
-					err := op.PublishTradeSuccessMessage(tr)
+					err = op.PublishTradeSuccessMessage(tr)
 					if err != nil {
 						log.Printf("Could not publish order success message")
 					}
@@ -128,25 +127,20 @@ func InitOperator(
 					ch := getChannel("PENDING_TRADES")
 					q := getQueue(ch, "PENDING_TRADES")
 
-					length := ch.QueueInspect.Messages
+					length := q.Messages
 					if length > 0 {
-						msg, err := ch.Get(
+						msg, _, _ := ch.Get(
 							q.Name,
-							"",
 							true,
-							false,
-							false,
-							false,
-							nil
 						)
 
 						var pendingTrade PendingTradeMessage
-						err := json.Unmarshal(msg.Body, &pendingTrade)
+						err = json.Unmarshal(msg.Body, &pendingTrade)
 						if err != nil {
 							log.Printf("Could not executed trade: %v\n", err)
 						}
 
-						_, err := op.ExecuteTrade(pendingTrade.Order, pendingTrade.Trade)
+						_, err = op.ExecuteTrade(pendingTrade.Order, pendingTrade.Trade)
 						if err != nil {
 							log.Printf("Could not execute trade: %v", err)
 						}
@@ -161,7 +155,7 @@ func InitOperator(
 
 func (op *Operator) SubscribeOperatorMessages(fn func(*OperatorMessage) error) error {
 	ch := getChannel("OPERATOR_SUB")
-	q := getQueue("TX_MESSAGES")
+	q := getQueue(ch, "TX_MESSAGES")
 
 	go func() {
 		msgs, err := ch.Consume(
@@ -171,21 +165,21 @@ func (op *Operator) SubscribeOperatorMessages(fn func(*OperatorMessage) error) e
 			false,
 			false,
 			false,
-			nil
+			nil,
 		)
 
 		if err != nil {
-			log.Fataf("Failed to register a consumer: %s", err)
+			log.Fatalf("Failed to register a consumer: %s", err)
 		}
 
 		forever := make(chan bool)
 
 		go func() {
-			for m := msgs {
+			for m := range msgs {
 				var om *OperatorMessage
 				err := json.Unmarshal(m.Body, &om)
 				if err != nil {
-					return err
+					log.Printf("Error: %v", err)
 					continue
 				}
 				go fn(om)
@@ -197,11 +191,11 @@ func (op *Operator) SubscribeOperatorMessages(fn func(*OperatorMessage) error) e
 	return nil
 }
 
-func (op *Operator) PublishTxErrorMessage(tr, errID) error {
+func (op *Operator) PublishTxErrorMessage(tr *types.Trade, errID int) error {
 	msg := &OperatorMessage{
-		MessageType: "TX_ERROR_MESSAGE"
-		Trade: tr,
-		ErrID: errID
+		MessageType: "TX_ERROR_MESSAGE",
+		Trade:       tr,
+		ErrID:       errID,
 	}
 
 	err := op.Publish(msg)
@@ -212,10 +206,10 @@ func (op *Operator) PublishTxErrorMessage(tr, errID) error {
 	return nil
 }
 
-func (op *Operator) PublishTradeCancelMessage(tr) error {
+func (op *Operator) PublishTradeCancelMessage(tr *types.Trade) error {
 	msg := &OperatorMessage{
 		MessageType: "TRADE_CANCEL_MESSAGE",
-		Trade: tr,
+		Trade:       tr,
 	}
 
 	err := op.Publish(msg)
@@ -226,10 +220,24 @@ func (op *Operator) PublishTradeCancelMessage(tr) error {
 	return nil
 }
 
-func (op *Operator) PublishTradeSuccessMessage(tr) error {
+func (op *Operator) PublishTradeExecutedMessage(tr *types.Trade) error {
+	msg := &OperatorMessage{
+		MessageType: "TRADE_EXECUTED_MESSAGE",
+		Trade:       tr,
+	}
+
+	err := op.Publish(msg)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (op *Operator) PublishTradeSuccessMessage(tr *types.Trade) error {
 	msg := &OperatorMessage{
 		MessageType: "TRADE_SUCCESS_MESSAGE",
-		Trade: tr,
+		Trade:       tr,
 	}
 
 	err := op.Publish(msg)
@@ -254,29 +262,28 @@ func (op *Operator) Publish(msg *OperatorMessage) error {
 		q.Name,
 		false,
 		false,
-		ampq.Publish{
+		amqp.Publishing{
 			ContentType: "text/json",
-			Body: bytes
-		}
+			Body:        bytes,
+		},
 	)
 
 	if err != nil {
-		log.Printf("Failed to publish message %s: %s" msg.MessageType, err)
+		log.Printf("Failed to publish message %s: %s", msg.MessageType, err)
 		return err
 	}
 
 	return nil
 }
 
-
 // AddTradeToExecutionList adds a new trade to the execution list. If the execution list is empty (= contains 1 element
 // after adding the transaction hash), the given order/trade pair gets executed. If the tranasction queue is full,
 // we return an error. Ultimately we want to account send the transaction to another queue that is handled by another ethereum account
-func (op *Operator) QueueTrade(o *Order, t *Trade) error {
-	err := t.Validate()
-	if err != nil {
-		return err
-	}
+func (op *Operator) QueueTrade(o *types.Order, t *types.Trade) error {
+	// err := t.Validate()
+	// if err != nil {
+	// 	return err
+	// }
 
 	ch := getChannel("tradeTxs")
 	q := getQueue(ch, "tradeTxs")
@@ -286,17 +293,17 @@ func (op *Operator) QueueTrade(o *Order, t *Trade) error {
 		return errors.New("Failed to marshal trade object")
 	}
 
-	err := ch.Publish(
+	err = ch.Publish(
 		"",
 		q.Name,
 		false,
 		false,
 		amqp.Publishing{
 			ContentType: "text/json",
-			Body: bytes
+			Body:        bytes,
 		})
 
-	length := ch.QueueInspect.Messages
+	length := q.Messages
 	if length == 1 {
 		op.ExecuteTrade(o, t)
 	}
@@ -311,29 +318,33 @@ func (op *Operator) QueueTrade(o *Order, t *Trade) error {
 // Trade executes a settlements transaction. The order and trade payloads need to be signed respectively
 // by the Maker and the Taker of the trade. Only the operator account can send a Trade function to the
 // Exchange smart contract.
-func (op *Operator) ExecuteTrade(o *Order, tr *Trade) (*types.Transaction, error) {
-	tx, err := op.Exchange.Trade(o, t)
+func (op *Operator) ExecuteTrade(o *types.Order, tr *types.Trade) (*eth.Transaction, error) {
+	tx, err := op.Exchange.Trade(o, tr)
 	if err != nil {
 		return nil, err
 	}
 
-	err := op.TradeService.UpdateTradeTx(tr, tx)
+	err = op.TradeService.UpdateTradeTx(tr, tx)
 	if err != nil {
 		return nil, errors.New("Could not update trade tx attribute")
 	}
 
-	err := PublishNewTradeExecutedEvent(tr)
+	err = op.PublishTradeExecutedMessage(tr)
 	if err != nil {
-		return nil, errors.New("Could not publish trade executed event")
+		return nil, errors.New("Could not publish trade executed message")
 	}
 
 	return tx, nil
 }
 
-
 // Validate checks that the operator configuration is sufficient.
 func (op *Operator) Validate() error {
-	balance, err := op.EthereumClient.getPendingBalanceAt
+	wallet, err := op.WalletService.GetDefaultAdminWallet()
+	if err != nil {
+		return err
+	}
+
+	balance, err := op.EthereumService.GetPendingBalanceAt(wallet.Address)
 	if err != nil {
 		return err
 	}
@@ -342,23 +353,23 @@ func (op *Operator) Validate() error {
 }
 
 // SetDefaultTxOptions resets the transaction value to 0
-func (op *Operator) SetDefaultTxOptions() {
-	op.Exchange.TxOptions.Value = big.NewInt(0)
-}
+// func (op *Operator) SetDefaultTxOptions() {
+// 	op.Exchange.TxOptions.Value = big.NewInt(0)
+// }
 
-// SetTxValue sets the transaction ether value
-func (op *Operator) SetTxValue(value *big.Int) {
-	op.Exchange.TxOptions.Value = value
-}
+// // SetTxValue sets the transaction ether value
+// func (op *Operator) SetTxValue(value *big.Int) {
+// 	op.Exchange.TxOptions.Value = value
+// }
 
-// SetCustomSender updates the sender address address to the exchange contract
-func (op *Operator) SetCustomSender(w *Wallet) {
-	op.Exchange.TxOptions = bind.NewKeyedTransactor(w.PrivateKey)
-}
+// // SetCustomSender updates the sender address address to the exchange contract
+// func (op *Operator) SetCustomSender(w *types.Wallet) {
+// 	op.Exchange.TxOptions = bind.NewKeyedTransactor(w.PrivateKey)
+// }
 
 // SetFeeAccount sets the fee account of the exchange contract. The fee account receives
 // the trading fees whenever a trade is settled.
-func (op *Operator) SetFeeAccount(account Address) (*types.Transaction, error) {
+func (op *Operator) SetFeeAccount(account common.Address) (*eth.Transaction, error) {
 	tx, err := op.Exchange.SetFeeAccount(account)
 	if err != nil {
 		return nil, err
@@ -369,7 +380,7 @@ func (op *Operator) SetFeeAccount(account Address) (*types.Transaction, error) {
 
 // SetOperator updates the operator settings of the given address. Only addresses with an
 // operator access can execute Withdraw and Trade transactions to the Exchange smart contract
-func (op *Operator) SetOperator(account Address, isOperator bool) (*types.Transaction, error) {
+func (op *Operator) SetOperator(account common.Address, isOperator bool) (*eth.Transaction, error) {
 	tx, err := op.Exchange.SetOperator(account, isOperator)
 	if err != nil {
 		return nil, err
@@ -378,87 +389,18 @@ func (op *Operator) SetOperator(account Address, isOperator bool) (*types.Transa
 	return tx, nil
 }
 
-// SetWithdrawalSecurityPeriod sets the period after which a non-operator address can send
-// a transaction to the exchange smart-contract to withdraw their funds. This acts as security mechanism
-// to prevent the operator of the exchange from holding funds
-func (op *Operator) SetWithdrawalSecurityPeriod(p *big.Int) (*types.Transaction, error) {
-	tx, err := op.Exchange.SetWithdrawalSecurityPeriod(p)
-	if err != nil {
-		return nil, err
-	}
-
-	return tx, nil
-}
-
-// DepositEther deposits ether into the exchange smart-contract. A priori this function is not supposed
-// to be called by the exchange operator
-func (op *Operator) DepositEther(val *big.Int) (*types.Transaction, error) {
-	tx, err := op.Exchange.DepositEther(val)
-	if err != nil {
-		return nil, err
-	}
-
-	return tx, nil
-}
-
-// DepositToken deposits tokens into the exchange smart-contract. A priori this function is not supposed
-// to be called by the exchange operator
-func (op *Operator) DepositToken(token Address, amount *big.Int) (*types.Transaction, error) {
-	tx, err := op.Exchange.DepositToken(token, amount)
-	if err != nil {
-		return nil, err
-	}
-
-	return tx, err
-}
-
-// TokenBalance returns the Exchange token balance of the given token at the given account address.
-// Note: This is not the token BalanceOf() function, it's the balance of tokens that have been deposited
-// in the exchange smart contract.
-func (op *Operator) TokenBalance(account Address, token Address) (*big.Int, error) {
-	b, err := op.Exchange.TokenBalance(account, token)
-	if err != nil {
-		return nil, err
-	}
-
-	return b, nil
-}
-
-// EtherBalance returns the Exchange ether balance of the given account address.
-// Note: This is not the current ether balance of the given ether address. It's the balance of ether
-// that has been deposited in the exchange smart contract.
-func (op *Operator) EtherBalance(account Address) (*big.Int, error) {
-	b, err := op.Exchange.EtherBalance(account)
-	if err != nil {
-		return nil, err
-	}
-
-	return b, nil
-}
-
-// WithdrawalSecurityPeriod is the period after which a non-operator account can withdraw their funds from
-// the exchange smart contract.
-func (op *Operator) WithdrawalSecurityPeriod() (*big.Int, error) {
-	p, err := op.Exchange.WithdrawalSecurityPeriod()
-	if err != nil {
-		return nil, err
-	}
-
-	return p, nil
-}
-
 // FeeAccount is the Ethereum towards the exchange trading fees are sent
-func (op *Operator) FeeAccount() (Address, error) {
+func (op *Operator) FeeAccount() (common.Address, error) {
 	account, err := op.Exchange.FeeAccount()
 	if err != nil {
-		return Address{}, err
+		return common.Address{}, err
 	}
 
 	return account, nil
 }
 
 // Operator returns true if the given address is an operator of the exchange and returns false otherwise
-func (op *Operator) Operator(addr Address) (bool, error) {
+func (op *Operator) Operator(addr common.Address) (bool, error) {
 	isOperator, err := op.Exchange.Operator(addr)
 	if err != nil {
 		return false, err
@@ -466,31 +408,6 @@ func (op *Operator) Operator(addr Address) (bool, error) {
 
 	return isOperator, nil
 }
-
-// SecurityWithdraw executes a security withdraw transaction. Security withdraw transactions can only be
-// executed after the security withdrawal period has ended. A priori, this function should not be called
-// by the operator account itself
-func (op *Operator) SecurityWithdraw(w *Wallet, token Address, amount *big.Int) (*types.Transaction, error) {
-	tx, err := op.Exchange.SecurityWithdraw(w, token, amount)
-	if err != nil {
-		return nil, err
-	}
-
-	return tx, nil
-}
-
-// Withdraw executes a normal withdraw transaction. This withdraws tokens or ether from the exchange
-// and returns them to the payload Receiver. Only an operator account can send a withdraw
-// transaction
-func (op *Operator) Withdraw(w *Withdrawal) (*types.Transaction, error) {
-	tx, err := op.Exchange.Withdraw(w)
-	if err != nil {
-		return nil, err
-	}
-
-	return tx, nil
-}
-
 
 func getQueue(ch *amqp.Channel, queue string) *amqp.Queue {
 	if queues[queue] == nil {
@@ -514,4 +431,3 @@ func getChannel(id string) *amqp.Channel {
 	}
 	return channels[id]
 }
-

@@ -1,4 +1,4 @@
-package ethereum
+package contracts
 
 import (
 	"errors"
@@ -6,52 +6,48 @@ import (
 	"math/big"
 
 	"github.com/Proofsuite/amp-matching-engine/contracts/interfaces"
-	"github.com/Proofsuite/amp-matching-engine/wallet"
+	"github.com/Proofsuite/amp-matching-engine/services"
+	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
+	eth "github.com/ethereum/go-ethereum/core/types"
 )
 
-type ERC20 struct {
-	WalletService *walletService,
-	TxService *txService,
+type Token struct {
+	WalletService *services.WalletService
+	TxService     *services.TxService
 	Interface     *interfaces.Token
 }
 
-func NewERC20(w *walletService, tx *txService, contractAddress, backend bind.ContractBackend) (*Exchange, error) {
-	wallet, err := walletService.GetDefaultAdminWallet()
+func NewToken(w *services.WalletService, tx *services.TxService, contractAddress common.Address, backend bind.ContractBackend) (*Token, error) {
+	instance, err := interfaces.NewToken(contractAddress, backend)
 	if err != nil {
 		return nil, err
 	}
 
-	instance, err := interfaces.NewERC20(contractAddress, backend)
-	if err != nil {
-		return nil, err
-	}
-
-	return &ERC20{
-		WalletService: *walletService,
-		TxService: *txService,
-		Contract: instance
+	return &Token{
+		WalletService: w,
+		TxService:     tx,
+		Interface:     instance,
 	}, nil
 }
 
-func (t *ERC20) GetTxCallOptions() {
+func (t *Token) GetTxCallOptions() *bind.CallOpts {
 	return t.TxService.GetTxCallOptions()
 }
 
-func (t *ERC20) GetTxSendOptions() {
+func (t *Token) GetTxSendOptions() (*bind.TransactOpts, error) {
 	return t.TxService.GetTxSendOptions()
 }
 
-func (t *ERC20) GetCustomTxSendOptions(w *wallet.Wallet) {
+func (t *Token) GetCustomTxSendOptions(w *types.Wallet) *bind.TransactOpts {
 	return t.TxService.GetCustomTxSendOptions(w)
 }
 
-func (t *ERC20) BalanceOf(owner common.Address) (*big.Int, error) {
-	txCallOptions := e.GetTxCallOptions()
+func (t *Token) BalanceOf(owner common.Address) (*big.Int, error) {
+	txCallOptions := t.GetTxCallOptions()
 
-	b, err := t.Interface.BalanceOf(txOptions, owner)
+	b, err := t.Interface.BalanceOf(txCallOptions, owner)
 	if err != nil {
 		return nil, err
 	}
@@ -59,8 +55,8 @@ func (t *ERC20) BalanceOf(owner common.Address) (*big.Int, error) {
 	return b, nil
 }
 
-func (t *ERC20) TotalSupply() (*big.Int, error) {
-	txCallOptions := e.GetTxCallOptions()
+func (t *Token) TotalSupply() (*big.Int, error) {
+	txCallOptions := t.GetTxCallOptions()
 
 	supply, err := t.Interface.TotalSupply(txCallOptions)
 	if err != nil {
@@ -70,8 +66,8 @@ func (t *ERC20) TotalSupply() (*big.Int, error) {
 	return supply, nil
 }
 
-func (t *ERC20) Transfer(receiver Address, amount *big.Int) (*types.Transaction, error) {
-	txSendOptions := e.GetTxSendOptions()
+func (t *Token) Transfer(receiver common.Address, amount *big.Int) (*eth.Transaction, error) {
+	txSendOptions, _ := t.GetTxSendOptions()
 
 	tx, err := t.Interface.Transfer(txSendOptions, receiver, amount)
 	if err != nil {
@@ -81,8 +77,8 @@ func (t *ERC20) Transfer(receiver Address, amount *big.Int) (*types.Transaction,
 	return tx, nil
 }
 
-func (t *ERC20) TransferFromCustomWallet(w *wallet.Wallet, receiver common.Address, amount *big.Int) (*types.Transaction, error) {
-	txSendOptions := e.GetCustomTxSendOptions(w)
+func (t *Token) TransferFromCustomWallet(w *types.Wallet, receiver common.Address, amount *big.Int) (*eth.Transaction, error) {
+	txSendOptions := t.GetCustomTxSendOptions(w)
 
 	tx, err := t.Interface.Transfer(txSendOptions, receiver, amount)
 	if err != nil {
@@ -92,8 +88,8 @@ func (t *ERC20) TransferFromCustomWallet(w *wallet.Wallet, receiver common.Addre
 	return tx, nil
 }
 
-func (t *ERC20) TransferFrom(sender, receiver common.Address, amount *big.Int) (*types.Transaction, error) {
-	txSendOptions := e.GetTxSendOptions()
+func (t *Token) TransferFrom(sender, receiver common.Address, amount *big.Int) (*eth.Transaction, error) {
+	txSendOptions, _ := t.GetTxSendOptions()
 
 	tx, err := t.Interface.TransferFrom(txSendOptions, sender, receiver, amount)
 	if err != nil {
@@ -104,8 +100,8 @@ func (t *ERC20) TransferFrom(sender, receiver common.Address, amount *big.Int) (
 	return tx, nil
 }
 
-func (t *ERC20) Allowance(owner common.Address, spender common.Address) (*big.Int, error) {
-	txCallOptions := e.GetTxCallOptions()
+func (t *Token) Allowance(owner common.Address, spender common.Address) (*big.Int, error) {
+	txCallOptions := t.GetTxCallOptions()
 
 	allowance, err := t.Interface.Allowance(txCallOptions, owner, spender)
 	if err != nil {
@@ -115,8 +111,8 @@ func (t *ERC20) Allowance(owner common.Address, spender common.Address) (*big.In
 	return allowance, nil
 }
 
-func (t *ERC20) Approve(spender common.Address, amount *big.Int) (*types.Transaction, error) {
-	txSendOptions = e.GetTxSendOptions()
+func (t *Token) Approve(spender common.Address, amount *big.Int) (*eth.Transaction, error) {
+	txSendOptions, _ := t.GetTxSendOptions()
 
 	tx, err := t.Interface.Approve(txSendOptions, spender, amount)
 	if err != nil {
@@ -126,23 +122,22 @@ func (t *ERC20) Approve(spender common.Address, amount *big.Int) (*types.Transac
 	return tx, nil
 }
 
-func (t *ERC20) ApproveFrom(w *wallet.Wallet, spender common.Address, amount *big.Int) (*types.Transaction, error) {
-	txSendOptions := e.GetCustomTxSendOptions(w)
+func (t *Token) ApproveFrom(w *types.Wallet, spender common.Address, amount *big.Int) (*eth.Transaction, error) {
+	txSendOptions := t.GetCustomTxSendOptions(w)
 
 	tx, err := t.Interface.Approve(txSendOptions, spender, amount)
 	if err != nil {
 		return nil, errors.New("Error making ApproveFrom() transaction")
 	}
 
-	t.SetDefaultSender()
 	return tx, nil
 }
 
-func (t *ERC20) ListenToTransferEvents() (chan *interfaces.TokenTransfer, error) {
+func (t *Token) ListenToTransferEvents() (chan *interfaces.TokenTransfer, error) {
 	events := make(chan *interfaces.TokenTransfer)
 	options := &bind.WatchOpts{nil, nil}
-	toList := []Address{}
-	fromList := []Address{}
+	toList := []common.Address{}
+	fromList := []common.Address{}
 
 	_, err := t.Interface.WatchTransfer(options, events, fromList, toList)
 	if err != nil {
@@ -152,12 +147,12 @@ func (t *ERC20) ListenToTransferEvents() (chan *interfaces.TokenTransfer, error)
 	return events, nil
 }
 
-func (t *ERC20) PrintTransferEvents() error {
+func (t *Token) PrintTransferEvents() error {
 	events := make(chan *interfaces.TokenTransfer)
 	options := &bind.WatchOpts{nil, nil}
 
-	toList := []Address{}
-	fromList := []Address{}
+	toList := []common.Address{}
+	fromList := []common.Address{}
 
 	_, err := t.Interface.WatchTransfer(options, events, fromList, toList)
 	if err != nil {
