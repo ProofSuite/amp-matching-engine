@@ -38,6 +38,16 @@ func (dao *TradeDao) Create(trades ...*types.Trade) (err error) {
 	return
 }
 
+func (dao *TradeDao) Update(trade *types.Trade) (err error) {
+	trade.UpdatedAt = time.Now()
+	err = db.Update(dao.dbName, dao.collectionName, bson.M{"_id": trade.id}, trade)
+	if err != nil {
+		return err
+	}
+
+	return
+}
+
 // GetAll function fetches all the trades in mongodb
 func (dao *TradeDao) GetAll() (response []types.Trade, err error) {
 	err = db.Get(dao.dbName, dao.collectionName, bson.M{}, 0, 0, &response)
