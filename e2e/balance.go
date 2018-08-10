@@ -17,9 +17,10 @@ func testBalance(t *testing.T, tokens []types.Token, address types.UserAddress) 
 
 	tokenBalance := make(map[string]types.TokenBalance)
 	for _, t := range tokens {
-		tokenBalance[t.Symbol] = types.TokenBalance{
+		tokenBalance[t.ContractAddress] = types.TokenBalance{
 			TokenID:      t.ID,
 			TokenAddress: t.ContractAddress,
+			TokenSymbol:  t.Symbol,
 			Amount:       int64(10000 * math.Pow10(8)),
 			LockedAmount: 0,
 		}

@@ -23,6 +23,7 @@ type Balance struct {
 type TokenBalance struct {
 	TokenID      bson.ObjectId `json:"tokenId" bson:"tokenId"`
 	TokenAddress string        `json:"tokenAddress" bson:"tokenAddress"`
+	TokenSymbol  string        `json:"tokenSymbol" bson:"tokenSymbol"`
 	Amount       int64         `json:"amount" bson:"amount"`
 	LockedAmount int64         `json:"lockedAmount" bson:"lockedAmount"`
 }
