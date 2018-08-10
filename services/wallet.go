@@ -1,49 +1,43 @@
 package services
 
 import (
-	"fmt"
-
-	"gopkg.in/mgo.v2/bson"
-
 	"github.com/Proofsuite/amp-matching-engine/daos"
 	"github.com/Proofsuite/amp-matching-engine/types"
+	"github.com/ethereum/go-ethereum/common"
 )
 
 // WalletService struct with daos required, responsible for communicating with daos
 type WalletService struct {
-	WalletDao *daos.WalletDao
+	WalletDao  *daos.WalletDao
 	BalanceDao *daos.BalanceDao
 }
 
-func NewWalletService(WalletDao *daos.AddressDao, balanceDao *daos.BalanceDao) *WalletService {
-	return &WalletService{WalletDao, BalanceDao}
+func NewWalletService(walletDao *daos.WalletDao, balanceDao *daos.BalanceDao) *WalletService {
+	return &WalletService{walletDao, balanceDao}
 }
 
-func (s *WalletService) CreateAdminWallet(a common.Address) error {
-	w = *types.Wallet{
-		address: a,
-		admin: true
+func (s *WalletService) CreateAdminWallet(a common.Address) (*types.Wallet, error) {
+	w := &types.Wallet{
+		Address: a,
+		Admin:   true,
 	}
 
-	err := s.AddressDao.Create(w)
+	err := s.WalletDao.Create(w)
 	if err != nil {
-		return err
+		return nil, err
 	}
+
+	return w, nil
 }
 
-func (s *WalletService) GetDefaultAdminWallet() error {
+func (s *WalletService) GetDefaultAdminWallet() (*types.Wallet, error) {
 	return s.WalletDao.GetDefaultAdminWallet()
 }
 
-func (s *WalletService) GetAll() error {
+func (s *WalletService) GetAll() ([]types.Wallet, error) {
 	return s.WalletDao.GetAll()
 }
 
-func (s *WalletService) GetbyAddress(a string) (*types.UserAddress, error) {
+func (s *WalletService) GetbyAddress(a string) (*types.Wallet, error) {
 	return s.WalletDao.GetByAddress(a)
-}
-
-// NewWalletService returns a new instance of addressService
-func NewWalletService(AddressDao *daos.AddressDao, balanceDao *daos.BalanceDao, tokenDao *daos.TokenDao) *WalletService {
-	return &WalletService{AddressDao, balanceDao, tokenDao}
 }
