@@ -40,6 +40,17 @@ func (t *TradeService) GetByUserAddress(addr string) ([]*types.Trade, error) {
 	return t.tradeDao.GetByUserAddress(addr)
 }
 
+func (t *TradeService) UpdateTradeTx(tr *types.Trade, tx *ethereumTypes.Transaction) error {
+	tr.tx = tx
+
+	err := t.tradeDao.UpdateTradeTx(tr)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // UnregisterForTicks handles all the unsubscription messages for ticks corresponding to a pair
 func (t *TradeService) UnregisterForTicks(conn *websocket.Conn, bt, qt string, params *types.Params) {
 	tickChannelID := utils.GetTickChannelID(bt, qt, params.Units, params.Duration)
