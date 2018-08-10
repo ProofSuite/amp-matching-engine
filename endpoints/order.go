@@ -2,9 +2,7 @@ package endpoints
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
-	"time"
 
 	"github.com/Proofsuite/amp-matching-engine/errors"
 	"github.com/ethereum/go-ethereum/common"
@@ -26,8 +24,8 @@ type orderEndpoint struct {
 func ServeOrderResource(rg *routing.RouteGroup, orderService *services.OrderService, e *engine.Resource) {
 	r := &orderEndpoint{orderService, e}
 	rg.Get("/orders/<addr>", r.get)
-	ws.RegisterChannel("order_channel", r.ws)
-	e.SubscribeEngineResponse(r.engineResponse)
+	ws.RegisterChannel(ws.OrderChannel, r.ws)
+	e.SubscribeEngineResponse(r.orderService.EngineResponse)
 }
 
 func (r *orderEndpoint) get(c *routing.Context) error {
@@ -42,7 +40,7 @@ func (r *orderEndpoint) get(c *routing.Context) error {
 	return c.Write(orders)
 }
 
-func (r *orderEndpoint) ws(input *interface{}, conn *websocket.Conn) {
+func (r *orderEndpoint) ws(input interface{}, conn *websocket.Conn) {
 
 	ch := make(chan *types.Message)
 	mab, _ := json.Marshal(input)
@@ -50,32 +48,28 @@ func (r *orderEndpoint) ws(input *interface{}, conn *websocket.Conn) {
 	if err := json.Unmarshal(mab, &msg); err != nil {
 		log.Println("unmarshal to wsmsg <==>" + err.Error())
 	}
-	messageType := 1
-	if msg.MsgType == "new_order" {
+	if msg.MsgType == "NEW_ORDER" {
 		oab, err := json.Marshal(msg.Data)
 
 		var model types.OrderRequest
 		if err := json.Unmarshal(oab, &model); err != nil {
-			conn.WriteMessage(messageType, []byte(err.Error()))
+			ws.OrderSendErrorMessage(conn, model.ComputeHash(), err.Error())
 			return
 		}
 		if err := model.Validate(); err != nil {
-			conn.WriteMessage(messageType, []byte(err.Error()))
-
+			ws.OrderSendErrorMessage(conn, model.ComputeHash(), err.Error())
 			return
 		}
 		if ok, err := model.VerifySignature(); err != nil {
-			conn.WriteMessage(messageType, []byte(err.Error()))
+			ws.OrderSendErrorMessage(conn, model.ComputeHash(), err.Error())
 			return
 		} else if !ok {
-			conn.WriteMessage(messageType, []byte("Invalid Signature"))
+			ws.OrderSendErrorMessage(conn, model.ComputeHash(), "Invalid Signature")
 			return
 		}
 		order, err := model.ToOrder()
 		if err != nil {
-			conn.WriteMessage(messageType, []byte(err.Error()))
-			conn.Close()
-
+			ws.OrderSendErrorMessage(conn, model.ComputeHash(), err.Error())
 			return
 		}
 		ws.RegisterOrderConnection(order.Hash, &ws.OrderConn{Conn: conn, ReadChannel: ch})
@@ -83,19 +77,17 @@ func (r *orderEndpoint) ws(input *interface{}, conn *websocket.Conn) {
 
 		err = r.orderService.Create(order)
 		if err != nil {
-			conn.WriteMessage(messageType, []byte(err.Error()))
+			ws.OrderSendErrorMessage(conn, model.ComputeHash(), err.Error())
 			return
 		}
-		oab, _ = json.Marshal(order)
-		conn.WriteMessage(messageType, oab)
+		r.orderService.SendMessage("ORDER_ADDED", order.Hash, order)
 
-	} else if msg.MsgType == "cancel_order" {
+	} else if msg.MsgType == "CANCEL_ORDER" {
 		oab, err := json.Marshal(msg.Data)
 
 		var order *types.Order
 		if err := json.Unmarshal(oab, &order); err != nil {
-			conn.WriteMessage(messageType, []byte(err.Error()))
-
+			ws.OrderSendErrorMessage(conn, order.Hash, err.Error())
 			return
 		}
 
@@ -104,7 +96,7 @@ func (r *orderEndpoint) ws(input *interface{}, conn *websocket.Conn) {
 
 		err = r.cancelOrder(order)
 		if err != nil {
-			conn.WriteMessage(messageType, []byte(err.Error()))
+			ws.OrderSendErrorMessage(conn, order.Hash, err.Error())
 			return
 		}
 	} else {
@@ -115,63 +107,6 @@ func (r *orderEndpoint) ws(input *interface{}, conn *websocket.Conn) {
 	}
 }
 
-func (r *orderEndpoint) engineResponse(engineResponse *engine.Response) error {
-	if engineResponse.FillStatus == engine.NOMATCH {
-		r.orderService.SendMessage("added_to_orderbook", engineResponse.Order.Hash, engineResponse)
-	} else {
-		r.orderService.SendMessage("trade_remaining_order_sign", engineResponse.Order.Hash, engineResponse)
-
-		t := time.NewTimer(10 * time.Second)
-		ch := ws.GetOrderChannel(engineResponse.Order.Hash)
-		if ch == nil {
-			r.orderService.RecoverOrders(engineResponse)
-		} else {
-
-			select {
-			case rm := <-ch:
-				if rm.MsgType == "trade_remaining_order_sign" {
-					mb, err := json.Marshal(rm.Data)
-					if err != nil {
-						fmt.Printf("=== Error while marshaling EngineResponse===")
-
-						r.orderService.RecoverOrders(engineResponse)
-						ws.GetOrderConn(engineResponse.Order.Hash).WriteMessage(1, []byte(err.Error()))
-					}
-
-					var ersb *engine.Response
-					err = json.Unmarshal(mb, &ersb)
-					if err != nil {
-						fmt.Printf("=== Error while unmarshaling EngineResponse===")
-						ws.GetOrderConn(engineResponse.Order.Hash).WriteMessage(1, []byte(err.Error()))
-						r.orderService.RecoverOrders(engineResponse)
-					}
-
-					if engineResponse.FillStatus == engine.PARTIAL {
-						engineResponse.Order.OrderBook = &types.OrderSubDoc{Amount: ersb.RemainingOrder.Amount, Signature: ersb.RemainingOrder.Signature}
-						orderAsBytes, _ := json.Marshal(engineResponse.Order)
-						r.engine.PublishMessage(&engine.Message{Type: "remaining_order_add", Data: orderAsBytes})
-					}
-
-				}
-				t.Stop()
-				break
-
-			case <-t.C:
-				fmt.Printf("\nTimeout\n")
-				r.orderService.RecoverOrders(engineResponse)
-				t.Stop()
-				break
-			}
-		}
-	}
-	r.orderService.UpdateUsingEngineResponse(engineResponse)
-	// TODO: send to operator for blockchain execution
-
-	r.orderService.RelayUpdateOverSocket(engineResponse)
-	ws.CloseOrderReadChannel(engineResponse.Order.Hash)
-
-	return nil
-}
 func (r *orderEndpoint) cancelOrder(order *types.Order) error {
 	return r.orderService.CancelOrder(order)
 }

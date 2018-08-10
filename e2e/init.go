@@ -95,7 +95,7 @@ func buildRouter() *routing.Router {
 	tradeService := services.NewTradeService(tradesDao)
 	pairService := services.NewPairService(pairDao, tokenDao, e, tradeService)
 	balanceService := services.NewBalanceService(balanceDao, tokenDao)
-	orderService := services.NewOrderService(orderDao, balanceDao, pairDao, tradesDao, e)
+	orderService := services.NewOrderService(orderDao, balanceDao, pairDao, tradesDao, addressDao, e)
 	addressService := services.NewAddressService(addressDao, balanceDao, tokenDao)
 
 	endpoints.ServeTokenResource(rg, tokenService)

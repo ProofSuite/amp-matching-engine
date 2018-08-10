@@ -1,6 +1,8 @@
 package endpoints
 
 import (
+	"strconv"
+
 	"github.com/Proofsuite/amp-matching-engine/errors"
 	"github.com/Proofsuite/amp-matching-engine/services"
 	"github.com/ethereum/go-ethereum/common"
@@ -22,7 +24,12 @@ func (r *balanceEndpoint) get(c *routing.Context) error {
 	if !common.IsHexAddress(addr) {
 		return errors.NewAPIError(400, "INVALID_ADDRESS", nil)
 	}
-	response, err := r.balanceService.GetByAddress(addr)
+	nonZero := c.Query("nonZero", "false")
+	nonZeroBool, err := strconv.ParseBool(nonZero)
+	if err != nil {
+		return errors.NewAPIError(400, "INVALID_NONZERO_QUERY_PARAM", nil)
+	}
+	response, err := r.balanceService.GetByAddress(addr, nonZeroBool)
 	if err != nil {
 		return err
 	}

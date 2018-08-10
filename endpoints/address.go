@@ -16,13 +16,15 @@ type addressEndpoint struct {
 func ServeAddressResource(rg *routing.RouteGroup, addressService *services.AddressService) {
 	r := &addressEndpoint{addressService}
 	rg.Post("/address", r.create)
-	rg.Post("/address/<addr>/nonce", r.getNonce)
+	rg.Get("/address/<addr>/nonce", r.getNonce)
 }
 
 func (r *addressEndpoint) create(c *routing.Context) error {
 	var model types.UserAddress
 	if err := c.Read(&model); err != nil {
-		return err
+		return errors.NewAPIError(400, "INVALID_DATA", map[string]interface{}{
+			"details": err.Error(),
+		})
 	}
 	if err := model.Validate(); err != nil {
 		return err
