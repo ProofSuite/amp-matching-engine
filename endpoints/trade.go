@@ -25,15 +25,11 @@ func ServeTradeResource(rg *routing.RouteGroup, tradeService *services.TradeServ
 	rg.Get("/trades/history/<bt>/<qt>", r.history)
 	rg.Post("/trades/ticks", r.ticks)
 	rg.Get("/trades/<addr>", r.get)
-	ws.RegisterChannel("trades", r.wsTicks)
+	ws.RegisterChannel(ws.TradeChannel, r.wsTicks)
 }
 
 // history is reponsible for handling pair's trade history requests
 func (r *tradeEndpoint) history(c *routing.Context) error {
-	pair := c.Param("pair")
-	if pair == "" {
-		return errors.NewAPIError(400, "INVALID_PAIR_NAME", nil)
-	}
 	baseToken := c.Param("bt")
 	if !common.IsHexAddress(baseToken) {
 		return errors.NewAPIError(400, "INVALID_HEX_ADDRESS", nil)
@@ -89,7 +85,7 @@ func (r *tradeEndpoint) ticks(c *routing.Context) error {
 	}
 	return c.Write(res)
 }
-func (r *tradeEndpoint) wsTicks(input *interface{}, conn *websocket.Conn) {
+func (r *tradeEndpoint) wsTicks(input interface{}, conn *websocket.Conn) {
 	startTs := time.Date(1970, time.January, 1, 0, 0, 0, 0, time.UTC)
 
 	mab, _ := json.Marshal(input)
@@ -103,18 +99,15 @@ func (r *tradeEndpoint) wsTicks(input *interface{}, conn *websocket.Conn) {
 			"Code":    "Invalid_Pair_BaseToken",
 			"Message": "Invalid Pair BaseToken passed in Params",
 		}
-		mab, _ := json.Marshal(message)
-		conn.WriteMessage(1, mab)
+		ws.TradeSendErrorMessage(conn, message)
 		return
-
 	}
 	if msg.Pair.QuoteToken == "" {
 		message := map[string]string{
 			"Code":    "Invalid_Pair_BaseToken",
 			"Message": "Invalid Pair BaseToken passed in Params",
 		}
-		mab, _ := json.Marshal(message)
-		conn.WriteMessage(1, mab)
+		ws.TradeSendErrorMessage(conn, message)
 		return
 	}
 	if msg.Params.From == 0 {

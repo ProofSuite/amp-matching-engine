@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"time"
 
 	"github.com/Proofsuite/amp-matching-engine/ws"
 
@@ -41,18 +42,28 @@ func (s *OrderService) Create(order *types.Order) (err error) {
 	// Fill token and pair data
 	fmt.Printf("\n %v === %v\n", order.BaseToken, order.QuoteToken)
 
-	p, err := s.pairDao.GetByTokenAddress(order.BaseTokenAddress, order.QuoteTokenAddress)
+	p, err := s.pairDao.GetByBuySellTokenAddress(order.BaseToken, order.QuoteToken)
 	if err != nil {
 		return err
 	} else if p == nil {
 		return errors.New("Pair not found")
 	}
+
+	if order.SellToken == p.QuoteTokenAddress {
+		order.Side = types.BUY
+		order.Amount = order.BuyAmount
+		order.Price = int64((float64(order.SellAmount) / float64(order.BuyAmount)) * math.Pow10(8))
+	} else {
+		order.Side = types.SELL
+		order.Amount = order.SellAmount
+		order.Price = int64((float64(order.BuyAmount) / float64(order.SellAmount)) * math.Pow10(8))
+	}
+
+	order.BaseToken = p.BaseTokenAddress
+	order.QuoteToken = p.QuoteTokenAddress
+
 	order.PairID = p.ID
 	order.PairName = p.Name
-	order.BaseToken = p.BaseTokenSymbol
-	order.BaseTokenAddress = p.BaseTokenAddress
-	order.QuoteToken = p.QuoteTokenSymbol
-	order.QuoteTokenAddress = p.QuoteTokenAddress
 
 	// Validate if order is valid
 
@@ -60,7 +71,7 @@ func (s *OrderService) Create(order *types.Order) (err error) {
 	if err != nil {
 		return err
 	} else if addr.IsBlocked {
-		return fmt.Errorf("Address: %s isBlocked", addr)
+		return fmt.Errorf("Address: %+v isBlocked", addr)
 	} else if addr.Nonce != order.Nonce {
 		return fmt.Errorf("Order Nonce: %v is not valid expecting nonce: %v", order.Nonce, addr.Nonce)
 	}
@@ -72,13 +83,13 @@ func (s *OrderService) Create(order *types.Order) (err error) {
 	}
 	if order.Side == types.BUY {
 		amt := bal.Tokens[order.QuoteToken]
-		if amt.Amount < order.AmountSell+order.Fee {
+		if amt.Amount < order.SellAmount+order.Fee {
 			return errors.New("Insufficient Balance")
 		}
 		fmt.Println("Buy : Verified")
 
-		amt.Amount = amt.Amount - (order.AmountSell)             // + order.Fee
-		amt.LockedAmount = amt.LockedAmount + (order.AmountSell) // + order.Fee
+		amt.Amount = amt.Amount - (order.SellAmount)             // + order.Fee
+		amt.LockedAmount = amt.LockedAmount + (order.SellAmount) // + order.Fee
 		err = s.balanceDao.UpdateAmount(order.UserAddress, order.QuoteToken, &amt)
 
 		if err != nil {
@@ -87,12 +98,12 @@ func (s *OrderService) Create(order *types.Order) (err error) {
 
 	} else if order.Side == types.SELL {
 		amt := bal.Tokens[order.BaseToken]
-		if amt.Amount < order.AmountBuy+order.Fee {
+		if amt.Amount < order.BuyAmount+order.Fee {
 			return errors.New("Insufficient Balance")
 		}
 		fmt.Println("Sell : Verified")
-		amt.Amount = amt.Amount - (order.AmountBuy)             // + order.Fee
-		amt.LockedAmount = amt.LockedAmount + (order.AmountBuy) // + order.Fee
+		amt.Amount = amt.Amount - (order.BuyAmount)             // + order.Fee
+		amt.LockedAmount = amt.LockedAmount + (order.BuyAmount) // + order.Fee
 		err = s.balanceDao.UpdateAmount(order.UserAddress, order.BaseToken, &amt)
 
 		if err != nil {
@@ -109,7 +120,7 @@ func (s *OrderService) Create(order *types.Order) (err error) {
 
 	// Push order to queue
 	orderAsBytes, _ := json.Marshal(order)
-	s.engine.PublishMessage(&engine.Message{Type: "new_order", Data: orderAsBytes})
+	s.engine.PublishMessage(&engine.Message{Type: "NEW_ORDER", Data: orderAsBytes})
 	return err
 }
 
@@ -158,12 +169,11 @@ func (s *OrderService) CancelOrder(order *types.Order) error {
 		if err := s.cancelOrderUnlockAmount(engineResponse); err != nil {
 			return err
 		}
-		s.SendMessage("cancel_order", engineResponse.Order.Hash, engineResponse)
+		s.SendMessage("CANCEL_ORDER", engineResponse.Order.Hash, engineResponse)
 		s.RelayUpdateOverSocket(engineResponse)
 		return nil
 	}
 	return fmt.Errorf("Cannot cancel the order")
-
 }
 
 // UpdateUsingEngineResponse is responsible for updating order status of maker
@@ -210,36 +220,21 @@ func (s *OrderService) UpdateUsingEngineResponse(er *engine.Response) {
 func (s *OrderService) RelayUpdateOverSocket(er *engine.Response) {
 	if len(er.Trades) > 0 {
 		fmt.Println("Trade relay over socket")
-		message := &types.Message{
-			MsgType: "trades_added",
-			Data:    er.Trades,
-		}
-		ws.GetPairSockets().PairSocketWriteMessage(er.Order.BaseTokenAddress, er.Order.QuoteTokenAddress, message)
+		ws.GetPairSockets().WriteMessage(er.Order.BaseToken, er.Order.QuoteToken, "TRADES_ADDED", er.Trades)
 	}
 	if er.RemainingOrder != nil {
 		fmt.Println("Order added Relay over socket")
-		message := &types.Message{
-			MsgType: "order_added",
-			Data:    er.RemainingOrder,
-		}
-		ws.GetPairSockets().PairSocketWriteMessage(er.Order.BaseTokenAddress, er.Order.QuoteTokenAddress, message)
+		ws.GetPairSockets().WriteMessage(er.Order.BaseToken, er.Order.QuoteToken, "ORDER_ADDED", er.RemainingOrder)
 	}
 	if er.FillStatus == engine.CANCELLED {
 		fmt.Println("Order cancelled Relay over socket")
-		message := &types.Message{
-			MsgType: "order_cancelled",
-			Data:    er.Order,
-		}
-		ws.GetPairSockets().PairSocketWriteMessage(er.Order.BaseTokenAddress, er.Order.QuoteTokenAddress, message)
+		ws.GetPairSockets().WriteMessage(er.Order.BaseToken, er.Order.QuoteToken, "ORDER_CANCELED", er.Order)
 	}
 }
 
 // SendMessage is responsible for sending message to socket linked to a particular order
 func (s *OrderService) SendMessage(msgType string, hash string, data interface{}) {
-	msg := &types.Message{MsgType: msgType}
-	msg.Hash = hash
-	msg.Data = data
-	ws.GetOrderConn(hash).WriteJSON(msg)
+	ws.OrderSendMessage(ws.GetOrderConn(hash), msgType, data, hash)
 }
 
 // this function is responsible for unlocking of maker's amount in balance document
@@ -255,8 +250,8 @@ func (s *OrderService) cancelOrderUnlockAmount(er *engine.Response) error {
 		bal := res.Tokens[er.Order.QuoteToken]
 		fmt.Println("===> buy bal")
 		fmt.Println(bal)
-		bal.Amount = bal.Amount + (er.Order.AmountSell)
-		bal.LockedAmount = bal.LockedAmount - (er.Order.AmountSell)
+		bal.Amount = bal.Amount + (er.Order.SellAmount)
+		bal.LockedAmount = bal.LockedAmount - (er.Order.SellAmount)
 
 		fmt.Println("===> updated bal")
 		fmt.Println(bal)
@@ -270,8 +265,8 @@ func (s *OrderService) cancelOrderUnlockAmount(er *engine.Response) error {
 		bal := res.Tokens[er.Order.BaseToken]
 		fmt.Println("===> sell bal")
 		fmt.Println(bal)
-		bal.Amount = bal.Amount + (er.Order.AmountBuy)
-		bal.LockedAmount = bal.LockedAmount - (er.Order.AmountBuy)
+		bal.Amount = bal.Amount + (er.Order.BuyAmount)
+		bal.LockedAmount = bal.LockedAmount - (er.Order.BuyAmount)
 		fmt.Println("===> updated bal")
 		fmt.Println(bal)
 		err = s.balanceDao.UpdateAmount(er.Order.UserAddress, er.Order.BaseToken, &bal)
@@ -322,4 +317,61 @@ func (s *OrderService) transferAmount(order *types.Order, filledAmount int64) {
 		fmt.Printf("\n Order Sell\n==>sbal: %v \n==>bbal: %v\n==>Unlock Amount: %v\n", sbal, bbal, filledAmount)
 
 	}
+}
+
+func (s *OrderService) EngineResponse(engineResponse *engine.Response) error {
+	if engineResponse.FillStatus == engine.NOMATCH {
+		s.SendMessage("ORDER_ADDED", engineResponse.Order.Hash, engineResponse)
+	} else {
+		s.SendMessage("REQUEST_SIGNATURE", engineResponse.Order.Hash, engineResponse)
+
+		t := time.NewTimer(10 * time.Second)
+		ch := ws.GetOrderChannel(engineResponse.Order.Hash)
+		if ch == nil {
+			s.RecoverOrders(engineResponse)
+		} else {
+
+			select {
+			case rm := <-ch:
+				if rm.MsgType == "REQUEST_SIGNATURE" {
+					mb, err := json.Marshal(rm.Data)
+					if err != nil {
+						fmt.Printf("=== Error while marshaling EngineResponse===")
+						s.RecoverOrders(engineResponse)
+						ws.OrderSendErrorMessage(ws.GetOrderConn(engineResponse.Order.Hash), engineResponse.Order.Hash, err.Error())
+					}
+
+					var ersb *engine.Response
+					err = json.Unmarshal(mb, &ersb)
+					if err != nil {
+						fmt.Printf("=== Error while unmarshaling EngineResponse===")
+						ws.OrderSendErrorMessage(ws.GetOrderConn(engineResponse.Order.Hash), engineResponse.Order.Hash, err.Error())
+						s.RecoverOrders(engineResponse)
+					}
+
+					if engineResponse.FillStatus == engine.PARTIAL {
+						engineResponse.Order.OrderBook = &types.OrderSubDoc{Amount: ersb.RemainingOrder.Amount, Signature: ersb.RemainingOrder.Signature}
+						orderAsBytes, _ := json.Marshal(engineResponse.Order)
+						s.engine.PublishMessage(&engine.Message{Type: "remaining_order_add", Data: orderAsBytes})
+					}
+
+				}
+				t.Stop()
+				break
+
+			case <-t.C:
+				fmt.Printf("\nTimeout\n")
+				s.RecoverOrders(engineResponse)
+				t.Stop()
+				break
+			}
+		}
+	}
+	s.UpdateUsingEngineResponse(engineResponse)
+	// TODO: send to operator for blockchain execution
+
+	s.RelayUpdateOverSocket(engineResponse)
+	ws.CloseOrderReadChannel(engineResponse.Order.Hash)
+
+	return nil
 }

@@ -179,7 +179,7 @@ func (e *Resource) subscribeMessage() error {
 					log.Printf("Order Unmarshal error: %s", err)
 					continue
 				}
-				if msg.Type == "new_order" {
+				if msg.Type == "NEW_ORDER" {
 					e.matchOrder(order)
 				} else if msg.Type == "remaining_order_add" {
 					e.addOrder(order)

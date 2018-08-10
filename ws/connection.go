@@ -7,8 +7,13 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/gorilla/websocket"
 )
+
+const TradeChannel = "trades"
+const OrderbookChannel = "order_book"
+const OrderChannel = "orders"
 
 // gorilla websocket upgrader instance with configuration
 var upgrader = websocket.Upgrader{
@@ -20,12 +25,12 @@ var upgrader = websocket.Upgrader{
 }
 
 type channelMessage struct {
-	Channel string       `json:"channel"`
-	Message *interface{} `json:"message"`
+	Channel string      `json:"channel"`
+	Message interface{} `json:"message"`
 }
 
 var connectionUnsubscribtions map[*websocket.Conn][]func(*websocket.Conn)
-var socketChannels map[string]func(*interface{}, *websocket.Conn)
+var socketChannels map[string]func(interface{}, *websocket.Conn)
 
 // ConnectionEndpoint is the the handleFunc function for websocket connections
 // It handles incoming websocket messages and routes the message according to
@@ -38,6 +43,19 @@ func ConnectionEndpoint(w http.ResponseWriter, r *http.Request) {
 	}
 	initConnection(conn)
 	go func() {
+		// Recover in case of any panic in websocket. So that the app doesn't crash ===
+		defer func() {
+			if r := recover(); r != nil {
+				var ok bool
+				err, ok = r.(error)
+				if !ok {
+					err = fmt.Errorf("Panic in websocket: %v", r)
+				}
+				log.Fatal(err)
+			}
+		}()
+		// ===
+
 		for {
 			messageType, p, err := conn.ReadMessage()
 			if err != nil {
@@ -50,14 +68,15 @@ func ConnectionEndpoint(w http.ResponseWriter, r *http.Request) {
 			var msg *channelMessage
 			if err := json.Unmarshal(p, &msg); err != nil {
 				log.Println("unmarshal to channelMessage <==>" + err.Error())
-				conn.WriteJSON(map[string]interface{}{"channelMessage": err.Error()})
+				SendMessage(conn, msg.Channel, "ERROR", err.Error())
+				return
 			}
 			conn.SetCloseHandler(wsCloseHandler(conn))
 
 			if socketChannels[msg.Channel] != nil {
 				go socketChannels[msg.Channel](msg.Message, conn)
 			} else {
-				conn.WriteJSON(map[string]interface{}{"channel": "INVALID_CHANNEL"})
+				SendMessage(conn, msg.Channel, "ERROR", "INVALID_CHANNEL")
 			}
 		}
 	}()
@@ -77,7 +96,7 @@ func initConnection(conn *websocket.Conn) {
 // a new channel. A channel needs function which will handle the incoming messages for that channel.
 //
 // channelMessage handler function receives message from channelMessage and pointer to connection
-func RegisterChannel(channel string, fn func(*interface{}, *websocket.Conn)) error {
+func RegisterChannel(channel string, fn func(interface{}, *websocket.Conn)) error {
 	if channel == "" {
 		return errors.New("Channel can not be empty string")
 	}
@@ -93,9 +112,9 @@ func RegisterChannel(channel string, fn func(*interface{}, *websocket.Conn)) err
 }
 
 // getChannelMap returns singleton map of channels with there handler functions
-func getChannelMap() map[string]func(*interface{}, *websocket.Conn) {
+func getChannelMap() map[string]func(interface{}, *websocket.Conn) {
 	if socketChannels == nil {
-		socketChannels = make(map[string]func(*interface{}, *websocket.Conn))
+		socketChannels = make(map[string]func(interface{}, *websocket.Conn))
 	}
 	return socketChannels
 }
@@ -117,5 +136,27 @@ func wsCloseHandler(conn *websocket.Conn) func(code int, text string) error {
 			go unsub(conn)
 		}
 		return nil
+	}
+}
+
+// SendMessage constructs the message with proper structure to be sent over websocket
+func SendMessage(conn *websocket.Conn, channel string, msgType string, msg interface{}, hash ...string) {
+	message := types.Message{
+		MsgType: msgType,
+		Data:    msg,
+	}
+
+	if len(hash) > 0 {
+		message.Hash = hash[0]
+	}
+
+	temp := channelMessage{
+		Channel: channel,
+		Message: message,
+	}
+
+	err := conn.WriteJSON(temp)
+	if err != nil {
+		conn.Close()
 	}
 }

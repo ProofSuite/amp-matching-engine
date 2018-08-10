@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/Proofsuite/amp-matching-engine/utils"
-	"github.com/ethereum/go-ethereum/crypto/sha3"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -114,34 +113,35 @@ func (orderType *OrderSide) MarshalJSON() ([]byte, error) {
 
 // Order contains the data related to an order sent by the user
 type Order struct {
-	ID                bson.ObjectId `json:"id" bson:"_id" redis:"_id"`
-	BaseToken         string        `json:"baseToken" bson:"baseToken" redis:"baseToken"`
-	QuoteToken        string        `json:"quoteToken" bson:"quoteToken" redis:"quoteToken"`
-	BuyToken          string        `json:"buyToken" bson:"buyToken" redis:"buyToken"`
-	SellToken         string        `json:"sellToken" bson:"sellToken" redis:"sellToken"`
-	BaseTokenAddress  string        `json:"baseTokenAddress" bson:"baseTokenAddress" redis:"baseTokenAddress"`
-	QuoteTokenAddress string        `json:"quoteTokenAddress" bson:"quoteTokenAddress" redis:"quoteTokenAddress"`
-	FilledAmount      int64         `json:"filledAmount" bson:"filledAmount" redis:"filledAmount"`
-	Amount            int64         `json:"amount" bson:"amount" redis:"amount"`
-	Price             int64         `json:"price" bson:"price" redis:"price"`
-	Fee               int64         `json:"fee" bson:"fee" redis:"fee"`
-	MakeFee           int64         `json:"makeFee" bson:"makeFee"`
-	TakeFee           int64         `json:"takeFee" bson:"takeFee"`
-	Side              OrderSide     `json:"side" bson:"side" redis:"side"`
-	AmountBuy         int64         `json:"amountBuy" bson:"amountBuy" redis:"amountBuy"`
-	AmountSell        int64         `json:"amountSell" bson:"amountSell" redis:"amountSell"`
-	Nonce             int64         `json:"nonce" bson:"nonce"`
-	ExchangeAddress   string        `json:"exchangeAddress" bson:"exchangeAddress" redis:"exchangeAddress"`
-	Status            OrderStatus   `json:"status" bson:"status" redis:"status"`
-	Signature         *Signature    `json:"signature,omitempty" bson:"signature" redis:"signature"`
-	PairID            bson.ObjectId `json:"pairID" bson:"pairID" redis:"pairID"`
-	PairName          string        `json:"pairName" bson:"pairName" redis:"pairName"`
-	Hash              string        `json:"hash" bson:"hash" redis:"hash"`
-	UserAddress       string        `json:"userAddress" bson:"userAddress" redis:"userAddress"`
-	OrderBook         *OrderSubDoc  `json:"orderBook" bson:"orderBook"`
+	ID          bson.ObjectId `json:"id" bson:"_id"`
+	BuyToken    string        `json:"buyToken" bson:"buyToken"`
+	SellToken   string        `json:"sellToken" bson:"sellToken"`
+	BaseToken   string        `json:"baseToken" bson:"baseToken"`
+	QuoteToken  string        `json:"quoteToken" bson:"quoteToken"`
+	BuyAmount   int64         `json:"buyAmount" bson:"buyAmount"`
+	SellAmount  int64         `json:"sellAmount" bson:"sellAmount"`
+	Nonce       int64         `json:"nonce" bson:"nonce"`
+	UserAddress string        `json:"userAddress" bson:"userAddress"`
+	Hash        string        `json:"hash" bson:"hash"`
+	Signature   *Signature    `json:"signature,omitempty" bson:"signature"`
 
-	CreatedAt time.Time `json:"createdAt" bson:"createdAt" redis:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt" bson:"updatedAt" redis:"updatedAt"`
+	Side         OrderSide    `json:"side" bson:"side"`
+	Amount       int64        `json:"amount" bson:"amount"`
+	Price        int64        `json:"price" bson:"price"`
+	FilledAmount int64        `json:"filledAmount" bson:"filledAmount"`
+	Status       OrderStatus  `json:"status" bson:"status"`
+	OrderBook    *OrderSubDoc `json:"orderBook" bson:"orderBook"`
+
+	Fee     int64 `json:"fee" bson:"fee"`
+	MakeFee int64 `json:"makeFee" bson:"makeFee"`
+	TakeFee int64 `json:"takeFee" bson:"takeFee"`
+
+	PairID          bson.ObjectId `json:"pairID" bson:"pairID"`
+	PairName        string        `json:"pairName" bson:"pairName"`
+	ExchangeAddress string        `json:"exchangeAddress" bson:"exchangeAddress"`
+
+	CreatedAt time.Time `json:"createdAt" bson:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt" bson:"updatedAt"`
 }
 
 // OrderSubDoc is a sub document, it is used to store the order in order book
@@ -153,24 +153,24 @@ type OrderSubDoc struct {
 }
 
 // ComputeHash calculates the order hash
-func (o *Order) ComputeHash() (ch string) {
-	sha := sha3.NewKeccak256()
-	// sha.Write(o.ExchangeAddress.Bytes())
-	sha.Write([]byte(o.BaseToken))
-	sha.Write([]byte(o.QuoteToken))
-	// sha.Write(strconv.ParseUint(o.Price))
-	// sha.Write(BigToHash(o.Amount).Bytes())
-	// sha.Write(BigToHash(o.Expires).Bytes())
-	// sha.Write(BigToHash(o.Nonce).Bytes())
-	// sha.Write(o.Maker.Bytes())
-	// return BytesToHash(sha.Sum(nil))
-	return
-}
+// func (o *Order) ComputeHash() (ch string) {
+// 	sha := sha3.NewKeccak256()
+// sha.Write(o.ExchangeAddress.Bytes())
+// sha.Write([]byte(o.BaseToken))
+// sha.Write([]byte(o.QuoteToken))
+// sha.Write(strconv.ParseUint(o.Price))
+// sha.Write(BigToHash(o.Amount).Bytes())
+// sha.Write(BigToHash(o.Expires).Bytes())
+// sha.Write(BigToHash(o.Nonce).Bytes())
+// sha.Write(o.Maker.Bytes())
+// return BytesToHash(sha.Sum(nil))
+// 	return
+// }
 
 // GetKVPrefix returns the key value store(redis) prefix to be used
 // by matching engine correspondind to a particular order.
 func (o *Order) GetKVPrefix() string {
-	return o.BaseTokenAddress + "::" + o.QuoteTokenAddress
+	return o.BaseToken + "::" + o.QuoteToken
 }
 
 // GetOBKeys returns the keys corresponding to an order

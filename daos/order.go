@@ -5,6 +5,7 @@ import (
 
 	"github.com/Proofsuite/amp-matching-engine/app"
 	"github.com/Proofsuite/amp-matching-engine/types"
+	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -18,16 +19,18 @@ type OrderDao struct {
 
 // NewOrderDao returns a new instance of OrderDao
 func NewOrderDao() *OrderDao {
-	// index := mgo.Index{
-	// 	Key:    []string{"code"},
-	// 	Unique: true,
-	// }
+	dbName := app.Config.DBName
+	collection := "orders"
+	index := mgo.Index{
+		Key:    []string{"hash"},
+		Unique: true,
+	}
 
-	// err := db.C("currency").EnsureIndex(index)
-	// if err != nil {
-	// 	panic(err)
-	// }
-	return &OrderDao{"orders", app.Config.DBName}
+	err := db.session.DB(dbName).C(collection).EnsureIndex(index)
+	if err != nil {
+		panic(err)
+	}
+	return &OrderDao{collection, dbName}
 }
 
 // Create function performs the DB insertion task for Order collection
