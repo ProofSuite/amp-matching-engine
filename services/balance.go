@@ -43,6 +43,6 @@ func (s *BalanceService) Create(balance *types.Balance) error {
 }
 
 // GetByAddress is responsible for fetching the balance details of a user address
-func (s *BalanceService) GetByAddress(addr string) (*types.Balance, error) {
-	return s.balanceDao.GetByAddress(addr)
+func (s *BalanceService) GetByAddress(addr string, nonZero ...bool) (*types.Balance, error) {
+	return s.balanceDao.GetByAddress(addr, nonZero...)
 }
