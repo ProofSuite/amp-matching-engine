@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
+	eth "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto/sha3"
 
 	"gopkg.in/mgo.v2/bson"
@@ -15,23 +16,24 @@ import (
 // To be valid an accept by the matching engine (and ultimately the exchange smart-contract),
 // the trade signature must be made from the trader Maker account
 type Trade struct {
-	ID           bson.ObjectId `json:"id,omitempty" bson:"_id"`
-	OrderHash    string        `json:"orderHash" bson:"orderHash"`
-	Amount       int64         `json:"amount" bson:"amount"`
-	Price        int64         `json:"price" bson:"price"`
-	Side         OrderSide     `json:"side" bson:"side"`
-	TradeNonce   int64         `json:"tradeNonce" bson:"tradeNonce"`
-	Taker        string        `json:"taker" bson:"taker"`
-	Maker        string        `json:"maker" bson:"maker"`
-	TakerOrderID bson.ObjectId `json:"takerOrderId" bson:"takerOrderId"`
-	MakerOrderID bson.ObjectId `json:"makerOrderId" bson:"makerOrderId"`
-	Signature    *Signature    `json:"signature" bson:"signature"`
-	Hash         string        `json:"hash" bson:"hash"`
-	PairName     string        `json:"pairName" bson:"pairName"`
-	BaseToken    string        `json:"baseToken" bson:"baseToken"`
-	QuoteToken   string        `json:"quoteToken" bson:"quoteToken"`
-	CreatedAt    time.Time     `json:"createdAt" bson:"createdAt" redis:"createdAt"`
-	UpdatedAt    time.Time     `json:"updatedAt" bson:"updatedAt" redis:"updatedAt"`
+	ID           bson.ObjectId    `json:"id,omitempty" bson:"_id"`
+	OrderHash    string           `json:"orderHash" bson:"orderHash"`
+	Amount       int64            `json:"amount" bson:"amount"`
+	Price        int64            `json:"price" bson:"price"`
+	Side         OrderSide        `json:"side" bson:"side"`
+	TradeNonce   int64            `json:"tradeNonce" bson:"tradeNonce"`
+	Taker        string           `json:"taker" bson:"taker"`
+	Maker        string           `json:"maker" bson:"maker"`
+	TakerOrderID bson.ObjectId    `json:"takerOrderId" bson:"takerOrderId"`
+	MakerOrderID bson.ObjectId    `json:"makerOrderId" bson:"makerOrderId"`
+	Signature    *Signature       `json:"signature" bson:"signature"`
+	Hash         string           `json:"hash" bson:"hash"`
+	PairName     string           `json:"pairName" bson:"pairName"`
+	BaseToken    string           `json:"baseToken" bson:"baseToken"`
+	QuoteToken   string           `json:"quoteToken" bson:"quoteToken"`
+	Tx           *eth.Transaction `json:"tx" bson:"tx"`
+	CreatedAt    time.Time        `json:"createdAt" bson:"createdAt" redis:"createdAt"`
+	UpdatedAt    time.Time        `json:"updatedAt" bson:"updatedAt" redis:"updatedAt"`
 }
 
 // NewTrade returns a new unsigned trade corresponding to an Order, amount and taker address

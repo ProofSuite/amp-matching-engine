@@ -6,8 +6,9 @@ import (
 
 	"github.com/Proofsuite/amp-matching-engine/crons"
 	"github.com/Proofsuite/amp-matching-engine/endpoints"
+	"github.com/Proofsuite/amp-matching-engine/ethereum"
 	"github.com/Proofsuite/amp-matching-engine/rabbitmq"
-	"github.com/Proofsuite/amp-matching-engine/redisclient"
+	"github.com/Proofsuite/amp-matching-engine/redis"
 	"github.com/Proofsuite/amp-matching-engine/services"
 	"github.com/Proofsuite/amp-matching-engine/ws"
 
@@ -23,30 +24,26 @@ import (
 )
 
 func main() {
-	// load application configurations
 	if err := app.LoadConfig("./config"); err != nil {
 		panic(fmt.Errorf("Invalid application configuration: %s", err))
 	}
 
-	// load error messages
 	if err := errors.LoadMessages(app.Config.ErrorFile); err != nil {
 		panic(fmt.Errorf("Failed to read the error message file: %s", err))
 	}
 
-	// create the logger
 	logger := logrus.New()
 
 	rabbitmq.InitConnection(app.Config.Rabbitmq)
+	ethereum.InitConnection(app.Config.Ethereum)
+	redis.InitConnection(app.Config.Redis)
 
 	// connect to the database
 	if _, err := daos.InitSession(); err != nil {
 		panic(err)
 	}
-
-	// websocket endpoint
-	http.HandleFunc("/socket", ws.ConnectionEndpoint)
-	// wire up API routing
 	http.Handle("/", buildRouter(logger))
+	http.HandleFunc("/socket", ws.ConnectionEndpoint)
 
 	// start the server
 	address := fmt.Sprintf(":%v", app.Config.ServerPort)
@@ -87,9 +84,12 @@ func buildRouter(logger *logrus.Logger) *routing.Router {
 	balanceDao := daos.NewBalanceDao()
 	addressDao := daos.NewAddressDao()
 	tradesDao := daos.NewTradeDao()
+	// walletDao := daos.NewWalletDao()
+
+	redisClient := redis.InitConnection(app.Config.Redis)
 
 	// instantiate engine
-	e, err := engine.InitEngine(orderDao, redisclient.InitConnection(app.Config.Redis))
+	e, err := engine.InitEngine(orderDao, redisClient)
 	if err != nil {
 		panic(err)
 	}
@@ -101,6 +101,8 @@ func buildRouter(logger *logrus.Logger) *routing.Router {
 	balanceService := services.NewBalanceService(balanceDao, tokenDao)
 	orderService := services.NewOrderService(orderDao, balanceDao, pairDao, tradesDao, addressDao, e)
 	addressService := services.NewAddressService(addressDao, balanceDao, tokenDao)
+	// walletService := services.NewWalletService(walletDao, balanceDao)
+	cronService := crons.NewCronService(tradeService)
 
 	endpoints.ServeTokenResource(rg, tokenService)
 	endpoints.ServePairResource(rg, pairService)
@@ -109,7 +111,6 @@ func buildRouter(logger *logrus.Logger) *routing.Router {
 	endpoints.ServeTradeResource(rg, tradeService)
 	endpoints.ServeAddressResource(rg, addressService)
 
-	cronService := crons.NewCronService(tradeService)
 	cronService.InitCrons()
 	return router
 }

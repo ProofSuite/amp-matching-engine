@@ -25,6 +25,8 @@ type appConfig struct {
 	TakeFee float64 `mapstructure:"take_fee"`
 	// the Rabbitmq is the URI of rabbitmq to use
 	Rabbitmq string `mapstructure:"rabbitmq"`
+
+	Ethereum string `mapstructure:"ethereum"`
 	// the redis is the URI of redis to use
 	Redis string `mapstructure:"redis"`
 	// the signing method for JWT. Defaults to "HS256"
