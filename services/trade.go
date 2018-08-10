@@ -12,6 +12,8 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/ws"
 	"github.com/gorilla/websocket"
 	"gopkg.in/mgo.v2/bson"
+
+	eth "github.com/ethereum/go-ethereum/core/types"
 )
 
 // TradeService struct with daos required, responsible for communicating with daos.
@@ -38,6 +40,17 @@ func (t *TradeService) GetByPairAddress(bt, qt string) ([]*types.Trade, error) {
 // GetByUserAddress fetches all the trades corresponding to a user address
 func (t *TradeService) GetByUserAddress(addr string) ([]*types.Trade, error) {
 	return t.tradeDao.GetByUserAddress(addr)
+}
+
+func (t *TradeService) UpdateTradeTx(tr *types.Trade, tx *eth.Transaction) error {
+	tr.Tx = tx
+
+	err := t.tradeDao.Update(tr)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // UnregisterForTicks handles all the unsubscription messages for ticks corresponding to a pair
