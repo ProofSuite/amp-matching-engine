@@ -38,6 +38,6 @@ func (s *WalletService) GetAll() ([]types.Wallet, error) {
 	return s.WalletDao.GetAll()
 }
 
-func (s *WalletService) GetbyAddress(a string) (*types.Wallet, error) {
+func (s *WalletService) GetbyAddress(a common.Address) (*types.Wallet, error) {
 	return s.WalletDao.GetByAddress(a)
 }
