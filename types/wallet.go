@@ -57,20 +57,26 @@ func (w *Wallet) Validate() error {
 	return nil
 }
 
-func (w *Wallet) GetBSON() interface{} {
+func (w *Wallet) GetBSON() (interface{}, error) {
 	return struct {
-		Address    string `json:"address" bson:"address"`
-		PrivateKey string `json:"privateKey" bson:"privateKey"`
+		ID         bson.ObjectId `json:"id,omitempty" bson:"_id"`
+		Address    string        `json:"address" bson:"address"`
+		PrivateKey string        `json:"privateKey" bson:"privateKey"`
+		Admin      bool          `json:"admin" bson:"admin"`
 	}{
+		ID:         w.ID,
 		Address:    w.Address.Hex(),
 		PrivateKey: hex.EncodeToString(w.PrivateKey.D.Bytes()),
-	}
+		Admin:      w.Admin,
+	}, nil
 }
 
 func (w *Wallet) SetBSON(raw bson.Raw) error {
 	decoded := new(struct {
-		Address    string `json:"address" bson:"address"`
-		PrivateKey string `json:"privateKey" bson:"privateKey"`
+		ID         bson.ObjectId `json:"id,omitempty" bson:"_id"`
+		Address    string        `json:"address" bson:"address"`
+		PrivateKey string        `json:"privateKey" bson:"privateKey"`
+		Admin      bool          `json:"admin" bson:"admin"`
 	})
 
 	err := raw.Unmarshal(decoded)
@@ -78,8 +84,10 @@ func (w *Wallet) SetBSON(raw bson.Raw) error {
 		return err
 	}
 
+	w.ID = decoded.ID
 	w.Address = common.HexToAddress(decoded.Address)
 	w.PrivateKey, _ = crypto.HexToECDSA(decoded.PrivateKey)
+	w.Admin = decoded.Admin
 	return nil
 }
 
