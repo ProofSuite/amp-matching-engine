@@ -2,6 +2,14 @@
 
 
 [[projects]]
+  branch = "code-cleanup"
+  digest = "1:d4db4836b7a2a0bcbdce4e6b108ab7161bc9f4f567f8d432f99a52d21d367662"
+  name = "github.com/Proofsuite/matching-engine"
+  packages = ["redisclient"]
+  pruneopts = "T"
+  revision = "0a6ee0ccb57ad329bd9eceda990ade17c0dcccc4"
+
+[[projects]]
   digest = "1:e3bb58bcd5cf318d91ccdb290fd8e0e78d16add716b1ccf861fed19c1551fde0"
   name = "github.com/Sirupsen/logrus"
   packages = ["."]
@@ -458,6 +466,7 @@
   packages = [
     ".",
     "bson",
+    "dbtest",
     "internal/json",
     "internal/sasl",
     "internal/scram",
@@ -474,6 +483,14 @@
   revision = "c1b8fa8bdccecb0b8db834ee0b92fdbcfa606dd6"
 
 [[projects]]
+  branch = "v2"
+  digest = "1:5bb148b78468350091db2ffbb2370f35cc6dcd74d9378a31b1c7b86ff7528f08"
+  name = "gopkg.in/tomb.v2"
+  packages = ["."]
+  pruneopts = "T"
+  revision = "d5d1b5820637886def9eef33e03a27a9f166942c"
+
+[[projects]]
   digest = "1:342378ac4dcb378a5448dd723f0784ae519383532f5e70ade24132c4c8693202"
   name = "gopkg.in/yaml.v2"
   packages = ["."]
@@ -485,6 +502,7 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/Proofsuite/matching-engine/redisclient",
     "github.com/Sirupsen/logrus",
     "github.com/ethereum/go-ethereum",
     "github.com/ethereum/go-ethereum/accounts/abi",
@@ -516,6 +534,7 @@
     "github.com/stretchr/testify/assert",
     "gopkg.in/mgo.v2",
     "gopkg.in/mgo.v2/bson",
+    "gopkg.in/mgo.v2/dbtest",
     "gopkg.in/yaml.v2",
   ]
   solver-name = "gps-cdcl"
