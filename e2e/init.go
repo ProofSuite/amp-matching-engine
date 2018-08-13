@@ -15,8 +15,8 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/daos"
 	"github.com/Proofsuite/amp-matching-engine/endpoints"
 	"github.com/Proofsuite/amp-matching-engine/engine"
+	"github.com/Proofsuite/amp-matching-engine/redis"
 	"github.com/Proofsuite/amp-matching-engine/services"
-	"github.com/Proofsuite/matching-engine/redisclient"
 	routing "github.com/go-ozzo/ozzo-routing"
 	"github.com/go-ozzo/ozzo-routing/content"
 	"github.com/go-ozzo/ozzo-routing/cors"
@@ -85,7 +85,7 @@ func buildRouter() *routing.Router {
 	tradesDao := daos.NewTradeDao()
 
 	// instantiate engine
-	e, err := engine.InitEngine(orderDao, redisclient.InitConnection(app.Config.Redis))
+	e, err := engine.InitEngine(orderDao, redis.InitConnection(app.Config.Redis))
 	if err != nil {
 		panic(err)
 	}
