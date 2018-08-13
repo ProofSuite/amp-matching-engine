@@ -45,14 +45,20 @@ func (dao *BalanceDao) GetByAddress(addr string, nonZeros ...bool) (response *ty
 	if nonZero {
 		q = []bson.M{bson.M{
 			"$match": bson.M{
-				"address": "0xefD7eB287CeeFCE8256Dd46e25F398acEA7C4b64",
+				"address": bson.RegEx{
+					Pattern: addr,
+					Options: "i",
+				},
 			},
 		}}
 	} else {
 
 		q = []bson.M{bson.M{
 			"$match": bson.M{
-				"address": "0xefD7eB287CeeFCE8256Dd46e25F398acEA7C4b64",
+				"address": bson.RegEx{
+					Pattern: addr,
+					Options: "i",
+				},
 			},
 		}, bson.M{
 			"$addFields": bson.M{
