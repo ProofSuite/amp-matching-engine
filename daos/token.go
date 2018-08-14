@@ -1,10 +1,12 @@
 package daos
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/Proofsuite/amp-matching-engine/app"
 	"github.com/Proofsuite/amp-matching-engine/types"
+	"github.com/ethereum/go-ethereum/common"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -23,7 +25,6 @@ func NewTokenDao() *TokenDao {
 
 // Create function performs the DB insertion task for token collection
 func (dao *TokenDao) Create(token *types.Token) (err error) {
-
 	if err := token.Validate(); err != nil {
 		return err
 	}
@@ -49,12 +50,14 @@ func (dao *TokenDao) GetByID(id bson.ObjectId) (response *types.Token, err error
 }
 
 // GetByAddress function fetches details of a token based on its contract address
-func (dao *TokenDao) GetByAddress(addr string) (response *types.Token, err error) {
-	q := bson.M{"contractAddress": bson.RegEx{Pattern: addr, Options: "i"}}
+func (dao *TokenDao) GetByAddress(addr common.Address) (*types.Token, error) {
+	q := bson.M{"contractAddress": addr.Hex()}
 	var resp []types.Token
-	err = db.Get(dao.dbName, dao.collectionName, q, 0, 1, &resp)
+	err := db.Get(dao.dbName, dao.collectionName, q, 0, 1, &resp)
+
+	fmt.Printf("%+v", resp)
 	if err != nil || len(resp) == 0 {
-		return
+		return nil, err
 	}
 	return &resp[0], nil
 }

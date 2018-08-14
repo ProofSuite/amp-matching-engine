@@ -2,143 +2,41 @@ package types
 
 import (
 	"encoding/json"
-	"errors"
+	"math/big"
+	"strconv"
 	"time"
 
 	"github.com/Proofsuite/amp-matching-engine/utils"
+	"github.com/ethereum/go-ethereum/common"
 	"gopkg.in/mgo.v2/bson"
 )
 
-// OrderStatus is used to represent the current status of order.
-// It is an enum
-type OrderStatus string
-
-// This block declares an enum of type OrderStatus
-// containing all possible status of an order.
-const (
-	NEW           OrderStatus = "NEW"
-	OPEN                      = "OPEN"
-	MATCHED                   = "MATCHED"
-	SUBMITTED                 = "SUBMITTED"
-	PARTIALFILLED             = "PARTIAL_FILLED"
-	FILLED                    = "FILLED"
-	CANCELLED                 = "CANCELLED"
-	PENDING                   = "PENDING"
-	INVALIDORDER              = "INVALID_ORDER"
-	ERROR                     = "ERROR"
-)
-
-// UnmarshalJSON unmarshals []byte to type orderStatus
-func (orderStatus *OrderStatus) UnmarshalJSON(data []byte) error {
-	var s string
-	err := json.Unmarshal(data, &s)
-	if err != nil {
-		return err
-	}
-
-	value, ok := map[string]OrderStatus{
-		"NEW":            NEW,
-		"OPEN":           OPEN,
-		"MATCHED":        MATCHED,
-		"SUBMITTED":      SUBMITTED,
-		"PARTIAL_FILLED": PARTIALFILLED,
-		"FILLED":         FILLED,
-		"CANCELLED":      CANCELLED,
-		"PENDING":        PENDING,
-		"INVALID_ORDER":  INVALIDORDER,
-		"ERROR":          ERROR,
-	}[s]
-	if !ok {
-		return errors.New("Invalid Enum Status Value")
-	}
-
-	*orderStatus = value
-	return nil
-}
-
-// MarshalJSON marshals type orderStatus to []byte.
-func (orderStatus *OrderStatus) MarshalJSON() ([]byte, error) {
-
-	value, ok := map[OrderStatus]string{
-		NEW:           "NEW",
-		OPEN:          "OPEN",
-		MATCHED:       "MATCHED",
-		SUBMITTED:     "SUBMITTED",
-		PARTIALFILLED: "PARTIAL_FILLED",
-		FILLED:        "FILLED",
-		CANCELLED:     "CANCELLED",
-		PENDING:       "PENDING",
-		INVALIDORDER:  "INVALID_ORDER",
-		ERROR:         "ERROR",
-	}[*orderStatus]
-	if !ok {
-		return nil, errors.New("Invalid Enum Type")
-	}
-	return json.Marshal(value)
-}
-
-// OrderSide is an enum of various buy/sell type of orders
-type OrderSide string
-
-// This block declares various members of enum OrderType.
-const (
-	BUY  OrderSide = "BUY"
-	SELL OrderSide = "SELL"
-)
-
-// UnmarshalJSON unmarshals []byte to type OrderType
-func (orderType *OrderSide) UnmarshalJSON(data []byte) error {
-	var s string
-	err := json.Unmarshal(data, &s)
-	if err != nil {
-		return err
-	}
-
-	value, ok := map[string]OrderSide{"BUY": BUY, "SELL": SELL}[s]
-	if !ok {
-		return errors.New("Invalid Enum Type Value")
-	}
-	*orderType = value
-	return nil
-}
-
-// MarshalJSON marshals type OrderType to []byte
-func (orderType *OrderSide) MarshalJSON() ([]byte, error) {
-	value, ok := map[OrderSide]string{BUY: "BUY", SELL: "SELL"}[*orderType]
-	if !ok {
-		return nil, errors.New("Invalid Enum Type")
-	}
-	return json.Marshal(value)
-}
-
 // Order contains the data related to an order sent by the user
 type Order struct {
-	ID          bson.ObjectId `json:"id" bson:"_id"`
-	BuyToken    string        `json:"buyToken" bson:"buyToken"`
-	SellToken   string        `json:"sellToken" bson:"sellToken"`
-	BaseToken   string        `json:"baseToken" bson:"baseToken"`
-	QuoteToken  string        `json:"quoteToken" bson:"quoteToken"`
-	BuyAmount   int64         `json:"buyAmount" bson:"buyAmount"`
-	SellAmount  int64         `json:"sellAmount" bson:"sellAmount"`
-	Nonce       int64         `json:"nonce" bson:"nonce"`
-	UserAddress string        `json:"userAddress" bson:"userAddress"`
-	Hash        string        `json:"hash" bson:"hash"`
-	Signature   *Signature    `json:"signature,omitempty" bson:"signature"`
+	ID              bson.ObjectId  `json:"id" bson:"_id"`
+	UserAddress     common.Address `json:"userAddress" bson:"userAddress"`
+	ExchangeAddress common.Address `json:"exchangeAddress" bson:"exchangeAddress"`
+	BuyToken        common.Address `json:"buyToken" bson:"buyToken"`
+	SellToken       common.Address `json:"sellToken" bson:"sellToken"`
+	BaseToken       common.Address `json:"baseToken" bson:"baseToken"`
+	QuoteToken      common.Address `json:"quoteToken" bson:"quoteToken"`
+	BuyAmount       *big.Int       `json:"buyAmount" bson:"buyAmount"`
+	SellAmount      *big.Int       `json:"sellAmount" bson:"sellAmount"`
+	Status          string         `json:"status" bson:"status"`
+	Side            string         `json:"side" bson:"side"`
+	Hash            common.Hash    `json:"hash" bson:"hash"`
+	Signature       *Signature     `json:"signature,omitempty" bson:"signature"`
+	Price           int64          `json:"price" bson:"price"`
+	Amount          int64          `json:"amount" bson:"amount"`
+	FilledAmount    int64          `json:"filledAmount" bson:"filledAmount"`
+	Nonce           *big.Int       `json:"nonce" bson:"nonce"`
+	Expires         *big.Int       `json:"expires" bson:"expires"`
+	MakeFee         *big.Int       `json:"makeFee" bson:"makeFee"`
+	TakeFee         *big.Int       `json:"takeFee" bson:"takeFee"`
+	OrderBook       *OrderSubDoc   `json:"orderBook" bson:"orderBook"`
 
-	Side         OrderSide    `json:"side" bson:"side"`
-	Amount       int64        `json:"amount" bson:"amount"`
-	Price        int64        `json:"price" bson:"price"`
-	FilledAmount int64        `json:"filledAmount" bson:"filledAmount"`
-	Status       OrderStatus  `json:"status" bson:"status"`
-	OrderBook    *OrderSubDoc `json:"orderBook" bson:"orderBook"`
-
-	Fee     int64 `json:"fee" bson:"fee"`
-	MakeFee int64 `json:"makeFee" bson:"makeFee"`
-	TakeFee int64 `json:"takeFee" bson:"takeFee"`
-
-	PairID          bson.ObjectId `json:"pairID" bson:"pairID"`
-	PairName        string        `json:"pairName" bson:"pairName"`
-	ExchangeAddress string        `json:"exchangeAddress" bson:"exchangeAddress"`
+	PairID   bson.ObjectId `json:"pairID,omitempty" bson:"_pairId"`
+	PairName string        `json:"pairName" bson:"pairName"`
 
 	CreatedAt time.Time `json:"createdAt" bson:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt" bson:"updatedAt"`
@@ -150,6 +48,309 @@ type Order struct {
 type OrderSubDoc struct {
 	Amount    int64      `json:"amount" bson:"amount"`
 	Signature *Signature `json:"signature,omitempty" bson:"signature" redis:"signature"`
+}
+
+func (o *Order) MarshalJSON() ([]byte, error) {
+	order := map[string]interface{}{
+		"id":              o.ID,
+		"exchangeAddress": o.ExchangeAddress,
+		"userAddress":     o.UserAddress,
+		"buyToken":        o.BuyToken,
+		"sellToken":       o.SellToken,
+		"baseToken":       o.BaseToken,
+		"quoteToken":      o.QuoteToken,
+		"side":            o.Side,
+		"status":          o.Status,
+		"buyAmount":       o.BuyAmount.String(),
+		"sellAmount":      o.SellAmount.String(),
+		"makeFee":         o.MakeFee.String(),
+		"takeFee":         o.TakeFee.String(),
+		"expires":         o.Expires.String(),
+		"nonce":           o.Nonce.String(),
+		"signature": map[string]interface{}{
+			"V": o.Signature.V,
+			"R": o.Signature.R,
+			"S": o.Signature.S,
+		},
+		"pairID":       o.PairID,
+		"pairName":     o.PairName,
+		"price":        strconv.Itoa(int(o.Price)),
+		"filledAmount": strconv.Itoa(int(o.FilledAmount)),
+		"amount":       strconv.Itoa(int(o.Amount)),
+		"hash":         o.Hash.String(),
+		"createdAt":    o.CreatedAt.String(),
+		"updatedAt":    o.UpdatedAt.String(),
+	}
+	return json.Marshal(order)
+}
+
+func (o *Order) UnmarshalJSON(b []byte) error {
+	order := map[string]interface{}{}
+
+	err := json.Unmarshal(b, &order)
+	if err != nil {
+		return err
+	}
+
+	o.ID = bson.ObjectIdHex(order["id"].(string))
+	o.PairID = bson.ObjectIdHex(order["pairID"].(string))
+	o.PairName = order["pairName"].(string)
+	o.ExchangeAddress = common.HexToAddress(order["exchangeAddress"].(string))
+	o.UserAddress = common.HexToAddress(order["userAddress"].(string))
+	o.BuyToken = common.HexToAddress(order["buyToken"].(string))
+	o.SellToken = common.HexToAddress(order["sellToken"].(string))
+	o.BaseToken = common.HexToAddress(order["baseToken"].(string))
+	o.QuoteToken = common.HexToAddress(order["quoteToken"].(string))
+
+	o.BuyAmount = new(big.Int)
+	o.SellAmount = new(big.Int)
+	o.Expires = new(big.Int)
+	o.Nonce = new(big.Int)
+	o.MakeFee = new(big.Int)
+	o.TakeFee = new(big.Int)
+
+	o.BuyAmount.UnmarshalJSON([]byte(order["buyAmount"].(string)))
+	o.SellAmount.UnmarshalJSON([]byte(order["sellAmount"].(string)))
+	o.Expires.UnmarshalJSON([]byte(order["expires"].(string)))
+	o.Nonce.UnmarshalJSON([]byte(order["nonce"].(string)))
+	o.MakeFee.UnmarshalJSON([]byte(order["makeFee"].(string)))
+	o.TakeFee.UnmarshalJSON([]byte(order["takeFee"].(string)))
+
+	o.Price, _ = strconv.ParseInt(order["price"].(string), 10, 64)
+	o.Amount, _ = strconv.ParseInt(order["amount"].(string), 10, 64)
+	o.FilledAmount, _ = strconv.ParseInt(order["filledAmount"].(string), 10, 64)
+
+	o.Hash = common.HexToHash(order["hash"].(string))
+	o.Side = order["side"].(string)
+	o.Status = order["status"].(string)
+
+	signature := order["signature"].(map[string]interface{})
+	o.Signature = &Signature{
+		V: byte(signature["V"].(float64)),
+		R: common.HexToHash(signature["R"].(string)),
+		S: common.HexToHash(signature["S"].(string)),
+	}
+
+	if order["orderBook"] != nil {
+		subdoc := order["orderBook"].(map[string]interface{})
+		sudocsig := subdoc["signature"].(map[string]interface{})
+		o.OrderBook = &OrderSubDoc{
+			Amount: subdoc["amount"].(int64),
+			Signature: &Signature{
+				V: byte(sudocsig["V"].(float64)),
+				R: common.HexToHash(sudocsig["R"].(string)),
+				S: common.HexToHash(sudocsig["S"].(string)),
+			},
+		}
+	}
+	return nil
+}
+
+type OrderRecord struct {
+	ID              bson.ObjectId      `json:"id" bson:"_id"`
+	UserAddress     string             `json:"userAddress" bson:"userAddress"`
+	ExchangeAddress string             `json:"exchangeAddress" bson:"exchangeAddress"`
+	BuyToken        string             `json:"buyToken" bson:"buyToken"`
+	SellToken       string             `json:"sellToken" bson:"sellToken"`
+	BaseToken       string             `json:"baseToken" bson:"baseToken"`
+	QuoteToken      string             `json:"quoteToken" bson:"quoteToken"`
+	BuyAmount       string             `json:"buyAmount" bson:"buyAmount"`
+	SellAmount      string             `json:"sellAmount" bson:"sellAmount"`
+	Status          string             `json:"status" bson:"status"`
+	Side            string             `json:"side" bson:"side"`
+	Hash            string             `json:"hash" bson:"hash"`
+	Price           int64              `json:"price" bson:"price"`
+	Amount          int64              `json:"amount" bson:"amount"`
+	FilledAmount    int64              `json:"filledAmount" bson:"filledAmount"`
+	Nonce           string             `json:"nonce" bson:"nonce"`
+	Expires         string             `json:"expires" bson:"expires"`
+	MakeFee         string             `json:"makeFee" bson:"makeFee"`
+	TakeFee         string             `json:"takeFee" bson:"takeFee"`
+	Signature       *SignatureRecord   `json:"signature,omitempty" bson:"signature"`
+	OrderBook       *OrderSubDocRecord `json:"orderBook" bson:"orderBook"`
+
+	PairID    bson.ObjectId `json:"pairID" bson:"_pairId"`
+	PairName  string        `json:"pairName" bson:"pairName"`
+	CreatedAt time.Time     `json:"createdAt" bson:"createdAt"`
+	UpdatedAt time.Time     `json:"updatedAt" bson:"updatedAt"`
+}
+
+type OrderSubDocRecord struct {
+	Amount    int64            `json:"amount" bson:"amount"`
+	Signature *SignatureRecord `json:"signature" bson:"signature"`
+}
+
+func (o *Order) GetBSON() (interface{}, error) {
+	or := OrderRecord{
+		ID:              o.ID,
+		PairID:          o.PairID,
+		PairName:        o.PairName,
+		ExchangeAddress: o.ExchangeAddress.Hex(),
+		UserAddress:     o.UserAddress.Hex(),
+		BuyToken:        o.BuyToken.Hex(),
+		SellToken:       o.SellToken.Hex(),
+		BaseToken:       o.BaseToken.Hex(),
+		QuoteToken:      o.QuoteToken.Hex(),
+		BuyAmount:       o.BuyAmount.String(),
+		SellAmount:      o.SellAmount.String(),
+		Status:          o.Status,
+		Side:            o.Side,
+		Hash:            o.Hash.Hex(),
+		Price:           o.Price,
+		Amount:          o.Amount,
+		FilledAmount:    o.FilledAmount,
+		Nonce:           o.Nonce.String(),
+		Expires:         o.Expires.String(),
+		MakeFee:         o.MakeFee.String(),
+		TakeFee:         o.TakeFee.String(),
+		CreatedAt:       o.CreatedAt,
+		UpdatedAt:       o.UpdatedAt,
+	}
+
+	if o.Signature != nil {
+		or.Signature = &SignatureRecord{
+			V: o.Signature.V,
+			R: o.Signature.R.Hex(),
+			S: o.Signature.S.Hex(),
+		}
+	}
+
+	if o.OrderBook != nil {
+		or.OrderBook = &OrderSubDocRecord{
+			Amount: o.OrderBook.Amount,
+			Signature: &SignatureRecord{
+				V: o.OrderBook.Signature.V,
+				R: o.OrderBook.Signature.R.Hex(),
+				S: o.OrderBook.Signature.S.Hex(),
+			},
+		}
+	}
+
+	return or, nil
+}
+
+func (o *Order) SetBSON(raw bson.Raw) error {
+	decoded := new(struct {
+		ID              bson.ObjectId      `json:"id,omitempty" bson:"_id"`
+		PairID          bson.ObjectId      `json:"pairId,omitempty" bson:"_pairId"`
+		PairName        string             `json:"pairName" bson:"pairName"`
+		ExchangeAddress string             `json:"exchangeAddress" bson:"exchangeAddress"`
+		UserAddress     string             `json:"userAddress" bson:"userAddress"`
+		BuyToken        string             `json:"buyToken" bson:"buyToken"`
+		SellToken       string             `json:"sellToken" bson:"sellToken"`
+		BaseToken       string             `json:"baseToken" bson:"baseToken"`
+		QuoteToken      string             `json:"quoteToken" bson:"quoteToken"`
+		BuyAmount       string             `json:"buyAmount" bson:"buyAmount"`
+		SellAmount      string             `json:"sellAmount" bson:"sellAmount"`
+		Status          string             `json:"status" bson:"status"`
+		Side            string             `json:"side" bson:"side"`
+		Hash            string             `json:"hash" bson:"hash"`
+		Price           int64              `json:"price" bson:"price"`
+		Amount          int64              `json:"amount" bson:"amount"`
+		FilledAmount    int64              `json:"filledAmount" bson:"filledAmount"`
+		Nonce           string             `json:"nonce" bson:"nonce"`
+		Expires         string             `json:"expires" bson:"expires"`
+		MakeFee         string             `json:"makeFee" bson:"makeFee"`
+		TakeFee         string             `json:"takeFee" bson:"takeFee"`
+		Signature       *SignatureRecord   `json:"signature" bson:"signature"`
+		OrderBook       *OrderSubDocRecord `json:"orderBook" bson:"orderBook"`
+		CreatedAt       time.Time          `json:"createdAt" bson:"createdAt"`
+		UpdatedAt       time.Time          `json:"updatedAt" bson:"updatedAt"`
+	})
+
+	err := raw.Unmarshal(decoded)
+	if err != nil {
+		return err
+	}
+
+	o.ID = decoded.ID
+	o.PairID = decoded.PairID
+	o.PairName = decoded.PairName
+	o.ExchangeAddress = common.HexToAddress(decoded.ExchangeAddress)
+	o.UserAddress = common.HexToAddress(decoded.UserAddress)
+	o.BuyToken = common.HexToAddress(decoded.BuyToken)
+	o.SellToken = common.HexToAddress(decoded.SellToken)
+	o.BaseToken = common.HexToAddress(decoded.BaseToken)
+	o.QuoteToken = common.HexToAddress(decoded.QuoteToken)
+
+	o.BuyAmount = new(big.Int)
+	o.SellAmount = new(big.Int)
+	o.Nonce = new(big.Int)
+	o.Expires = new(big.Int)
+	o.MakeFee = new(big.Int)
+	o.TakeFee = new(big.Int)
+	o.BuyAmount, _ = o.BuyAmount.SetString(decoded.BuyAmount, 10)
+	o.SellAmount, _ = o.SellAmount.SetString(decoded.SellAmount, 10)
+	o.Nonce, _ = o.Nonce.SetString(decoded.Nonce, 10)
+	o.Expires, _ = o.Expires.SetString(decoded.Expires, 10)
+	o.MakeFee, _ = o.MakeFee.SetString(decoded.MakeFee, 10)
+	o.TakeFee, _ = o.TakeFee.SetString(decoded.TakeFee, 10)
+
+	o.Status = decoded.Status
+	o.Side = decoded.Side
+	o.Price = decoded.Price
+	o.Amount = decoded.Amount
+	o.FilledAmount = decoded.FilledAmount
+
+	o.Hash = common.HexToHash(decoded.Hash)
+
+	if decoded.Signature != nil {
+		o.Signature = &Signature{
+			V: byte(decoded.Signature.V),
+			R: common.HexToHash(decoded.Signature.R),
+			S: common.HexToHash(decoded.Signature.S),
+		}
+	}
+
+	if decoded.OrderBook != nil {
+		o.OrderBook = &OrderSubDoc{
+			Amount: decoded.OrderBook.Amount,
+			Signature: &Signature{
+				V: byte(decoded.OrderBook.Signature.V),
+				R: common.HexToHash(decoded.OrderBook.Signature.R),
+				S: common.HexToHash(decoded.OrderBook.Signature.S),
+			},
+		}
+	}
+
+	o.CreatedAt = decoded.CreatedAt
+	o.UpdatedAt = decoded.UpdatedAt
+	return nil
+}
+
+// GetKVPrefix returns the key value store(redis) prefix to be used
+// by matching engine correspondind to a particular order.
+func (o *Order) GetKVPrefix() string {
+	return o.BaseToken.Hex() + "::" + o.QuoteToken.Hex()
+}
+
+// GetOBKeys returns the keys corresponding to an order
+// orderbook price point key
+// orderbook list key corresponding to order price.
+func (o *Order) GetOBKeys() (ss, list string) {
+	var k string
+	if o.Side == "BUY" {
+		k = "buy"
+	} else if o.Side == "SELL" {
+		k = "sell"
+	}
+	ss = o.GetKVPrefix() + "::" + k
+	list = o.GetKVPrefix() + "::" + k + "::" + utils.UintToPaddedString(o.Price)
+	return
+}
+
+// GetOBMatchKey returns the orderbook price point key
+// aginst which the order needs to be matched
+func (o *Order) GetOBMatchKey() (ss string) {
+	var k string
+	if o.Side == "BUY" {
+		k = "sell"
+	} else if o.Side == "SELL" {
+		k = "buy"
+	}
+
+	ss = o.GetKVPrefix() + "::" + k
+	return
 }
 
 // ComputeHash calculates the order hash
@@ -167,37 +368,104 @@ type OrderSubDoc struct {
 // 	return
 // }
 
-// GetKVPrefix returns the key value store(redis) prefix to be used
-// by matching engine correspondind to a particular order.
-func (o *Order) GetKVPrefix() string {
-	return o.BaseToken + "::" + o.QuoteToken
-}
+// UnmarshalJSON unmarshals []byte to type orderStatus
+// func (orderStatus *OrderStatus) UnmarshalJSON(data []byte) error {
+// 	var s string
+// 	err := json.Unmarshal(data, &s)
+// 	if err != nil {
+// 		return err
+// 	}
 
-// GetOBKeys returns the keys corresponding to an order
-// orderbook price point key
-// orderbook list key corresponding to order price.
-func (o *Order) GetOBKeys() (ss, list string) {
-	var k string
-	if o.Side == BUY {
-		k = "buy"
-	} else if o.Side == SELL {
-		k = "sell"
-	}
-	ss = o.GetKVPrefix() + "::" + k
-	list = o.GetKVPrefix() + "::" + k + "::" + utils.UintToPaddedString(o.Price)
-	return
-}
+// 	value, ok := map[string]OrderStatus{
+// 		"NEW":            NEW,
+// 		"OPEN":           OPEN,
+// 		"MATCHED":        MATCHED,
+// 		"SUBMITTED":      SUBMITTED,
+// 		"PARTIAL_FILLED": PARTIALFILLED,
+// 		"FILLED":         FILLED,
+// 		"CANCELLED":      CANCELLED,
+// 		"PENDING":        PENDING,
+// 		"INVALID_ORDER":  INVALIDORDER,
+// 		"ERROR":          ERROR,
+// 	}[s]
+// 	if !ok {
+// 		return errors.New("Invalid Enum Status Value")
+// 	}
 
-// GetOBMatchKey returns the orderbook price point key
-// aginst which the order needs to be matched
-func (o *Order) GetOBMatchKey() (ss string) {
-	var k string
-	if o.Side == BUY {
-		k = "sell"
-	} else if o.Side == SELL {
-		k = "buy"
-	}
+// 	*orderStatus = value
+// 	return nil
+// }
 
-	ss = o.GetKVPrefix() + "::" + k
-	return
-}
+// // MarshalJSON marshals type orderStatus to []byte.
+// func (orderStatus *OrderStatus) MarshalJSON() ([]byte, error) {
+
+// 	value, ok := map[OrderStatus]string{
+// 		NEW:           "NEW",
+// 		OPEN:          "OPEN",
+// 		MATCHED:       "MATCHED",
+// 		SUBMITTED:     "SUBMITTED",
+// 		PARTIALFILLED: "PARTIAL_FILLED",
+// 		FILLED:        "FILLED",
+// 		CANCELLED:     "CANCELLED",
+// 		PENDING:       "PENDING",
+// 		INVALIDORDER:  "INVALID_ORDER",
+// 		ERROR:         "ERROR",
+// 	}[*orderStatus]
+// 	if !ok {
+// 		return nil, errors.New("Invalid Enum Type")
+// 	}
+// 	return json.Marshal(value)
+// }
+
+// // OrderSide is an enum of various buy/sell type of orders
+// type OrderSide string
+
+// // This block declares various members of enum OrderType.
+// const (
+// 	BUY  OrderSide = "BUY"
+// 	SELL OrderSide = "SELL"
+// )
+
+// // UnmarshalJSON unmarshals []byte to type OrderType
+// func (orderType *OrderSide) UnmarshalJSON(data []byte) error {
+// 	var s string
+// 	err := json.Unmarshal(data, &s)
+// 	if err != nil {
+// 		return err
+// 	}
+
+// 	value, ok := map[string]OrderSide{"BUY": BUY, "SELL": SELL}[s]
+// 	if !ok {
+// 		return errors.New("Invalid Enum Type Value")
+// 	}
+// 	*orderType = value
+// 	return nil
+// }
+
+// // MarshalJSON marshals type OrderType to []byte
+// func (orderType *OrderSide) MarshalJSON() ([]byte, error) {
+// 	value, ok := map[OrderSide]string{BUY: "BUY", SELL: "SELL"}[*orderType]
+// 	if !ok {
+// 		return nil, errors.New("Invalid Enum Type")
+// 	}
+// 	return json.Marshal(value)
+// }
+
+// OrderStatus is used to represent the current status of order.
+// // It is an enum
+// type OrderStatus string
+
+// // This block declares an enum of type OrderStatus
+// // containing all possible status of an order.
+// const (
+// 	NEW           OrderStatus = "NEW"
+// 	OPEN                      = "OPEN"
+// 	MATCHED                   = "MATCHED"
+// 	SUBMITTED                 = "SUBMITTED"
+// 	PARTIALFILLED             = "PARTIAL_FILLED"
+// 	FILLED                    = "FILLED"
+// 	CANCELLED                 = "CANCELLED"
+// 	PENDING                   = "PENDING"
+// 	INVALIDORDER              = "INVALID_ORDER"
+// 	ERROR                     = "ERROR"
+// )

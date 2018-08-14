@@ -37,7 +37,20 @@ func NewOrderService(orderDao *daos.OrderDao, balanceDao *daos.BalanceDao, pairD
 // funds and order data.
 // If valid: Order is inserted in DB with order status as new and order is publiched
 // on rabbitmq queue for matching engine to process the order
-func (s *OrderService) Create(order *types.Order) (err error) {
+func (s *OrderService) Create(or *types.OrderRequest) (err error) {
+
+	p, err := s.pairDao.GetByBuySellTokenAddress(or.BuyToken, or.SellToken)
+	if err != nil {
+		return err
+	} else if p == nil {
+		return errors.New("Pair not found")
+	}
+
+	order, err := or.ToOrder()
+	if err != nil {
+		ws.OrderSendErrorMessage(conn, or.Hash, err.Error())
+		return
+	}
 
 	// Fill token and pair data
 	fmt.Printf("\n %v === %v\n", order.BaseToken, order.QuoteToken)
@@ -49,24 +62,24 @@ func (s *OrderService) Create(order *types.Order) (err error) {
 		return errors.New("Pair not found")
 	}
 
-	if order.SellToken == p.QuoteTokenAddress {
-		order.Side = types.BUY
-		order.Amount = order.BuyAmount
-		order.Price = int64((float64(order.SellAmount) / float64(order.BuyAmount)) * math.Pow10(8))
+	if order.BuyToken == p.QuoteTokenAddress {
+		o.Side = BUY
+		o.Amount = o.BuyAmount.Int64()
+		o.Price = o.SellAmount.Int64() * math.Pow10(8) / o.SellAmount.Int64()
+	} else if order.BuyToken == p.BaseTokenAddress {
+		o.Side = SELL
+		o.Amount = o.SellAmount.Int64()
+		o.Price = o.BuyAmount.Int64() * math.Pow10(8) / o.SellAmount.Int64()
 	} else {
-		order.Side = types.SELL
-		order.Amount = order.SellAmount
-		order.Price = int64((float64(order.BuyAmount) / float64(order.SellAmount)) * math.Pow10(8))
+		return errors.New("Could not determine order side")
 	}
 
 	order.BaseToken = p.BaseTokenAddress
 	order.QuoteToken = p.QuoteTokenAddress
-
 	order.PairID = p.ID
 	order.PairName = p.Name
 
 	// Validate if order is valid
-
 	addr, err := s.addressDao.GetByAddress(order.UserAddress)
 	if err != nil {
 		return err
@@ -76,52 +89,98 @@ func (s *OrderService) Create(order *types.Order) (err error) {
 		return fmt.Errorf("Order Nonce: %v is not valid expecting nonce: %v", order.Nonce, addr.Nonce)
 	}
 
-	// balance validation
-	bal, err := s.balanceDao.GetByAddress(order.UserAddress)
+	// fee balance validation
+	wethTokenBalance, err := s.accountDao.GetWethTokenBalance(order.UserAddress, order.QuoteToken)
 	if err != nil {
 		return err
 	}
-	if order.Side == types.BUY {
-		amt := bal.Tokens[order.QuoteToken]
-		if amt.Amount < order.SellAmount+order.Fee {
-			return errors.New("Insufficient Balance")
-		}
-		fmt.Println("Buy : Verified")
 
-		amt.Amount = amt.Amount - (order.SellAmount)             // + order.Fee
-		amt.LockedAmount = amt.LockedAmount + (order.SellAmount) // + order.Fee
-		err = s.balanceDao.UpdateAmount(order.UserAddress, order.QuoteToken, &amt)
+	if wethTokenBalance.Balance < order.MakeFee {
+		return errors.New("Insufficient WETH Balance")
+	}
 
-		if err != nil {
-			return err
-		}
+	if wethTokenBalance.Balance < order.TakeFee {
+		return errors.New("Insufficient WETH Balance")
+	}
 
-	} else if order.Side == types.SELL {
-		amt := bal.Tokens[order.BaseToken]
-		if amt.Amount < order.BuyAmount+order.Fee {
-			return errors.New("Insufficient Balance")
-		}
-		fmt.Println("Sell : Verified")
-		amt.Amount = amt.Amount - (order.BuyAmount)             // + order.Fee
-		amt.LockedAmount = amt.LockedAmount + (order.BuyAmount) // + order.Fee
-		err = s.balanceDao.UpdateAmount(order.UserAddress, order.BaseToken, &amt)
+	if wethTokenBalance.Allowance < order.MakeFee {
+		return errors.New("Insufficient WETH Allowance")
+	}
 
-		if err != nil {
-			return err
-		}
+	if wethTokenBalance.Allowance < order.TakeFee {
+		return errors.New("Insufficient WETH Allowance")
+	}
+
+	wethTokenBalance.Balance = wethTokenBalance.Minus(order.MakeFee)
+	wethTokenBalance.LockedBalance = wethTokenBalance.Add(order.TakeFee)
+
+	err = s.accountDao.UpdateTokenBalance(order.UserAddress, order.QuoteToken, &wethTokenBalance)
+	if err != nil {
+		return nil
+	}
+
+
+	// balance validation
+	sellTokenBalance, err := s.accountDao.GetTokenBalance(order.UserAddress, order.SellToken)
+	if err != nil {
+		return err
+	}
+
+	if sellTokenBalance.Balance < order.SellAmount {
+		return errors.New("Insufficient Balance")
+	}
+
+	if sellTokenBalance.Allowance < order.SellAmount {
+		return errors.New("Insufficient Allowance")
+	}
+
+	sellTokenBalance.Balance = sellTokenBalance.Minus(order.SellAmount)
+	sellTokenBalance.LockedBalance = sellTokenBalance.Add(order.SellAmount)
+
+	err = s.accountDao.UpdateTokenBalance(order.UserAddress, order.SellToken, &sellTokenBalance)
+	if err != nil {
+		return err
 	}
 
 	if err = s.orderDao.Create(order); err != nil {
-		return
-	}
-	if err = s.addressDao.IncrNonce(order.UserAddress); err != nil {
-		return
+		return err
 	}
 
 	// Push order to queue
-	orderAsBytes, _ := json.Marshal(order)
-	s.engine.PublishMessage(&engine.Message{Type: "NEW_ORDER", Data: orderAsBytes})
-	return err
+	bytes, _ := json.Marshal(order)
+
+	s.SendMessage("ORDER_ADDED", order.Hash, order)
+	s.engine.PublishMessage(&engine.Message{Type: "NEW_ORDER", Data: bytes})
+
+	// DEPRECATED
+	// bal, err := s.balanceDao.GetByAddress(order.UserAddress)
+	// if err != nil {
+	// 	return err
+	// }
+	// if order.Side == types.BUY {
+	// 	amt := bal.Tokens[order.QuoteToken]
+	// 	if amt.Amount < order.SellAmount+order.Fee {
+	// 		return errors.New("Insufficient Balance")
+	// 	}
+	// 	fmt.Println("Buy : Verified")
+
+	// 	amt.Amount = amt.Amount - (order.SellAmount)             // + order.Fee
+	// 	amt.LockedAmount = amt.LockedAmount + (order.SellAmount) // + order.Fee
+	// 	err = s.balanceDao.UpdateAmount(order.UserAddress, order.QuoteToken, &amt)
+
+	// 	if err != nil {
+	// 		return err
+	// 	}
+
+	// } else if order.Side == types.SELL {
+	// 	amt := bal.Tokens[order.BaseToken]
+	// 	if amt.Amount < order.BuyAmount+order.Fee {
+	// 		return errors.New("Insufficient Balance")
+	// 	}
+	// 	fmt.Println("Sell : Verified")
+	// 	amt.Amount = amt.Amount - (order.BuyAmount)             // + order.Fee
+	// 	amt.LockedAmount = amt.LockedAmount + (order.BuyAmount) // + order.Fee
+	// 	err = s.balanceDao.UpdateAmount(order.UserAddress, order.BaseToken, &amt)
 }
 
 // GetByID fetches the details of an order using order's mongo ID
