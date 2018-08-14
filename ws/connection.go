@@ -142,8 +142,8 @@ func wsCloseHandler(conn *websocket.Conn) func(code int, text string) error {
 // SendMessage constructs the message with proper structure to be sent over websocket
 func SendMessage(conn *websocket.Conn, channel string, msgType string, msg interface{}, hash ...string) {
 	message := types.Message{
-		MsgType: msgType,
-		Data:    msg,
+		Type: msgType,
+		Data: msg,
 	}
 
 	if len(hash) > 0 {

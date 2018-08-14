@@ -12,9 +12,9 @@ const (
 
 // Message is the model used to send message over socket channel
 type Message struct {
-	MsgType string      `json:"msgType"`
-	Hash    string      `json:"hash,omitempty"`
-	Data    interface{} `json:"data"`
+	Type string      `json:"type"`
+	Hash string      `json:"hash,omitempty"`
+	Data interface{} `json:"data"`
 }
 
 // Subscription is the model used to send message for subscription to any streaming channel

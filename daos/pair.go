@@ -6,6 +6,7 @@ import (
 
 	"github.com/Proofsuite/amp-matching-engine/app"
 	"github.com/Proofsuite/amp-matching-engine/types"
+	"github.com/ethereum/go-ethereum/common"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -24,7 +25,6 @@ func NewPairDao() *PairDao {
 
 // Create function performs the DB insertion task for pair collection
 func (dao *PairDao) Create(pair *types.Pair) (err error) {
-
 	pair.ID = bson.NewObjectId()
 	pair.CreatedAt = time.Now()
 	pair.UpdatedAt = time.Now()
@@ -47,76 +47,72 @@ func (dao *PairDao) GetByID(id bson.ObjectId) (response *types.Pair, err error) 
 
 // GetByName function fetches details of a pair using pair's name.
 // It makes CASE INSENSITIVE search query one pair's name
-func (dao *PairDao) GetByName(name string) (response *types.Pair, err error) {
+func (dao *PairDao) GetByName(name string) (*types.Pair, error) {
 	var res []*types.Pair
 	q := bson.M{"name": bson.RegEx{
 		Pattern: name,
 		Options: "i",
 	}}
-	err = db.Get(dao.dbName, dao.collectionName, q, 0, 1, &res)
+
+	err := db.Get(dao.dbName, dao.collectionName, q, 0, 1, &res)
 	if err != nil {
-		return
-	} else if len(res) > 0 {
-		response = res[0]
-	} else {
-		err = errors.New("No Pair found")
+		return nil, err
 	}
-	return
+
+	if len(res) == 0 {
+		return nil, errors.New("No pair found")
+	}
+
+	return res[0], nil
 }
 
 // GetByTokenAddress function fetches pair based on
 // CONTRACT ADDRESS of base token and quote token
-func (dao *PairDao) GetByTokenAddress(baseToken, quoteToken string) (response *types.Pair, err error) {
+func (dao *PairDao) GetByTokenAddress(baseToken, quoteToken common.Address) (*types.Pair, error) {
 	var res []*types.Pair
-	q := bson.M{"baseTokenAddress": bson.RegEx{
-		Pattern: baseToken,
-		Options: "i",
-	}, "quoteTokenAddress": bson.RegEx{
-		Pattern: quoteToken,
-		Options: "i",
-	}}
-	err = db.Get(dao.dbName, dao.collectionName, q, 0, 1, &res)
-	if err != nil {
-		return
-	} else if len(res) > 0 {
-		response = res[0]
-	} else {
-		err = errors.New("No Pair found")
+
+	q := bson.M{
+		"baseTokenAddress":  baseToken.Hex(),
+		"quoteTokenAddress": quoteToken.Hex(),
 	}
-	return
+
+	err := db.Get(dao.dbName, dao.collectionName, q, 0, 1, &res)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(res) == 0 {
+		return nil, errors.New("No pair found")
+	}
+
+	return res[0], nil
 }
 
 // GetByBuySellTokenAddress function fetches pair based on
 // CONTRACT ADDRESS of buy token and sell token
-func (dao *PairDao) GetByBuySellTokenAddress(buyToken, sellToken string) (response *types.Pair, err error) {
+func (dao *PairDao) GetByBuySellTokenAddress(buyToken, sellToken common.Address) (*types.Pair, error) {
 	var res []*types.Pair
 	q := bson.M{
 		"$or": []bson.M{
-			bson.M{"baseTokenAddress": bson.RegEx{
-				Pattern: buyToken,
-				Options: "i",
-			}, "quoteTokenAddress": bson.RegEx{
-				Pattern: sellToken,
-				Options: "i",
+			bson.M{
+				"baseTokenAddress":  buyToken.Hex(),
+				"quoteTokenAddress": sellToken.Hex(),
 			},
-			},
-			bson.M{"baseTokenAddress": bson.RegEx{
-				Pattern: sellToken,
-				Options: "i",
-			}, "quoteTokenAddress": bson.RegEx{
-				Pattern: buyToken,
-				Options: "i",
-			},
+			bson.M{
+				"baseTokenAddress":  sellToken.Hex(),
+				"quoteTokenAddress": buyToken.Hex(),
 			},
 		},
 	}
-	err = db.Get(dao.dbName, dao.collectionName, q, 0, 1, &res)
+
+	err := db.Get(dao.dbName, dao.collectionName, q, 0, 1, &res)
 	if err != nil {
-		return
-	} else if len(res) > 0 {
-		response = res[0]
-	} else {
-		err = errors.New("No Pair found")
+		return nil, err
 	}
-	return
+
+	if len(res) == 0 {
+		return nil, errors.New("No pair found")
+	}
+
+	return res[0], nil
 }

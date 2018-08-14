@@ -60,6 +60,7 @@ func testAPI(router *routing.Router, method, URL, body string) *httptest.Respons
 	httptest.NewServer(router)
 	return res
 }
+
 func testSocket(body interface{}) {
 	handler := http.HandlerFunc(ws.ConnectionEndpoint)
 	d := wstest.NewDialer(handler)
@@ -74,6 +75,7 @@ func testSocket(body interface{}) {
 	c.ReadJSON(&resp)
 	fmt.Printf("\n%s\n", resp)
 }
+
 func runAPITests(t *testing.T, router *routing.Router, tests []apiTestCase) {
 	for _, test := range tests {
 		res := testAPI(router, test.method, test.url, test.body)

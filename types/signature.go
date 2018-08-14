@@ -15,6 +15,12 @@ type Signature struct {
 	S common.Hash
 }
 
+type SignatureRecord struct {
+	V byte   `json:"V" bson:"V"`
+	R string `json:"R" bson:"R"`
+	S string `json:"S" bson:"S"`
+}
+
 // NewSignature function decodes []byte to Signature type
 func NewSignature(b []byte) (*Signature, error) {
 	if len(b) != 64 {

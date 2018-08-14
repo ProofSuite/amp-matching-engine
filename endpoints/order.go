@@ -41,69 +41,79 @@ func (r *orderEndpoint) get(c *routing.Context) error {
 }
 
 func (r *orderEndpoint) ws(input interface{}, conn *websocket.Conn) {
-
 	ch := make(chan *types.Message)
-	mab, _ := json.Marshal(input)
 	var msg *types.Message
-	if err := json.Unmarshal(mab, &msg); err != nil {
+
+	bytes, _ := json.Marshal(input)
+	if err := json.Unmarshal(bytes, &msg); err != nil {
 		log.Println("unmarshal to wsmsg <==>" + err.Error())
 	}
-	if msg.MsgType == "NEW_ORDER" {
-		oab, err := json.Marshal(msg.Data)
 
-		var model types.OrderRequest
-		if err := json.Unmarshal(oab, &model); err != nil {
-			ws.OrderSendErrorMessage(conn, model.ComputeHash(), err.Error())
-			return
-		}
-		if err := model.Validate(); err != nil {
-			ws.OrderSendErrorMessage(conn, model.ComputeHash(), err.Error())
-			return
-		}
-		if ok, err := model.VerifySignature(); err != nil {
-			ws.OrderSendErrorMessage(conn, model.ComputeHash(), err.Error())
-			return
-		} else if !ok {
-			ws.OrderSendErrorMessage(conn, model.ComputeHash(), "Invalid Signature")
-			return
-		}
-		order, err := model.ToOrder()
-		if err != nil {
-			ws.OrderSendErrorMessage(conn, model.ComputeHash(), err.Error())
-			return
-		}
-		ws.RegisterOrderConnection(order.Hash, &ws.OrderConn{Conn: conn, ReadChannel: ch})
-		ws.RegisterConnectionUnsubscribeHandler(conn, ws.OrderSocketUnsubscribeHandler(order.Hash))
-
-		err = r.orderService.Create(order)
-		if err != nil {
-			ws.OrderSendErrorMessage(conn, model.ComputeHash(), err.Error())
-			return
-		}
-		r.orderService.SendMessage("ORDER_ADDED", order.Hash, order)
-
-	} else if msg.MsgType == "CANCEL_ORDER" {
-		oab, err := json.Marshal(msg.Data)
-
-		var order *types.Order
-		if err := json.Unmarshal(oab, &order); err != nil {
-			ws.OrderSendErrorMessage(conn, order.Hash, err.Error())
-			return
-		}
-
-		ws.RegisterOrderConnection(order.Hash, &ws.OrderConn{Conn: conn, Active: true})
-		ws.RegisterConnectionUnsubscribeHandler(conn, ws.OrderSocketUnsubscribeHandler(order.Hash))
-
-		err = r.cancelOrder(order)
-		if err != nil {
-			ws.OrderSendErrorMessage(conn, order.Hash, err.Error())
-			return
-		}
+	if msg.Type == "NEW_ORDER" {
+		r.handleNewOrder(msg * types.Message)
+	} else if msg.Type == "CANCEL_ORDER" {
+		r.handleCancelOrder(msg * types.Message)
 	} else {
 		ch := ws.GetOrderChannel(msg.Hash)
 		if ch != nil {
 			ch <- msg
 		}
+	}
+}
+
+func (r *orderEndpoint) handleNewOrder(msg *types.Message) {
+	var or types.OrderRequest
+	bytes, err = json.Marshal(msg.Data)
+
+	err := json.Unmarshal(bytes, &or)
+	or.Hash = or.ComputeHash()
+
+	if err != nil {
+		ws.OrderSendErrorMessage(conn, or.Hash, err.Error())
+		return
+	}
+
+	if err = or.Validate(); err != nil {
+		ws.OrderSendErrorMessage(conn, or.Hash, err.Error())
+		return
+	}
+
+	ok, err := or.VerifySignature()
+	if err != nil {
+		ws.OrderSendErrorMessage(conn, or.Hash, err.Error())
+		return
+	}
+	if !ok {
+		ws.OrderSendErrorMessage(conn, or.Hash, "Invalid Signature")
+		return
+	}
+
+	ws.RegisterOrderConnection(or.Hash, &ws.OrderConn{Conn: conn, ReadChannel: ch})
+	ws.RegisterConnectionUnsubscribeHandler(conn, ws.OrderSocketUnsubscribeHandler(or.Hash))
+
+	err = r.orderService.Create(or)
+	if err != nil {
+		ws.OrderSendErrorMessage(conn, or.Hash, err.Error())
+		return
+	}
+}
+
+func (r *orderEndpoint) handleCancelOrder(msg *types.Message) {
+	bytes, err := json.Marshal(msg.Data)
+
+	var order *types.Order
+	if err := json.Unmarshal(bytes, &order); err != nil {
+		ws.OrderSendErrorMessage(conn, order.Hash, err.Error())
+		return
+	}
+
+	ws.RegisterOrderConnection(order.Hash, &ws.OrderConn{Conn: conn, Active: true})
+	ws.RegisterConnectionUnsubscribeHandler(conn, ws.OrderSocketUnsubscribeHandler(order.Hash))
+
+	err = r.cancelOrder(order)
+	if err != nil {
+		ws.OrderSendErrorMessage(conn, order.Hash, err.Error())
+		return
 	}
 }
 
