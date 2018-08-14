@@ -234,6 +234,9 @@ func (e *Resource) updateOrder(order *types.Order, tradeAmount int64) error {
 	json.Unmarshal(storedOrderAsBytes, &storedOrder)
 
 	storedOrder.FilledAmount = storedOrder.FilledAmount + tradeAmount
+	if storedOrder.FilledAmount == 0 {
+		storedOrder.Status = types.OPEN
+	}
 
 	// Add order to list
 	orderAsBytes, err := json.Marshal(storedOrder)
