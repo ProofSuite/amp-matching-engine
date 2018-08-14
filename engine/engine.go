@@ -7,18 +7,14 @@ import (
 	"sync"
 
 	"github.com/gomodule/redigo/redis"
-
 	"github.com/streadway/amqp"
 
 	"github.com/Proofsuite/amp-matching-engine/rabbitmq"
 	"github.com/Proofsuite/amp-matching-engine/types"
-
-	"github.com/Proofsuite/amp-matching-engine/daos"
 )
 
 // Resource contains daos and redis connection required for engine to work
 type Resource struct {
-	orderDao  *daos.OrderDao
 	redisConn redis.Conn
 	mutex     *sync.Mutex
 }
@@ -36,12 +32,9 @@ var queues = make(map[string]*amqp.Queue)
 var Engine *Resource
 
 // InitEngine initializes the engine singleton instance
-func InitEngine(orderDao *daos.OrderDao, redisConn redis.Conn) (engine *Resource, err error) {
+func InitEngine(redisConn redis.Conn) (engine *Resource, err error) {
 	if Engine == nil {
-		if orderDao == nil {
-			return nil, errors.New("Need pointer to struct of type daos.OrderDao")
-		}
-		Engine = &Resource{orderDao, redisConn, &sync.Mutex{}}
+		Engine = &Resource{redisConn, &sync.Mutex{}}
 		Engine.subscribeMessage()
 	}
 	engine = Engine

@@ -2,20 +2,31 @@
 
 
 [[projects]]
-  branch = "code-cleanup"
-  digest = "1:d4db4836b7a2a0bcbdce4e6b108ab7161bc9f4f567f8d432f99a52d21d367662"
-  name = "github.com/Proofsuite/matching-engine"
-  packages = ["redisclient"]
-  pruneopts = "T"
-  revision = "0a6ee0ccb57ad329bd9eceda990ade17c0dcccc4"
-
-[[projects]]
   digest = "1:e3bb58bcd5cf318d91ccdb290fd8e0e78d16add716b1ccf861fed19c1551fde0"
   name = "github.com/Sirupsen/logrus"
   packages = ["."]
   pruneopts = "T"
   revision = "3e01752db0189b9157070a0e1668a620f9a85da2"
   version = "v1.0.6"
+
+[[projects]]
+  branch = "master"
+  digest = "1:7afff364b8e5e9f1085fe77ae5630b8e0f7482338a50535881aa0b433e48fb0b"
+  name = "github.com/alicebob/gopher-json"
+  packages = ["."]
+  pruneopts = "T"
+  revision = "5a6b3ba71ee69b77cf64febf8b5a7526ca5eaef0"
+
+[[projects]]
+  digest = "1:369eab6c77ea60e863e47d9406513fc588a04bb9d86aefe7bf6b8d8042baa14a"
+  name = "github.com/alicebob/miniredis"
+  packages = [
+    ".",
+    "server",
+  ]
+  pruneopts = "T"
+  revision = "8890fdcfa933258e09a5b9b897270118064d70fd"
+  version = "2.4.4"
 
 [[projects]]
   digest = "1:8ba904411c0c2ccf235e992c9d16954d173783cb7ce2d8d2ff798aec2d5cd9a6"
@@ -394,6 +405,19 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:a053d234b4c7a50fdb199c8f2bb56d213751f8405ea97111e0a3ee06f80ecef5"
+  name = "github.com/yuin/gopher-lua"
+  packages = [
+    ".",
+    "ast",
+    "parse",
+    "pm",
+  ]
+  pruneopts = "T"
+  revision = "46796da1b0b4794e1e341883a399f12cc7574b55"
+
+[[projects]]
+  branch = "master"
   digest = "1:6c1f398ca39ca7b372787df7833b71af914021af747e83c17163bad6aee25594"
   name = "golang.org/x/crypto"
   packages = [
@@ -502,8 +526,8 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
-    "github.com/Proofsuite/matching-engine/redisclient",
     "github.com/Sirupsen/logrus",
+    "github.com/alicebob/miniredis",
     "github.com/ethereum/go-ethereum",
     "github.com/ethereum/go-ethereum/accounts/abi",
     "github.com/ethereum/go-ethereum/accounts/abi/bind",
