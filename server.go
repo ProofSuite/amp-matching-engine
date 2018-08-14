@@ -89,7 +89,7 @@ func buildRouter(logger *logrus.Logger) *routing.Router {
 	redisClient := redis.InitConnection(app.Config.Redis)
 
 	// instantiate engine
-	e, err := engine.InitEngine(orderDao, redisClient)
+	e, err := engine.InitEngine(redisClient)
 	if err != nil {
 		panic(err)
 	}
