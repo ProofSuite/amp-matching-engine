@@ -86,6 +86,18 @@ func (dao *TradeDao) GetByHash(hash common.Hash) (*types.Trade, error) {
 	return response[0], nil
 }
 
+func (dao *TradeDao) GetByOrderHash(hash common.Hash) ([]*types.Trade, error) {
+	q := bson.M{"orderHash": hash.Hex()}
+
+	response := []*types.Trade{}
+	err := db.Get(dao.dbName, dao.collectionName, q, 0, 0, &response)
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+
 // GetByPairAddress fetches all the trades corresponding to a particular pair token address.
 func (dao *TradeDao) GetByPairAddress(baseToken, quoteToken common.Address) (response []*types.Trade, err error) {
 	q := bson.M{"baseToken": bson.RegEx{

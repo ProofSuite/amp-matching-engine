@@ -88,7 +88,7 @@ func buildRouter(logger *logrus.Logger) *routing.Router {
 	redisClient := redis.InitConnection(app.Config.Redis)
 
 	// instantiate engine
-	engineResource, err := engine.InitEngine(orderDao, redisClient)
+	engineResource, err := engine.InitEngine(redisClient)
 	if err != nil {
 		panic(err)
 	}
@@ -101,17 +101,16 @@ func buildRouter(logger *logrus.Logger) *routing.Router {
 	pairService := services.NewPairService(pairDao, tokenDao, engineResource, tradeService)
 	orderService := services.NewOrderService(orderDao, pairDao, accountDao, tradeDao, engineResource)
 	orderBookService := services.NewOrderBookService(pairDao, tokenDao, engineResource)
-	// walletService := services.NewWalletService(walletDao, balanceDao)
 	cronService := crons.NewCronService(ohlcvService)
+	// walletService := services.NewWalletService(walletDao, balanceDao)
 
 	endpoints.ServeAccountResource(rg, accountService)
-	endpoints.ServeOHLCVResource(rg, ohlcvService)
 	endpoints.ServeTokenResource(rg, tokenService)
 	endpoints.ServePairResource(rg, pairService)
 	endpoints.ServeOrderBookResource(rg, orderBookService)
 	endpoints.ServeOHLCVResource(rg, ohlcvService)
-	endpoints.ServeOrderResource(rg, orderService, engineResource)
 	endpoints.ServeTradeResource(rg, tradeService)
+	endpoints.ServeOrderResource(rg, orderService, engineResource)
 
 	cronService.InitCrons()
 	return router
