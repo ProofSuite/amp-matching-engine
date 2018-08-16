@@ -5,6 +5,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"testing"
 	"encoding/json"
+	"fmt"
 )
 
 func TestExecute(t *testing.T) {
@@ -38,17 +39,27 @@ func TestExecute(t *testing.T) {
 	}
 	expectedTrade.Hash = expectedTrade.ComputeHash()
 
+	etb,_:=json.Marshal(expectedTrade)
+	expectedBookEntry:=*bookEntry
+	expectedBookEntry.Status=types.FILLED
+	expectedBookEntry.FilledAmount=bookEntry.Amount
+
 	expectedFillOrder := &FillOrder{
 		Amount: bookEntry.Amount-bookEntry.FilledAmount,
-		Order:  bookEntry,
+		Order:  &expectedBookEntry,
 	}
+	efob,_:=json.Marshal(expectedFillOrder)
+
 	trade, fillOrder, err := e.execute(order, bookEntry)
 	if err != nil {
 		t.Errorf("Error in execute: %s", err)
 		return
 	} else{
-		assert.Equal(t, expectedTrade, trade)
-		assert.Equal(t, expectedFillOrder, fillOrder)
+		tb,_:=json.Marshal(trade)
+		fob,_:=json.Marshal(fillOrder)
+		fmt.Println(expectedFillOrder.Order.Status == fillOrder.Order.Status)
+		assert.JSONEq(t, string(etb),  string(tb))
+		assert.JSONEq(t, string(efob),  string(fob))
 	}
 
 	// Test Case2: bookEntry amount is equal to order amount
@@ -71,10 +82,17 @@ func TestExecute(t *testing.T) {
 	}
 	expectedTrade.Hash = expectedTrade.ComputeHash()
 
+	etb,_=json.Marshal(expectedTrade)
+	expectedBookEntry=*bookEntry
+	expectedBookEntry.Status=types.FILLED
+	expectedBookEntry.FilledAmount=bookEntry.Amount
+
 	expectedFillOrder = &FillOrder{
 		Amount: bookEntry.Amount,
-		Order:  bookEntry,
+		Order:  &expectedBookEntry,
 	}
+	efob,_=json.Marshal(expectedFillOrder)
+
 	e.addOrder(bookEntry)
 
 	trade, fillOrder, err = e.execute(order, bookEntry)
@@ -82,8 +100,11 @@ func TestExecute(t *testing.T) {
 		t.Errorf("Error in execute: %s", err)
 		return
 	} else{
-		assert.Equal(t, expectedTrade, trade)
-		assert.Equal(t, expectedFillOrder, fillOrder)
+		tb,_:=json.Marshal(trade)
+		fob,_:=json.Marshal(fillOrder)
+		fmt.Println(expectedFillOrder.Order.Status == fillOrder.Order.Status)
+		assert.JSONEq(t, string(etb),  string(tb))
+		assert.JSONEq(t, string(efob),  string(fob))
 	}
 
 	// Test Case3: bookEntry amount is greater then order amount
@@ -107,10 +128,17 @@ func TestExecute(t *testing.T) {
 	}
 	expectedTrade.Hash = expectedTrade.ComputeHash()
 
+	etb,_=json.Marshal(expectedTrade)
+	expectedBookEntry=*bookEntry
+	expectedBookEntry.Status=types.PARTIALFILLED
+	expectedBookEntry.FilledAmount=expectedBookEntry.FilledAmount+order.Amount
+
 	expectedFillOrder = &FillOrder{
 		Amount: order.Amount,
-		Order:  bookEntry,
+		Order:  &expectedBookEntry,
 	}
+
+	efob,_=json.Marshal(expectedFillOrder)
 	e.addOrder(bookEntry)
 
 	trade, fillOrder, err = e.execute(order, bookEntry)
@@ -118,7 +146,10 @@ func TestExecute(t *testing.T) {
 		t.Errorf("Error in execute: %s", err)
 		return
 	} else{
-		assert.Equal(t, expectedTrade, trade)
-		assert.Equal(t, expectedFillOrder, fillOrder)
+		tb,_:=json.Marshal(trade)
+		fob,_:=json.Marshal(fillOrder)
+		fmt.Println(expectedFillOrder.Order.Status == fillOrder.Order.Status)
+		assert.JSONEq(t, string(etb),  string(tb))
+		assert.JSONEq(t, string(efob),  string(fob))
 	}
 }
