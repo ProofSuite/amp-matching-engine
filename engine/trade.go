@@ -43,7 +43,10 @@ func (e *Resource) execute(order *types.Order, bookEntry *types.Order) (trade *t
 		bookEntry.Status = "PARTIAL_FILLED"
 		fillOrder.Order = bookEntry
 
-		e.updateOrder(bookEntry, fillOrder.Amount)
+		err:=e.updateOrder(bookEntry, fillOrder.Amount)
+		if err!=nil {
+			return nil,nil,err
+		}
 
 	} else {
 		fillOrder.Amount = beAmtAvailable
@@ -52,7 +55,10 @@ func (e *Resource) execute(order *types.Order, bookEntry *types.Order) (trade *t
 		bookEntry.Status = "FILLED"
 		fillOrder.Order = bookEntry
 
-		e.deleteOrder(bookEntry, fillOrder.Amount)
+		err:=e.deleteOrder(bookEntry, fillOrder.Amount)
+		if err!=nil {
+			return nil,nil,err
+		}
 
 	}
 	order.FilledAmount = order.FilledAmount + fillOrder.Amount

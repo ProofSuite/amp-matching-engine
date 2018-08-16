@@ -10,7 +10,7 @@ import (
 
 // UserAddress holds both the address and the private key of an ethereum account
 type UserAddress struct {
-	ID        bson.ObjectId `json:"id" bson:"_id"`
+	ID        bson.ObjectId `json:"-" bson:"_id"`
 	Address   string        `json:"address" bson:"address"`
 	Nonce     int64         `json:"nonce" bson:"nonce"`
 	IsBlocked bool          `json:"isBlocked" bson:"isBlocked"`
