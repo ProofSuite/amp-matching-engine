@@ -30,9 +30,9 @@ type Pair struct {
 }
 
 type PairSubDoc struct {
-	Name       string `json:"name" bson:"name"`
-	BaseToken  string `json:"baseToken" bson:"baseToken"`
-	QuoteToken string `json:"quoteToken" bson:"quoteToken"`
+	Name       string         `json:"name" bson:"name"`
+	BaseToken  common.Address `json:"baseToken" bson:"baseToken"`
+	QuoteToken common.Address `json:"quoteToken" bson:"quoteToken"`
 }
 
 type PairRecord struct {

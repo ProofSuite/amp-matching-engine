@@ -8,11 +8,12 @@ import (
 	"net/http"
 
 	"github.com/Proofsuite/amp-matching-engine/types"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/websocket"
 )
 
 const TradeChannel = "trades"
-const OrderbookChannel = "order_book"
+const OrderBookChannel = "order_book"
 const OrderChannel = "orders"
 
 // gorilla websocket upgrader instance with configuration
@@ -140,14 +141,14 @@ func wsCloseHandler(conn *websocket.Conn) func(code int, text string) error {
 }
 
 // SendMessage constructs the message with proper structure to be sent over websocket
-func SendMessage(conn *websocket.Conn, channel string, msgType string, msg interface{}, hash ...string) {
+func SendMessage(conn *websocket.Conn, channel string, msgType string, msg interface{}, hash ...common.Hash) {
 	message := types.Message{
 		Type: msgType,
 		Data: msg,
 	}
 
 	if len(hash) > 0 {
-		message.Hash = hash[0]
+		message.Hash = hash[0].Hex()
 	}
 
 	temp := channelMessage{

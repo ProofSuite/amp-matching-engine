@@ -81,35 +81,37 @@ func buildRouter(logger *logrus.Logger) *routing.Router {
 	orderDao := daos.NewOrderDao()
 	tokenDao := daos.NewTokenDao()
 	pairDao := daos.NewPairDao()
-	balanceDao := daos.NewBalanceDao()
-	addressDao := daos.NewAddressDao()
-	tradesDao := daos.NewTradeDao()
+	tradeDao := daos.NewTradeDao()
+	accountDao := daos.NewAccountDao()
 	// walletDao := daos.NewWalletDao()
 
 	redisClient := redis.InitConnection(app.Config.Redis)
 
 	// instantiate engine
-	e, err := engine.InitEngine(redisClient)
+	engineResource, err := engine.InitEngine(orderDao, redisClient)
 	if err != nil {
 		panic(err)
 	}
 
 	// get services for injection
+	accountService := services.NewAccountService(accountDao, tokenDao)
+	ohlcvService := services.NewOHLCVService(tradeDao)
 	tokenService := services.NewTokenService(tokenDao)
-	tradeService := services.NewTradeService(tradesDao)
-	pairService := services.NewPairService(pairDao, tokenDao, e, tradeService)
-	balanceService := services.NewBalanceService(balanceDao, tokenDao)
-	orderService := services.NewOrderService(orderDao, balanceDao, pairDao, tradesDao, addressDao, e)
-	addressService := services.NewAddressService(addressDao, balanceDao, tokenDao)
+	tradeService := services.NewTradeService(tradeDao)
+	pairService := services.NewPairService(pairDao, tokenDao, engineResource, tradeService)
+	orderService := services.NewOrderService(orderDao, pairDao, accountDao, tradeDao, engineResource)
+	orderBookService := services.NewOrderBookService(pairDao, tokenDao, engineResource)
 	// walletService := services.NewWalletService(walletDao, balanceDao)
-	cronService := crons.NewCronService(tradeService)
+	cronService := crons.NewCronService(ohlcvService)
 
+	endpoints.ServeAccountResource(rg, accountService)
+	endpoints.ServeOHLCVResource(rg, ohlcvService)
 	endpoints.ServeTokenResource(rg, tokenService)
 	endpoints.ServePairResource(rg, pairService)
-	endpoints.ServeBalanceResource(rg, balanceService)
-	endpoints.ServeOrderResource(rg, orderService, e)
+	endpoints.ServeOrderBookResource(rg, orderBookService)
+	endpoints.ServeOHLCVResource(rg, ohlcvService)
+	endpoints.ServeOrderResource(rg, orderService, engineResource)
 	endpoints.ServeTradeResource(rg, tradeService)
-	endpoints.ServeAddressResource(rg, addressService)
 
 	cronService.InitCrons()
 	return router

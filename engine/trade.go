@@ -1,6 +1,8 @@
 package engine
 
 import (
+	"math/big"
+
 	"github.com/Proofsuite/amp-matching-engine/types"
 )
 
@@ -38,7 +40,7 @@ func (e *Resource) execute(order *types.Order, bookEntry *types.Order) (trade *t
 		fillOrder.Amount = orderUnfilledAmt
 
 		bookEntry.FilledAmount = bookEntry.FilledAmount + orderUnfilledAmt
-		bookEntry.Status = types.PARTIALFILLED
+		bookEntry.Status = "PARTIAL_FILLED"
 		fillOrder.Order = bookEntry
 
 		e.updateOrder(bookEntry, fillOrder.Amount)
@@ -47,7 +49,7 @@ func (e *Resource) execute(order *types.Order, bookEntry *types.Order) (trade *t
 		fillOrder.Amount = beAmtAvailable
 
 		bookEntry.FilledAmount = bookEntry.FilledAmount + beAmtAvailable
-		bookEntry.Status = types.FILLED
+		bookEntry.Status = "FILLED"
 		fillOrder.Order = bookEntry
 
 		e.deleteOrder(bookEntry, fillOrder.Amount)
@@ -56,7 +58,7 @@ func (e *Resource) execute(order *types.Order, bookEntry *types.Order) (trade *t
 	order.FilledAmount = order.FilledAmount + fillOrder.Amount
 	// Create trade object to be passed to the system for further processing
 	trade = &types.Trade{
-		Amount:       fillOrder.Amount,
+		Amount:       big.NewInt(fillOrder.Amount),
 		Price:        order.Price,
 		BaseToken:    order.BaseToken,
 		QuoteToken:   order.QuoteToken,
@@ -68,6 +70,7 @@ func (e *Resource) execute(order *types.Order, bookEntry *types.Order) (trade *t
 		TakerOrderID: order.ID,
 		MakerOrderID: bookEntry.ID,
 	}
+
 	trade.Hash = trade.ComputeHash()
 	return
 }

@@ -33,13 +33,30 @@ func (dao *AccountDao) Create(account *types.Account) (err error) {
 	return
 }
 
+func (dao *AccountDao) GetAll() (res []types.Account, err error) {
+	err = db.Get(dao.dbName, dao.collectionName, bson.M{}, 0, 0, &res)
+	return
+}
+
+func (dao *AccountDao) GetByID(id bson.ObjectId) (*types.Account, error) {
+	res := []types.Account{}
+	q := bson.M{"_id": id}
+
+	err := db.Get(dao.dbName, dao.collectionName, q, 0, 0, &res)
+	if err != nil {
+		return nil, err
+	}
+
+	return &res[0], nil
+}
+
 func (dao *AccountDao) GetByAddress(owner common.Address) (response *types.Account, err error) {
 	q := bson.M{"address": owner.Hex()}
 	err = db.Get(dao.dbName, dao.collectionName, q, 0, 1, &response)
 	return
 }
 
-func (dao *AccountDao) GetAllTokenBalances(owner common.Address) (map[common.Address]*types.TokenBalance, error) {
+func (dao *AccountDao) GetTokenBalances(owner common.Address) (map[common.Address]*types.TokenBalance, error) {
 	q := bson.M{"address": owner.Hex()}
 	response := []types.Account{}
 	err := db.Get(dao.dbName, dao.collectionName, q, 0, 1, &response)
@@ -48,6 +65,10 @@ func (dao *AccountDao) GetAllTokenBalances(owner common.Address) (map[common.Add
 	}
 
 	return response[0].TokenBalances, nil
+}
+
+func (dao *AccountDao) GetWethTokenBalance(owner common.Address) (*types.TokenBalance, error) {
+	return nil, nil
 }
 
 func (dao *AccountDao) GetTokenBalance(owner common.Address, token common.Address) (*types.TokenBalance, error) {
@@ -97,6 +118,23 @@ func (dao *AccountDao) GetTokenBalance(owner common.Address, token common.Addres
 	bson.Unmarshal(bytes, &a)
 
 	return a.TokenBalances[token], nil
+}
+
+func (dao *AccountDao) UpdateTokenBalance(owner common.Address, token common.Address, tokenBalance *types.TokenBalance) (err error) {
+	q := bson.M{
+		"address": owner.Hex(),
+	}
+	updateQuery := bson.M{
+		"$set": bson.M{
+			"tokenBalances." + token.Hex() + ".balance":       tokenBalance.Balance.String(),
+			"tokenBalances." + token.Hex() + ".allowance":     tokenBalance.Allowance.String(),
+			"tokenBalances." + token.Hex() + ".lockedBalance": tokenBalance.LockedBalance.String(),
+		},
+	}
+
+	err = db.Update(dao.dbName, dao.collectionName, q, updateQuery)
+	return
+
 }
 
 func (dao *AccountDao) UpdateBalance(owner common.Address, token common.Address, balance *big.Int) (err error) {

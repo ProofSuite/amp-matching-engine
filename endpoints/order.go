@@ -21,102 +21,112 @@ type orderEndpoint struct {
 }
 
 // ServeOrderResource sets up the routing of order endpoints and the corresponding handlers.
-func ServeOrderResource(rg *routing.RouteGroup, orderService *services.OrderService, e *engine.Resource) {
-	r := &orderEndpoint{orderService, e}
-	rg.Get("/orders/<addr>", r.get)
-	ws.RegisterChannel(ws.OrderChannel, r.ws)
-	e.SubscribeEngineResponse(r.orderService.EngineResponse)
+func ServeOrderResource(rg *routing.RouteGroup, orderService *services.OrderService, engine *engine.Resource) {
+	e := &orderEndpoint{orderService, engine}
+	rg.Get("/orders/<address>", e.get)
+	ws.RegisterChannel(ws.OrderChannel, e.ws)
+	engine.SubscribeEngineResponse(e.orderService.HandleEngineResponse)
 }
 
-func (r *orderEndpoint) get(c *routing.Context) error {
-	address := c.Param("addr")
-	if !common.IsHexAddress(address) {
+func (e *orderEndpoint) get(c *routing.Context) error {
+	addr := c.Param("address")
+	if !common.IsHexAddress(addr) {
 		return errors.NewAPIError(400, "Invalid Adrress", map[string]interface{}{})
 	}
-	orders, err := r.orderService.GetByUserAddress(address)
+
+	address := common.HexToAddress(addr)
+	orders, err := e.orderService.GetByUserAddress(address)
 	if err != nil {
 		return errors.NewAPIError(400, "Fetch Error", map[string]interface{}{})
 	}
+
 	return c.Write(orders)
 }
 
-func (r *orderEndpoint) ws(input interface{}, conn *websocket.Conn) {
-	ch := make(chan *types.Message)
-	var msg *types.Message
+func (e *orderEndpoint) ws(input interface{}, conn *websocket.Conn) {
+	msg := &types.Message{}
 
 	bytes, _ := json.Marshal(input)
 	if err := json.Unmarshal(bytes, &msg); err != nil {
 		log.Println("unmarshal to wsmsg <==>" + err.Error())
 	}
 
-	if msg.Type == "NEW_ORDER" {
-		r.handleNewOrder(msg * types.Message)
-	} else if msg.Type == "CANCEL_ORDER" {
-		r.handleCancelOrder(msg * types.Message)
-	} else {
-		ch := ws.GetOrderChannel(msg.Hash)
-		if ch != nil {
-			ch <- msg
-		}
+	switch msg.Type {
+	case "NEW_ORDER":
+		e.handleNewOrder(msg, conn)
+	case "CANCEL_ORDER":
+		e.handleCancelOrder(msg, conn)
+	case "EXECUTE_ORDER":
+		e.handleExecuteOrder(msg, conn)
+	default:
+		log.Println("Response with error")
 	}
 }
 
-func (r *orderEndpoint) handleNewOrder(msg *types.Message) {
-	var or types.OrderRequest
-	bytes, err = json.Marshal(msg.Data)
+func (e *orderEndpoint) handleExecuteOrder(msg *types.Message, conn *websocket.Conn) {
+	hash := common.HexToHash(msg.Hash)
 
-	err := json.Unmarshal(bytes, &or)
-	or.Hash = or.ComputeHash()
-
-	if err != nil {
-		ws.OrderSendErrorMessage(conn, or.Hash, err.Error())
-		return
-	}
-
-	if err = or.Validate(); err != nil {
-		ws.OrderSendErrorMessage(conn, or.Hash, err.Error())
-		return
-	}
-
-	ok, err := or.VerifySignature()
-	if err != nil {
-		ws.OrderSendErrorMessage(conn, or.Hash, err.Error())
-		return
-	}
-	if !ok {
-		ws.OrderSendErrorMessage(conn, or.Hash, "Invalid Signature")
-		return
-	}
-
-	ws.RegisterOrderConnection(or.Hash, &ws.OrderConn{Conn: conn, ReadChannel: ch})
-	ws.RegisterConnectionUnsubscribeHandler(conn, ws.OrderSocketUnsubscribeHandler(or.Hash))
-
-	err = r.orderService.Create(or)
-	if err != nil {
-		ws.OrderSendErrorMessage(conn, or.Hash, err.Error())
-		return
+	ch := ws.GetOrderChannel(hash)
+	if ch != nil {
+		ch <- msg
 	}
 }
 
-func (r *orderEndpoint) handleCancelOrder(msg *types.Message) {
+func (e *orderEndpoint) handleNewOrder(msg *types.Message, conn *websocket.Conn) {
+	ch := make(chan *types.Message)
+	p := types.NewOrderPayload{}
 	bytes, err := json.Marshal(msg.Data)
 
-	var order *types.Order
-	if err := json.Unmarshal(bytes, &order); err != nil {
-		ws.OrderSendErrorMessage(conn, order.Hash, err.Error())
-		return
-	}
+	err = json.Unmarshal(bytes, &p)
+	p.Hash = p.ComputeHash()
 
-	ws.RegisterOrderConnection(order.Hash, &ws.OrderConn{Conn: conn, Active: true})
-	ws.RegisterConnectionUnsubscribeHandler(conn, ws.OrderSocketUnsubscribeHandler(order.Hash))
-
-	err = r.cancelOrder(order)
 	if err != nil {
-		ws.OrderSendErrorMessage(conn, order.Hash, err.Error())
+		ws.OrderSendErrorMessage(conn, err.Error(), p.Hash)
 		return
 	}
+
+	// having a separate payload/request might not be needed
+	o, err := p.ToOrder()
+	if err != nil {
+		ws.OrderSendErrorMessage(conn, err.Error(), p.Hash)
+		return
+	}
+
+	err = e.orderService.NewOrder(o)
+	if err != nil {
+		ws.OrderSendErrorMessage(conn, err.Error(), p.Hash)
+		return
+	}
+
+	// NOTE: I've put the connection registration here as i feel it would be preferable to
+	// validate orders but this might leads to race conditions, not exactly sure.
+	// Doing this allows for doing validation in the NewOrder function which seemed more
+	// clean to me
+	ws.RegisterOrderConnection(p.Hash, &ws.OrderConn{Conn: conn, ReadChannel: ch})
+	ws.RegisterConnectionUnsubscribeHandler(
+		conn,
+		ws.OrderSocketUnsubscribeHandler(p.Hash),
+	)
 }
 
-func (r *orderEndpoint) cancelOrder(order *types.Order) error {
-	return r.orderService.CancelOrder(order)
+func (e *orderEndpoint) handleCancelOrder(msg *types.Message, conn *websocket.Conn) {
+	bytes, err := json.Marshal(msg.Data)
+	o := &types.Order{}
+
+	err = o.UnmarshalJSON(bytes)
+	if err != nil {
+		ws.OrderSendErrorMessage(conn, err.Error(), o.Hash)
+	}
+
+	ws.RegisterOrderConnection(o.Hash, &ws.OrderConn{Conn: conn, Active: true})
+	ws.RegisterConnectionUnsubscribeHandler(
+		conn,
+		ws.OrderSocketUnsubscribeHandler(o.Hash),
+	)
+
+	err = e.orderService.CancelOrder(o)
+	if err != nil {
+		ws.OrderSendErrorMessage(conn, err.Error(), o.Hash)
+		return
+	}
 }

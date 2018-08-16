@@ -106,7 +106,7 @@ func TestAccountGetAllTokenBalances(t *testing.T) {
 		t.Errorf("Could not create account object")
 	}
 
-	balances, err := dao.GetAllTokenBalances(account.Address)
+	balances, err := dao.GetTokenBalances(account.Address)
 
 	if err != nil {
 		t.Errorf("Could not retrieve token balances: %v", balances)

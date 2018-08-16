@@ -7,12 +7,12 @@ import (
 
 // CronService contains the services required to initialize crons
 type CronService struct {
-	tradeService *services.TradeService
+	ohlcvService *services.OHLCVService
 }
 
 // NewCronService returns a new instance of CronService
-func NewCronService(tradeService *services.TradeService) *CronService {
-	return &CronService{tradeService}
+func NewCronService(ohlcvService *services.OHLCVService) *CronService {
+	return &CronService{ohlcvService}
 }
 
 // InitCrons is responsible for initializing all the crons in the system

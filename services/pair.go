@@ -1,16 +1,10 @@
 package services
 
 import (
-	"encoding/json"
-	"errors"
-	"fmt"
 	"strings"
 
 	"github.com/Proofsuite/amp-matching-engine/engine"
-
-	"github.com/Proofsuite/amp-matching-engine/ws"
-
-	"github.com/gorilla/websocket"
+	"github.com/ethereum/go-ethereum/common"
 
 	"gopkg.in/mgo.v2/bson"
 
@@ -42,7 +36,7 @@ func (s *PairService) Create(pair *types.Pair) error {
 		return aerrors.NewAPIError(400, err.Error(), nil)
 	}
 	if bt == nil {
-		return aerrors.NewAPIError(401, "BaseTokenAddress_DOESNT_EXISTS", nil)
+		return aerrors.NewAPIError(401, "BaseTokenAddress_DOESNT_EXIST", nil)
 	}
 
 	st, err := s.tokenDao.GetByAddress(pair.QuoteTokenAddress)
@@ -50,7 +44,7 @@ func (s *PairService) Create(pair *types.Pair) error {
 		return aerrors.NewAPIError(400, err.Error(), nil)
 	}
 	if st == nil {
-		return aerrors.NewAPIError(401, "QuoteTokenAddress_DOESNT_EXISTS", nil)
+		return aerrors.NewAPIError(401, "QuoteTokenAddress_DOESNT_EXIST", nil)
 	}
 	if !st.Quote {
 		return aerrors.NewAPIError(401, "QuoteTokenAddress_CAN_NOT_BE_USED_AS_QUOTE_TOKEN", nil)
@@ -83,7 +77,7 @@ func (s *PairService) GetByID(id bson.ObjectId) (*types.Pair, error) {
 
 // GetByTokenAddress fetches details of a pair using contract address of
 // its constituting tokens
-func (s *PairService) GetByTokenAddress(bt, qt string) (*types.Pair, error) {
+func (s *PairService) GetByTokenAddress(bt, qt common.Address) (*types.Pair, error) {
 	return s.pairDao.GetByTokenAddress(bt, qt)
 }
 
@@ -92,54 +86,54 @@ func (s *PairService) GetAll() ([]types.Pair, error) {
 	return s.pairDao.GetAll()
 }
 
-// GetOrderBook fetches orderbook from engine/redis and returns it as an map[string]interface
-func (s *PairService) GetOrderBook(bt, qt string) (ob map[string]interface{}, err error) {
-	res, err := s.GetByTokenAddress(bt, qt)
-	if err != nil {
-		message := map[string]string{
-			"Code":    "Invalid_Pair_Name",
-			"Message": "Invalid Pair Name " + err.Error(),
-		}
-		mab, _ := json.Marshal(message)
-		return nil, errors.New(string(mab))
-	}
-	sKey, bKey := res.GetOrderBookKeys()
-	fmt.Printf("\n Sell Key: %s \n Buy Key: %s \n", sKey, bKey)
+// // GetOrderBook fetches orderbook from engine/redis and returns it as an map[string]interface
+// func (s *PairService) GetOrderBook(bt, qt common.Address) (ob map[string]interface{}, err error) {
+// 	res, err := s.GetByTokenAddress(bt, qt)
+// 	if err != nil {
+// 		message := map[string]string{
+// 			"Code":    "Invalid_Pair_Name",
+// 			"Message": "Invalid Pair Name " + err.Error(),
+// 		}
+// 		mab, _ := json.Marshal(message)
+// 		return nil, errors.New(string(mab))
+// 	}
+// 	sKey, bKey := res.GetOrderBookKeys()
+// 	fmt.Printf("\n Sell Key: %s \n Buy Key: %s \n", sKey, bKey)
 
-	sBook, bBook := s.eng.GetOrderBook(res)
-	ob = map[string]interface{}{
-		"sell": sBook,
-		"buy":  bBook,
-	}
-	return
-}
+// 	sBook, bBook := s.eng.GetOrderBook(res)
+// 	ob = map[string]interface{}{
+// 		"sell": sBook,
+// 		"buy":  bBook,
+// 	}
+// 	return
+// }
 
-// RegisterForOrderBook is responsible for handling incoming orderbook subscription messages
-// It makes an entry of connection in pairSocket corresponding to pair,unit and duration
-func (s *PairService) RegisterForOrderBook(conn *websocket.Conn, bt, qt string) {
+// // RegisterForOrderBook is responsible for handling incoming orderbook subscription messages
+// // It makes an entry of connection in pairSocket corresponding to pair,unit and duration
+// func (s *PairService) RegisterForOrderBook(conn *websocket.Conn, bt, qt common.Address) {
+// 	ob, err := s.GetOrderBook(bt, qt)
+// 	if err != nil {
+// 		ws.GetPairSockets().SendErrorMessage(conn, err.Error())
+// 		return
+// 	}
 
-	ob, err := s.GetOrderBook(bt, qt)
-	if err != nil {
-		ws.GetPairSockets().SendErrorMessage(conn, err.Error())
-		return
-	}
-	trades, _ := s.tradeService.GetByPairAddress(bt, qt)
-	ob["trades"] = trades
+// 	trades, _ := s.tradeService.GetByPairAddress(bt, qt)
+// 	ob["trades"] = trades
 
-	if err := ws.GetPairSockets().Register(bt, qt, conn); err != nil {
-		message := map[string]string{
-			"Code":    "UNABLE_TO_REGISTER",
-			"Message": "UNABLE_TO_REGISTER: " + err.Error(),
-		}
-		ws.GetPairSockets().SendErrorMessage(conn, message)
-		return
-	}
-	ws.RegisterConnectionUnsubscribeHandler(conn, ws.GetPairSockets().UnsubscribeHandler(bt, qt))
+// 	if err := ws.GetPairSockets().Register(bt, qt, conn); err != nil {
+// 		message := map[string]string{
+// 			"Code":    "UNABLE_TO_REGISTER",
+// 			"Message": "UNABLE_TO_REGISTER: " + err.Error(),
+// 		}
+// 		ws.GetPairSockets().SendErrorMessage(conn, message)
+// 		return
+// 	}
 
-	ws.GetPairSockets().SendBookMessage(conn, ob)
-}
+// 	ws.RegisterConnectionUnsubscribeHandler(conn, ws.GetPairSockets().UnsubscribeHandler(bt, qt))
+// 	ws.GetPairSockets().SendBookMessage(conn, ob)
+// }
 
-// UnRegisterForOrderBook is responsible for handling incoming orderbook unsubscription messages
-func (s *PairService) UnRegisterForOrderBook(conn *websocket.Conn, bt, qt string) {
-	ws.GetPairSockets().UnregisterConnection(bt, qt, conn)
-}
+// // UnRegisterForOrderBook is responsible for handling incoming orderbook unsubscription messages
+// func (s *PairService) UnRegisterForOrderBook(conn *websocket.Conn, bt, qt common.Address) {
+// 	ws.GetPairSockets().UnregisterConnection(bt, qt, conn)
+// }
