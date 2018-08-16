@@ -40,7 +40,7 @@ func TestAddOrder(t *testing.T) {
 		}
 	}
 
-	rse, err := s.Get(listKey + "::" + sampleOrder.Hash)
+	rse, err := s.Get(listKey + "::" + sampleOrder.Hash.Hex())
 	if err != nil {
 		t.Error(err)
 	}
@@ -81,7 +81,7 @@ func TestAddOrder(t *testing.T) {
 	} else {
 		var matched = false
 		for k, v := range rs {
-			if sampleOrder1.Hash == k && sampleOrder1.CreatedAt.Unix() == int64(v) {
+			if sampleOrder1.Hash.Hex() == k && sampleOrder1.CreatedAt.Unix() == int64(v) {
 				matched = true
 			}
 		}
@@ -91,7 +91,7 @@ func TestAddOrder(t *testing.T) {
 
 	}
 
-	rse, err = s.Get(listKey + "::" + sampleOrder1.Hash)
+	rse, err = s.Get(listKey + "::" + sampleOrder1.Hash.Hex())
 	if err != nil {
 		t.Error(err)
 	}
@@ -140,7 +140,7 @@ func TestUpdateOrder(t *testing.T) {
 		}
 	}
 
-	rse, err := s.Get(listKey + "::" + sampleOrder.Hash)
+	rse, err := s.Get(listKey + "::" + sampleOrder.Hash.Hex())
 	if err != nil {
 		t.Error(err)
 	}
@@ -175,7 +175,7 @@ func TestUpdateOrder(t *testing.T) {
 		}
 	}
 
-	rse, err = s.Get(listKey + "::" + sampleOrder.Hash)
+	rse, err = s.Get(listKey + "::" + sampleOrder.Hash.Hex())
 	if err != nil {
 		t.Error(err)
 	}
@@ -229,8 +229,8 @@ func TestDeleteOrder(t *testing.T) {
 		}
 	}
 
-	if s.Exists(list1Key + "::" + sampleOrder1.Hash) {
-		t.Errorf("Key : %v expected to be deleted but key exists", list1Key+"::"+sampleOrder1.Hash)
+	if s.Exists(list1Key + "::" + sampleOrder1.Hash.Hex()) {
+		t.Errorf("Key : %v expected to be deleted but key exists", list1Key+"::"+sampleOrder1.Hash.Hex())
 	}
 
 	rse, err := s.Get(ss1Key + "::book::" + utils.UintToPaddedString(sampleOrder1.Price))
@@ -250,7 +250,7 @@ func TestDeleteOrder(t *testing.T) {
 	if s.Exists(listKey) {
 		t.Errorf("Key : %v expected to be deleted but key exists", ssKey)
 	}
-	if s.Exists(listKey + "::" + sampleOrder.Hash) {
+	if s.Exists(listKey + "::" + sampleOrder.Hash.Hex()) {
 		t.Errorf("Key : %v expected to be deleted but key exists", ssKey)
 	}
 	if s.Exists(ssKey + "::book::" + utils.UintToPaddedString(sampleOrder.Price)) {
@@ -281,7 +281,7 @@ func TestCancelOrder(t *testing.T) {
 		FillStatus:     CANCELLED,
 		MatchingOrders: nil,
 	}
-	expectedResponse.Order.Status = types.CANCELLED
+	expectedResponse.Order.Status = "CANCELLED"
 
 	// cancel sampleOrder1
 	response, err := e.CancelOrder(sampleOrder1)
@@ -314,8 +314,8 @@ func TestCancelOrder(t *testing.T) {
 		}
 	}
 
-	if s.Exists(list1Key + "::" + sampleOrder1.Hash) {
-		t.Errorf("Key : %v expected to be deleted but key exists", list1Key+"::"+sampleOrder1.Hash)
+	if s.Exists(list1Key + "::" + sampleOrder1.Hash.Hex()) {
+		t.Errorf("Key : %v expected to be deleted but key exists", list1Key+"::"+sampleOrder1.Hash.Hex())
 	}
 
 	rse, err := s.Get(ss1Key + "::book::" + utils.UintToPaddedString(sampleOrder1.Price))
@@ -325,7 +325,7 @@ func TestCancelOrder(t *testing.T) {
 	assert.Equalf(t, strconv.FormatInt(sampleOrder.Amount, 10), rse, "Expected value for key: %v, was: %v, but got: %v", ss1Key, sampleOrder1.Amount-sampleOrder1.FilledAmount, rse)
 
 	expectedResponse.Order = sampleOrder
-	expectedResponse.Order.Status = types.CANCELLED
+	expectedResponse.Order.Status = "CANCELLED"
 
 	// cancel sampleOrder
 	response, err = e.CancelOrder(sampleOrder)
@@ -343,7 +343,7 @@ func TestCancelOrder(t *testing.T) {
 	if s.Exists(listKey) {
 		t.Errorf("Key : %v expected to be deleted but key exists", ssKey)
 	}
-	if s.Exists(listKey + "::" + sampleOrder.Hash) {
+	if s.Exists(listKey + "::" + sampleOrder.Hash.Hex()) {
 		t.Errorf("Key : %v expected to be deleted but key exists", ssKey)
 	}
 	if s.Exists(ssKey + "::book::" + utils.UintToPaddedString(sampleOrder.Price)) {
@@ -409,9 +409,9 @@ func TestRecoverOrders(t *testing.T) {
 	}
 
 	expectedMap := map[string]float64{
-		sampleOrder.Hash:  float64(sampleOrder.CreatedAt.Unix()),
-		sampleOrder1.Hash: float64(sampleOrder1.CreatedAt.Unix()),
-		sampleOrder2.Hash: float64(sampleOrder2.CreatedAt.Unix()),
+		sampleOrder.Hash.Hex():  float64(sampleOrder.CreatedAt.Unix()),
+		sampleOrder1.Hash.Hex(): float64(sampleOrder1.CreatedAt.Unix()),
+		sampleOrder2.Hash.Hex(): float64(sampleOrder2.CreatedAt.Unix()),
 	}
 	rs, err = s.SortedSet(listKey)
 	if err != nil {
@@ -419,23 +419,23 @@ func TestRecoverOrders(t *testing.T) {
 	}
 	assert.Equal(t, expectedMap, rs)
 
-	rse, err := s.Get(listKey + "::" + sampleOrder.Hash)
+	rse, err := s.Get(listKey + "::" + sampleOrder.Hash.Hex())
 	if err != nil {
 		t.Error(err)
 	}
-	assert.JSONEqf(t, string(expectedOrderJSON), rse, "Expected value for key: %v, was: %s, but got: %v", listKey+"::"+sampleOrder.Hash, expectedOrderJSON, rse)
+	assert.JSONEqf(t, string(expectedOrderJSON), rse, "Expected value for key: %v, was: %s, but got: %v", listKey+"::"+sampleOrder.Hash.Hex(), expectedOrderJSON, rse)
 
-	rse, err = s.Get(list1Key + "::" + sampleOrder1.Hash)
+	rse, err = s.Get(list1Key + "::" + sampleOrder1.Hash.Hex())
 	if err != nil {
 		t.Error(err)
 	}
-	assert.JSONEqf(t, string(expectedOrderJSON1), rse, "Expected value for key: %v, was: %s, but got: %v", list1Key+"::"+sampleOrder1.Hash, expectedOrderJSON1, rse)
+	assert.JSONEqf(t, string(expectedOrderJSON1), rse, "Expected value for key: %v, was: %s, but got: %v", list1Key+"::"+sampleOrder1.Hash.Hex(), expectedOrderJSON1, rse)
 
-	rse, err = s.Get(list2Key + "::" + sampleOrder2.Hash)
+	rse, err = s.Get(list2Key + "::" + sampleOrder2.Hash.Hex())
 	if err != nil {
 		t.Error(err)
 	}
-	assert.JSONEqf(t, string(expectedOrderJSON2), rse, "Expected value for key: %v, was: %s, but got: %v", list2Key+"::"+sampleOrder2.Hash, expectedOrderJSON2, rse)
+	assert.JSONEqf(t, string(expectedOrderJSON2), rse, "Expected value for key: %v, was: %s, but got: %v", list2Key+"::"+sampleOrder2.Hash.Hex(), expectedOrderJSON2, rse)
 
 	rse, err = s.Get(ssKey + "::book::" + utils.UintToPaddedString(sampleOrder.Price))
 	if err != nil {

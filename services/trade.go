@@ -34,6 +34,16 @@ func (t *TradeService) GetByUserAddress(addr common.Address) ([]*types.Trade, er
 	return t.tradeDao.GetByUserAddress(addr)
 }
 
+// GetByHash fetches all trades corresponding to a trade hash
+func (t *TradeService) GetByHash(hash common.Hash) (*types.Trade, error) {
+	return t.tradeDao.GetByHash(hash)
+}
+
+// GetByOrderHash fetches all trades corresponding to an order hash
+func (t *TradeService) GetByOrderHash(hash common.Hash) ([]*types.Trade, error) {
+	return t.tradeDao.GetByOrderHash(hash)
+}
+
 func (t *TradeService) UpdateTradeTx(tr *types.Trade, tx *eth.Transaction) error {
 	tr.Tx = tx
 

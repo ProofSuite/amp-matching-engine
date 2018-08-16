@@ -88,13 +88,13 @@ func InitOperator(
 				tradeHash := event.TradeHash
 				errID := int(event.ErrorId)
 				//TODO add this function in the trade service
-				tr, ok := op.TradeService.getTradeByHash(tradeHash)
-				if !ok {
+				tr, err := op.TradeService.GetByHash(tradeHash)
+				if err != nil {
 					log.Printf("Could not retrieve hash")
 					return
 				}
 
-				err := op.PublishTxErrorMessage(tr, errID)
+				err = op.PublishTxErrorMessage(tr, errID)
 				if err != nil {
 					log.Printf("Could not publish tx error message")
 				}
@@ -106,15 +106,15 @@ func InitOperator(
 
 			case event := <-tradeEvents:
 				//TODO add this function in the trade service
-				tr, ok := tradeService.getTradeByHash(event.TradeHash)
-				if !ok {
+				tr, err := tradeService.GetByHash(event.TradeHash)
+				if err != nil {
 					log.Printf("Could not retrieve initial hash")
 					return
 				}
 
 				// only execute the next transaction in the queue when this transaction is mined
 				go func() {
-					_, err := op.EthereumService.WaitMined(tr.tx)
+					_, err := op.EthereumService.WaitMined(tr.Tx)
 					if err != nil {
 						log.Printf("Could not execute trade: %v\n", err)
 					}
@@ -339,15 +339,15 @@ func (op *Operator) ExecuteTrade(o *types.Order, tr *types.Trade) (*eth.Transact
 
 // Validate checks that the operator configuration is sufficient.
 func (op *Operator) Validate() error {
-	wallet, err := op.WalletService.GetDefaultAdminWallet()
-	if err != nil {
-		return err
-	}
+	// wallet, err := op.WalletService.GetDefaultAdminWallet()
+	// if err != nil {
+	// 	return err
+	// }
 
-	balance, err := op.EthereumService.GetPendingBalanceAt(wallet.Address)
-	if err != nil {
-		return err
-	}
+	// balance, err := op.EthereumService.GetPendingBalanceAt(wallet.Address)
+	// if err != nil {
+	// 	return err
+	// }
 
 	return nil
 }

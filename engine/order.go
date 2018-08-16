@@ -183,13 +183,13 @@ func (e *Resource) sellOrder(order *types.Order) (engineResponse *Response, err 
 
 // addOrder adds an order to redis
 func (e *Resource) addOrder(order *types.Order) error {
-
 	ssKey, listKey := order.GetOBKeys()
 	res, err := e.redisConn.Do("ZADD", ssKey, "NX", 0, utils.UintToPaddedString(order.Price)) // Add price point to order book
 	if err != nil {
 		log.Printf("ZADD: %s", err)
 		return err
 	}
+
 	fmt.Printf("ZADD: %s\n", res)
 	res, err = e.redisConn.Do("INCRBY", ssKey+"::book::"+utils.UintToPaddedString(order.Price), order.Amount-order.FilledAmount) // Add price point to order book
 	if err != nil {
@@ -204,13 +204,15 @@ func (e *Resource) addOrder(order *types.Order) error {
 		log.Printf("orderAsBytes: %s", err)
 		return err
 	}
-	res, err = e.redisConn.Do("SET", listKey+"::"+order.Hash, string(orderAsBytes))
+
+	res, err = e.redisConn.Do("SET", listKey+"::"+order.Hash.Hex(), string(orderAsBytes))
 	if err != nil {
 		log.Printf("SET: %s", err)
 		return err
 	}
+
 	// Add order reference to price sorted set
-	res, err = e.redisConn.Do("ZADD", listKey, "NX", order.CreatedAt.Unix(), order.Hash)
+	res, err = e.redisConn.Do("ZADD", listKey, "NX", order.CreatedAt.Unix(), order.Hash.Hex())
 	if err != nil {
 		log.Printf("ZADD: %s", err)
 		return err
@@ -226,7 +228,7 @@ func (e *Resource) updateOrder(order *types.Order, tradeAmount int64) error {
 
 	ssKey, listKey := order.GetOBKeys()
 	var storedOrder *types.Order
-	storedOrderAsBytes, err := redis.Bytes(e.redisConn.Do("GET", listKey+"::"+order.Hash))
+	storedOrderAsBytes, err := redis.Bytes(e.redisConn.Do("GET", listKey+"::"+order.Hash.Hex()))
 	if err != nil {
 		log.Printf("orderAsBytes: %s", err)
 		return err
@@ -235,7 +237,7 @@ func (e *Resource) updateOrder(order *types.Order, tradeAmount int64) error {
 
 	storedOrder.FilledAmount = storedOrder.FilledAmount + tradeAmount
 	if storedOrder.FilledAmount == 0 {
-		storedOrder.Status = types.OPEN
+		storedOrder.Status = "OPEN"
 	}
 
 	// Add order to list
@@ -245,7 +247,7 @@ func (e *Resource) updateOrder(order *types.Order, tradeAmount int64) error {
 		return err
 	}
 
-	res, err := e.redisConn.Do("SET", listKey+"::"+order.Hash, string(orderAsBytes))
+	res, err := e.redisConn.Do("SET", listKey+"::"+order.Hash.Hex(), string(orderAsBytes))
 	if err != nil {
 		log.Printf("SET: %s", err)
 		return err
@@ -286,13 +288,13 @@ func (e *Resource) deleteOrder(order *types.Order, tradeAmount int64) (err error
 		}
 		fmt.Printf("DEL: %s\n", res)
 
-		res, err = e.redisConn.Do("DEL", listKey+"::"+order.Hash)
+		res, err = e.redisConn.Do("DEL", listKey+"::"+order.Hash.Hex())
 		if err != nil {
 			log.Printf("DEL: %s", err)
 			return err
 		}
 		// Add order reference to price sorted set
-		res, err = e.redisConn.Do("ZREM", listKey, order.Hash)
+		res, err = e.redisConn.Do("ZREM", listKey, order.Hash.Hex())
 		if err != nil {
 			log.Printf("ZREM: %s", err)
 			return err
@@ -313,13 +315,13 @@ func (e *Resource) deleteOrder(order *types.Order, tradeAmount int64) (err error
 		}
 		fmt.Printf("INCRBY: %s\n", res)
 
-		res, err = e.redisConn.Do("DEL", listKey+"::"+order.Hash)
+		res, err = e.redisConn.Do("DEL", listKey+"::"+order.Hash.Hex())
 		if err != nil {
 			log.Printf("DEL: %s", err)
 			return err
 		}
 		// Add order reference to price sorted set
-		res, err = e.redisConn.Do("ZREM", listKey, order.Hash)
+		res, err = e.redisConn.Do("ZREM", listKey, order.Hash.Hex())
 		if err != nil {
 			log.Printf("ZREM: %s", err)
 			return err
@@ -346,7 +348,7 @@ func (e *Resource) RecoverOrders(orders []*FillOrder) error {
 		}
 
 		_, listKey := o.Order.GetOBKeys()
-		res, _ := redis.Bytes(e.redisConn.Do("GET", listKey+"::"+o.Order.Hash))
+		res, _ := redis.Bytes(e.redisConn.Do("GET", listKey+"::"+o.Order.Hash.Hex()))
 		if res == nil {
 			if err := e.addOrder(o.Order); err != nil {
 				return err
@@ -365,7 +367,7 @@ func (e *Resource) CancelOrder(order *types.Order) (engineResponse *Response, er
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
 	_, listKey := order.GetOBKeys()
-	res, err := redis.Bytes(e.redisConn.Do("GET", listKey+"::"+order.Hash))
+	res, err := redis.Bytes(e.redisConn.Do("GET", listKey+"::"+order.Hash.Hex()))
 	if err != nil {
 		log.Printf("GET: %s", err)
 		return
