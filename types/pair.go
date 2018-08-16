@@ -12,7 +12,7 @@ import (
 // Pair struct is used to model the pair data in the system and DB
 type (
 	Pair struct {
-		ID                bson.ObjectId `json:"id" bson:"_id"`
+		ID                bson.ObjectId `json:"-" bson:"_id"`
 		Name              string        `json:"name" bson:"name"`
 		BaseTokenID       bson.ObjectId `json:"baseTokenId" bson:"baseTokenId"`
 		BaseTokenSymbol   string        `json:"baseTokenSymbol" bson:"baseTokenSymbol"`

@@ -276,11 +276,12 @@ func TestCancelOrder(t *testing.T) {
 
 	expectedResponse := &Response{
 		Order:          sampleOrder1,
-		Trades:         nil,
-		RemainingOrder: nil,
+		Trades:         make([]*types.Trade, 0),
+		RemainingOrder: &types.Order{},
 		FillStatus:     CANCELLED,
-		MatchingOrders: nil,
+		MatchingOrders: make([]*FillOrder, 0),
 	}
+
 	expectedResponse.Order.Status = types.CANCELLED
 
 	// cancel sampleOrder1
@@ -444,3 +445,92 @@ func TestRecoverOrders(t *testing.T) {
 	assert.Equalf(t, strconv.FormatInt(sampleOrder.Amount+sampleOrder1.Amount+sampleOrder2.Amount-sampleOrder2.FilledAmount, 10), rse, "Expected value for key: %v, was: %v, but got: %v", ssKey, sampleOrder.Amount+sampleOrder1.Amount+sampleOrder2.Amount, rse)
 
 }
+
+func TestSellOrder(t *testing.T) {
+	e, s := getResource()
+	defer s.Close()
+
+	sampleOrder := &types.Order{}
+	orderJSON := []byte(`{ "id": "5b6ac5297b4457546d64379d", "buyToken": "0x1888a8db0b7db59413ce07150b3373972bf818d3", "sellToken": "0x2034842261b82651885751fc293bba7ba5398156", "baseToken": "0x2034842261b82651885751fc293bba7ba5398156", "quoteToken": "0x1888a8db0b7db59413ce07150b3373972bf818d3", "buyAmount": 6000000000, "sellAmount": 13800000000, "nonce": 0, "userAddress": "0xefD7eB287CeeFCE8256Dd46e25F398acEA7C4b63", "hash": "0xa2d800b77828cb52c83106ca392e465bc0af0d7c319f6956328f739080c19621", "side": "SELL", "amount": 6000000000, "price": 229999999, "filledAmount": 0, "fee": 0, "makeFee": 0, "takeFee": 0, "exchangeAddress": "", "status": "NEW", "pairID": "5b6ac5117b445753ee755fb8", "pairName": "HPC/AUT", "orderBook": null, "createdAt": "2018-08-08T15:55:45.062141954+05:30", "updatedAt": "2018-08-08T15:55:45.06214208+05:30" }`)
+	json.Unmarshal(orderJSON, &sampleOrder)
+	expectedResponse := &Response{
+		Order:          sampleOrder,
+		RemainingOrder: &types.Order{},
+		Trades:         make([]*types.Trade, 0),
+		FillStatus:     NOMATCH,
+		MatchingOrders: make([]*FillOrder, 0),
+	}
+	expectedResponse.Order.Status = types.OPEN
+	response, err := e.sellOrder(sampleOrder)
+	if err != nil {
+		t.Errorf("Error in sellOrder: %s", err)
+	}
+	assert.Equal(t, expectedResponse, response)
+}
+
+func TestBuyOrder(t *testing.T) {
+	e, s := getResource()
+	defer s.Close()
+
+	sampleOrder := &types.Order{}
+	orderJSON := []byte(`{ "id": "5b6ac5297b4457546d64379d", "sellToken": "0x1888a8db0b7db59413ce07150b3373972bf818d3", "buyToken": "0x2034842261b82651885751fc293bba7ba5398156", "baseToken": "0x2034842261b82651885751fc293bba7ba5398156", "quoteToken": "0x1888a8db0b7db59413ce07150b3373972bf818d3", "buyAmount": 6000000000, "sellAmount": 13800000000, "nonce": 0, "userAddress": "0xefD7eB287CeeFCE8256Dd46e25F398acEA7C4b63", "hash": "0xa2d800b77828cb52c83106ca392e465bc0af0d7c319f6956328f739080c19621", "side": "BUY", "amount": 6000000000, "price": 229999999, "filledAmount": 0, "fee": 0, "makeFee": 0, "takeFee": 0, "exchangeAddress": "", "status": "NEW", "pairID": "5b6ac5117b445753ee755fb8", "pairName": "HPC/AUT", "orderBook": null, "createdAt": "2018-08-08T15:55:45.062141954+05:30", "updatedAt": "2018-08-08T15:55:45.06214208+05:30" }`)
+	json.Unmarshal(orderJSON, &sampleOrder)
+	expectedResponse := &Response{
+		Order:          sampleOrder,
+		RemainingOrder: &types.Order{},
+		Trades:         make([]*types.Trade, 0),
+		FillStatus:     NOMATCH,
+		MatchingOrders: make([]*FillOrder, 0),
+	}
+	expectedResponse.Order.Status = types.OPEN
+	response, err := e.buyOrder(sampleOrder)
+	if err != nil {
+		t.Errorf("Error in sellOrder: %s", err)
+	}
+	assert.Equal(t, expectedResponse, response)
+}
+
+/* Can not be tested yet, as SORT command is not supported by miniredis */
+// TODO: Find alternative or a way to test SORT function of redis
+//func TestFillOrder(t *testing.T) {
+//	e, s := getResource()
+//	defer s.Close()
+//
+//	// New Buy Order
+//	sampleOrder := &types.Order{}
+//	orderJSON := []byte(`{ "id": "5b6ac5297b4457546d64379d", "sellToken": "0x1888a8db0b7db59413ce07150b3373972bf818d3", "buyToken": "0x2034842261b82651885751fc293bba7ba5398156", "baseToken": "0x2034842261b82651885751fc293bba7ba5398156", "quoteToken": "0x1888a8db0b7db59413ce07150b3373972bf818d3", "sellAmount": 6000000000, "buyAmount": 13800000000, "nonce": 0, "userAddress": "0xefD7eB287CeeFCE8256Dd46e25F398acEA7C4b63", "hash": "0xa2d800b77828cb52c83106ca392e465bc0af0d7c319f6956328f739080c19621", "side": "BUY", "amount": 6000000000, "price": 229999999, "filledAmount": 0, "fee": 0, "makeFee": 0, "takeFee": 0, "exchangeAddress": "", "status": "NEW", "pairID": "5b6ac5117b445753ee755fb8", "pairName": "HPC/AUT", "orderBook": null, "createdAt": "2018-08-08T15:55:45.062141954+05:30", "updatedAt": "2018-08-08T15:55:45.06214208+05:30" }`)
+//	json.Unmarshal(orderJSON, &sampleOrder)
+//	expectedResponse := &Response{
+//		Order:          sampleOrder,
+//		RemainingOrder: &types.Order{},
+//		Trades:         make([]*types.Trade, 0),
+//		FillStatus:     NOMATCH,
+//		MatchingOrders: make([]*FillOrder, 0),
+//	}
+//	expectedResponse.Order.Status = types.OPEN
+//	response, err := e.buyOrder(sampleOrder)
+//	if err != nil {
+//		t.Errorf("Error in sellOrder: %s", err)
+//	}
+//	assert.Equal(t, expectedResponse, response)
+//
+//	// New Sell Order
+//	sampleOrder1 := &types.Order{}
+//	orderJSON = []byte(`{ "id": "5b6ac5297b4457546d64379e", "buyToken": "0x1888a8db0b7db59413ce07150b3373972bf818d3", "sellToken": "0x2034842261b82651885751fc293bba7ba5398156", "baseToken": "0x2034842261b82651885751fc293bba7ba5398156", "quoteToken": "0x1888a8db0b7db59413ce07150b3373972bf818d3", "buyAmount": 6000000000, "sellAmount": 13800000000, "nonce": 0, "userAddress": "0xefD7eB287CeeFCE8256Dd46e25F398acEA7C4b63", "hash": "0xa2d800b77828cb52c83106ca392e465bc0af0d7c319f6956328f739080c19622", "side": "SELL", "amount": 6000000000, "price": 229999999, "filledAmount": 0, "fee": 0, "makeFee": 0, "takeFee": 0, "exchangeAddress": "", "status": "NEW", "pairID": "5b6ac5117b445753ee755fb8", "pairName": "HPC/AUT", "orderBook": null, "createdAt": "2018-08-08T15:55:45.062141954+05:30", "updatedAt": "2018-08-08T15:55:45.06214208+05:30" }`)
+//	json.Unmarshal(orderJSON, &sampleOrder1)
+//	expectedResponse = &Response{
+//		Order:          sampleOrder1,
+//		RemainingOrder: &types.Order{},
+//		Trades:         make([]*types.Trade, 0),
+//		FillStatus:     FULL,
+//		MatchingOrders: []*FillOrder{&FillOrder{Amount:6000000000,Order:sampleOrder}},
+//	}
+//	expectedResponse.Order.Status = types.FILLED
+//	expectedResponse.Order.FilledAmount = expectedResponse.Order.Amount
+//
+//	response, err = e.sellOrder(sampleOrder1)
+//	if err != nil {
+//		t.Errorf("Error in sellOrder: %s", err)
+//	}
+//	assert.Equal(t, expectedResponse, response)
+//}

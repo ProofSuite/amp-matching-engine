@@ -10,7 +10,7 @@ import (
 
 // Balance holds both the address and the private key of an ethereum account
 type Balance struct {
-	ID        bson.ObjectId           `json:"id" bson:"_id"`
+	ID        bson.ObjectId           `json:"-" bson:"_id"`
 	Address   string                  `json:"address" bson:"address"`
 	Tokens    map[string]TokenBalance `json:"tokens" bson:"tokens"`
 	CreatedAt time.Time               `json:"createdAt" bson:"createdAt"`
@@ -21,7 +21,7 @@ type Balance struct {
 // It contains the confirmed amount and locked amount
 // corresponding to a single token (identified using tokenID & token's contract address)
 type TokenBalance struct {
-	TokenID      bson.ObjectId `json:"tokenId" bson:"tokenId"`
+	TokenID      bson.ObjectId `json:"-" bson:"tokenId"`
 	TokenAddress string        `json:"tokenAddress" bson:"tokenAddress"`
 	TokenSymbol  string        `json:"tokenSymbol" bson:"tokenSymbol"`
 	Amount       int64         `json:"amount" bson:"amount"`

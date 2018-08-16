@@ -10,7 +10,7 @@ import (
 
 // Token struct is used to model the token data in the system and DB
 type Token struct {
-	ID              bson.ObjectId `json:"id" bson:"_id"`
+	ID              bson.ObjectId `json:"-" bson:"_id"`
 	Name            string        `json:"name" bson:"name"`
 	Symbol          string        `json:"symbol" bson:"symbol"`
 	Image           Image         `json:"image" bson:"image"`

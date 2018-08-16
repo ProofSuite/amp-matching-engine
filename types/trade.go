@@ -16,7 +16,7 @@ import (
 // To be valid an accept by the matching engine (and ultimately the exchange smart-contract),
 // the trade signature must be made from the trader Maker account
 type Trade struct {
-	ID           bson.ObjectId    `json:"id,omitempty" bson:"_id"`
+	ID           bson.ObjectId    `json:"-" bson:"_id"`
 	OrderHash    string           `json:"orderHash" bson:"orderHash"`
 	Amount       int64            `json:"amount" bson:"amount"`
 	Price        int64            `json:"price" bson:"price"`

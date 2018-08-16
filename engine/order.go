@@ -53,7 +53,7 @@ func (e *Resource) buyOrder(order *types.Order) (engineResponse *Response, err e
 
 	engineResponse = &Response{
 		Order:      order,
-		FillStatus: PARTIAL,
+		FillStatus: NOMATCH,
 	}
 	engineResponse.Trades = make([]*types.Trade, 0)
 	remOrder := *order
@@ -76,6 +76,7 @@ func (e *Resource) buyOrder(order *types.Order) (engineResponse *Response, err e
 	if len(priceRange) == 0 {
 		engineResponse.FillStatus = NOMATCH
 		e.addOrder(order)
+		engineResponse.RemainingOrder = &types.Order{}
 		order.Status = types.OPEN
 	} else {
 		for _, pr := range priceRange {
@@ -120,7 +121,7 @@ func (e *Resource) buyOrder(order *types.Order) (engineResponse *Response, err e
 func (e *Resource) sellOrder(order *types.Order) (engineResponse *Response, err error) {
 	engineResponse = &Response{
 		Order:      order,
-		FillStatus: PARTIAL,
+		FillStatus: NOMATCH,
 	}
 	engineResponse.Trades = make([]*types.Trade, 0)
 	remOrder := *order
@@ -142,13 +143,14 @@ func (e *Resource) sellOrder(order *types.Order) (engineResponse *Response, err 
 
 	if len(priceRange) == 0 {
 		engineResponse.FillStatus = NOMATCH
+		engineResponse.RemainingOrder = &types.Order{}
 		e.addOrder(order)
 		order.Status = types.OPEN
 	} else {
 		for _, pr := range priceRange {
 			bookEntries, err := redis.ByteSlices(e.redisConn.Do("SORT", obkv+"::"+utils.UintToPaddedString(pr), "GET", obkv+"::"+utils.UintToPaddedString(pr)+"::*", "ALPHA")) // "ZREVRANGEBYLEX" key max min
 			if err != nil {
-				log.Printf("LRANGE: %s\n", err)
+				log.Printf("SORT: %s\n", err)
 				return nil, err
 			}
 			for _, o := range bookEntries {
@@ -386,10 +388,10 @@ func (e *Resource) CancelOrder(order *types.Order) (engineResponse *Response, er
 	storedOrder.Status = types.CANCELLED
 	engineResponse = &Response{
 		Order:          storedOrder,
-		Trades:         nil,
-		RemainingOrder: nil,
+		Trades:         make([]*types.Trade, 0),
+		RemainingOrder: &types.Order{},
 		FillStatus:     CANCELLED,
-		MatchingOrders: nil,
+		MatchingOrders: make([]*FillOrder, 0),
 	}
 	return
 }
