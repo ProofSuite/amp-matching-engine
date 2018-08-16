@@ -2,6 +2,7 @@ package services
 
 import (
 	"github.com/Proofsuite/amp-matching-engine/errors"
+	"github.com/ethereum/go-ethereum/common"
 	"gopkg.in/mgo.v2/bson"
 
 	"github.com/Proofsuite/amp-matching-engine/daos"
@@ -25,9 +26,11 @@ func (s *TokenService) Create(token *types.Token) error {
 	if err != nil {
 		return err
 	}
+
 	if t != nil {
 		return errors.NewAPIError(401, "TOKEN_ALREADY_EXISTS", nil)
 	}
+
 	return s.tokenDao.Create(token)
 }
 
@@ -37,7 +40,7 @@ func (s *TokenService) GetByID(id bson.ObjectId) (*types.Token, error) {
 }
 
 // GetByAddress fetches the detailed document of a token using its contract address
-func (s *TokenService) GetByAddress(addr string) (*types.Token, error) {
+func (s *TokenService) GetByAddress(addr common.Address) (*types.Token, error) {
 	return s.tokenDao.GetByAddress(addr)
 }
 

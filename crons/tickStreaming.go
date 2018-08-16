@@ -7,6 +7,7 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/Proofsuite/amp-matching-engine/ws"
+	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/Proofsuite/amp-matching-engine/app"
 	"github.com/robfig/cron"
@@ -29,13 +30,16 @@ func (s *CronService) tickStream(unit string, duration int64) func() {
 	return func() {
 		// log.Printf("TickStreaming Ran: unit: %s duration: %d\n", unit, duration)
 		p := make([]types.PairSubDoc, 0)
-		ticks, err := s.tradeService.GetTicks(p, duration, unit)
+		ticks, err := s.ohlcvService.GetOHLCV(p, duration, unit)
 		if err != nil {
 			log.Printf("%s", err)
 			return
 		}
+
 		for _, tick := range ticks {
-			ws.TickBroadcast(utils.GetTickChannelID(tick.ID.BaseToken, tick.ID.QuoteToken, unit, duration), tick)
+			baseTokenAddress := common.HexToAddress(tick.ID.BaseToken)
+			quoteTokenAddress := common.HexToAddress(tick.ID.QuoteToken)
+			ws.TickBroadcast(utils.GetTickChannelID(baseTokenAddress, quoteTokenAddress, unit, duration), tick)
 		}
 	}
 }

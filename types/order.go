@@ -2,12 +2,16 @@ package types
 
 import (
 	"encoding/json"
+	"errors"
 	"math/big"
 	"strconv"
 	"time"
 
 	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/crypto/sha3"
+	validation "github.com/go-ozzo/ozzo-validation"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -50,6 +54,117 @@ type OrderSubDoc struct {
 	Signature *Signature `json:"signature,omitempty" bson:"signature" redis:"signature"`
 }
 
+func (o *Order) Validate() error {
+	return validation.ValidateStruct(&o,
+		validation.Field(&o.ExchangeAddress, validation.Required),
+		validation.Field(&o.UserAddress, validation.Required),
+		validation.Field(&o.SellToken, validation.Required),
+		validation.Field(&o.BuyToken, validation.Required),
+		validation.Field(&o.MakeFee, validation.Required),
+		validation.Field(&o.TakeFee, validation.Required),
+		validation.Field(&o.Nonce, validation.Required),
+		validation.Field(&o.Expires, validation.Required),
+		validation.Field(&o.SellAmount, validation.Required),
+		validation.Field(&o.UserAddress, validation.Required),
+		validation.Field(&o.Signature, validation.Required),
+		// validation.Field(&m.PairName, validation.Required),
+	)
+}
+
+// ComputeHash calculates the orderRequest hash
+func (o *Order) ComputeHash() common.Hash {
+	sha := sha3.NewKeccak256()
+	sha.Write(o.UserAddress.Bytes())
+	sha.Write(o.ExchangeAddress.Bytes())
+	sha.Write(o.BuyToken.Bytes())
+	sha.Write(common.BigToHash(o.BuyAmount).Bytes())
+	sha.Write(o.SellToken.Bytes())
+	sha.Write(common.BigToHash(o.SellAmount).Bytes())
+	sha.Write(common.BigToHash(o.Expires).Bytes())
+	sha.Write(common.BigToHash(o.Nonce).Bytes())
+	return common.BytesToHash(sha.Sum(nil))
+}
+
+// VerifySignature checks that the orderRequest signature corresponds to the address in the userAddress field
+func (o *Order) VerifySignature() (bool, error) {
+	o.Hash = o.ComputeHash()
+	message := crypto.Keccak256(
+		[]byte("\x19Ethereum Signed Message:\n32"),
+		o.Hash.Bytes(),
+	)
+
+	address, err := o.Signature.Verify(common.BytesToHash(message))
+	if err != nil {
+		return false, err
+	}
+
+	if address != o.UserAddress {
+		return false, errors.New("Recovered address is incorrect")
+	}
+
+	return true, nil
+}
+
+// Process computes the pricepoint and the amount corresponding to a token pair
+func (o *Order) Process(p *Pair) error {
+	if o.BuyToken == p.QuoteTokenAddress {
+		o.Side = "BUY"
+		o.Amount = o.BuyAmount.Int64()
+		o.Price = o.SellAmount.Int64() * 1e8 / o.SellAmount.Int64()
+	} else if o.BuyToken == p.BaseTokenAddress {
+		o.Side = "SELL"
+		o.Amount = o.SellAmount.Int64()
+		o.Price = o.BuyAmount.Int64() * 1e8 / o.SellAmount.Int64()
+	} else {
+		return errors.New("Could not determine o side")
+	}
+
+	o.BaseToken = p.BaseTokenAddress
+	o.QuoteToken = p.QuoteTokenAddress
+	o.PairID = p.ID
+	o.PairName = p.Name
+
+	return nil
+}
+
+// GetKVPrefix returns the key value store(redis) prefix to be used
+// by matching engine correspondind to a particular order.
+func (o *Order) GetKVPrefix() string {
+	return o.BaseToken.Hex() + "::" + o.QuoteToken.Hex()
+}
+
+// GetOBKeys returns the keys corresponding to an order
+// orderbook price point key
+// orderbook list key corresponding to order price.
+func (o *Order) GetOBKeys() (ss, list string) {
+	var k string
+	if o.Side == "BUY" {
+		k = "buy"
+	} else if o.Side == "SELL" {
+		k = "sell"
+	}
+	ss = o.GetKVPrefix() + "::" + k
+	list = o.GetKVPrefix() + "::" + k + "::" + utils.UintToPaddedString(o.Price)
+	return
+}
+
+// GetOBMatchKey returns the orderbook price point key
+// aginst which the order needs to be matched
+func (o *Order) GetOBMatchKey() (ss string) {
+	var k string
+	if o.Side == "BUY" {
+		k = "sell"
+	} else if o.Side == "SELL" {
+		k = "buy"
+	}
+
+	ss = o.GetKVPrefix() + "::" + k
+	return
+}
+
+// JSON Marshal/Unmarshal interface
+
+// MarshalJSON implements the json.Marshal interface
 func (o *Order) MarshalJSON() ([]byte, error) {
 	order := map[string]interface{}{
 		"id":              o.ID,
@@ -146,6 +261,7 @@ func (o *Order) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+// OrderRecord is the object that will be saved in the database
 type OrderRecord struct {
 	ID              bson.ObjectId      `json:"id" bson:"_id"`
 	UserAddress     string             `json:"userAddress" bson:"userAddress"`
@@ -316,41 +432,6 @@ func (o *Order) SetBSON(raw bson.Raw) error {
 	o.CreatedAt = decoded.CreatedAt
 	o.UpdatedAt = decoded.UpdatedAt
 	return nil
-}
-
-// GetKVPrefix returns the key value store(redis) prefix to be used
-// by matching engine correspondind to a particular order.
-func (o *Order) GetKVPrefix() string {
-	return o.BaseToken.Hex() + "::" + o.QuoteToken.Hex()
-}
-
-// GetOBKeys returns the keys corresponding to an order
-// orderbook price point key
-// orderbook list key corresponding to order price.
-func (o *Order) GetOBKeys() (ss, list string) {
-	var k string
-	if o.Side == "BUY" {
-		k = "buy"
-	} else if o.Side == "SELL" {
-		k = "sell"
-	}
-	ss = o.GetKVPrefix() + "::" + k
-	list = o.GetKVPrefix() + "::" + k + "::" + utils.UintToPaddedString(o.Price)
-	return
-}
-
-// GetOBMatchKey returns the orderbook price point key
-// aginst which the order needs to be matched
-func (o *Order) GetOBMatchKey() (ss string) {
-	var k string
-	if o.Side == "BUY" {
-		k = "sell"
-	} else if o.Side == "SELL" {
-		k = "buy"
-	}
-
-	ss = o.GetKVPrefix() + "::" + k
-	return
 }
 
 // ComputeHash calculates the order hash
