@@ -10,6 +10,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/crypto/sha3"
 	validation "github.com/go-ozzo/ozzo-validation"
+	"fmt"
 )
 
 // NewOrderPayload is the struct in which the order request sent by the
@@ -61,7 +62,7 @@ func (p *NewOrderPayload) UnmarshalJSON(b []byte) error {
 	if err != nil {
 		return err
 	}
-
+	fmt.Printf("\n\n>>>>>came<<<< \n %+v\n\n",decoded)
 	p.PairName = decoded["pairName"].(string)
 	p.UserAddress = common.HexToAddress(decoded["userAddress"].(string))
 	p.ExchangeAddress = common.HexToAddress(decoded["exchangeAddress"].(string))
