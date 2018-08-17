@@ -18,9 +18,9 @@ package e2e
 // 	tokenBalance := make(map[string]types.TokenBalance)
 // 	for _, t := range tokens {
 // 		tokenBalance[t.ContractAddress] = types.TokenBalance{
-// 			TokenID:      t.ID,
-// 			TokenAddress: t.ContractAddress,
-// 			TokenSymbol:  t.Symbol,
+// 			ID:      t.ID,
+// 			Address: t.ContractAddress,
+// 			Symbol:  t.Symbol,
 // 			Amount:       int64(10000 * math.Pow10(8)),
 // 			LockedAmount: 0,
 // 		}

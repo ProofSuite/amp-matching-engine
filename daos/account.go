@@ -4,6 +4,7 @@ import (
 	"math/big"
 	"time"
 
+	"fmt"
 	"github.com/Proofsuite/amp-matching-engine/app"
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/ethereum/go-ethereum/common"
@@ -51,9 +52,17 @@ func (dao *AccountDao) GetByID(id bson.ObjectId) (*types.Account, error) {
 }
 
 func (dao *AccountDao) GetByAddress(owner common.Address) (response *types.Account, err error) {
+	var res []*types.Account
 	q := bson.M{"address": owner.Hex()}
-	err = db.Get(dao.dbName, dao.collectionName, q, 0, 1, &response)
-	return
+	err = db.Get(dao.dbName, dao.collectionName, q, 0, 1, &res)
+
+	if err != nil {
+		return
+	} else if len(res) > 0 {
+		response = res[0]
+		return
+	}
+	return nil, fmt.Errorf("NO_ACCOUNT_FOUND")
 }
 
 func (dao *AccountDao) GetTokenBalances(owner common.Address) (map[common.Address]*types.TokenBalance, error) {
@@ -63,12 +72,18 @@ func (dao *AccountDao) GetTokenBalances(owner common.Address) (map[common.Addres
 	if err != nil {
 		return nil, err
 	}
-
-	return response[0].TokenBalances, nil
+	if len(response) > 0 {
+		return response[0].TokenBalances, nil
+	}
+	return nil, fmt.Errorf("NO_ACCOUNT_FOUND")
 }
 
 func (dao *AccountDao) GetWethTokenBalance(owner common.Address) (*types.TokenBalance, error) {
-	return nil, nil
+	return &types.TokenBalance{
+		Balance:big.NewInt(0),
+		Allowance:big.NewInt(0),
+		LockedBalance:big.NewInt(0),
+	}, nil
 }
 
 func (dao *AccountDao) GetTokenBalance(owner common.Address, token common.Address) (*types.TokenBalance, error) {
