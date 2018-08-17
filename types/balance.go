@@ -13,9 +13,9 @@ package types
 // // It contains the confirmed amount and locked amount
 // // corresponding to a single token (identified using tokenID & token's contract address)
 // type TokenBalance struct {
-// 	TokenID      bson.ObjectId `json:"tokenId" bson:"tokenId"`
-// 	TokenAddress string        `json:"tokenAddress" bson:"tokenAddress"`
-// 	TokenSymbol  string        `json:"tokenSymbol" bson:"tokenSymbol"`
+// 	ID      bson.ObjectId `json:"tokenId" bson:"tokenId"`
+// 	Address string        `json:"tokenAddress" bson:"tokenAddress"`
+// 	Symbol  string        `json:"tokenSymbol" bson:"tokenSymbol"`
 // 	Amount       int64         `json:"amount" bson:"amount"`
 // 	LockedAmount int64         `json:"lockedAmount" bson:"lockedAmount"`
 // }

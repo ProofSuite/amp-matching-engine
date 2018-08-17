@@ -21,14 +21,15 @@ func NewAccountService(AccountDao *daos.AccountDao, TokenDao *daos.TokenDao) *Ac
 	return &AccountService{AccountDao, TokenDao}
 }
 
-func (s *AccountService) Create(addr common.Address) error {
+func (s *AccountService) Create(account *types.Account) error {
+	addr := account.Address
 	acc, err := s.GetByAddress(addr)
-	if err != nil {
+	if err != nil && err.Error() != "NO_ACCOUNT_FOUND" {
 		return err
 	}
 
 	if acc != nil {
-		return errors.New("Account already exists")
+		return errors.New("ACCOUNT_ALREADY_EXISTS")
 	}
 
 	tokens, err := s.TokenDao.GetAll()
@@ -36,23 +37,22 @@ func (s *AccountService) Create(addr common.Address) error {
 		return err
 	}
 
-	acc = &types.Account{}
-	acc.Address = addr
-	acc.IsBlocked = false
+	account.IsBlocked = false
+	account.TokenBalances = make(map[common.Address]*types.TokenBalance)
 
 	// currently by default, the tokens balances are set to 0
 	for _, token := range tokens {
-		acc.TokenBalances[token.ContractAddress] = &types.TokenBalance{
-			TokenID:       token.ID,
-			TokenAddress:  token.ContractAddress,
-			Balance:       big.NewInt(0),
-			Allowance:     big.NewInt(0),
+		account.TokenBalances[token.ContractAddress] = &types.TokenBalance{
+			ID:            token.ID,
+			Address:       token.ContractAddress,
+			Symbol:token.Symbol,
+			Balance:       big.NewInt(100000),
+			Allowance:     big.NewInt(100000),
 			LockedBalance: big.NewInt(0),
 		}
 	}
-
-	if acc != nil {
-		err = s.AccountDao.Create(acc)
+	if account != nil {
+		err = s.AccountDao.Create(account)
 		if err != nil {
 			return err
 		}

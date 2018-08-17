@@ -78,7 +78,6 @@ func (s *OrderService) NewOrder(o *types.Order) error {
 	}
 
 	// Fill token and pair data
-	fmt.Printf("\n %v === %v\n", o.BaseToken, o.QuoteToken)
 	err = o.Process(p)
 	if err != nil {
 		return err

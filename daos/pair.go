@@ -60,7 +60,7 @@ func (dao *PairDao) GetByName(name string) (*types.Pair, error) {
 	}
 
 	if len(res) == 0 {
-		return nil, errors.New("No pair found")
+		return nil, errors.New("NO_PAIR_FOUND")
 	}
 
 	return res[0], nil
@@ -72,14 +72,8 @@ func (dao *PairDao) GetByTokenAddress(baseToken, quoteToken common.Address) (*ty
 	var res []*types.Pair
 
 	q := bson.M{
-		"baseTokenAddress":  bson.RegEx{
-			Pattern:baseToken.Hex(),
-			Options:"i",
-		},
-		"quoteTokenAddress": bson.RegEx{
-			Pattern:quoteToken.Hex(),
-			Options:"i",
-		},
+		"baseTokenAddress":  baseToken.Hex(),
+		"quoteTokenAddress": quoteToken.Hex(),
 	}
 
 	err := db.Get(dao.dbName, dao.collectionName, q, 0, 1, &res)
@@ -88,7 +82,7 @@ func (dao *PairDao) GetByTokenAddress(baseToken, quoteToken common.Address) (*ty
 	}
 
 	if len(res) == 0 {
-		return nil, errors.New("No pair found")
+		return nil, errors.New("NO_PAIR_FOUND")
 	}
 
 	return res[0], nil
@@ -117,7 +111,7 @@ func (dao *PairDao) GetByBuySellTokenAddress(buyToken, sellToken common.Address)
 	}
 
 	if len(res) == 0 {
-		return nil, errors.New("No pair found")
+		return nil, errors.New("NO_PAIR_FOUND")
 	}
 
 	return res[0], nil
