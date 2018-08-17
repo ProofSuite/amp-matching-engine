@@ -57,13 +57,15 @@ func (w *Wallet) Validate() error {
 	return nil
 }
 
+type WalletRecord struct {
+	ID         bson.ObjectId `json:"id,omitempty" bson:"_id"`
+	Address    string        `json:"address" bson:"address"`
+	PrivateKey string        `json:"privateKey" bson:"privateKey"`
+	Admin      bool          `json:"admin" bson:"admin"`
+}
+
 func (w *Wallet) GetBSON() (interface{}, error) {
-	return struct {
-		ID         bson.ObjectId `json:"id,omitempty" bson:"_id"`
-		Address    string        `json:"address" bson:"address"`
-		PrivateKey string        `json:"privateKey" bson:"privateKey"`
-		Admin      bool          `json:"admin" bson:"admin"`
-	}{
+	return WalletRecord{
 		ID:         w.ID,
 		Address:    w.Address.Hex(),
 		PrivateKey: hex.EncodeToString(w.PrivateKey.D.Bytes()),
@@ -72,13 +74,7 @@ func (w *Wallet) GetBSON() (interface{}, error) {
 }
 
 func (w *Wallet) SetBSON(raw bson.Raw) error {
-	decoded := new(struct {
-		ID         bson.ObjectId `json:"id,omitempty" bson:"_id"`
-		Address    string        `json:"address" bson:"address"`
-		PrivateKey string        `json:"privateKey" bson:"privateKey"`
-		Admin      bool          `json:"admin" bson:"admin"`
-	})
-
+	decoded := &WalletRecord{}
 	err := raw.Unmarshal(decoded)
 	if err != nil {
 		return err
@@ -166,7 +162,7 @@ func (w *Wallet) SignTrade(t *Trade) error {
 // 	sig, err := w.SignHash(hash)
 // 	if err != nil {
 // 		return nil, err
-// 	}
+// 	}w
 // 	o.Signature = sig
 
 // 	return o, nil

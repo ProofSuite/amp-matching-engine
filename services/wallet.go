@@ -8,12 +8,11 @@ import (
 
 // WalletService struct with daos required, responsible for communicating with daos
 type WalletService struct {
-	WalletDao  *daos.WalletDao
-	BalanceDao *daos.BalanceDao
+	WalletDao *daos.WalletDao
 }
 
-func NewWalletService(walletDao *daos.WalletDao, balanceDao *daos.BalanceDao) *WalletService {
-	return &WalletService{walletDao, balanceDao}
+func NewWalletService(walletDao *daos.WalletDao) *WalletService {
+	return &WalletService{walletDao}
 }
 
 func (s *WalletService) CreateAdminWallet(a common.Address) (*types.Wallet, error) {

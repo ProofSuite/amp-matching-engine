@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/Proofsuite/amp-matching-engine/utils"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/websocket"
 )
 
@@ -25,7 +26,7 @@ func GetPairSockets() *PairSockets {
 
 // UnsubscribeHandler returns function of type unsubscribe handler,
 // it handles the unsubscription of pair in case of connection closing.
-func (ps *PairSockets) UnsubscribeHandler(bt, qt string) func(conn *websocket.Conn) {
+func (ps *PairSockets) UnsubscribeHandler(bt, qt common.Address) func(conn *websocket.Conn) {
 	return func(conn *websocket.Conn) {
 		ps.UnregisterConnection(bt, qt, conn)
 	}
@@ -34,7 +35,7 @@ func (ps *PairSockets) UnsubscribeHandler(bt, qt string) func(conn *websocket.Co
 // UnregisterConnection is used to unsubscribe the connection from listening to the key
 // subscribed to. It can be called on unsubscription message from user or due to some other reason by
 // system
-func (ps *PairSockets) UnregisterConnection(bt, qt string, conn *websocket.Conn) {
+func (ps *PairSockets) UnregisterConnection(bt, qt common.Address, conn *websocket.Conn) {
 	pair := utils.GetPairKey(bt, qt)
 	if ps.connections[pair][conn] {
 		ps.connections[pair][conn] = false
@@ -43,7 +44,7 @@ func (ps *PairSockets) UnregisterConnection(bt, qt string, conn *websocket.Conn)
 }
 
 // WriteMessage streams message to all the connections subscribed to the pair
-func (ps *PairSockets) WriteMessage(bt, qt string, msgType string, message interface{}) error {
+func (ps *PairSockets) WriteMessage(bt, qt common.Address, msgType string, message interface{}) error {
 	pair := utils.GetPairKey(bt, qt)
 
 	for conn, status := range ps.connections[pair] {
@@ -57,7 +58,7 @@ func (ps *PairSockets) WriteMessage(bt, qt string, msgType string, message inter
 
 // Register handles the registration of connection to get
 // streaming data over the socker for any pair.
-func (ps *PairSockets) Register(bt, qt string, conn *websocket.Conn) error {
+func (ps *PairSockets) Register(bt, qt common.Address, conn *websocket.Conn) error {
 	pair := utils.GetPairKey(bt, qt)
 	if conn == nil {
 		return errors.New("nil not allowed in arguments as *websocket.Conn")
@@ -67,15 +68,17 @@ func (ps *PairSockets) Register(bt, qt string, conn *websocket.Conn) error {
 	} else if ps.connections[pair] == nil {
 		ps.connections[pair] = make(map[*websocket.Conn]bool)
 	}
+
 	if !ps.connections[pair][conn] {
 		ps.connections[pair][conn] = true
 	}
+
 	return nil
 }
 
 // SendMessage is responsible for sending message on orderbook channel
 func (ps *PairSockets) SendMessage(conn *websocket.Conn, msgType string, msg interface{}) {
-	SendMessage(conn, OrderbookChannel, msgType, msg)
+	SendMessage(conn, OrderBookChannel, msgType, msg)
 }
 
 // SendErrorMessage is responsible for sending error messages on orderbook channel

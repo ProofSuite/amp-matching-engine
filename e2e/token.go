@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/Proofsuite/amp-matching-engine/types"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -16,20 +17,39 @@ func testToken(t *testing.T) []types.Token {
 	listTokens := make([]types.Token, 0)
 	dbTokensList := make([]types.Token, 0)
 
+	expectedToken1 := types.Token{
+		Name:            "HotPotCoin",
+		Symbol:          "HPC",
+		Decimal:         18,
+		ContractAddress: common.HexToAddress("0x1888a8db0b7db59413ce07150b3373972bf818d3"),
+		Active:          true,
+		Quote:           true,
+	}
+
+	expectedToken2 := types.Token{
+		Name:            "Aura.Test",
+		Symbol:          "AUT",
+		Decimal:         18,
+		ContractAddress: common.HexToAddress("0x2034842261b82651885751fc293bba7ba5398156"),
+		Active:          true,
+	}
+
 	// create token test
 	res := testAPI(router, "POST", "/tokens", `{  "name":"HotPotCoin", "symbol":"HPC", "decimal":18, "contractAddress":"0x1888a8db0b7db59413ce07150b3373972bf818d3","active":true,"quote":true}`)
 	assert.Equal(t, http.StatusOK, res.Code, "t1 - create token")
-	var resp types.Token
+
+	resp := types.Token{}
 	if err := json.Unmarshal(res.Body.Bytes(), &resp); err != nil {
 		fmt.Printf("%v", err)
 	}
-	if compareToken(t, resp, types.Token{Name: "HotPotCoin", Symbol: "HPC", Decimal: 18, ContractAddress: "0x1888a8db0b7db59413ce07150b3373972bf818d3", Active: true, Quote: true}) {
+
+	if compareToken(t, resp, expectedToken1) {
 		fmt.Println("PASS  't1 - create token'")
 	} else {
 		fmt.Println("FAIL  't1 - create token'")
 	}
 
-	listTokens = append(listTokens, types.Token{Name: "HotPotCoin", Symbol: "HPC", Decimal: 18, ContractAddress: "0x1888a8db0b7db59413ce07150b3373972bf818d3", Active: true, Quote: true})
+	listTokens = append(listTokens, expectedToken2)
 	dbTokensList = append(dbTokensList, resp)
 
 	// Duplicate token test
@@ -47,13 +67,14 @@ func testToken(t *testing.T) []types.Token {
 	if err := json.Unmarshal(res.Body.Bytes(), &resp); err != nil {
 		fmt.Printf("%v", err)
 	}
-	if compareToken(t, resp, types.Token{Name: "Aura.Test", Symbol: "AUT", Decimal: 18, ContractAddress: "0x2034842261b82651885751fc293bba7ba5398156", Active: true}) {
+
+	if compareToken(t, resp, expectedToken2) {
 		fmt.Println("PASS  't3 - create second token'")
 	} else {
 		fmt.Println("FAIL  't3 - create second token'")
 	}
 
-	listTokens = append(listTokens, types.Token{Name: "Aura.Test", Symbol: "AUT", Decimal: 18, ContractAddress: "0x2034842261b82651885751fc293bba7ba5398156", Active: true})
+	listTokens = append(listTokens, expectedToken2)
 	dbTokensList = append(dbTokensList, resp)
 
 	// fetch token detail test
@@ -62,7 +83,7 @@ func testToken(t *testing.T) []types.Token {
 	if err := json.Unmarshal(res.Body.Bytes(), &resp); err != nil {
 		fmt.Printf("%v", err)
 	}
-	if compareToken(t, resp, types.Token{Name: "HotPotCoin", Symbol: "HPC", Decimal: 18, ContractAddress: "0x1888a8db0b7db59413ce07150b3373972bf818d3", Active: true, Quote: true}) {
+	if compareToken(t, resp, expectedToken1) {
 		fmt.Println("PASS  't4 - fetch token'")
 	} else {
 		fmt.Println("FAIL  't4 - fetch token'")
@@ -98,6 +119,7 @@ func compareToken(t *testing.T, actual, expected types.Token, msgs ...string) bo
 	for _, msg := range msgs {
 		fmt.Println(msg)
 	}
+
 	response := true
 	response = response && assert.Equalf(t, actual.Symbol, expected.Symbol, fmt.Sprintf("Token Symbol doesn't match. Expected: %v , Got: %v", expected.Symbol, actual.Symbol))
 	response = response && assert.Equalf(t, actual.Name, expected.Name, fmt.Sprintf("Token Name doesn't match. Expected: %v , Got: %v", expected.Name, actual.Name))

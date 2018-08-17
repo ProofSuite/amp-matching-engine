@@ -1,26 +1,26 @@
 package types
 
-// SubsciptionEvent is an enum signifies whether the incoming message is of type Subscribe or unsubscribe
-type SubsciptionEvent string
+// SubscriptionEvent is an enum signifies whether the incoming message is of type Subscribe or unsubscribe
+type SubscriptionEvent string
 
-// Enum members for SubsciptionEvent
+// Enum members for SubscriptionEvent
 const (
-	SUBSCRIBE   SubsciptionEvent = "subscribe"
-	UNSUBSCRIBE SubsciptionEvent = "unsubscribe"
-	Fetch       SubsciptionEvent = "fetch"
+	SUBSCRIBE   SubscriptionEvent = "subscribe"
+	UNSUBSCRIBE SubscriptionEvent = "unsubscribe"
+	Fetch       SubscriptionEvent = "fetch"
 )
 
 // Message is the model used to send message over socket channel
 type Message struct {
-	MsgType string      `json:"msgType"`
-	Hash    string      `json:"hash,omitempty"`
-	Data    interface{} `json:"data"`
+	Type string      `json:"type"`
+	Hash string      `json:"hash,omitempty"`
+	Data interface{} `json:"data"`
 }
 
 // Subscription is the model used to send message for subscription to any streaming channel
 type Subscription struct {
-	Event  SubsciptionEvent `json:"event"`
-	Pair   PairSubDoc       `json:"pair"`
+	Event  SubscriptionEvent `json:"event"`
+	Pair   PairSubDoc        `json:"pair"`
 	Params `json:"params"`
 }
 
