@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"math/big"
-	"strconv"
 	"time"
 
 	"github.com/Proofsuite/amp-matching-engine/utils"
@@ -92,7 +91,7 @@ func (o *Order) VerifySignature() (bool, error) {
 		[]byte("\x19Ethereum Signed Message:\n32"),
 		o.Hash.Bytes(),
 	)
-	return true,nil
+	return true, nil
 	address, err := o.Signature.Verify(common.BytesToHash(message))
 	if err != nil {
 		return false, err
@@ -139,9 +138,9 @@ func (o *Order) GetKVPrefix() string {
 func (o *Order) GetOBKeys() (ss, list string) {
 	var k string
 	if o.Side == "BUY" {
-		k = "buy"
+		k = "BUY"
 	} else if o.Side == "SELL" {
-		k = "sell"
+		k = "SELL"
 	}
 	ss = o.GetKVPrefix() + "::" + k
 	list = o.GetKVPrefix() + "::" + k + "::" + utils.UintToPaddedString(o.Price)
@@ -153,9 +152,9 @@ func (o *Order) GetOBKeys() (ss, list string) {
 func (o *Order) GetOBMatchKey() (ss string) {
 	var k string
 	if o.Side == "BUY" {
-		k = "sell"
+		k = "SELL"
 	} else if o.Side == "SELL" {
-		k = "buy"
+		k = "BUY"
 	}
 
 	ss = o.GetKVPrefix() + "::" + k
@@ -182,20 +181,24 @@ func (o *Order) MarshalJSON() ([]byte, error) {
 		"takeFee":         o.TakeFee.String(),
 		"expires":         o.Expires.String(),
 		"nonce":           o.Nonce.String(),
-		"signature": map[string]interface{}{
+		"pairID":          o.PairID,
+		"pairName":        o.PairName,
+		"price":           o.Price,
+		"filledAmount":    o.FilledAmount,
+		"amount":          o.Amount,
+		"hash":            o.Hash.String(),
+		"createdAt":       o.CreatedAt.Format(time.RFC3339Nano),
+		"updatedAt":       o.UpdatedAt.Format(time.RFC3339Nano),
+	}
+
+	if o.Signature != nil {
+		order["signature"] = map[string]interface{}{
 			"V": o.Signature.V,
 			"R": o.Signature.R,
 			"S": o.Signature.S,
-		},
-		"pairID":       o.PairID,
-		"pairName":     o.PairName,
-		"price":        strconv.Itoa(int(o.Price)),
-		"filledAmount": strconv.Itoa(int(o.FilledAmount)),
-		"amount":       strconv.Itoa(int(o.Amount)),
-		"hash":         o.Hash.String(),
-		"createdAt":    o.CreatedAt.String(),
-		"updatedAt":    o.UpdatedAt.String(),
+		}
 	}
+
 	return json.Marshal(order)
 }
 
@@ -210,78 +213,90 @@ func (o *Order) UnmarshalJSON(b []byte) error {
 	if order["id"] != nil {
 		o.ID = bson.ObjectIdHex(order["id"].(string))
 	}
+
 	if order["pairID"] != nil {
 		o.PairID = bson.ObjectIdHex(order["pairID"].(string))
 	}
+
 	if order["pairName"] != nil {
 		o.PairName = order["pairName"].(string)
 	}
+
 	if order["exchangeAddress"] != nil {
 		o.ExchangeAddress = common.HexToAddress(order["exchangeAddress"].(string))
 	}
+
 	if order["userAddress"] != nil {
 		o.UserAddress = common.HexToAddress(order["userAddress"].(string))
 	}
+
 	if order["buyToken"] != nil {
 		o.BuyToken = common.HexToAddress(order["buyToken"].(string))
 	}
+
 	if order["sellToken"] != nil {
 		o.SellToken = common.HexToAddress(order["sellToken"].(string))
 	}
+
 	if order["baseToken"] != nil {
 		o.BaseToken = common.HexToAddress(order["baseToken"].(string))
 	}
+
 	if order["quoteToken"] != nil {
 		o.QuoteToken = common.HexToAddress(order["quoteToken"].(string))
 	}
 
-	o.BuyAmount = new(big.Int)
-	o.SellAmount = new(big.Int)
-	o.Expires = new(big.Int)
-	o.Nonce = new(big.Int)
-	o.MakeFee = new(big.Int)
-	o.TakeFee = new(big.Int)
+	if order["price"] != nil {
+		o.Price = int64(order["price"].(float64))
+	}
+
+	if order["amount"] != nil {
+		o.Amount = int64(order["amount"].(float64))
+	}
 
 	if order["buyAmount"] != nil {
+		o.BuyAmount = big.NewInt(0)
 		o.BuyAmount.UnmarshalJSON([]byte(order["buyAmount"].(string)))
 	}
+
 	if order["sellAmount"] != nil {
+		o.SellAmount = big.NewInt(0)
 		o.SellAmount.UnmarshalJSON([]byte(order["sellAmount"].(string)))
 	}
+
 	if order["expires"] != nil {
+		o.Expires = big.NewInt(0)
 		o.Expires.UnmarshalJSON([]byte(order["expires"].(string)))
 	}
+
 	if order["nonce"] != nil {
+		o.Nonce = big.NewInt(0)
 		o.Nonce.UnmarshalJSON([]byte(order["nonce"].(string)))
 	}
+
 	if order["makeFee"] != nil {
+		o.MakeFee = big.NewInt(0)
 		o.MakeFee.UnmarshalJSON([]byte(order["makeFee"].(string)))
 	}
-	if order["takeFee"] != nil {
-		o.TakeFee.UnmarshalJSON([]byte(order["takeFee"].(string)))
-	}
 
-	if order["price"] != nil {
-		o.Price, _ = strconv.ParseInt(order["price"].(string), 10, 64)
-	}
-	if order["amount"] != nil {
-		o.Amount, _ = strconv.ParseInt(order["amount"].(string), 10, 64)
-	}
-	if order["filledAmount"] != nil {
-		o.FilledAmount, _ = strconv.ParseInt(order["filledAmount"].(string), 10, 64)
+	if order["takeFee"] != nil {
+		o.TakeFee = big.NewInt(0)
+		o.TakeFee.UnmarshalJSON([]byte(order["takeFee"].(string)))
 	}
 
 	if order["hash"] != nil {
 		o.Hash = common.HexToHash(order["hash"].(string))
 	}
+
 	if order["side"] != nil {
 		o.Side = order["side"].(string)
 	}
+
 	if order["status"] != nil {
 		o.Status = order["status"].(string)
 	}
-	if order["signature"] != nil {
 
+	if order["signature"] != nil {
 		signature := order["signature"].(map[string]interface{})
 		o.Signature = &Signature{
 			V: byte(signature["V"].(float64)),
@@ -302,6 +317,17 @@ func (o *Order) UnmarshalJSON(b []byte) error {
 			},
 		}
 	}
+
+	if order["createdAt"] != nil {
+		t, _ := time.Parse(time.RFC3339Nano, order["createdAt"].(string))
+		o.CreatedAt = t
+	}
+
+	if order["updatedAt"] != nil {
+		t, _ := time.Parse(time.RFC3339Nano, order["updatedAt"].(string))
+		o.UpdatedAt = t
+	}
+
 	return nil
 }
 
@@ -475,6 +501,7 @@ func (o *Order) SetBSON(raw bson.Raw) error {
 
 	o.CreatedAt = decoded.CreatedAt
 	o.UpdatedAt = decoded.UpdatedAt
+
 	return nil
 }
 

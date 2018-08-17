@@ -2,6 +2,7 @@ package engine
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 
@@ -22,7 +23,6 @@ type FillOrder struct {
 func (e *Resource) matchOrder(order *types.Order) (err error) {
 
 	// Attain lock on engineResource, so that recovery or cancel order function doesn't interfere
-
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
 	var engineResponse *Response
@@ -37,7 +37,6 @@ func (e *Resource) matchOrder(order *types.Order) (err error) {
 	}
 
 	// Note: Plug the option for orders like FOC, Limit
-
 	e.publishEngineResponse(engineResponse)
 	if err != nil {
 		log.Printf("\npublishEngineResponse XXXXXXX\n%s\nXXXXXXX publishEngineResponse\n", err)
@@ -197,6 +196,7 @@ func (e *Resource) addOrder(order *types.Order) error {
 		log.Printf("INCRBY: %s", err)
 		return err
 	}
+
 	fmt.Printf("INCRBY: %s\n", res)
 
 	// Add order to list
@@ -205,6 +205,8 @@ func (e *Resource) addOrder(order *types.Order) error {
 		log.Printf("orderAsBytes: %s", err)
 		return err
 	}
+
+	fmt.Printf("%+v", orderAsBytes)
 
 	res, err = e.redisConn.Do("SET", listKey+"::"+order.Hash.Hex(), string(orderAsBytes))
 	if err != nil {
@@ -220,13 +222,11 @@ func (e *Resource) addOrder(order *types.Order) error {
 	}
 
 	fmt.Printf("ZADD: %s\n", res)
-
 	return nil
 }
 
 // updateOrder updates the order in redis
 func (e *Resource) updateOrder(order *types.Order, tradeAmount int64) error {
-
 	ssKey, listKey := order.GetOBKeys()
 	var storedOrder *types.Order
 	storedOrderAsBytes, err := redis.Bytes(e.redisConn.Do("GET", listKey+"::"+order.Hash.Hex()))
@@ -275,6 +275,7 @@ func (e *Resource) deleteOrder(order *types.Order, tradeAmount int64) (err error
 		log.Printf("GET remVolume: %s", err)
 		return
 	}
+
 	if remVolume == tradeAmount {
 		res, err := e.redisConn.Do("ZREM", ssKey, "NX", 0, utils.UintToPaddedString(order.Price)) // Add price point to order book
 		if err != nil {
@@ -308,6 +309,7 @@ func (e *Resource) deleteOrder(order *types.Order, tradeAmount int64) (err error
 			log.Printf("ZADD: %s", err)
 			return err
 		}
+
 		fmt.Printf("ZADD: %s\n", res)
 		res, err = e.redisConn.Do("INCRBY", ssKey+"::book::"+utils.UintToPaddedString(order.Price), -1*tradeAmount) // Add price point to order book
 		if err != nil {
@@ -364,35 +366,38 @@ func (e *Resource) RecoverOrders(orders []*FillOrder) error {
 }
 
 // CancelOrder is used to cancel the order from orderbook
-func (e *Resource) CancelOrder(order *types.Order) (engineResponse *Response, err error) {
+func (e *Resource) CancelOrder(order *types.Order) (*Response, error) {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
+
 	_, listKey := order.GetOBKeys()
 	res, err := redis.Bytes(e.redisConn.Do("GET", listKey+"::"+order.Hash.Hex()))
 	if err != nil {
 		log.Printf("GET: %s", err)
-		return
+		return nil, err
 	}
 	if res == nil {
-		return
+		return nil, errors.New("Order not found")
 	}
-	var storedOrder *types.Order
 
+	var storedOrder *types.Order
 	if err := json.Unmarshal(res, &storedOrder); err != nil {
-		log.Printf("GET: %s", err)
+		log.Printf("G2ET: %s", err)
 		return nil, err
 	}
 	if err := e.deleteOrder(order, storedOrder.Amount-storedOrder.FilledAmount); err != nil {
 		log.Printf("\n%s\n", err)
 		return nil, err
 	}
+
 	storedOrder.Status = "CANCELLED"
-	engineResponse = &Response{
+
+	engineResponse := &Response{
 		Order:          storedOrder,
 		Trades:         make([]*types.Trade, 0),
 		RemainingOrder: &types.Order{},
 		FillStatus:     CANCELLED,
 		MatchingOrders: make([]*FillOrder, 0),
 	}
-	return
+	return engineResponse, nil
 }
