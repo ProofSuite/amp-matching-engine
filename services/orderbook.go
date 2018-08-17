@@ -33,8 +33,8 @@ func (s *OrderBookService) GetOrderBook(bt, qt common.Address) (ob map[string]in
 	res, err := s.pairDao.GetByTokenAddress(bt, qt)
 	if err != nil {
 		message := map[string]string{
-			"Code":    "Invalid_Pair_Name",
-			"Message": "Invalid Pair Name " + err.Error(),
+			"Code":    "Invalid_Pair",
+			"Message": "Invalid Pair " + err.Error(),
 		}
 		bytes, _ := json.Marshal(message)
 		return nil, errors.New(string(bytes))

@@ -13,6 +13,7 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/ws"
 	"github.com/go-ozzo/ozzo-routing"
 	"github.com/gorilla/websocket"
+	"fmt"
 )
 
 type orderEndpoint struct {
@@ -50,7 +51,6 @@ func (e *orderEndpoint) ws(input interface{}, conn *websocket.Conn) {
 	if err := json.Unmarshal(bytes, &msg); err != nil {
 		log.Println("unmarshal to wsmsg <==>" + err.Error())
 	}
-
 	switch msg.Type {
 	case "NEW_ORDER":
 		e.handleNewOrder(msg, conn)
@@ -76,8 +76,18 @@ func (e *orderEndpoint) handleNewOrder(msg *types.Message, conn *websocket.Conn)
 	ch := make(chan *types.Message)
 	p := types.NewOrderPayload{}
 	bytes, err := json.Marshal(msg.Data)
-
+	if err!=nil {
+		log.Printf("Error while marshalling msg data: ",err)
+		ws.OrderSendErrorMessage(conn, err.Error())
+		return
+	}
+	fmt.Printf("%+v",p)
 	err = json.Unmarshal(bytes, &p)
+	if err!=nil {
+		log.Printf("Error while unmarshalling msg data bytes: ",err)
+		ws.OrderSendErrorMessage(conn, err.Error())
+		return
+	}
 	p.Hash = p.ComputeHash()
 
 	if err != nil {
@@ -91,7 +101,6 @@ func (e *orderEndpoint) handleNewOrder(msg *types.Message, conn *websocket.Conn)
 		ws.OrderSendErrorMessage(conn, err.Error(), p.Hash)
 		return
 	}
-
 	err = e.orderService.NewOrder(o)
 	if err != nil {
 		ws.OrderSendErrorMessage(conn, err.Error(), p.Hash)

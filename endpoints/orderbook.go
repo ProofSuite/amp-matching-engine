@@ -27,10 +27,6 @@ func ServeOrderBookResource(rg *routing.RouteGroup, orderBookService *services.O
 }
 
 func (e *OrderBookEndpoint) orderBookEndpoint(c *routing.Context) error {
-	p := c.Param("pair")
-	if p == "" {
-		return errors.NewAPIError(401, "EMPTY_PAIR_NAME", map[string]interface{}{})
-	}
 
 	bt := c.Param("baseToken")
 	if !common.IsHexAddress(bt) {

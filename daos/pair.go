@@ -72,8 +72,14 @@ func (dao *PairDao) GetByTokenAddress(baseToken, quoteToken common.Address) (*ty
 	var res []*types.Pair
 
 	q := bson.M{
-		"baseTokenAddress":  baseToken.Hex(),
-		"quoteTokenAddress": quoteToken.Hex(),
+		"baseTokenAddress":  bson.RegEx{
+			Pattern:baseToken.Hex(),
+			Options:"i",
+		},
+		"quoteTokenAddress": bson.RegEx{
+			Pattern:quoteToken.Hex(),
+			Options:"i",
+		},
 	}
 
 	err := db.Get(dao.dbName, dao.collectionName, q, 0, 1, &res)
