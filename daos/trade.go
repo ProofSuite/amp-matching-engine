@@ -5,6 +5,7 @@ import (
 
 	"github.com/Proofsuite/amp-matching-engine/app"
 	"github.com/Proofsuite/amp-matching-engine/types"
+	"github.com/ethereum/go-ethereum/common"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -73,13 +74,37 @@ func (dao *TradeDao) GetByPairName(name string) (response []*types.Trade, err er
 	return
 }
 
+func (dao *TradeDao) GetByHash(hash common.Hash) (*types.Trade, error) {
+	q := bson.M{"hash": hash.Hex()}
+
+	response := []*types.Trade{}
+	err := db.Get(dao.dbName, dao.collectionName, q, 0, 0, &response)
+	if err != nil {
+		return nil, err
+	}
+
+	return response[0], nil
+}
+
+func (dao *TradeDao) GetByOrderHash(hash common.Hash) ([]*types.Trade, error) {
+	q := bson.M{"orderHash": hash.Hex()}
+
+	response := []*types.Trade{}
+	err := db.Get(dao.dbName, dao.collectionName, q, 0, 0, &response)
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+
 // GetByPairAddress fetches all the trades corresponding to a particular pair token address.
-func (dao *TradeDao) GetByPairAddress(bt, qt string) (response []*types.Trade, err error) {
+func (dao *TradeDao) GetByPairAddress(baseToken, quoteToken common.Address) (response []*types.Trade, err error) {
 	q := bson.M{"baseToken": bson.RegEx{
-		Pattern: bt,
+		Pattern: baseToken.Hex(),
 		Options: "i",
 	}, "quoteToken": bson.RegEx{
-		Pattern: qt,
+		Pattern: quoteToken.Hex(),
 		Options: "i",
 	}}
 	err = db.Get(dao.dbName, dao.collectionName, q, 0, 0, &response)
@@ -90,13 +115,13 @@ func (dao *TradeDao) GetByPairAddress(bt, qt string) (response []*types.Trade, e
 }
 
 // GetByUserAddress fetches all the trades corresponding to a particular user address.
-func (dao *TradeDao) GetByUserAddress(addr string) (response []*types.Trade, err error) {
+func (dao *TradeDao) GetByUserAddress(addr common.Address) (response []*types.Trade, err error) {
 	q := bson.M{"$or": []bson.M{
 		bson.M{"maker": bson.RegEx{
-			Pattern: addr,
+			Pattern: addr.Hex(),
 			Options: "i",
 		}}, bson.M{"taker": bson.RegEx{
-			Pattern: addr,
+			Pattern: addr.Hex(),
 			Options: "i",
 		}},
 	}}

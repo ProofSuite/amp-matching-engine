@@ -15,7 +15,7 @@ type tokenEndpoint struct {
 // ServeTokenResource sets up the routing of token endpoints and the corresponding handlers.
 func ServeTokenResource(rg *routing.RouteGroup, tokenService *services.TokenService) {
 	r := &tokenEndpoint{tokenService}
-	rg.Get("/tokens/<addr>", r.get)
+	rg.Get("/tokens/<address>", r.get)
 	rg.Get("/tokens", r.query)
 	rg.Post("/tokens", r.create)
 }
@@ -44,11 +44,13 @@ func (r *tokenEndpoint) query(c *routing.Context) error {
 }
 
 func (r *tokenEndpoint) get(c *routing.Context) error {
-	addr := c.Param("addr")
-	if !common.IsHexAddress(addr) {
+	a := c.Param("address")
+	if !common.IsHexAddress(a) {
 		return errors.NewAPIError(400, "INVALID_ID", nil)
 	}
-	response, err := r.tokenService.GetByAddress(addr)
+
+	tokenAddress := common.HexToAddress(a)
+	response, err := r.tokenService.GetByAddress(tokenAddress)
 	if err != nil {
 		return err
 	}

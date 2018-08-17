@@ -5,6 +5,7 @@ import (
 
 	"github.com/Proofsuite/amp-matching-engine/app"
 	"github.com/Proofsuite/amp-matching-engine/types"
+	"github.com/ethereum/go-ethereum/common"
 	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -35,9 +36,8 @@ func NewOrderDao() *OrderDao {
 
 // Create function performs the DB insertion task for Order collection
 func (dao *OrderDao) Create(order *types.Order) (err error) {
-
 	order.ID = bson.NewObjectId()
-	order.Status = types.NEW
+	order.Status = "NEW"
 	order.CreatedAt = time.Now()
 	order.UpdatedAt = time.Now()
 
@@ -47,10 +47,24 @@ func (dao *OrderDao) Create(order *types.Order) (err error) {
 
 // Update function performs the DB updations task for Order collection
 // corresponding to a particular order ID
-func (dao *OrderDao) Update(id bson.ObjectId, order *types.Order) (response []types.Order, err error) {
+func (dao *OrderDao) Update(id bson.ObjectId, order *types.Order) error {
 	order.UpdatedAt = time.Now()
-	err = db.Update(dao.dbName, dao.collectionName, bson.M{"_id": id}, order)
-	return
+	err := db.Update(dao.dbName, dao.collectionName, bson.M{"_id": id}, order)
+	if err != nil {
+		return err
+
+	}
+	return nil
+}
+
+func (dao *OrderDao) UpdateByHash(hash common.Hash, order *types.Order) error {
+	order.UpdatedAt = time.Now()
+	err := db.Update(dao.dbName, dao.collectionName, bson.M{"hash": hash.Hex()}, order)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // GetByID function fetches a single document from order collection based on mongoDB ID.
@@ -62,8 +76,8 @@ func (dao *OrderDao) GetByID(id bson.ObjectId) (response *types.Order, err error
 
 // GetByHash function fetches a single document from order collection based on mongoDB ID.
 // Returns Order type struct
-func (dao *OrderDao) GetByHash(hash string) (response *types.Order, err error) {
-	q := bson.M{"hash": hash}
+func (dao *OrderDao) GetByHash(hash common.Hash) (response *types.Order, err error) {
+	q := bson.M{"hash": hash.Hex()}
 	var resp []types.Order
 	err = db.Get(dao.dbName, dao.collectionName, q, 0, 1, &resp)
 	if err != nil || len(resp) == 0 {
@@ -74,8 +88,8 @@ func (dao *OrderDao) GetByHash(hash string) (response *types.Order, err error) {
 
 // GetByUserAddress function fetches list of orders from order collection based on user address.
 // Returns array of Order type struct
-func (dao *OrderDao) GetByUserAddress(addr string) (response []*types.Order, err error) {
-	q := bson.M{"userAddress": addr}
+func (dao *OrderDao) GetByUserAddress(addr common.Address) (response []*types.Order, err error) {
+	q := bson.M{"userAddress": addr.Hex()}
 	err = db.Get(dao.dbName, dao.collectionName, q, 0, 0, &response)
 	return
 }

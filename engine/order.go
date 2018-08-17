@@ -26,9 +26,9 @@ func (e *Resource) matchOrder(order *types.Order) (err error) {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
 	var engineResponse *Response
-	if order.Side == types.SELL {
+	if order.Side == "SELL" {
 		engineResponse, err = e.sellOrder(order)
-	} else if order.Side == types.BUY {
+	} else if order.Side == "BUY" {
 		engineResponse, err = e.buyOrder(order)
 	}
 	if err != nil {
@@ -53,7 +53,7 @@ func (e *Resource) buyOrder(order *types.Order) (engineResponse *Response, err e
 
 	engineResponse = &Response{
 		Order:      order,
-		FillStatus: PARTIAL,
+		FillStatus: NOMATCH,
 	}
 	engineResponse.Trades = make([]*types.Trade, 0)
 	remOrder := *order
@@ -76,7 +76,7 @@ func (e *Resource) buyOrder(order *types.Order) (engineResponse *Response, err e
 	if len(priceRange) == 0 {
 		engineResponse.FillStatus = NOMATCH
 		e.addOrder(order)
-		order.Status = types.OPEN
+		order.Status = "OPEN"
 	} else {
 		for _, pr := range priceRange {
 			bookEntries, err := redis.ByteSlices(e.redisConn.Do("SORT", oskv+"::"+utils.UintToPaddedString(pr), "GET", oskv+"::"+utils.UintToPaddedString(pr)+"::*", "ALPHA")) // "ZREVRANGEBYLEX" key max min
@@ -102,11 +102,11 @@ func (e *Resource) buyOrder(order *types.Order) (engineResponse *Response, err e
 
 				if engineResponse.RemainingOrder.Amount == 0 {
 					engineResponse.FillStatus = FULL
-					engineResponse.Order.Status = types.FILLED
+					engineResponse.Order.Status = "FILLED"
 					engineResponse.RemainingOrder = nil
 					return engineResponse, nil
 				}
-				engineResponse.Order.Status = types.PARTIALFILLED
+				engineResponse.Order.Status = "PARTIAL_FILLED"
 			}
 		}
 	}
@@ -120,7 +120,7 @@ func (e *Resource) buyOrder(order *types.Order) (engineResponse *Response, err e
 func (e *Resource) sellOrder(order *types.Order) (engineResponse *Response, err error) {
 	engineResponse = &Response{
 		Order:      order,
-		FillStatus: PARTIAL,
+		FillStatus: NOMATCH,
 	}
 	engineResponse.Trades = make([]*types.Trade, 0)
 	remOrder := *order
@@ -142,13 +142,14 @@ func (e *Resource) sellOrder(order *types.Order) (engineResponse *Response, err 
 
 	if len(priceRange) == 0 {
 		engineResponse.FillStatus = NOMATCH
+		engineResponse.RemainingOrder = &types.Order{}
 		e.addOrder(order)
-		order.Status = types.OPEN
+		order.Status = "OPEN"
 	} else {
 		for _, pr := range priceRange {
 			bookEntries, err := redis.ByteSlices(e.redisConn.Do("SORT", obkv+"::"+utils.UintToPaddedString(pr), "GET", obkv+"::"+utils.UintToPaddedString(pr)+"::*", "ALPHA")) // "ZREVRANGEBYLEX" key max min
 			if err != nil {
-				log.Printf("LRANGE: %s\n", err)
+				log.Printf("SORT: %s\n", err)
 				return nil, err
 			}
 			for _, o := range bookEntries {
@@ -169,11 +170,11 @@ func (e *Resource) sellOrder(order *types.Order) (engineResponse *Response, err 
 
 				if engineResponse.RemainingOrder.Amount == 0 {
 					engineResponse.FillStatus = FULL
-					engineResponse.Order.Status = types.FILLED
+					engineResponse.Order.Status = "FILLED"
 					engineResponse.RemainingOrder = nil
 					return engineResponse, nil
 				}
-				engineResponse.Order.Status = types.PARTIALFILLED
+				engineResponse.Order.Status = "PARTIAL_FILLED"
 
 			}
 		}
@@ -183,13 +184,13 @@ func (e *Resource) sellOrder(order *types.Order) (engineResponse *Response, err 
 
 // addOrder adds an order to redis
 func (e *Resource) addOrder(order *types.Order) error {
-
 	ssKey, listKey := order.GetOBKeys()
 	res, err := e.redisConn.Do("ZADD", ssKey, "NX", 0, utils.UintToPaddedString(order.Price)) // Add price point to order book
 	if err != nil {
 		log.Printf("ZADD: %s", err)
 		return err
 	}
+
 	fmt.Printf("ZADD: %s\n", res)
 	res, err = e.redisConn.Do("INCRBY", ssKey+"::book::"+utils.UintToPaddedString(order.Price), order.Amount-order.FilledAmount) // Add price point to order book
 	if err != nil {
@@ -204,13 +205,15 @@ func (e *Resource) addOrder(order *types.Order) error {
 		log.Printf("orderAsBytes: %s", err)
 		return err
 	}
-	res, err = e.redisConn.Do("SET", listKey+"::"+order.ID.Hex(), string(orderAsBytes))
+
+	res, err = e.redisConn.Do("SET", listKey+"::"+order.Hash.Hex(), string(orderAsBytes))
 	if err != nil {
 		log.Printf("SET: %s", err)
 		return err
 	}
+
 	// Add order reference to price sorted set
-	res, err = e.redisConn.Do("ZADD", listKey, "NX", order.CreatedAt.Unix(), order.ID.Hex())
+	res, err = e.redisConn.Do("ZADD", listKey, "NX", order.CreatedAt.Unix(), order.Hash.Hex())
 	if err != nil {
 		log.Printf("ZADD: %s", err)
 		return err
@@ -226,7 +229,7 @@ func (e *Resource) updateOrder(order *types.Order, tradeAmount int64) error {
 
 	ssKey, listKey := order.GetOBKeys()
 	var storedOrder *types.Order
-	storedOrderAsBytes, err := redis.Bytes(e.redisConn.Do("GET", listKey+"::"+order.ID.Hex()))
+	storedOrderAsBytes, err := redis.Bytes(e.redisConn.Do("GET", listKey+"::"+order.Hash.Hex()))
 	if err != nil {
 		log.Printf("orderAsBytes: %s", err)
 		return err
@@ -234,6 +237,9 @@ func (e *Resource) updateOrder(order *types.Order, tradeAmount int64) error {
 	json.Unmarshal(storedOrderAsBytes, &storedOrder)
 
 	storedOrder.FilledAmount = storedOrder.FilledAmount + tradeAmount
+	if storedOrder.FilledAmount == 0 {
+		storedOrder.Status = "OPEN"
+	}
 
 	// Add order to list
 	orderAsBytes, err := json.Marshal(storedOrder)
@@ -242,7 +248,7 @@ func (e *Resource) updateOrder(order *types.Order, tradeAmount int64) error {
 		return err
 	}
 
-	res, err := e.redisConn.Do("SET", listKey+"::"+order.ID.Hex(), string(orderAsBytes))
+	res, err := e.redisConn.Do("SET", listKey+"::"+order.Hash.Hex(), string(orderAsBytes))
 	if err != nil {
 		log.Printf("SET: %s", err)
 		return err
@@ -283,13 +289,13 @@ func (e *Resource) deleteOrder(order *types.Order, tradeAmount int64) (err error
 		}
 		fmt.Printf("DEL: %s\n", res)
 
-		res, err = e.redisConn.Do("DEL", listKey+"::"+order.ID.Hex())
+		res, err = e.redisConn.Do("DEL", listKey+"::"+order.Hash.Hex())
 		if err != nil {
 			log.Printf("DEL: %s", err)
 			return err
 		}
 		// Add order reference to price sorted set
-		res, err = e.redisConn.Do("ZREM", listKey, order.ID.Hex())
+		res, err = e.redisConn.Do("ZREM", listKey, order.Hash.Hex())
 		if err != nil {
 			log.Printf("ZREM: %s", err)
 			return err
@@ -310,13 +316,13 @@ func (e *Resource) deleteOrder(order *types.Order, tradeAmount int64) (err error
 		}
 		fmt.Printf("INCRBY: %s\n", res)
 
-		res, err = e.redisConn.Do("DEL", listKey+"::"+order.ID.Hex())
+		res, err = e.redisConn.Do("DEL", listKey+"::"+order.Hash.Hex())
 		if err != nil {
 			log.Printf("DEL: %s", err)
 			return err
 		}
 		// Add order reference to price sorted set
-		res, err = e.redisConn.Do("ZREM", listKey, order.ID.Hex())
+		res, err = e.redisConn.Do("ZREM", listKey, order.Hash.Hex())
 		if err != nil {
 			log.Printf("ZREM: %s", err)
 			return err
@@ -336,14 +342,14 @@ func (e *Resource) RecoverOrders(orders []*FillOrder) error {
 	for _, o := range orders {
 
 		// update order's filled amount and status before updating in redis
-		o.Order.Status = types.PARTIALFILLED
+		o.Order.Status = "PARTIAL_FILLED"
 		o.Order.FilledAmount = o.Order.FilledAmount - o.Amount
 		if o.Order.FilledAmount == 0 {
-			o.Order.Status = types.OPEN
+			o.Order.Status = "OPEN"
 		}
 
 		_, listKey := o.Order.GetOBKeys()
-		res, _ := redis.Bytes(e.redisConn.Do("GET", listKey+"::"+o.Order.ID.Hex()))
+		res, _ := redis.Bytes(e.redisConn.Do("GET", listKey+"::"+o.Order.Hash.Hex()))
 		if res == nil {
 			if err := e.addOrder(o.Order); err != nil {
 				return err
@@ -362,7 +368,7 @@ func (e *Resource) CancelOrder(order *types.Order) (engineResponse *Response, er
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
 	_, listKey := order.GetOBKeys()
-	res, err := redis.Bytes(e.redisConn.Do("GET", listKey+"::"+order.ID.Hex()))
+	res, err := redis.Bytes(e.redisConn.Do("GET", listKey+"::"+order.Hash.Hex()))
 	if err != nil {
 		log.Printf("GET: %s", err)
 		return
@@ -380,13 +386,13 @@ func (e *Resource) CancelOrder(order *types.Order) (engineResponse *Response, er
 		log.Printf("\n%s\n", err)
 		return nil, err
 	}
-	storedOrder.Status = types.CANCELLED
+	storedOrder.Status = "CANCELLED"
 	engineResponse = &Response{
 		Order:          storedOrder,
-		Trades:         nil,
-		RemainingOrder: nil,
+		Trades:         make([]*types.Trade, 0),
+		RemainingOrder: &types.Order{},
 		FillStatus:     CANCELLED,
-		MatchingOrders: nil,
+		MatchingOrders: make([]*FillOrder, 0),
 	}
 	return
 }

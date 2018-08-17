@@ -3,6 +3,7 @@ package e2e
 import (
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"net/http"
 	"strings"
 	"testing"
@@ -24,12 +25,12 @@ func testPair(t *testing.T, tokens []types.Token) []types.Pair {
 		QuoteTokenAddress: tokens[0].ContractAddress,
 		QuoteTokenSymbol:  tokens[0].Symbol,
 		Active:            true,
-		MakeFee:           0,
-		TakeFee:           0,
+		MakeFee:           big.NewInt(0),
+		TakeFee:           big.NewInt(0),
 	}
 
 	// create pair test
-	res := testAPI(router, "POST", "/pairs", `{"quoteTokenAddress":"`+tokens[0].ContractAddress+`", "baseTokenAddress":"`+tokens[1].ContractAddress+`", "active":true}`)
+	res := testAPI(router, "POST", "/pairs", `{"quoteTokenAddress":"`+tokens[0].ContractAddress.Hex()+`", "baseTokenAddress":"`+tokens[1].ContractAddress.Hex()+`", "active":true}`)
 	assert.Equal(t, http.StatusOK, res.Code, "t1 - create pair")
 	var resp types.Pair
 	if err := json.Unmarshal(res.Body.Bytes(), &resp); err != nil {
@@ -44,7 +45,7 @@ func testPair(t *testing.T, tokens []types.Token) []types.Pair {
 	listPairs = append(listPairs, neededPair)
 
 	// Duplicate pair test
-	res = testAPI(router, "POST", "/pairs", `{"quoteTokenAddress":"`+tokens[0].ContractAddress+`", "baseTokenAddress":"`+tokens[1].ContractAddress+`"}`)
+	res = testAPI(router, "POST", "/pairs", `{"quoteTokenAddress":"`+tokens[0].ContractAddress.Hex()+`", "baseTokenAddress":"`+tokens[1].ContractAddress.Hex()+`"}`)
 
 	if assert.Equal(t, 401, res.Code, "t2 - create duplicate pair") {
 		fmt.Println("PASS  't2 - create duplicate pair'")
@@ -53,7 +54,7 @@ func testPair(t *testing.T, tokens []types.Token) []types.Pair {
 	}
 
 	// fetch pair detail test
-	res = testAPI(router, "GET", "/pairs/"+tokens[1].ContractAddress+"/"+tokens[0].ContractAddress, "")
+	res = testAPI(router, "GET", "/pairs/"+tokens[1].ContractAddress.Hex()+"/"+tokens[0].ContractAddress.Hex(), "")
 	assert.Equal(t, http.StatusOK, res.Code, "t2 - fetch pair")
 	if err := json.Unmarshal(res.Body.Bytes(), &resp); err != nil {
 		fmt.Printf("%v", err)
@@ -93,18 +94,15 @@ func comparePair(t *testing.T, actual, expected types.Pair, msgs ...string) bool
 	for _, msg := range msgs {
 		fmt.Println(msg)
 	}
+
 	response := true
 	response = response && assert.Equalf(t, actual.Name, expected.Name, fmt.Sprintf("Pair Name doesn't match. Expected: %v , Got: %v", expected.Name, actual.Name))
-
 	response = response && assert.Equalf(t, actual.BaseTokenID.Hex(), expected.BaseTokenID.Hex(), fmt.Sprintf("Pair BaseToken ID doesn't match. Expected: %v , Got: %v", expected.BaseTokenID, actual.BaseTokenID))
 	response = response && assert.Equalf(t, actual.QuoteTokenID.Hex(), expected.QuoteTokenID.Hex(), fmt.Sprintf("Pair QuoteToken ID doesn't match. Expected: %v , Got: %v", expected.QuoteTokenID.Hex(), actual.QuoteTokenID.Hex()))
-
 	response = response && assert.Equalf(t, actual.BaseTokenAddress, expected.BaseTokenAddress, fmt.Sprintf("Pair BaseToken Address doesn't match. Expected: %v , Got: %v", expected.BaseTokenAddress, actual.BaseTokenAddress))
 	response = response && assert.Equalf(t, actual.QuoteTokenAddress, expected.QuoteTokenAddress, fmt.Sprintf("Pair QuoteToken Address doesn't match. Expected: %v , Got: %v", expected.QuoteTokenAddress, actual.QuoteTokenAddress))
-
 	response = response && assert.Equalf(t, actual.BaseTokenSymbol, expected.BaseTokenSymbol, fmt.Sprintf("Pair BaseTokenSymbol doesn't match. Expected: %v , Got: %v", expected.BaseTokenSymbol, actual.BaseTokenSymbol))
 	response = response && assert.Equalf(t, actual.QuoteTokenSymbol, expected.QuoteTokenSymbol, fmt.Sprintf("Pair QuoteTokenSymbol doesn't match. Expected: %v , Got: %v", expected.QuoteTokenSymbol, actual.QuoteTokenSymbol))
-
 	response = response && assert.Equalf(t, actual.Active, expected.Active, fmt.Sprintf("Pair Active doesn't match. Expected: %v , Got: %v", expected.Active, actual.Active))
 	response = response && assert.Equalf(t, actual.MakeFee, expected.MakeFee, fmt.Sprintf("Pair MakerFee doesn't match. Expected: %v , Got: %v", expected.MakeFee, actual.MakeFee))
 	response = response && assert.Equalf(t, actual.TakeFee, expected.TakeFee, fmt.Sprintf("Pair TakerFee doesn't match. Expected: %v , Got: %v", expected.TakeFee, actual.TakeFee))

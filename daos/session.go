@@ -60,6 +60,14 @@ func (d *Database) Get(dbName, collection string, query interface{}, offset, lim
 	return
 }
 
+func (d *Database) Query(dbName, collection string, query interface{}, selector interface{}, offset, limit int, response interface{}) (err error) {
+	sc := d.session.Copy()
+	defer sc.Close()
+
+	err = sc.DB(dbName).C(collection).Find(query).Skip(offset).Limit(limit).Select(selector).All(response)
+	return
+}
+
 // GetWithSort is a wrapper for mgo.Find function with SORT function in pipeline.
 // It creates a copy of session initialized, sends query over this session
 // and returns the session to connection pool
