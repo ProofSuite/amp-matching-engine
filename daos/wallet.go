@@ -54,7 +54,7 @@ func (dao *WalletDao) GetByID(id bson.ObjectId) (response *types.Wallet, err err
 
 // GetByAddress function fetches details of a token based on its contract address
 func (dao *WalletDao) GetByAddress(a common.Address) (response *types.Wallet, err error) {
-	q := bson.M{"address": bson.RegEx{Pattern: a.Hex(), Options: "i"}}
+	q := bson.M{"address": a.Hex()}
 	var resp []types.Wallet
 	err = db.Get(dao.dbName, dao.collectionName, q, 0, 1, &resp)
 	if err != nil || len(resp) == 0 {

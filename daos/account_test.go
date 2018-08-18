@@ -24,18 +24,18 @@ func TestAccountDao(t *testing.T) {
 	tokenAddress2 := common.HexToAddress("0x7a9f3cd060ab180f36c17fe6bdf9974f577d77aa")
 
 	tokenBalance1 := &types.TokenBalance{
-		TokenID:       bson.NewObjectId(),
-		TokenAddress:  tokenAddress1,
-		TokenSymbol:   "EOS",
+		ID:            bson.NewObjectId(),
+		Address:       tokenAddress1,
+		Symbol:        "EOS",
 		Balance:       big.NewInt(10000),
 		Allowance:     big.NewInt(10000),
 		LockedBalance: big.NewInt(5000),
 	}
 
 	tokenBalance2 := &types.TokenBalance{
-		TokenID:       bson.NewObjectId(),
-		TokenAddress:  tokenAddress2,
-		TokenSymbol:   "ZRX",
+		ID:            bson.NewObjectId(),
+		Address:       tokenAddress2,
+		Symbol:        "ZRX",
 		Balance:       big.NewInt(10000),
 		Allowance:     big.NewInt(10000),
 		LockedBalance: big.NewInt(5000),
@@ -72,18 +72,18 @@ func TestAccountGetAllTokenBalances(t *testing.T) {
 	tokenAddress2 := common.HexToAddress("0x7a9f3cd060ab180f36c17fe6bdf9974f577d77aa")
 
 	tokenBalance1 := &types.TokenBalance{
-		TokenID:       bson.NewObjectId(),
-		TokenAddress:  tokenAddress1,
-		TokenSymbol:   "EOS",
+		ID:            bson.NewObjectId(),
+		Address:       tokenAddress1,
+		Symbol:        "EOS",
 		Balance:       big.NewInt(10000),
 		Allowance:     big.NewInt(10000),
 		LockedBalance: big.NewInt(5000),
 	}
 
 	tokenBalance2 := &types.TokenBalance{
-		TokenID:       bson.NewObjectId(),
-		TokenAddress:  tokenAddress2,
-		TokenSymbol:   "ZRX",
+		ID:            bson.NewObjectId(),
+		Address:       tokenAddress2,
+		Symbol:        "ZRX",
 		Balance:       big.NewInt(10000),
 		Allowance:     big.NewInt(10000),
 		LockedBalance: big.NewInt(5000),
@@ -122,18 +122,18 @@ func TestGetTokenBalance(t *testing.T) {
 	tokenAddress2 := common.HexToAddress("0xe41d2489571d322189246dafa5ebde1f4699f498")
 
 	tokenBalance1 := &types.TokenBalance{
-		TokenID:       bson.NewObjectId(),
-		TokenAddress:  tokenAddress1,
-		TokenSymbol:   "EOS",
+		ID:            bson.NewObjectId(),
+		Address:       tokenAddress1,
+		Symbol:        "EOS",
 		Balance:       big.NewInt(10000),
 		Allowance:     big.NewInt(10000),
 		LockedBalance: big.NewInt(5000),
 	}
 
 	tokenBalance2 := &types.TokenBalance{
-		TokenID:       bson.NewObjectId(),
-		TokenAddress:  tokenAddress2,
-		TokenSymbol:   "ZRX",
+		ID:            bson.NewObjectId(),
+		Address:       tokenAddress2,
+		Symbol:        "ZRX",
 		Balance:       big.NewInt(10000),
 		Allowance:     big.NewInt(10000),
 		LockedBalance: big.NewInt(5000),
@@ -179,18 +179,18 @@ func TestUpdateAccountBalance(t *testing.T) {
 	tokenAddress2 := common.HexToAddress("0x7a9f3cd060ab180f36c17fe6bdf9974f577d77aa")
 
 	tokenBalance1 := &types.TokenBalance{
-		TokenID:       bson.NewObjectId(),
-		TokenAddress:  tokenAddress1,
-		TokenSymbol:   "EOS",
+		ID:            bson.NewObjectId(),
+		Address:       tokenAddress1,
+		Symbol:        "EOS",
 		Balance:       big.NewInt(10000),
 		Allowance:     big.NewInt(10000),
 		LockedBalance: big.NewInt(5000),
 	}
 
 	tokenBalance2 := &types.TokenBalance{
-		TokenID:       bson.NewObjectId(),
-		TokenAddress:  tokenAddress2,
-		TokenSymbol:   "ZRX",
+		ID:            bson.NewObjectId(),
+		Address:       tokenAddress2,
+		Symbol:        "ZRX",
 		Balance:       big.NewInt(10000),
 		Allowance:     big.NewInt(10000),
 		LockedBalance: big.NewInt(5000),
@@ -232,18 +232,18 @@ func TestUpdateAccountBalance(t *testing.T) {
 // 	tokenAddress2 := common.HexToAddress("0x7a9f3cd060ab180f36c17fe6bdf9974f577d77aa")
 
 // 	tokenBalance1 := &types.TokenBalance{
-// 		TokenID:       bson.NewObjectId(),
-// 		TokenAddress:  tokenAddress1,
-// 		TokenSymbol:   "EOS",
+// 		ID:       bson.NewObjectId(),
+// 		Address:  tokenAddress1,
+// 		Symbol:   "EOS",
 // 		Balance:       big.NewInt(10000),
 // 		Allowance:     big.NewInt(10000),
 // 		LockedBalance: big.NewInt(5000),
 // 	}
 
 // 	tokenBalance2 := &types.TokenBalance{
-// 		TokenID:       bson.NewObjectId(),
-// 		TokenAddress:  tokenAddress2,
-// 		TokenSymbol:   "ZRX",
+// 		ID:       bson.NewObjectId(),
+// 		Address:  tokenAddress2,
+// 		Symbol:   "ZRX",
 // 		Balance:       big.NewInt(10000),
 // 		Allowance:     big.NewInt(10000),
 // 		LockedBalance: big.NewInt(5000),

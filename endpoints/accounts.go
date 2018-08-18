@@ -1,11 +1,12 @@
 package endpoints
 
 import (
+	"fmt"
 	"github.com/Proofsuite/amp-matching-engine/errors"
 	"github.com/Proofsuite/amp-matching-engine/services"
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/ethereum/go-ethereum/common"
-	routing "github.com/go-ozzo/ozzo-routing"
+	"github.com/go-ozzo/ozzo-routing"
 )
 
 type accountEndpoint struct {
@@ -19,26 +20,21 @@ func ServeAccountResource(rg *routing.RouteGroup, accountService *services.Accou
 }
 
 func (e *accountEndpoint) create(c *routing.Context) error {
-	addr := c.Param("address")
-	if !common.IsHexAddress(addr) {
-		return errors.NewAPIError(400, "INVALID_ADDRESS", nil)
-	}
 
-	address := common.HexToAddress(addr)
 	account := &types.Account{}
 	if err := c.Read(&account); err != nil {
 		return errors.NewAPIError(400, "INVALID_DATA", map[string]interface{}{
 			"details": err.Error(),
 		})
 	}
-
 	if err := account.Validate(); err != nil {
 		return errors.NewAPIError(400, "INVALID_ACCOUNT", map[string]interface{}{
 			"details": err.Error(),
 		})
 	}
 
-	if err := e.accountService.Create(address); err != nil {
+	if err := e.accountService.Create(account); err != nil {
+		fmt.Println(err)
 		return errors.NewAPIError(400, "CREATE_ACCOUNT_FAIL", map[string]interface{}{
 			"details": err.Error(),
 		})

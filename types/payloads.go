@@ -9,8 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/ethereum/go-ethereum/crypto/sha3"
-	validation "github.com/go-ozzo/ozzo-validation"
-	"fmt"
+	"github.com/go-ozzo/ozzo-validation"
 )
 
 // NewOrderPayload is the struct in which the order request sent by the
@@ -62,12 +61,21 @@ func (p *NewOrderPayload) UnmarshalJSON(b []byte) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("\n\n>>>>>came<<<< \n %+v\n\n",decoded)
-	p.PairName = decoded["pairName"].(string)
-	p.UserAddress = common.HexToAddress(decoded["userAddress"].(string))
-	p.ExchangeAddress = common.HexToAddress(decoded["exchangeAddress"].(string))
-	p.BuyToken = common.HexToAddress(decoded["buyToken"].(string))
-	p.SellToken = common.HexToAddress(decoded["sellToken"].(string))
+	if decoded["pairName"] != nil {
+		p.PairName = decoded["pairName"].(string)
+	}
+	if decoded["userAddress"] != nil {
+		p.UserAddress = common.HexToAddress(decoded["userAddress"].(string))
+	}
+	if decoded["exchangeAddress"] != nil {
+		p.ExchangeAddress = common.HexToAddress(decoded["exchangeAddress"].(string))
+	}
+	if decoded["buyToken"] != nil {
+		p.BuyToken = common.HexToAddress(decoded["buyToken"].(string))
+	}
+	if decoded["sellToken"] != nil {
+		p.SellToken = common.HexToAddress(decoded["sellToken"].(string))
+	}
 
 	p.BuyAmount = new(big.Int)
 	p.SellAmount = new(big.Int)
@@ -76,21 +84,37 @@ func (p *NewOrderPayload) UnmarshalJSON(b []byte) error {
 	p.MakeFee = new(big.Int)
 	p.TakeFee = new(big.Int)
 
-	p.BuyAmount.UnmarshalJSON([]byte(decoded["buyAmount"].(string)))
-	p.SellAmount.UnmarshalJSON([]byte(decoded["sellAmount"].(string)))
-	p.Expires.UnmarshalJSON([]byte(decoded["expires"].(string)))
-	p.Nonce.UnmarshalJSON([]byte(decoded["nonce"].(string)))
-	p.MakeFee.UnmarshalJSON([]byte(decoded["makeFee"].(string)))
-	p.TakeFee.UnmarshalJSON([]byte(decoded["takeFee"].(string)))
-
-	signature := decoded["signature"].(map[string]interface{})
-	p.Signature = &Signature{
-		V: byte(signature["V"].(float64)),
-		R: common.HexToHash(signature["R"].(string)),
-		S: common.HexToHash(signature["S"].(string)),
+	if decoded["buyAmount"] != nil {
+		p.BuyAmount.UnmarshalJSON([]byte(decoded["buyAmount"].(string)))
+	}
+	if decoded["sellAmount"] != nil {
+		p.SellAmount.UnmarshalJSON([]byte(decoded["sellAmount"].(string)))
+	}
+	if decoded["expires"] != nil {
+		p.Expires.UnmarshalJSON([]byte(decoded["expires"].(string)))
+	}
+	if decoded["nonce"] != nil {
+		p.Nonce.UnmarshalJSON([]byte(decoded["nonce"].(string)))
+	}
+	if decoded["makeFee"] != nil {
+		p.MakeFee.UnmarshalJSON([]byte(decoded["makeFee"].(string)))
+	}
+	if decoded["takeFee"] != nil {
+		p.TakeFee.UnmarshalJSON([]byte(decoded["takeFee"].(string)))
 	}
 
-	p.Hash = common.HexToHash(decoded["hash"].(string))
+	if decoded["signature"] != nil {
+		signature := decoded["signature"].(map[string]interface{})
+		p.Signature = &Signature{
+			V: byte(signature["V"].(float64)),
+			R: common.HexToHash(signature["R"].(string)),
+			S: common.HexToHash(signature["S"].(string)),
+		}
+	}
+
+	if decoded["hash"] != nil {
+		p.Hash = common.HexToHash(decoded["hash"].(string))
+	}
 	return nil
 }
 
@@ -100,8 +124,8 @@ func (p NewOrderPayload) Validate() error {
 		validation.Field(&p.BuyAmount, validation.Required),
 		validation.Field(&p.SellAmount, validation.Required),
 		validation.Field(&p.UserAddress, validation.Required),
-		validation.Field(&p.BuyToken, validation.Required, validation.NewStringRule(common.IsHexAddress, "Invalid Buy Token Address")),
-		validation.Field(&p.SellToken, validation.Required, validation.NewStringRule(common.IsHexAddress, "Invalid Sell Token Address")),
+		validation.Field(&p.BuyToken, validation.Required),
+		validation.Field(&p.SellToken, validation.Required),
 		// validation.Field(&m.Signature, validation.Required),
 		// validation.Field(&m.PairName, validation.Required),
 	)
@@ -123,6 +147,7 @@ func (p *NewOrderPayload) ToOrder() (o *Order, err error) {
 		SellAmount:  p.SellAmount,
 		Hash:        p.ComputeHash(),
 		Nonce:       p.Nonce,
+		Expires:p.Expires,
 		Signature:   p.Signature,
 	}
 

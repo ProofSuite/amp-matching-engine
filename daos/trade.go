@@ -100,13 +100,7 @@ func (dao *TradeDao) GetByOrderHash(hash common.Hash) ([]*types.Trade, error) {
 
 // GetByPairAddress fetches all the trades corresponding to a particular pair token address.
 func (dao *TradeDao) GetByPairAddress(baseToken, quoteToken common.Address) (response []*types.Trade, err error) {
-	q := bson.M{"baseToken": bson.RegEx{
-		Pattern: baseToken.Hex(),
-		Options: "i",
-	}, "quoteToken": bson.RegEx{
-		Pattern: quoteToken.Hex(),
-		Options: "i",
-	}}
+	q := bson.M{"baseToken": baseToken.Hex(), "quoteToken": quoteToken.Hex()}
 	err = db.Get(dao.dbName, dao.collectionName, q, 0, 0, &response)
 	if err != nil {
 		return
@@ -117,13 +111,7 @@ func (dao *TradeDao) GetByPairAddress(baseToken, quoteToken common.Address) (res
 // GetByUserAddress fetches all the trades corresponding to a particular user address.
 func (dao *TradeDao) GetByUserAddress(addr common.Address) (response []*types.Trade, err error) {
 	q := bson.M{"$or": []bson.M{
-		bson.M{"maker": bson.RegEx{
-			Pattern: addr.Hex(),
-			Options: "i",
-		}}, bson.M{"taker": bson.RegEx{
-			Pattern: addr.Hex(),
-			Options: "i",
-		}},
+		{"maker": addr.Hex()}, {"taker": addr.Hex()},
 	}}
 	err = db.Get(dao.dbName, dao.collectionName, q, 0, 1, &response)
 	if err != nil {
