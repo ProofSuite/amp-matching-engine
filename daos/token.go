@@ -1,7 +1,6 @@
 package daos
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/Proofsuite/amp-matching-engine/app"
@@ -55,7 +54,6 @@ func (dao *TokenDao) GetByAddress(addr common.Address) (*types.Token, error) {
 	var resp []types.Token
 	err := db.Get(dao.dbName, dao.collectionName, q, 0, 1, &resp)
 
-	fmt.Printf("%+v", resp)
 	if err != nil || len(resp) == 0 {
 		return nil, err
 	}

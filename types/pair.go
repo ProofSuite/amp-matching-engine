@@ -107,8 +107,8 @@ func (p *Pair) GetBSON() (interface{}, error) {
 // struct satisfies all the conditions for a valid instance
 func (p Pair) Validate() error {
 	return validation.ValidateStruct(&p,
-		validation.Field(&p.BaseTokenAddress, validation.Required, validation.NewStringRule(common.IsHexAddress, "BaseTokenAddress must be of type HexAddress")),
-		validation.Field(&p.QuoteTokenAddress, validation.Required, validation.NewStringRule(common.IsHexAddress, "QuoteTokenAddress must be of type HexAddress")),
+		validation.Field(&p.BaseTokenAddress, validation.Required),
+		validation.Field(&p.QuoteTokenAddress, validation.Required),
 	)
 }
 

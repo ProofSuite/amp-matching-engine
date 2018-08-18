@@ -16,18 +16,18 @@ func TestAccountBSON(t *testing.T) {
 	tokenAddress2 := NewAddressFromString("0x7a9f3cd060ab180f36c17fe6bdf9974f577d77aa")
 
 	tokenBalance1 := &TokenBalance{
-		TokenID:       bson.NewObjectId(),
-		TokenAddress:  tokenAddress1,
-		TokenSymbol:   "EOS",
+		ID:            bson.NewObjectId(),
+		Address:       tokenAddress1,
+		Symbol:        "EOS",
 		Balance:       NewBigInt("10000"),
 		Allowance:     NewBigInt("10000"),
 		LockedBalance: NewBigInt("5000"),
 	}
 
 	tokenBalance2 := &TokenBalance{
-		TokenID:       bson.NewObjectId(),
-		TokenAddress:  tokenAddress2,
-		TokenSymbol:   "ZRX",
+		ID:            bson.NewObjectId(),
+		Address:       tokenAddress2,
+		Symbol:        "ZRX",
 		Balance:       NewBigInt("10000"),
 		Allowance:     NewBigInt("10000"),
 		LockedBalance: NewBigInt("5000"),
