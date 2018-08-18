@@ -31,6 +31,13 @@ func NewPairService(pairDao *daos.PairDao, tokenDao *daos.TokenDao, eng *engine.
 // Create function is responsible for inserting new pair in DB.
 // It checks for existence of tokens in DB first
 func (s *PairService) Create(pair *types.Pair) error {
+	p, err := s.pairDao.GetByBuySellTokenAddress(pair.BaseTokenAddress, pair.QuoteTokenAddress)
+	if err != nil && err.Error() != "NO_PAIR_FOUND" {
+		return aerrors.NewAPIError(400, err.Error(), nil)
+	} else if p != nil {
+		return aerrors.NewAPIError(401, "PAIR_ALREADY_EXISTS", nil)
+	}
+
 	bt, err := s.tokenDao.GetByAddress(pair.BaseTokenAddress)
 	if err != nil {
 		return aerrors.NewAPIError(400, err.Error(), nil)
@@ -48,13 +55,6 @@ func (s *PairService) Create(pair *types.Pair) error {
 	}
 	if !st.Quote {
 		return aerrors.NewAPIError(401, "QuoteTokenAddress_CAN_NOT_BE_USED_AS_QUOTE_TOKEN", nil)
-	}
-
-	p, err := s.pairDao.GetByBuySellTokenAddress(pair.BaseTokenAddress, pair.QuoteTokenAddress)
-	if err != nil && err.Error() != "No Pair found" {
-		return aerrors.NewAPIError(400, err.Error(), nil)
-	} else if p != nil {
-		return aerrors.NewAPIError(401, "PAIR_ALREADY_EXISTS", nil)
 	}
 
 	pair.QuoteTokenSymbol = st.Symbol
