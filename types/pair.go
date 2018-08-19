@@ -115,5 +115,5 @@ func (p Pair) Validate() error {
 // GetOrderBookKeys returns the orderbook price point keys for corresponding pair
 // It is used to fetch the orderbook from redis of a pair
 func (p *Pair) GetOrderBookKeys() (sell, buy string) {
-	return p.BaseTokenAddress.Hex() + "::" + p.QuoteTokenAddress.Hex() + "::sell", p.BaseTokenAddress.Hex() + "::" + p.QuoteTokenAddress.Hex() + "::buy"
+	return p.BaseTokenAddress.Hex() + "::" + p.QuoteTokenAddress.Hex() + "::SELL", p.BaseTokenAddress.Hex() + "::" + p.QuoteTokenAddress.Hex() + "::BUY"
 }
