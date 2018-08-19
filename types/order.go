@@ -3,6 +3,7 @@ package types
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math/big"
 	"time"
 
@@ -104,13 +105,27 @@ func (o *Order) VerifySignature() (bool, error) {
 	return true, nil
 }
 
+// Sign first calculates the order hash, then computes a signature of this hash
+// with the given wallet
+func (o *Order) Sign(w *Wallet) error {
+	hash := o.ComputeHash()
+	sig, err := w.SignHash(hash)
+	if err != nil {
+		return err
+	}
+
+	o.Hash = hash
+	o.Signature = sig
+	return nil
+}
+
 // Process computes the pricepoint and the amount corresponding to a token pair
 func (o *Order) Process(p *Pair) error {
-	if o.BuyToken == p.QuoteTokenAddress {
+	if o.BuyToken == p.BaseTokenAddress {
 		o.Side = "BUY"
 		o.Amount = o.BuyAmount.Int64()
-		o.Price = o.SellAmount.Int64() * 1e8 / o.SellAmount.Int64()
-	} else if o.BuyToken == p.BaseTokenAddress {
+		o.Price = o.SellAmount.Int64() * 1e8 / o.BuyAmount.Int64()
+	} else if o.BuyToken == p.QuoteTokenAddress {
 		o.Side = "SELL"
 		o.Amount = o.SellAmount.Int64()
 		o.Price = o.BuyAmount.Int64() * 1e8 / o.SellAmount.Int64()
@@ -120,7 +135,6 @@ func (o *Order) Process(p *Pair) error {
 
 	o.BaseToken = p.BaseTokenAddress
 	o.QuoteToken = p.QuoteTokenAddress
-	o.PairID = p.ID
 	o.PairName = p.Name
 
 	return nil
@@ -507,6 +521,15 @@ func (o *Order) SetBSON(raw bson.Raw) error {
 	o.UpdatedAt = decoded.UpdatedAt
 
 	return nil
+}
+
+func (o *Order) Print() {
+	b, err := json.MarshalIndent(o, "", "  ")
+	if err != nil {
+		fmt.Println("Error: ", err)
+	}
+
+	fmt.Print(string(b))
 }
 
 // type OrderData struct {

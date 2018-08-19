@@ -1,10 +1,12 @@
 package types
 
 import (
+	"fmt"
 	"math/big"
 	"time"
 
 	"encoding/json"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/go-ozzo/ozzo-validation"
 	"gopkg.in/mgo.v2/bson"
@@ -189,8 +191,44 @@ func (a *Account) UnmarshalJSON(b []byte) error {
 }
 
 // Validate enforces the account model
-func (a Account) Validate() error {
+func (a *Account) Validate() error {
 	return validation.ValidateStruct(&a,
 		validation.Field(&a.Address, validation.Required),
 	)
+}
+
+func (a *Account) Print() {
+	b, err := json.MarshalIndent(a, "", "  ")
+	if err != nil {
+		fmt.Println("Error: ", err)
+	}
+
+	fmt.Print(string(b))
+}
+
+func (a *AccountRecord) Print() {
+	b, err := json.MarshalIndent(a, "", "  ")
+	if err != nil {
+		fmt.Println("Error: ", err)
+	}
+
+	fmt.Print(string(b))
+}
+
+func (t *TokenBalance) Print() {
+	b, err := json.MarshalIndent(t, "", "  ")
+	if err != nil {
+		fmt.Println("Error: ", err)
+	}
+
+	fmt.Print(string(b))
+}
+
+func (t *TokenBalanceRecord) Print() {
+	b, err := json.MarshalIndent(t, "", "  ")
+	if err != nil {
+		fmt.Println("Error: ", err)
+	}
+
+	fmt.Print(string(b))
 }

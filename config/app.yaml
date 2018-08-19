@@ -8,6 +8,8 @@ rabbitmq: amqp://guest:guest@localhost:5672/
 redis: redis://localhost:6379
 ethereum: localhost:8545
 
+exchange: "0xfc074fd5702e6becb78d64acd4126a0079f42d85"
+
 tick_duration:
     sec: [30]
     min: [1, 5, 15]

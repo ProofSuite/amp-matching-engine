@@ -3,6 +3,7 @@ package types
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math/big"
 	"strconv"
 	"time"
@@ -268,4 +269,27 @@ func (t *Trade) VerifySignature() (bool, error) {
 	}
 
 	return true, nil
+}
+
+// Sign calculates ands sets the trade hash and signature with the
+// given wallet
+func (t *Trade) Sign(w *Wallet) error {
+	hash := t.ComputeHash()
+	signature, err := w.SignHash(hash)
+	if err != nil {
+		return err
+	}
+
+	t.Hash = hash
+	t.Signature = signature
+	return nil
+}
+
+func (t *Trade) Print() {
+	b, err := json.MarshalIndent(t, "", "  ")
+	if err != nil {
+		fmt.Println("Error: ", err)
+	}
+
+	fmt.Print(string(b))
 }
