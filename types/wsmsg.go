@@ -10,7 +10,19 @@ const (
 	Fetch       SubscriptionEvent = "fetch"
 )
 
+const TradeChannel = "trades"
+const OrderbookChannel = "order_book"
+const OrderChannel = "orders"
+const OHLCVChannel = "ohlcv"
+
+//To be replaced by WebsocketMessage i think
+type ChannelMessage struct {
+	Channel string      `json:"channel"`
+	Message interface{} `json:"message"`
+}
+
 // Message is the model used to send message over socket channel
+//To be replaced by WebsocketPayload i think
 type Message struct {
 	Type string      `json:"type"`
 	Hash string      `json:"hash,omitempty"`
@@ -32,3 +44,43 @@ type Params struct {
 	Units    string `json:"units"`
 	TickID   string `json:"tickID"`
 }
+
+type WebSocketMessage struct {
+	Channel string           `json:"channel"`
+	Payload WebSocketPayload `json:"payload"`
+}
+
+type WebSocketPayload struct {
+	Type string      `json:"type"`
+	Hash string      `json:"hash,omitempty"`
+	Data interface{} `json:"data"`
+}
+
+//Data is different for each type of payload
+
+//orders/NEW_ORDER
+//Order
+//orders/SUBMIT_SIGNATURE
+//Order
+//Trades
+//RemainingOrder
+//FillStatus
+//MatchingOrders
+//orders/CANCEL_ORDER
+//Order
+//orders/CANCEL_TRADE
+
+//orders/ERROR
+//orders/ORDER_ADDED
+//orders/ORDER_CANCELED
+//orders/REQUEST_SIGNATURE
+//orders/TRADE_EXECUTED
+//orders/TRADE_TX_SUCCESS
+//orders/TRADE_TX_ERROR
+
+//order_book/INIT
+//order_book/UPDATE
+//trades/INIT
+//trades/UPDATE
+//ohlcv/INIT
+//ohlcv/UPDATE
