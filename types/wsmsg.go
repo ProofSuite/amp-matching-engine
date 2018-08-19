@@ -1,5 +1,10 @@
 package types
 
+import (
+	"encoding/json"
+	"fmt"
+)
+
 // SubscriptionEvent is an enum signifies whether the incoming message is of type Subscribe or unsubscribe
 type SubscriptionEvent string
 
@@ -15,22 +20,18 @@ const OrderbookChannel = "order_book"
 const OrderChannel = "orders"
 const OHLCVChannel = "ohlcv"
 
-//To be replaced by WebsocketMessage i think
-type ChannelMessage struct {
-	Channel string      `json:"channel"`
-	Message interface{} `json:"message"`
+type WebSocketMessage struct {
+	Channel string           `json:"channel"`
+	Payload WebSocketPayload `json:"payload"`
 }
 
-// Message is the model used to send message over socket channel
-//To be replaced by WebsocketPayload i think
-type Message struct {
+type WebSocketPayload struct {
 	Type string      `json:"type"`
 	Hash string      `json:"hash,omitempty"`
 	Data interface{} `json:"data"`
 }
 
-// Subscription is the model used to send message for subscription to any streaming channel
-type Subscription struct {
+type WebSocketSubscription struct {
 	Event  SubscriptionEvent `json:"event"`
 	Pair   PairSubDoc        `json:"pair"`
 	Params `json:"params"`
@@ -45,15 +46,44 @@ type Params struct {
 	TickID   string `json:"tickID"`
 }
 
-type WebSocketMessage struct {
-	Channel string           `json:"channel"`
-	Payload WebSocketPayload `json:"payload"`
+func NewOrderWebsocketMessage(o *Order) *WebSocketMessage {
+	return &WebSocketMessage{
+		Channel: "orders",
+		Payload: WebSocketPayload{
+			Type: "NEW_ORDER",
+			Hash: "",
+			Data: o,
+		},
+	}
 }
 
-type WebSocketPayload struct {
-	Type string      `json:"type"`
-	Hash string      `json:"hash,omitempty"`
-	Data interface{} `json:"data"`
+func NewCancelOrderWebSocketMessage(o *Order) *WebSocketMessage {
+	return &WebSocketMessage{
+		Channel: "orders",
+		Payload: WebSocketPayload{
+			Type: "CANCEL_ORDER",
+			Hash: "",
+			Data: o,
+		},
+	}
+}
+
+func (w *WebSocketMessage) Print() {
+	b, err := json.MarshalIndent(w, "", "  ")
+	if err != nil {
+		fmt.Println("Error: ", err)
+	}
+
+	fmt.Print(string(b))
+}
+
+func (w *WebSocketPayload) Print() {
+	b, err := json.MarshalIndent(w, "", "  ")
+	if err != nil {
+		fmt.Println("Error: ", err)
+	}
+
+	fmt.Print(string(b))
 }
 
 //Data is different for each type of payload
@@ -84,3 +114,24 @@ type WebSocketPayload struct {
 //trades/UPDATE
 //ohlcv/INIT
 //ohlcv/UPDATE
+
+//To be replaced by WebsocketMessage i think
+// type ChannelMessage struct {
+// 	Channel string      `json:"channel"`
+// 	Message interface{} `json:"message"`
+// }
+
+// Message is the model used to send message over socket channel
+// //To be replaced by WebsocketPayload i think
+// type Message struct {
+// 	Type string      `json:"type"`
+// 	Hash string      `json:"hash,omitempty"`
+// 	Data interface{} `json:"data"`
+// }
+
+// Subscription is the model used to send message for subscription to any streaming channel
+// type Subscription struct {
+// 	Event  SubscriptionEvent `json:"event"`
+// 	Pair   PairSubDoc        `json:"pair"`
+// 	Params `json:"params"`
+// }
