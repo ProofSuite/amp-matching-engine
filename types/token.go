@@ -1,6 +1,8 @@
 package types
 
 import (
+	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -92,4 +94,22 @@ func (t *Token) SetBSON(raw bson.Raw) error {
 	t.CreatedAt = decoded.CreatedAt
 	t.UpdatedAt = decoded.UpdatedAt
 	return nil
+}
+
+func (t *Token) Print() {
+	b, err := json.MarshalIndent(t, "", "  ")
+	if err != nil {
+		fmt.Println("Error: ", err)
+	}
+
+	fmt.Print(string(b))
+}
+
+func (t *TokenRecord) Print() {
+	b, err := json.MarshalIndent(t, "", "  ")
+	if err != nil {
+		fmt.Println("Error: ", err)
+	}
+
+	fmt.Print(string(b))
 }
