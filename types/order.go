@@ -254,6 +254,10 @@ func (o *Order) UnmarshalJSON(b []byte) error {
 		o.Amount = int64(order["amount"].(float64))
 	}
 
+	if order["filledAmount"] != nil {
+		o.FilledAmount = int64(order["filledAmount"].(float64))
+	}
+
 	if order["buyAmount"] != nil {
 		o.BuyAmount = big.NewInt(0)
 		o.BuyAmount.UnmarshalJSON([]byte(order["buyAmount"].(string)))
@@ -504,6 +508,14 @@ func (o *Order) SetBSON(raw bson.Raw) error {
 
 	return nil
 }
+
+// type OrderData struct {
+// 	Order          *Order
+// 	Trades         []*Trade
+// 	RemainingOrder *Order
+// 	MatchingOrders []*FillOrder
+// 	FillStatus     FillStatus
+// }
 
 // ComputeHash calculates the order hash
 // func (o *Order) ComputeHash() (ch string) {
