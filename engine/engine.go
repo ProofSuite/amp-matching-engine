@@ -61,10 +61,12 @@ func (e *Resource) PublishMessage(order *Message) error {
 			ContentType: "text/json",
 			Body:        orderAsBytes,
 		})
+
 	if err != nil {
 		log.Fatalf("Failed to publish order: %s", err)
 		return errors.New("Failed to publish order: " + err.Error())
 	}
+
 	return nil
 }
 
@@ -172,10 +174,12 @@ func (e *Resource) subscribeMessage() error {
 					log.Printf("Order Unmarshal error: %s", err)
 					continue
 				}
+
 				if msg.Type == "NEW_ORDER" {
-					e.matchOrder(order)
-				} else if msg.Type == "remaining_order_add" {
+					e.newOrder(order)
+				} else if msg.Type == "ADD_ORDER" {
 					e.addOrder(order)
+					//potentially later, we can update order status in redis if this is useful ?
 				}
 			}
 		}()

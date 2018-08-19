@@ -159,12 +159,10 @@ func (s *OrderService) CancelOrder(order *types.Order) error {
 		return fmt.Errorf("No order with this hash present")
 	}
 
-	dab, err := json.Marshal(dbOrder)
+	_, err = json.Marshal(dbOrder)
 	if err != nil {
 		return err
 	}
-
-	fmt.Printf("%s", dab)
 
 	if dbOrder.Status == "OPEN" || dbOrder.Status == "NEW" {
 		res, err := s.engine.CancelOrder(dbOrder)
@@ -185,122 +183,134 @@ func (s *OrderService) CancelOrder(order *types.Order) error {
 	return fmt.Errorf("Cannot cancel the order")
 }
 
+// HandleEngineResponse listens to messages incoming from the engine and handles websocket
+// responses and database updates accordingly
 func (s *OrderService) HandleEngineResponse(res *engine.Response) error {
-	if res.FillStatus == engine.NOMATCH {
-		// note sure why they are two order added
-		s.SendMessage("ORDER_ADDED", res.Order.Hash, res)
-	} else {
-		s.SendMessage("REQUEST_SIGNATURE", res.Order.Hash, res)
-
-		t := time.NewTimer(10 * time.Second)
-		ch := ws.GetOrderChannel(res.Order.Hash)
-		if ch == nil {
-			s.RecoverOrders(res)
-		} else {
-
-			select {
-			case msg := <-ch:
-				if msg.Type == "REQUEST_SIGNATURE" {
-					bytes, err := json.Marshal(msg.Data)
-					if err != nil {
-						fmt.Printf("=== Error while marshaling EngineResponse ===")
-						s.RecoverOrders(res)
-						ws.OrderSendErrorMessage(ws.GetOrderConn(res.Order.Hash), err.Error(), res.Order.Hash)
-					}
-
-					var ersb *engine.Response
-					err = json.Unmarshal(bytes, &ersb)
-					if err != nil {
-						fmt.Printf("=== Error while unmarshaling EngineResponse ===")
-						ws.OrderSendErrorMessage(ws.GetOrderConn(res.Order.Hash), err.Error(), res.Order.Hash)
-						s.RecoverOrders(res)
-					}
-
-					if res.FillStatus == engine.PARTIAL {
-						res.Order.OrderBook = &types.OrderSubDoc{Amount: ersb.RemainingOrder.Amount, Signature: ersb.RemainingOrder.Signature}
-						orderAsBytes, _ := json.Marshal(res.Order)
-						s.engine.PublishMessage(&engine.Message{Type: "remaining_order_add", Data: orderAsBytes})
-					}
-				}
-
-				t.Stop()
-				break
-
-			case <-t.C:
-				fmt.Printf("\nTimeout\n")
-				s.RecoverOrders(res)
-				t.Stop()
-				break
-			}
-		}
+	switch res.FillStatus {
+	case engine.ERROR:
+		s.handleEngineError(res)
+	case engine.NOMATCH:
+		s.handleEngineOrderAdded(res)
+	case engine.FULL:
+	case engine.PARTIAL:
+		s.handleEngineOrderMatched(res)
+	default:
+		s.handleEngineUnknownMessage(res)
 	}
-
-	s.UpdateUsingEngineResponse(res)
-	// TODO: send to operator for blockchain execution
 
 	s.RelayUpdateOverSocket(res)
 	ws.CloseOrderReadChannel(res.Order.Hash)
 	return nil
 }
 
+// handleEngineError returns an websocket error message to the client and recovers orders on the
+// redis key/value store
+func (s *OrderService) handleEngineError(res *engine.Response) {
+	s.orderDao.Update(res.Order.ID, res.Order)
+	s.cancelOrderUnlockAmount(res.Order)
+	ws.OrderSendErrorMessage(ws.GetOrderConn(res.Order.Hash), "Some error", res.Order.Hash)
+}
+
+// handleEngineOrderAdded returns a websocket message informing the client that his order has been added
+// to the orderbook (but currently not matched)
+func (s *OrderService) handleEngineOrderAdded(res *engine.Response) {
+	s.SendMessage("ORDER_ADDED", res.Order.Hash, res)
+}
+
+// handleEngineOrderMatched returns a websocket message informing the client that his order has been added.
+// The request signature message also signals the client to sign trades.
+func (s *OrderService) handleEngineOrderMatched(resp *engine.Response) {
+	s.SendMessage("REQUEST_SIGNATURE", resp.Order.Hash, resp)
+	s.orderDao.Update(resp.Order.ID, resp.Order)
+	s.transferAmount(resp.Order, big.NewInt(resp.Order.FilledAmount))
+
+	for _, o := range resp.MatchingOrders {
+		s.orderDao.Update(o.Order.ID, resp.Order)
+		s.transferAmount(o.Order, big.NewInt(o.Amount))
+	}
+
+	if len(resp.Trades) != 0 {
+		err := s.tradeDao.Create(resp.Trades...)
+		if err != nil {
+			log.Fatalf("\n Error saving trades to db: %s\n", err)
+		}
+	}
+
+	t := time.NewTimer(10 * time.Second)
+	ch := ws.GetOrderChannel(resp.Order.Hash)
+
+	if ch == nil {
+		s.RecoverOrders(resp)
+	} else {
+		select {
+		case msg := <-ch:
+			if msg.Type == "SUBMIT_SIGNATURE" {
+				bytes, err := json.Marshal(msg.Data)
+				if err != nil {
+					s.RecoverOrders(resp)
+					ws.OrderSendErrorMessage(ws.GetOrderConn(resp.Order.Hash), err.Error(), resp.Order.Hash)
+				}
+
+				clientResponse := &engine.Response{}
+				err = json.Unmarshal(bytes, clientResponse)
+				if err != nil {
+					s.RecoverOrders(resp)
+					ws.OrderSendErrorMessage(ws.GetOrderConn(resp.Order.Hash), err.Error(), resp.Order.Hash)
+				}
+
+				if clientResponse.FillStatus == engine.PARTIAL {
+					resp.Order.OrderBook = &types.OrderSubDoc{Amount: clientResponse.RemainingOrder.Amount, Signature: clientResponse.RemainingOrder.Signature}
+					bytes, _ := json.Marshal(resp.Order)
+					s.engine.PublishMessage(&engine.Message{Type: "ADD_ORDER", Data: bytes})
+				}
+			}
+
+			t.Stop()
+			break
+		case <-t.C:
+			s.RecoverOrders(resp)
+			t.Stop()
+			break
+		}
+	}
+}
+
+// handleEngineUnknownMessage returns a websocket messsage in case the engine response is not recognized
+func (s *OrderService) handleEngineUnknownMessage(resp *engine.Response) {
+	s.RecoverOrders(resp)
+	ws.OrderSendErrorMessage(ws.GetOrderConn(resp.Order.Hash), "UNKNOWN_MESSAGE", resp.Order.Hash)
+}
+
 // RecoverOrders recovers orders i.e puts back matched orders to orderbook
 // in case of failure of trade signing by the maker
-func (s *OrderService) RecoverOrders(er *engine.Response) {
-	if err := s.engine.RecoverOrders(er.MatchingOrders); err != nil {
+func (s *OrderService) RecoverOrders(resp *engine.Response) {
+	//WHY NOT SUBMIT MESSAGE VIA A QUEUE ?
+	if err := s.engine.RecoverOrders(resp.MatchingOrders); err != nil {
 		panic(err)
 	}
 
-	er.FillStatus = engine.ERROR
-	er.Order.Status = "ERROR"
-	er.Trades = nil
-	er.RemainingOrder = nil
-	er.MatchingOrders = nil
-}
-
-// UpdateUsingEngineResponse is responsible for updating order status of maker
-// and taker orders and transfer/unlock amount based on the response sent by the
-// matching engine
-func (s *OrderService) UpdateUsingEngineResponse(res *engine.Response) {
-	switch res.FillStatus {
-	case engine.ERROR:
-		s.orderDao.Update(res.Order.ID, res.Order)
-		s.cancelOrderUnlockAmount(res.Order)
-
-	case engine.NOMATCH:
-		s.orderDao.Update(res.Order.ID, res.Order)
-
-	case engine.FULL:
-	case engine.PARTIAL:
-		s.orderDao.Update(res.Order.ID, res.Order)
-		s.transferAmount(res.Order, big.NewInt(res.Order.FilledAmount))
-
-		for _, mo := range res.MatchingOrders {
-			s.orderDao.Update(mo.Order.ID, mo.Order)
-			s.transferAmount(mo.Order, big.NewInt(mo.Amount))
-		}
-
-		if len(res.Trades) != 0 {
-			err := s.tradeDao.Create(res.Trades...)
-			if err != nil {
-				log.Fatalf("\n Error saving trades to db: %s\n", err)
-			}
-		}
-	}
+	resp.FillStatus = engine.ERROR
+	resp.Order.Status = "ERROR"
+	resp.Trades = nil
+	resp.RemainingOrder = nil
+	resp.MatchingOrders = nil
 }
 
 // RelayUpdateOverSocket is responsible for notifying listening clients about new order/trade addition/deletion
-func (s *OrderService) RelayUpdateOverSocket(er *engine.Response) {
-	if len(er.Trades) > 0 {
+func (s *OrderService) RelayUpdateOverSocket(resp *engine.Response) {
+	if len(resp.Trades) > 0 {
 		fmt.Println("Trade relay over socket")
-		ws.GetPairSockets().WriteMessage(er.Order.BaseToken, er.Order.QuoteToken, "TRADES_ADDED", er.Trades)
+		ws.GetPairSockets().WriteMessage(resp.Order.BaseToken, resp.Order.QuoteToken, "TRADES_ADDED", resp.Trades)
 	}
-	if er.RemainingOrder != nil {
+
+	if resp.RemainingOrder != nil {
 		fmt.Println("Order added Relay over socket")
-		ws.GetPairSockets().WriteMessage(er.Order.BaseToken, er.Order.QuoteToken, "ORDER_ADDED", er.RemainingOrder)
+		ws.GetPairSockets().WriteMessage(resp.Order.BaseToken, resp.Order.QuoteToken, "ORDER_ADDED", resp.RemainingOrder)
 	}
-	if er.FillStatus == engine.CANCELLED {
+
+	if resp.FillStatus == engine.CANCELLED {
 		fmt.Println("Order cancelled Relay over socket")
-		ws.GetPairSockets().WriteMessage(er.Order.BaseToken, er.Order.QuoteToken, "ORDER_CANCELED", er.Order)
+		ws.GetPairSockets().WriteMessage(resp.Order.BaseToken, resp.Order.QuoteToken, "ORDER_CANCELED", resp.Order)
 	}
 }
 
@@ -385,6 +395,28 @@ func (s *OrderService) transferAmount(o *types.Order, filledAmount *big.Int) {
 			log.Fatalf("\n%v\n", err)
 		}
 	}
+
+	// func (s *OrderService) handleNewTrade(msg *types.Message, res *engine.Response) {
+	// 	bytes, err := json.Marshal(msg.Data)
+	// 	if err != nil {
+	// 		s.RecoverOrders(res)
+	// 		ws.OrderSendErrorMessage(ws.GetOrderConn(res.Order.Hash), err.Error(), res.Order.Hash)
+	// 	}
+
+	// 	resp := &engine.Response{}
+	// 	err = json.Unmarshal(bytes, &resp)
+	// 	if err != nil {
+	// 		s.RecoverOrders(res)
+	// 		ws.OrderSendErrorMessage(ws.GetOrderConn(res.Order.Hash), err.Error(), res.Order.Hash)
+	// 	}
+
+	// 	if res.FillStatus == engine.PARTIAL {
+	// 		res.Order.OrderBook = &types.asdl
+	// 		kfjasd
+	// 		ljfk
+	// 	}
+
+	// }
 
 	// if o.Side == "SELL" {
 	// 	sellBalance, err := s.accountDao.GetTokenBalance(o.UserAddress, o.QuoteToken)
@@ -538,5 +570,35 @@ func (s *OrderService) transferAmount(o *types.Order, filledAmount *big.Int) {
 // 			}
 // 		}
 
+// // 	}
+// // }
+
+// // UpdateUsingEngineResponse is responsible for updating order status of maker
+// // and taker orders and transfer/unlock amount based on the response sent by the
+// // matching engine
+// func (s *OrderService) UpdateUsingEngineResponse(res *engine.Response) {
+// 	switch res.FillStatus {
+// 	case engine.ERROR:
+// 		s.orderDao.Update(res.Order.ID, res.Order)
+// 		s.cancelOrderUnlockAmount(res.Order)
+
+// 	case engine.NOMATCH:
+// 		s.orderDao.Update(res.Order.ID, res.Order)
+
+// 	case engine.FULL:
+// 	case engine.PARTIAL:
+// 		s.orderDao.Update(res.Order.ID, res.Order)
+// 		s.transferAmount(res.Order, big.NewInt(res.Order.FilledAmount))
+
+// 		for _, mo := range res.MatchingOrders {
+// 			s.orderDao.Update(mo.Order.ID, mo.Order)
+// 			s.transferAmount(mo.Order, big.NewInt(mo.Amount))
+// 		}
+
+// 		if len(res.Trades) != 0 {
+// 			err := s.tradeDao.Create(res.Trades...)
+// 			if err != nil {
+// 				log.Fatalf("\n Error saving trades to db: %s\n", err)
+// 			}
+// 		}
 // 	}
-// }

@@ -50,19 +50,20 @@ func (e *orderEndpoint) ws(input interface{}, conn *websocket.Conn) {
 	if err := json.Unmarshal(bytes, &msg); err != nil {
 		log.Println("unmarshal to wsmsg <==>" + err.Error())
 	}
+
 	switch msg.Type {
 	case "NEW_ORDER":
 		e.handleNewOrder(msg, conn)
 	case "CANCEL_ORDER":
 		e.handleCancelOrder(msg, conn)
-	case "EXECUTE_ORDER":
-		e.handleExecuteOrder(msg, conn)
+	case "NEW_TRADE":
+		e.handleNewTrade(msg, conn)
 	default:
 		log.Println("Response with error")
 	}
 }
 
-func (e *orderEndpoint) handleExecuteOrder(msg *types.Message, conn *websocket.Conn) {
+func (e *orderEndpoint) handleNewTrade(msg *types.Message, conn *websocket.Conn) {
 	hash := common.HexToHash(msg.Hash)
 
 	ch := ws.GetOrderChannel(hash)

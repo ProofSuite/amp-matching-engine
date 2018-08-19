@@ -38,29 +38,27 @@ func (e *Resource) execute(order *types.Order, bookEntry *types.Order) (trade *t
 	orderUnfilledAmt := order.Amount - order.FilledAmount
 	if beAmtAvailable > orderUnfilledAmt {
 		fillOrder.Amount = orderUnfilledAmt
-
 		bookEntry.FilledAmount = bookEntry.FilledAmount + orderUnfilledAmt
 		bookEntry.Status = "PARTIAL_FILLED"
 		fillOrder.Order = bookEntry
 
-		err:=e.updateOrder(bookEntry, fillOrder.Amount)
-		if err!=nil {
-			return nil,nil,err
+		err := e.updateOrder(bookEntry, fillOrder.Amount)
+		if err != nil {
+			return nil, nil, err
 		}
 
 	} else {
 		fillOrder.Amount = beAmtAvailable
-
 		bookEntry.FilledAmount = bookEntry.FilledAmount + beAmtAvailable
 		bookEntry.Status = "FILLED"
 		fillOrder.Order = bookEntry
 
-		err:=e.deleteOrder(bookEntry, fillOrder.Amount)
-		if err!=nil {
-			return nil,nil,err
+		err := e.deleteOrder(bookEntry, fillOrder.Amount)
+		if err != nil {
+			return nil, nil, err
 		}
-
 	}
+
 	order.FilledAmount = order.FilledAmount + fillOrder.Amount
 	// Create trade object to be passed to the system for further processing
 	trade = &types.Trade{
