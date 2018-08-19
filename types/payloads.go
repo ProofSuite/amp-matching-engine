@@ -147,7 +147,7 @@ func (p *NewOrderPayload) ToOrder() (o *Order, err error) {
 		SellAmount:  p.SellAmount,
 		Hash:        p.ComputeHash(),
 		Nonce:       p.Nonce,
-		Expires:p.Expires,
+		Expires:     p.Expires,
 		Signature:   p.Signature,
 	}
 

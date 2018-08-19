@@ -37,6 +37,8 @@ type appConfig struct {
 	JWTVerificationKey string `mapstructure:"jwt_verification_key"`
 	// TickDuration is user by tick streaming cron
 	TickDuration map[string][]int64 `mapstructure:"tick_duration"`
+	// ExchangeAddress is the address of the exchange smart-contract
+	ExchangeAddress string `mapstructure:"exchange"`
 }
 
 func (config appConfig) Validate() error {

@@ -1,6 +1,8 @@
 package types
 
 import (
+	"encoding/json"
+	"fmt"
 	"math/big"
 	"time"
 
@@ -116,4 +118,13 @@ func (p Pair) Validate() error {
 // It is used to fetch the orderbook from redis of a pair
 func (p *Pair) GetOrderBookKeys() (sell, buy string) {
 	return p.BaseTokenAddress.Hex() + "::" + p.QuoteTokenAddress.Hex() + "::SELL", p.BaseTokenAddress.Hex() + "::" + p.QuoteTokenAddress.Hex() + "::BUY"
+}
+
+func (p *Pair) Print() {
+	b, err := json.MarshalIndent(p, "", "  ")
+	if err != nil {
+		fmt.Println("Error: ", err)
+	}
+
+	fmt.Print(string(b))
 }

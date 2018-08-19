@@ -3,6 +3,7 @@ package types
 import (
 	"crypto/ecdsa"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -121,6 +122,15 @@ func (w *Wallet) SignTrade(t *Trade) error {
 
 	// t.Signature = sig
 	return nil
+}
+
+func (w *Wallet) Print() {
+	b, err := json.MarshalIndent(w, "", "  ")
+	if err != nil {
+		fmt.Println("Error: ", err)
+	}
+
+	fmt.Print(string(b))
 }
 
 // NewOrder (DEPRECATED - use the order factory instead) creates a new

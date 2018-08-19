@@ -2,7 +2,6 @@ package mocks
 
 import (
 	"context"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -11,7 +10,7 @@ import (
 	"sync"
 
 	"github.com/Proofsuite/amp-matching-engine/types"
-	"github.com/Proofsuite/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/gorilla/websocket"
@@ -66,7 +65,7 @@ func NewClient(w *types.Wallet, s *Server) *Client {
 
 	ethClient := ethclient.NewClient(rpcClient)
 
-	d := wstest.NewDialer(s)
+	d := wstest.NewDialer(*s)
 	c, _, err := d.Dial(uri.String(), nil)
 	if err != nil {
 		panic(err)
@@ -117,7 +116,7 @@ func (c *Client) handleMessages() {
 				c.handleOrderChannelMessagesOut(msg)
 
 			case msg := <-c.responses:
-				fmt.Printf("Handling response: %v\n")
+				fmt.Printf("Handling response: %v\n", msg)
 				c.responseLogs = append(c.responseLogs, msg)
 
 				switch msg.Channel {
@@ -137,20 +136,20 @@ func (c *Client) handleMessages() {
 
 // handleChannelMessagesOut
 func (c *Client) handleOrderChannelMessagesOut(msg interface{}) {
-	msg := &types.Message{}
+	// msg := &types.Message{}
 
-	err := json.Unmarshal()
+	// err := json.Unmarshal()
 
-	switch msg.Type {
-	case "NEW_ORDER":
-		c.SendNewOrder(msg)
-	case "SUBMIT_SIGNATURE":
-		c.SendSubmitNewSignature(msg)
-	case "CANCEL_ORDER":
-		c.SendCancelOrder(msg)
-	case "DONE":
-		c.done()
-	}
+	// switch msg.Type {
+	// case "NEW_ORDER":
+	// 	c.SendNewOrder(msg)
+	// case "SUBMIT_SIGNATURE":
+	// 	c.SendSubmitNewSignature(msg)
+	// case "CANCEL_ORDER":
+	// 	c.SendCancelOrder(msg)
+	// case "DONE":
+	// 	c.done()
+	// }
 }
 
 // handleChannelMessagesIn
@@ -219,12 +218,12 @@ func (c *Client) handleIncomingMessages() {
 
 func (c *Client) handleOrderAdded(p types.WebSocketPayload) {
 
-	l := &ClientLogMessage{
-		MessageType: resp.MessageType,
-		Order:       decoded.Order,
-		Trade:       decoded.Trade,
-		ErrorID:     int8(decoded.ErrorId),
-	}
+	// l := &ClientLogMessage{
+	// 	MessageType: resp.MessageType,
+	// 	Order:       decoded.Order,
+	// 	Trade:       decoded.Trade,
+	// 	ErrorID:     int8(decoded.ErrorId),
+	// }
 }
 
 func (c *Client) handleOrderCanceled(p types.WebSocketPayload) {
