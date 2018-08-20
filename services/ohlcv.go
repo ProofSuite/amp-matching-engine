@@ -26,15 +26,15 @@ func NewOHLCVService(TradeDao *daos.TradeDao) *OHLCVService {
 }
 
 // UnregisterForTicks handles all the unsubscription messages for ticks corresponding to a pair
-func (s *OHLCVService) Unregister(conn *websocket.Conn, bt, qt common.Address, params *types.Params) {
-	tickChannelID := utils.GetTickChannelID(bt, qt, params.Units, params.Duration)
-	ws.UnsubscribeTick(tickChannelID, conn)
+func (s *OHLCVService) Unsubscribe(conn *websocket.Conn, bt, qt common.Address, params *types.Params) {
+	id := utils.GetOHLCVChannelID(bt, qt, params.Units, params.Duration)
+	ws.GetTradeSocket().Unsubscribe(id, conn)
 }
 
 // RegisterForTicks handles all the subscription messages for ticks corresponding to a pair
 // It calls the corresponding channel's subscription method and sends trade history back on the connection
-func (s *OHLCVService) Register(conn *websocket.Conn, bt, qt common.Address, params *types.Params) {
-	ob, err := s.GetOHLCV([]types.PairSubDoc{types.PairSubDoc{BaseToken: bt, QuoteToken: qt}},
+func (s *OHLCVService) Subscribe(conn *websocket.Conn, bt, qt common.Address, params *types.Params) {
+	ohlcv, err := s.GetOHLCV([]types.PairSubDoc{types.PairSubDoc{BaseToken: bt, QuoteToken: qt}},
 		params.Duration,
 		params.Units,
 		params.From,
@@ -42,21 +42,22 @@ func (s *OHLCVService) Register(conn *websocket.Conn, bt, qt common.Address, par
 	)
 
 	if err != nil {
-		ws.TradeSendErrorMessage(conn, err.Error())
+		ws.SendTradeErrorMessage(conn, err.Error())
 	}
 
-	tickChannelID := utils.GetTickChannelID(bt, qt, params.Units, params.Duration)
-	if err := ws.SubscribeTick(tickChannelID, conn); err != nil {
+	id := utils.GetOHLCVChannelID(bt, qt, params.Units, params.Duration)
+	err = ws.GetTradeSocket().Subscribe(id, conn)
+	if err != nil {
 		message := map[string]string{
 			"Code":    "UNABLE_TO_SUBSCRIBE",
 			"Message": "UNABLE_TO_SUBSCRIBE: " + err.Error(),
 		}
-		ws.TradeSendErrorMessage(conn, message)
+
+		ws.SendTradeErrorMessage(conn, message)
 	}
 
-	ws.RegisterConnectionUnsubscribeHandler(conn, ws.TickCloseHandler(tickChannelID))
-	fmt.Println(bt, qt)
-	ws.TradeSendTicksMessage(conn, ob)
+	ws.RegisterConnectionUnsubscribeHandler(conn, ws.GetTradeSocket().UnsubscribeHandler(id))
+	ws.SendTradeInitMessage(conn, ohlcv)
 }
 
 // GETOHLCV fetches OHLCV data using
@@ -214,7 +215,6 @@ func getGroupTsBson(key, units string, duration int64) (resp bson.M, addFields b
 		},
 		}
 	} else if units == "min" {
-
 		resp = bson.M{
 			"year":  bson.M{"$year": d},
 			"day":   bson.M{"$dayOfMonth": d},
@@ -237,7 +237,6 @@ func getGroupTsBson(key, units string, duration int64) (resp bson.M, addFields b
 		}}, t}}}}
 
 	} else if units == "hour" {
-
 		resp = bson.M{
 			"year":  bson.M{"$year": d},
 			"day":   bson.M{"$dayOfMonth": d},
@@ -258,7 +257,6 @@ func getGroupTsBson(key, units string, duration int64) (resp bson.M, addFields b
 		}}, t}}}}
 
 	} else if units == "day" {
-
 		resp = bson.M{
 			"year":  bson.M{"$year": d},
 			"month": bson.M{"$month": d},
@@ -277,7 +275,6 @@ func getGroupTsBson(key, units string, duration int64) (resp bson.M, addFields b
 		}}, t}}}}
 
 	} else if units == "week" {
-
 		resp = bson.M{
 			"year": bson.M{"$year": d},
 			"isoWeek": bson.M{
@@ -294,7 +291,6 @@ func getGroupTsBson(key, units string, duration int64) (resp bson.M, addFields b
 		}}, t}}}}
 
 	} else if units == "month" {
-
 		resp = bson.M{
 			"year": bson.M{"$year": d},
 			"month": bson.M{
@@ -310,7 +306,6 @@ func getGroupTsBson(key, units string, duration int64) (resp bson.M, addFields b
 			"month": "$_id.month",
 		}}, t}}}}
 	} else if units == "yr" {
-
 		resp = bson.M{
 			"year": bson.M{
 				"$subtract": []interface{}{

@@ -20,7 +20,7 @@ type OHLCVEndpoint struct {
 func ServeOHLCVResource(rg *routing.RouteGroup, ohlcvService *services.OHLCVService) {
 	e := &OHLCVEndpoint{ohlcvService}
 	rg.Post("/ohlcv", e.ohlcv)
-	ws.RegisterChannel(ws.TradeChannel, e.ohlcvWebSocket)
+	ws.RegisterChannel(ws.OHLCVChannel, e.ohlcvWebSocket)
 }
 
 func (e *OHLCVEndpoint) ohlcv(c *routing.Context) error {
@@ -58,7 +58,7 @@ func (e *OHLCVEndpoint) ohlcvWebSocket(input interface{}, conn *websocket.Conn) 
 	startTs := time.Date(1970, time.January, 1, 0, 0, 0, 0, time.UTC)
 
 	mab, _ := json.Marshal(input)
-	var msg *types.Subscription
+	var msg *types.WebSocketSubscription
 	if err := json.Unmarshal(mab, &msg); err != nil {
 		log.Println("unmarshal to wsmsg <==>" + err.Error())
 	}
@@ -68,7 +68,7 @@ func (e *OHLCVEndpoint) ohlcvWebSocket(input interface{}, conn *websocket.Conn) 
 			"Code":    "Invalid_Pair_BaseToken",
 			"Message": "Invalid Pair BaseToken passed in Params",
 		}
-		ws.TradeSendErrorMessage(conn, message)
+		ws.SendOHLCVErrorMessage(conn, message)
 		return
 	}
 
@@ -77,7 +77,7 @@ func (e *OHLCVEndpoint) ohlcvWebSocket(input interface{}, conn *websocket.Conn) 
 			"Code":    "Invalid_Pair_BaseToken",
 			"Message": "Invalid Pair BaseToken passed in Params",
 		}
-		ws.TradeSendErrorMessage(conn, message)
+		ws.SendOHLCVErrorMessage(conn, message)
 		return
 	}
 
@@ -98,10 +98,10 @@ func (e *OHLCVEndpoint) ohlcvWebSocket(input interface{}, conn *websocket.Conn) 
 	}
 
 	if msg.Event == types.SUBSCRIBE {
-		e.ohlcvService.Register(conn, msg.Pair.BaseToken, msg.Pair.QuoteToken, &msg.Params)
+		e.ohlcvService.Subscribe(conn, msg.Pair.BaseToken, msg.Pair.QuoteToken, &msg.Params)
 	}
 
 	if msg.Event == types.UNSUBSCRIBE {
-		e.ohlcvService.Unregister(conn, msg.Pair.BaseToken, msg.Pair.QuoteToken, &msg.Params)
+		e.ohlcvService.Unsubscribe(conn, msg.Pair.BaseToken, msg.Pair.QuoteToken, &msg.Params)
 	}
 }

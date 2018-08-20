@@ -3,9 +3,9 @@ package services
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 
 	"github.com/Proofsuite/amp-matching-engine/engine"
+	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/Proofsuite/amp-matching-engine/ws"
@@ -40,8 +40,7 @@ func (s *OrderBookService) GetOrderBook(bt, qt common.Address) (ob map[string]in
 		return nil, errors.New(string(bytes))
 	}
 
-	sKey, bKey := res.GetOrderBookKeys()
-	fmt.Printf("\n Sell Key: %s \n Buy Key: %s \n", sKey, bKey)
+	// sKey, bKey := res.GetOrderBookKeys()
 
 	bids, asks := s.eng.GetOrderBook(res)
 	ob = map[string]interface{}{
@@ -53,27 +52,35 @@ func (s *OrderBookService) GetOrderBook(bt, qt common.Address) (ob map[string]in
 
 // RegisterForOrderBook is responsible for handling incoming orderbook subscription messages
 // It makes an entry of connection in pairSocket corresponding to pair,unit and duration
-func (s *OrderBookService) SubscribeOrderBook(conn *websocket.Conn, bt, qt common.Address) {
+func (s *OrderBookService) Subscribe(conn *websocket.Conn, bt, qt common.Address) {
+	socket := ws.GetOrderBookSocket()
+
 	ob, err := s.GetOrderBook(bt, qt)
 	if err != nil {
-		ws.GetPairSockets().SendErrorMessage(conn, err.Error())
+		ws.SendOrderBookErrorMessage(conn, err.Error())
 		return
 	}
 
-	if err := ws.GetPairSockets().Register(bt, qt, conn); err != nil {
+	id := utils.GetOrderBookChannelID(bt, qt)
+	err = socket.Subscribe(id, conn)
+	if err != nil {
 		message := map[string]string{
 			"Code":    "UNABLE_TO_REGISTER",
-			"Message": "UNABLE_TO_REGISTER: " + err.Error(),
+			"Message": "UNABLE_TO_REGISTER " + err.Error(),
 		}
-		ws.GetPairSockets().SendErrorMessage(conn, message)
+
+		ws.SendOrderBookErrorMessage(conn, message)
 		return
 	}
 
-	ws.RegisterConnectionUnsubscribeHandler(conn, ws.GetPairSockets().UnsubscribeHandler(bt, qt))
-	ws.GetPairSockets().SendBookMessage(conn, ob)
+	ws.RegisterConnectionUnsubscribeHandler(conn, socket.UnsubscribeHandler(id))
+	ws.SendOrderBookInitMessage(conn, ob)
 }
 
 // UnRegisterForOrderBook is responsible for handling incoming orderbook unsubscription messages
-func (s *OrderBookService) UnSubscribeOrderBook(conn *websocket.Conn, bt, qt common.Address) {
-	ws.GetPairSockets().UnregisterConnection(bt, qt, conn)
+func (s *OrderBookService) Unsubscribe(conn *websocket.Conn, bt, qt common.Address) {
+	socket := ws.GetOrderBookSocket()
+
+	id := utils.GetOrderBookChannelID(bt, qt)
+	socket.Unsubscribe(id, conn)
 }
