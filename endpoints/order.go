@@ -43,8 +43,9 @@ func (e *orderEndpoint) get(c *routing.Context) error {
 	return c.Write(orders)
 }
 
+// ws function handles incoming websocket messages on the order channel
 func (e *orderEndpoint) ws(input interface{}, conn *websocket.Conn) {
-	msg := &types.Message{}
+	msg := &types.WebSocketPayload{}
 
 	bytes, _ := json.Marshal(input)
 	if err := json.Unmarshal(bytes, &msg); err != nil {
@@ -63,7 +64,9 @@ func (e *orderEndpoint) ws(input interface{}, conn *websocket.Conn) {
 	}
 }
 
-func (e *orderEndpoint) handleNewTrade(msg *types.Message, conn *websocket.Conn) {
+// handleNewTrade handles NewTrade messages. New trade messages are transmitted to the corresponding order channel
+// and received in the handleClientResponse.
+func (e *orderEndpoint) handleNewTrade(msg *types.WebSocketPayload, conn *websocket.Conn) {
 	hash := common.HexToHash(msg.Hash)
 
 	ch := ws.GetOrderChannel(hash)
@@ -72,39 +75,29 @@ func (e *orderEndpoint) handleNewTrade(msg *types.Message, conn *websocket.Conn)
 	}
 }
 
-func (e *orderEndpoint) handleNewOrder(msg *types.Message, conn *websocket.Conn) {
-	ch := make(chan *types.Message)
-	p := types.NewOrderPayload{}
+// handleNewOrder handles NewOrder message. New order messages are transmitted to the order service after being unmarshalled
+func (e *orderEndpoint) handleNewOrder(msg *types.WebSocketPayload, conn *websocket.Conn) {
+	ch := make(chan *types.WebSocketPayload)
+	o := types.Order{}
+
 	bytes, err := json.Marshal(msg.Data)
 	if err != nil {
-		log.Printf("Error while marshalling msg data: ", err)
-		ws.OrderSendErrorMessage(conn, err.Error())
-		return
-	}
-	err = json.Unmarshal(bytes, &p)
-	if err != nil {
-		log.Printf("Error while unmarshalling msg data bytes: ", err)
-		ws.OrderSendErrorMessage(conn, err.Error())
+		log.Printf("Error while marshalling msg data: %v", err)
+		ws.SendOrderErrorMessage(conn, err.Error())
 		return
 	}
 
-	p.Hash = p.ComputeHash()
-
+	err = json.Unmarshal(bytes, o)
 	if err != nil {
-		ws.OrderSendErrorMessage(conn, err.Error(), p.Hash)
-		return
+		log.Printf("Error unmarshalling payload data: %v", err)
+		ws.SendOrderErrorMessage(conn, err.Error())
 	}
 
-	// having a separate payload/request might not be needed
-	o, err := p.ToOrder()
-	if err != nil {
-		ws.OrderSendErrorMessage(conn, err.Error(), p.Hash)
-		return
-	}
+	o.Hash = o.ComputeHash()
 
-	err = e.orderService.NewOrder(o)
+	err = e.orderService.NewOrder(&o)
 	if err != nil {
-		ws.OrderSendErrorMessage(conn, err.Error(), p.Hash)
+		ws.SendOrderErrorMessage(conn, err.Error(), o.Hash)
 		return
 	}
 
@@ -112,23 +105,21 @@ func (e *orderEndpoint) handleNewOrder(msg *types.Message, conn *websocket.Conn)
 	// validate orders but this might leads to race conditions, not exactly sure.
 	// Doing this allows for doing validation in the NewOrder function which seemed more
 	// clean to me
-	ws.RegisterOrderConnection(p.Hash, &ws.OrderConn{Conn: conn, ReadChannel: ch})
-	ws.RegisterConnectionUnsubscribeHandler(
-		conn,
-		ws.OrderSocketUnsubscribeHandler(p.Hash),
-	)
+	ws.RegisterOrderConnection(o.Hash, &ws.OrderConnection{Conn: conn, ReadChannel: ch})
+	ws.RegisterConnectionUnsubscribeHandler(conn, ws.OrderSocketUnsubscribeHandler(o.Hash))
 }
 
-func (e *orderEndpoint) handleCancelOrder(msg *types.Message, conn *websocket.Conn) {
-	bytes, err := json.Marshal(msg.Data)
+// handleCancelOrder handles CancelOrder message.
+func (e *orderEndpoint) handleCancelOrder(p *types.WebSocketPayload, conn *websocket.Conn) {
+	bytes, err := json.Marshal(p.Data)
 	o := &types.Order{}
 
 	err = o.UnmarshalJSON(bytes)
 	if err != nil {
-		ws.OrderSendErrorMessage(conn, err.Error(), o.Hash)
+		ws.SendOrderErrorMessage(conn, err.Error(), o.Hash)
 	}
 
-	ws.RegisterOrderConnection(o.Hash, &ws.OrderConn{Conn: conn, Active: true})
+	ws.RegisterOrderConnection(o.Hash, &ws.OrderConnection{Conn: conn, Active: true})
 	ws.RegisterConnectionUnsubscribeHandler(
 		conn,
 		ws.OrderSocketUnsubscribeHandler(o.Hash),
@@ -136,7 +127,50 @@ func (e *orderEndpoint) handleCancelOrder(msg *types.Message, conn *websocket.Co
 
 	err = e.orderService.CancelOrder(o)
 	if err != nil {
-		ws.OrderSendErrorMessage(conn, err.Error(), o.Hash)
+		ws.SendOrderErrorMessage(conn, err.Error(), o.Hash)
 		return
 	}
 }
+
+// func (e *orderEndpoint) handleNewOrder(msg *types.Message, conn *websocket.Conn) {
+// 	ch := make(chan *types.Message)
+// 	p := types.NewOrderPayload{}
+// 	bytes, err := json.Marshal(msg.Data)
+// 	if err != nil {
+// 		log.Printf("Error while marshalling msg data: ", err)
+// 		ws.SendOrderErrorMessage(conn, err.Error())
+// 		return
+// 	}
+// 	err = json.Unmarshal(bytes, &p)
+// 	if err != nil {
+// 		log.Printf("Error while unmarshalling msg data bytes: ", err)
+// 		ws.SendOrderErrorMessage(conn, err.Error())
+// 		return
+// 	}
+
+// 	p.Hash = p.ComputeHash()
+
+// 	if err != nil {
+// 		ws.OrderSendErrorMessage(conn, err.Error(), p.Hash)
+// 		return
+// 	}
+
+// 	// having a separate payload/request might not be needed
+// 	o, err := p.ToOrder()
+// 	if err != nil {
+// 		ws.OrderSendErrorMessage(conn, err.Error(), p.Hash)
+// 		return
+// 	}
+
+// 	err = e.orderService.NewOrder(o)
+// 	if err != nil {
+// 		ws.OrderSendErrorMessage(conn, err.Error(), p.Hash)
+// 		return
+// 	}
+
+// 	ws.RegisterOrderConnection(p.Hash, &ws.OrderConn{Conn: conn, ReadChannel: ch})
+// 	ws.RegisterConnectionUnsubscribeHandler(
+// 		conn,
+// 		ws.OrderSocketUnsubscribeHandler(p.Hash),
+// 	)
+// }

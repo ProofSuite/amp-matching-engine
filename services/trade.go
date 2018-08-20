@@ -3,6 +3,9 @@ package services
 import (
 	"github.com/Proofsuite/amp-matching-engine/daos"
 	"github.com/Proofsuite/amp-matching-engine/types"
+	"github.com/Proofsuite/amp-matching-engine/utils"
+	"github.com/Proofsuite/amp-matching-engine/ws"
+	"github.com/gorilla/websocket"
 
 	"github.com/ethereum/go-ethereum/common"
 	eth "github.com/ethereum/go-ethereum/core/types"
@@ -22,6 +25,11 @@ func NewTradeService(TradeDao *daos.TradeDao) *TradeService {
 // GetByPairName fetches all the trades corresponding to a pair using pair's name
 func (t *TradeService) GetByPairName(pairName string) ([]*types.Trade, error) {
 	return t.tradeDao.GetByPairName(pairName)
+}
+
+// GetTrades is currently not implemented correctly
+func (t *TradeService) GetTrades(bt, qt common.Address) ([]types.Trade, error) {
+	return t.tradeDao.GetAll()
 }
 
 // GetByPairAddress fetches all the trades corresponding to a pair using pair's token address
@@ -53,6 +61,40 @@ func (t *TradeService) UpdateTradeTx(tr *types.Trade, tx *eth.Transaction) error
 	}
 
 	return nil
+}
+
+// Subscribe
+func (s *TradeService) Subscribe(conn *websocket.Conn, bt, qt common.Address) {
+	socket := ws.GetTradeSocket()
+
+	trades, err := s.GetTrades(bt, qt)
+	if err != nil {
+		ws.SendTradeErrorMessage(conn, err.Error())
+		return
+	}
+
+	id := utils.GetTradeChannelID(bt, qt)
+	err = socket.Subscribe(id, conn)
+	if err != nil {
+		message := map[string]string{
+			"Code":    "UNABLE_TO_REGISTER",
+			"Message": "UNABLE_TO_REGISTER " + err.Error(),
+		}
+
+		ws.SendTradeErrorMessage(conn, message)
+		return
+	}
+
+	ws.RegisterConnectionUnsubscribeHandler(conn, socket.UnsubscribeHandler(id))
+	ws.SendTradeInitMessage(conn, trades)
+}
+
+// Unsubscribe
+func (s *TradeService) Unsubscribe(conn *websocket.Conn, bt, qt common.Address) {
+	socket := ws.GetTradeSocket()
+
+	id := utils.GetTradeChannelID(bt, qt)
+	socket.Unsubscribe(id, conn)
 }
 
 // // UnregisterForTicks handles all the unsubscription messages for ticks corresponding to a pair

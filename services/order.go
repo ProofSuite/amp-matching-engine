@@ -39,8 +39,8 @@ func (s *OrderService) GetByID(id bson.ObjectId) (*types.Order, error) {
 }
 
 // GetByUserAddress fetches all the orders placed by passed user address
-func (s *OrderService) GetByUserAddress(address common.Address) ([]*types.Order, error) {
-	return s.orderDao.GetByUserAddress(address)
+func (s *OrderService) GetByUserAddress(addr common.Address) ([]*types.Order, error) {
+	return s.orderDao.GetByUserAddress(addr)
 }
 
 // Create validates if the passed order is valid or not based on user's available
@@ -208,7 +208,7 @@ func (s *OrderService) HandleEngineResponse(res *engine.Response) error {
 func (s *OrderService) handleEngineError(res *engine.Response) {
 	s.orderDao.Update(res.Order.ID, res.Order)
 	s.cancelOrderUnlockAmount(res.Order)
-	ws.OrderSendErrorMessage(ws.GetOrderConn(res.Order.Hash), "Some error", res.Order.Hash)
+	ws.SendOrderErrorMessage(ws.GetOrderConnection(res.Order.Hash), "Some error", res.Order.Hash)
 }
 
 // handleEngineOrderAdded returns a websocket message informing the client that his order has been added
@@ -248,14 +248,14 @@ func (s *OrderService) handleEngineOrderMatched(resp *engine.Response) {
 				bytes, err := json.Marshal(msg.Data)
 				if err != nil {
 					s.RecoverOrders(resp)
-					ws.OrderSendErrorMessage(ws.GetOrderConn(resp.Order.Hash), err.Error(), resp.Order.Hash)
+					ws.SendOrderErrorMessage(ws.GetOrderConnection(resp.Order.Hash), err.Error(), resp.Order.Hash)
 				}
 
 				clientResponse := &engine.Response{}
 				err = json.Unmarshal(bytes, clientResponse)
 				if err != nil {
 					s.RecoverOrders(resp)
-					ws.OrderSendErrorMessage(ws.GetOrderConn(resp.Order.Hash), err.Error(), resp.Order.Hash)
+					ws.SendOrderErrorMessage(ws.GetOrderConnection(resp.Order.Hash), err.Error(), resp.Order.Hash)
 				}
 
 				if clientResponse.FillStatus == engine.PARTIAL {
@@ -278,7 +278,7 @@ func (s *OrderService) handleEngineOrderMatched(resp *engine.Response) {
 // handleEngineUnknownMessage returns a websocket messsage in case the engine response is not recognized
 func (s *OrderService) handleEngineUnknownMessage(resp *engine.Response) {
 	s.RecoverOrders(resp)
-	ws.OrderSendErrorMessage(ws.GetOrderConn(resp.Order.Hash), "UNKNOWN_MESSAGE", resp.Order.Hash)
+	ws.SendOrderErrorMessage(ws.GetOrderConnection(resp.Order.Hash), "UNKNOWN_MESSAGE", resp.Order.Hash)
 }
 
 // RecoverOrders recovers orders i.e puts back matched orders to orderbook
@@ -298,25 +298,27 @@ func (s *OrderService) RecoverOrders(resp *engine.Response) {
 
 // RelayUpdateOverSocket is responsible for notifying listening clients about new order/trade addition/deletion
 func (s *OrderService) RelayUpdateOverSocket(resp *engine.Response) {
-	if len(resp.Trades) > 0 {
-		fmt.Println("Trade relay over socket")
-		ws.GetPairSockets().WriteMessage(resp.Order.BaseToken, resp.Order.QuoteToken, "TRADES_ADDED", resp.Trades)
-	}
 
-	if resp.RemainingOrder != nil {
-		fmt.Println("Order added Relay over socket")
-		ws.GetPairSockets().WriteMessage(resp.Order.BaseToken, resp.Order.QuoteToken, "ORDER_ADDED", resp.RemainingOrder)
-	}
+	// if
+	// if len(resp.Trades) > 0 {
+	// 	fmt.Println("Trade relay over socket")
+	// 	ws.GetPairSockets().WriteMessage(resp.Order.BaseToken, resp.Order.QuoteToken, "TRADES_ADDED", resp.Trades)
+	// }
 
-	if resp.FillStatus == engine.CANCELLED {
-		fmt.Println("Order cancelled Relay over socket")
-		ws.GetPairSockets().WriteMessage(resp.Order.BaseToken, resp.Order.QuoteToken, "ORDER_CANCELED", resp.Order)
-	}
+	// if resp.RemainingOrder != nil {
+	// 	fmt.Println("Order added Relay over socket")
+	// 	ws.GetPairSockets().WriteMessage(resp.Order.BaseToken, resp.Order.QuoteToken, "ORDER_ADDED", resp.RemainingOrder)
+	// }
+
+	// if resp.FillStatus == engine.CANCELLED {
+	// 	fmt.Println("Order cancelled Relay over socket")
+	// 	ws.GetPairSockets().WriteMessage(resp.Order.BaseToken, resp.Order.QuoteToken, "ORDER_CANCELED", resp.Order)
+	// }
 }
 
 // SendMessage is responsible for sending message to socket linked to a particular order
 func (s *OrderService) SendMessage(msgType string, hash common.Hash, data interface{}) {
-	ws.OrderSendMessage(ws.GetOrderConn(hash), msgType, data, hash)
+	ws.SendOrderMessage(ws.GetOrderConnection(hash), msgType, data, hash)
 }
 
 // this function is responsible for unlocking of maker's amount in balance document

@@ -28,7 +28,6 @@ func (s *CronService) tickStreamingCron(c *cron.Cron) {
 // and broadcasts the tick to the client subscribed to pair's respective channel
 func (s *CronService) tickStream(unit string, duration int64) func() {
 	return func() {
-		// log.Printf("TickStreaming Ran: unit: %s duration: %d\n", unit, duration)
 		p := make([]types.PairSubDoc, 0)
 		ticks, err := s.ohlcvService.GetOHLCV(p, duration, unit)
 		if err != nil {
@@ -39,7 +38,9 @@ func (s *CronService) tickStream(unit string, duration int64) func() {
 		for _, tick := range ticks {
 			baseTokenAddress := common.HexToAddress(tick.ID.BaseToken)
 			quoteTokenAddress := common.HexToAddress(tick.ID.QuoteToken)
-			ws.TickBroadcast(utils.GetTickChannelID(baseTokenAddress, quoteTokenAddress, unit, duration), tick)
+
+			id := utils.GetTickChannelID(baseTokenAddress, quoteTokenAddress, unit, duration)
+			ws.GetOHLCVSocket().BroadcastOHLCV(id, tick)
 		}
 	}
 }
