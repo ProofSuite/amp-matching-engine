@@ -4,12 +4,11 @@ import (
 	"encoding/json"
 	"log"
 
-	"github.com/ethereum/go-ethereum/common"
-
 	"github.com/Proofsuite/amp-matching-engine/errors"
 	"github.com/Proofsuite/amp-matching-engine/services"
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/Proofsuite/amp-matching-engine/ws"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/go-ozzo/ozzo-routing"
 	"github.com/gorilla/websocket"
 )
@@ -50,38 +49,36 @@ func (e *OrderBookEndpoint) orderBookEndpoint(c *routing.Context) error {
 
 func (e *OrderBookEndpoint) orderBookWebSocket(input interface{}, conn *websocket.Conn) {
 	mab, _ := json.Marshal(input)
-	var msg *types.Subscription
+	var msg *types.WebSocketSubscription
 	if err := json.Unmarshal(mab, &msg); err != nil {
 		log.Println("unmarshal to wsmsg <==>" + err.Error())
 	}
 
-	//NOTE: Should be BaseToken rather be a string or a common address ?
 	if (msg.Pair.BaseToken == common.Address{}) {
 		message := map[string]string{
 			"Code":    "Invalid_Pair_BaseToken",
 			"Message": "Invalid Pair BaseToken passed in query Params",
 		}
 
-		ws.GetPairSockets().SendErrorMessage(conn, message)
+		ws.SendOrderBookErrorMessage(conn, message)
 		return
 	}
 
-	//NOTE: Should QuoteToken rather be a string or a common address ?
 	if (msg.Pair.QuoteToken == common.Address{}) {
 		message := map[string]string{
 			"Code":    "Invalid_Pair_QuoteToken",
 			"Message": "Invalid Pair QuoteToken passed in query Params",
 		}
 
-		ws.GetPairSockets().SendErrorMessage(conn, message)
+		ws.SendOrderBookErrorMessage(conn, message)
 		return
 	}
 
 	if msg.Event == types.SUBSCRIBE {
-		e.orderBookService.SubscribeOrderBook(conn, msg.Pair.BaseToken, msg.Pair.QuoteToken)
+		e.orderBookService.Subscribe(conn, msg.Pair.BaseToken, msg.Pair.QuoteToken)
 	}
 
 	if msg.Event == types.UNSUBSCRIBE {
-		e.orderBookService.UnSubscribeOrderBook(conn, msg.Pair.BaseToken, msg.Pair.QuoteToken)
+		e.orderBookService.Unsubscribe(conn, msg.Pair.BaseToken, msg.Pair.QuoteToken)
 	}
 }

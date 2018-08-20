@@ -2,6 +2,7 @@ package endpoints
 
 import (
 	"fmt"
+
 	"github.com/Proofsuite/amp-matching-engine/errors"
 	"github.com/Proofsuite/amp-matching-engine/services"
 	"github.com/Proofsuite/amp-matching-engine/types"

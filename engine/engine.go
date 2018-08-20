@@ -179,7 +179,6 @@ func (e *Resource) subscribeMessage() error {
 					e.newOrder(order)
 				} else if msg.Type == "ADD_ORDER" {
 					e.addOrder(order)
-					//potentially later, we can update order status in redis if this is useful ?
 				}
 			}
 		}()

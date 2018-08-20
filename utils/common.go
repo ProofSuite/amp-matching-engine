@@ -23,3 +23,16 @@ func GetTickChannelID(bt, qt common.Address, unit string, duration int64) string
 func GetPairKey(bt, qt common.Address) string {
 	return strings.ToLower(fmt.Sprintf("%s::%s", bt.Hex(), qt.Hex()))
 }
+
+func GetTradeChannelID(bt, qt common.Address) string {
+	return strings.ToLower(fmt.Sprintf("%s::%s", bt.Hex(), qt.Hex()))
+}
+
+func GetOHLCVChannelID(bt, qt common.Address, unit string, duration int64) string {
+	pair := GetPairKey(bt, qt)
+	return fmt.Sprintf("%s::%d::%s", pair, duration, unit)
+}
+
+func GetOrderBookChannelID(bt, qt common.Address) string {
+	return strings.ToLower(fmt.Sprintf("%s::%s", bt.Hex(), qt.Hex()))
+}
