@@ -26,11 +26,6 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-type channelMessage struct {
-	Channel string      `json:"channel"`
-	Message interface{} `json:"message"`
-}
-
 var connectionUnsubscribtions map[*websocket.Conn][]func(*websocket.Conn)
 var socketChannels map[string]func(interface{}, *websocket.Conn)
 
@@ -43,6 +38,7 @@ func ConnectionEndpoint(w http.ResponseWriter, r *http.Request) {
 		log.Println("==>" + err.Error())
 		return
 	}
+
 	initConnection(conn)
 	go func() {
 		// Recover in case of any panic in websocket. So that the app doesn't crash ===
@@ -56,7 +52,6 @@ func ConnectionEndpoint(w http.ResponseWriter, r *http.Request) {
 				log.Fatal(err)
 			}
 		}()
-		// ===
 
 		for {
 			messageType, p, err := conn.ReadMessage()
@@ -68,16 +63,17 @@ func ConnectionEndpoint(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			msg := channelMessage{}
+			msg := types.WebSocketMessage{}
 			if err := json.Unmarshal(p, &msg); err != nil {
 				log.Println("unmarshal to channelMessage <==>" + err.Error())
 				SendMessage(conn, msg.Channel, "ERROR", err.Error())
 				return
 			}
+
 			conn.SetCloseHandler(wsCloseHandler(conn))
 
 			if socketChannels[msg.Channel] != nil {
-				go socketChannels[msg.Channel](msg.Message, conn)
+				go socketChannels[msg.Channel](msg.Payload, conn)
 			} else {
 				SendMessage(conn, msg.Channel, "ERROR", "INVALID_CHANNEL")
 			}
@@ -90,6 +86,7 @@ func initConnection(conn *websocket.Conn) {
 	if connectionUnsubscribtions == nil {
 		connectionUnsubscribtions = make(map[*websocket.Conn][]func(*websocket.Conn))
 	}
+
 	if connectionUnsubscribtions[conn] == nil {
 		connectionUnsubscribtions[conn] = make([]func(*websocket.Conn), 0)
 	}
@@ -103,13 +100,16 @@ func RegisterChannel(channel string, fn func(interface{}, *websocket.Conn)) erro
 	if channel == "" {
 		return errors.New("Channel can not be empty string")
 	}
+
 	if fn == nil {
 		return errors.New("fn can not be nil")
 	}
+
 	ch := getChannelMap()
 	if ch[channel] != nil {
 		return fmt.Errorf("channel %s already registered", channel)
 	}
+
 	ch[channel] = fn
 	return nil
 }
@@ -143,23 +143,53 @@ func wsCloseHandler(conn *websocket.Conn) func(code int, text string) error {
 }
 
 // SendMessage constructs the message with proper structure to be sent over websocket
-func SendMessage(conn *websocket.Conn, channel string, msgType string, msg interface{}, hash ...common.Hash) {
-	message := types.Message{
+func SendMessage(conn *websocket.Conn, channel string, msgType string, data interface{}, hash ...common.Hash) {
+	payload := types.WebSocketPayload{
 		Type: msgType,
-		Data: msg,
+		Data: data,
 	}
 
 	if len(hash) > 0 {
-		message.Hash = hash[0].Hex()
+		payload.Hash = hash[0].Hex()
 	}
 
-	temp := channelMessage{
+	message := types.WebSocketMessage{
 		Channel: channel,
-		Message: message,
+		Payload: payload,
 	}
 
-	err := conn.WriteJSON(temp)
+	err := conn.WriteJSON(message)
 	if err != nil {
 		conn.Close()
 	}
 }
+
+// message := types.Message{
+// 	Type: msgType,
+// 	Data: msg,
+// }
+
+// if len(hash) > 0 {
+// 	message.Hash = hash[0].Hex()
+// }
+
+// temp := channelMessage{
+// 	Channel: channel,
+// 	Message: message,
+// }
+
+// type channelMessage struct {
+// 	Channel string      `json:"channel"`
+// 	Message interface{} `json:"message"`
+// }
+
+// type Message struct {
+// 	Channel string `json:"channel"`
+// 	Payload Payload string `json:"payload"`
+// }
+
+// type Payload struct {
+// 	Type string `json:"type"`
+// 	Hash string `json:"hash,omitempty"`
+// 	Data interface{} `json:"data"`
+// }

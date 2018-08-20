@@ -1,7 +1,6 @@
 package mocks
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -12,7 +11,6 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/gorilla/websocket"
 	"github.com/posener/wstest"
 )
@@ -26,15 +24,15 @@ var addr = flag.String("addr", "localhost:8080", "http service address")
 // wallet is the ethereum account used for orders and trades.
 // mutex is used to prevent concurrent writes on the websocket connection
 type Client struct {
-	connection     *websocket.Conn
-	requests       chan *types.WebSocketMessage
-	responses      chan *types.WebSocketMessage
-	requestLogs    []*types.WebSocketMessage
-	responseLogs   []*types.WebSocketMessage
-	ethereumClient *ethclient.Client
-	wallet         *types.Wallet
-	mutex          sync.Mutex
-	logs           chan *ClientLogMessage
+	connection   *websocket.Conn
+	requests     chan *types.WebSocketMessage
+	responses    chan *types.WebSocketMessage
+	requestLogs  []*types.WebSocketMessage
+	responseLogs []*types.WebSocketMessage
+	// ethereumClient *ethclient.Client
+	wallet *types.Wallet
+	mutex  sync.Mutex
+	logs   chan *ClientLogMessage
 }
 
 // The client log is mostly used for testing. It optionally takes orders, trade,
@@ -58,10 +56,10 @@ func NewClient(w *types.Wallet, s *Server) *Client {
 	flag.Parse()
 	uri := url.URL{Scheme: "ws", Host: *addr, Path: "/api"}
 
-	rpcClient, err := rpc.DialWebsocket(context.Background(), "ws://127.0.0.1:8546", "")
-	if err != nil {
-		log.Printf("Could not connect to ethereum client")
-	}
+	// rpcClient, err := rpc.DialWebsocket(context.Background(), "ws://127.0.0.1:8546", "")
+	// if err != nil {
+	// 	log.Printf("Could not connect to ethereum client")
+	// }
 
 	ethClient := ethclient.NewClient(rpcClient)
 
@@ -78,13 +76,13 @@ func NewClient(w *types.Wallet, s *Server) *Client {
 	respLogs := make([]*types.WebSocketMessage, 0)
 
 	return &Client{connection: c,
-		wallet:         w,
-		requests:       reqs,
-		logs:           logs,
-		ethereumClient: ethClient,
-		responses:      resps,
-		requestLogs:    reqLogs,
-		responseLogs:   respLogs,
+		wallet:       w,
+		requests:     reqs,
+		logs:         logs,
+		responses:    resps,
+		requestLogs:  reqLogs,
+		responseLogs: respLogs,
+		// ethereumClient: ethClient,
 	}
 }
 
