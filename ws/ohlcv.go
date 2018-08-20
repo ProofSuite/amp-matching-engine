@@ -57,10 +57,10 @@ func (s *OHLCVSocket) Unsubscribe(channelId string, conn *websocket.Conn) {
 }
 
 // Broadcast Message streams message to all the subscribtions subscribed to the pair
-func (s *OHLCVSocket) BroadcastMessage(channelId string, msgType string, p interface{}) error {
+func (s *OHLCVSocket) BroadcastOHLCV(channelId string, p interface{}) error {
 	for conn, status := range s.subscriptions[channelId] {
 		if status {
-			SendOHLCVMessage(conn, msgType, p)
+			SendOHLCVMessage(conn, "UPDATE", p)
 		}
 	}
 
