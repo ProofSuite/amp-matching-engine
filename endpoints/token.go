@@ -1,6 +1,8 @@
 package endpoints
 
 import (
+	"log"
+
 	"github.com/Proofsuite/amp-matching-engine/errors"
 	"github.com/Proofsuite/amp-matching-engine/services"
 	"github.com/Proofsuite/amp-matching-engine/types"
@@ -23,10 +25,13 @@ func ServeTokenResource(rg *routing.RouteGroup, tokenService *services.TokenServ
 func (r *tokenEndpoint) create(c *routing.Context) error {
 	var model types.Token
 	if err := c.Read(&model); err != nil {
+		log.Print(err)
 		return err
 	}
+
 	err := r.tokenService.Create(&model)
 	if err != nil {
+		log.Print(err)
 		return err
 	}
 
@@ -34,9 +39,9 @@ func (r *tokenEndpoint) create(c *routing.Context) error {
 }
 
 func (r *tokenEndpoint) query(c *routing.Context) error {
-
 	response, err := r.tokenService.GetAll()
 	if err != nil {
+		log.Print(err)
 		return err
 	}
 
@@ -52,6 +57,7 @@ func (r *tokenEndpoint) get(c *routing.Context) error {
 	tokenAddress := common.HexToAddress(a)
 	response, err := r.tokenService.GetByAddress(tokenAddress)
 	if err != nil {
+		log.Print(err)
 		return err
 	}
 
