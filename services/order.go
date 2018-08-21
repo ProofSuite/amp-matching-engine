@@ -49,6 +49,7 @@ func (s *OrderService) GetByUserAddress(addr common.Address) ([]*types.Order, er
 // on rabbitmq queue for matching engine to process the order
 func (s *OrderService) NewOrder(o *types.Order) error {
 	// Validate if the address is not blacklisted
+
 	acc, err := s.accountDao.GetByAddress(o.UserAddress)
 	if err != nil {
 		return err
@@ -84,34 +85,34 @@ func (s *OrderService) NewOrder(o *types.Order) error {
 	}
 
 	// fee balance validation
-	wethTokenBalance, err := s.accountDao.GetWethTokenBalance(o.UserAddress)
-	if err != nil {
-		return err
-	}
-
-	if wethTokenBalance.Balance.Cmp(o.MakeFee) == -1 {
-		return errors.New("Insufficient WETH Balance")
-	}
-
-	if wethTokenBalance.Balance.Cmp(o.TakeFee) == -1 {
-		return errors.New("Insufficient WETH Balance")
-	}
-
-	if wethTokenBalance.Allowance.Cmp(o.MakeFee) == -1 {
-		return errors.New("Insufficient WETH Allowance")
-	}
-
-	if wethTokenBalance.Allowance.Cmp(o.TakeFee) == -1 {
-		return errors.New("Insufficient WETH Allowance")
-	}
-
-	wethTokenBalance.Balance.Sub(wethTokenBalance.Balance, o.MakeFee)
-	wethTokenBalance.LockedBalance.Add(wethTokenBalance.LockedBalance, o.TakeFee)
-
-	err = s.accountDao.UpdateTokenBalance(o.UserAddress, o.QuoteToken, wethTokenBalance)
-	if err != nil {
-		return err
-	}
+	//wethTokenBalance, err := s.accountDao.GetWethTokenBalance(o.UserAddress)
+	//if err != nil {
+	//	return err
+	//}
+	//
+	//if wethTokenBalance.Balance.Cmp(o.MakeFee) == -1 {
+	//	return errors.New("Insufficient WETH Balance")
+	//}
+	//
+	//if wethTokenBalance.Balance.Cmp(o.TakeFee) == -1 {
+	//	return errors.New("Insufficient WETH Balance")
+	//}
+	//
+	//if wethTokenBalance.Allowance.Cmp(o.MakeFee) == -1 {
+	//	return errors.New("Insufficient WETH Allowance")
+	//}
+	//
+	//if wethTokenBalance.Allowance.Cmp(o.TakeFee) == -1 {
+	//	return errors.New("Insufficient WETH Allowance")
+	//}
+	//
+	//wethTokenBalance.Balance.Sub(wethTokenBalance.Balance, o.MakeFee)
+	//wethTokenBalance.LockedBalance.Add(wethTokenBalance.LockedBalance, o.TakeFee)
+	//
+	//err = s.accountDao.UpdateTokenBalance(o.UserAddress, o.QuoteToken, wethTokenBalance)
+	//if err != nil {
+	//	return err
+	//}
 
 	// balance validation
 	sellTokenBalance, err := s.accountDao.GetTokenBalance(o.UserAddress, o.SellToken)

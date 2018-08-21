@@ -2,7 +2,6 @@ package engine
 
 import (
 	"encoding/json"
-	"fmt"
 	"math/big"
 	"testing"
 	"time"
@@ -14,9 +13,8 @@ import (
 )
 
 func TestExecute(t *testing.T) {
-	e, s := getResource()
-	defer s.Close()
-
+	e := getResource()
+	defer flushData(e.redisConn)
 	// Test Case1: bookEntry amount is less than order amount
 	// New Buy Order
 	bookEntry := &types.Order{
@@ -38,12 +36,13 @@ func TestExecute(t *testing.T) {
 		ExchangeAddress: common.HexToAddress("0xae55690d4b079460e6ac28aaa58c9ec7b73a7485"),
 		UserAddress:     common.HexToAddress("0x7a9f3cd060ab180f36c17fe6bdf9974f577d77aa"),
 		Hash:            common.HexToHash("0xa2d800b77828cb52c83106ca392e465bc0af0d7c319f6956328f739080c19621"),
+		PairID:          bson.ObjectIdHex("537f700b537461b70c5f0000"),
 		PairName:        "HPC/AUT",
 		OrderBook:       nil,
 		CreatedAt:       time.Unix(1405544146, 0),
 		UpdatedAt:       time.Unix(1405544146, 0),
 	}
-
+	bookEntryJSON, _ := json.Marshal(bookEntry)
 	// bytes, _ := bookEntry.MarshalJSON()
 
 	// json.Unmarshal(bookEntryJSON, &bookEntry)
@@ -63,6 +62,7 @@ func TestExecute(t *testing.T) {
 		Price:           229999999,
 		BuyAmount:       big.NewInt(6000000000),
 		SellAmount:      big.NewInt(13800000000),
+		Side:            "SELL",
 		FilledAmount:    0,
 		MakeFee:         big.NewInt(0),
 		TakeFee:         big.NewInt(0),
@@ -79,12 +79,13 @@ func TestExecute(t *testing.T) {
 		CreatedAt: time.Unix(1405544146, 0),
 		UpdatedAt: time.Unix(1405544146, 0),
 	}
+	orderJSON, _ := json.Marshal(order)
 
 	// orderBytes, _ := bookEntry.MarshalJSON()
 	expectedAmount := bookEntry.Amount - bookEntry.FilledAmount
 
 	expectedTrade := &types.Trade{
-		Amount:       expectedAmount,
+		Amount:       big.NewInt(expectedAmount),
 		Price:        order.Price,
 		BaseToken:    order.BaseToken,
 		QuoteToken:   order.QuoteToken,
@@ -93,8 +94,10 @@ func TestExecute(t *testing.T) {
 		Taker:        order.UserAddress,
 		PairName:     order.PairName,
 		Maker:        bookEntry.UserAddress,
+		TradeNonce:   big.NewInt(0),
 		TakerOrderID: order.ID,
 		MakerOrderID: bookEntry.ID,
+		Signature:    &types.Signature{},
 	}
 
 	expectedTrade.Hash = expectedTrade.ComputeHash()
@@ -117,7 +120,6 @@ func TestExecute(t *testing.T) {
 	} else {
 		tb, _ := json.Marshal(trade)
 		fob, _ := json.Marshal(fillOrder)
-		fmt.Println(expectedFillOrder.Order.Status == fillOrder.Order.Status)
 		assert.JSONEq(t, string(etb), string(tb))
 		assert.JSONEq(t, string(efob), string(fob))
 	}
@@ -126,9 +128,11 @@ func TestExecute(t *testing.T) {
 	// unmarshal bookentry and order from json string
 	json.Unmarshal(bookEntryJSON, &bookEntry)
 	json.Unmarshal(orderJSON, &order)
+
 	bookEntry.FilledAmount = 0
+	expectedAmount = bookEntry.Amount - bookEntry.FilledAmount
 	expectedTrade = &types.Trade{
-		Amount:       bookEntry.Amount,
+		Amount:       big.NewInt(expectedAmount),
 		Price:        order.Price,
 		BaseToken:    order.BaseToken,
 		QuoteToken:   order.QuoteToken,
@@ -139,6 +143,8 @@ func TestExecute(t *testing.T) {
 		Maker:        bookEntry.UserAddress,
 		TakerOrderID: order.ID,
 		MakerOrderID: bookEntry.ID,
+		TradeNonce:   big.NewInt(0),
+		Signature:    &types.Signature{},
 	}
 	expectedTrade.Hash = expectedTrade.ComputeHash()
 
@@ -163,7 +169,6 @@ func TestExecute(t *testing.T) {
 	} else {
 		tb, _ := json.Marshal(trade)
 		fob, _ := json.Marshal(fillOrder)
-		fmt.Println(expectedFillOrder.Order.Status == fillOrder.Order.Status)
 		assert.JSONEq(t, string(etb), string(tb))
 		assert.JSONEq(t, string(efob), string(fob))
 	}
@@ -174,8 +179,9 @@ func TestExecute(t *testing.T) {
 	json.Unmarshal(orderJSON, &order)
 	bookEntry.Amount = bookEntry.Amount + bookEntry.FilledAmount
 	bookEntry.FilledAmount = 0
+	expectedAmount = order.Amount
 	expectedTrade = &types.Trade{
-		Amount:       order.Amount,
+		Amount:       big.NewInt(expectedAmount),
 		Price:        order.Price,
 		BaseToken:    order.BaseToken,
 		QuoteToken:   order.QuoteToken,
@@ -186,6 +192,8 @@ func TestExecute(t *testing.T) {
 		Maker:        bookEntry.UserAddress,
 		TakerOrderID: order.ID,
 		MakerOrderID: bookEntry.ID,
+		TradeNonce:   big.NewInt(0),
+		Signature:    &types.Signature{},
 	}
 	expectedTrade.Hash = expectedTrade.ComputeHash()
 
@@ -209,7 +217,6 @@ func TestExecute(t *testing.T) {
 	} else {
 		tb, _ := json.Marshal(trade)
 		fob, _ := json.Marshal(fillOrder)
-		fmt.Println(expectedFillOrder.Order.Status == fillOrder.Order.Status)
 		assert.JSONEq(t, string(etb), string(tb))
 		assert.JSONEq(t, string(efob), string(fob))
 	}

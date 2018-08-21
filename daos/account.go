@@ -80,9 +80,9 @@ func (dao *AccountDao) GetTokenBalances(owner common.Address) (map[common.Addres
 
 func (dao *AccountDao) GetWethTokenBalance(owner common.Address) (*types.TokenBalance, error) {
 	return &types.TokenBalance{
-		Balance:big.NewInt(0),
-		Allowance:big.NewInt(0),
-		LockedBalance:big.NewInt(0),
+		Balance:       big.NewInt(0),
+		Allowance:     big.NewInt(0),
+		LockedBalance: big.NewInt(0),
 	}, nil
 }
 

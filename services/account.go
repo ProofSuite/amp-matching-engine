@@ -45,9 +45,9 @@ func (s *AccountService) Create(account *types.Account) error {
 		account.TokenBalances[token.ContractAddress] = &types.TokenBalance{
 			ID:            token.ID,
 			Address:       token.ContractAddress,
-			Symbol:token.Symbol,
-			Balance:       big.NewInt(100000),
-			Allowance:     big.NewInt(100000),
+			Symbol:        token.Symbol,
+			Balance:       big.NewInt(10000000000000000),
+			Allowance:     big.NewInt(10000000000000000),
 			LockedBalance: big.NewInt(0),
 		}
 	}

@@ -78,7 +78,7 @@ func (e *orderEndpoint) handleNewTrade(msg *types.WebSocketPayload, conn *websoc
 // handleNewOrder handles NewOrder message. New order messages are transmitted to the order service after being unmarshalled
 func (e *orderEndpoint) handleNewOrder(msg *types.WebSocketPayload, conn *websocket.Conn) {
 	ch := make(chan *types.WebSocketPayload)
-	o := types.Order{}
+	o := &types.Order{}
 
 	bytes, err := json.Marshal(msg.Data)
 	if err != nil {
@@ -86,8 +86,7 @@ func (e *orderEndpoint) handleNewOrder(msg *types.WebSocketPayload, conn *websoc
 		ws.SendOrderErrorMessage(conn, err.Error())
 		return
 	}
-
-	err = json.Unmarshal(bytes, o)
+	err = json.Unmarshal(bytes, &o)
 	if err != nil {
 		log.Printf("Error unmarshalling payload data: %v", err)
 		ws.SendOrderErrorMessage(conn, err.Error())
@@ -95,18 +94,19 @@ func (e *orderEndpoint) handleNewOrder(msg *types.WebSocketPayload, conn *websoc
 
 	o.Hash = o.ComputeHash()
 
-	err = e.orderService.NewOrder(&o)
-	if err != nil {
-		ws.SendOrderErrorMessage(conn, err.Error(), o.Hash)
-		return
-	}
-
 	// NOTE: I've put the connection registration here as i feel it would be preferable to
 	// validate orders but this might leads to race conditions, not exactly sure.
 	// Doing this allows for doing validation in the NewOrder function which seemed more
 	// clean to me
+	// NOTE: It needs to registered first, as need to send message from service
 	ws.RegisterOrderConnection(o.Hash, &ws.OrderConnection{Conn: conn, ReadChannel: ch})
 	ws.RegisterConnectionUnsubscribeHandler(conn, ws.OrderSocketUnsubscribeHandler(o.Hash))
+
+	err = e.orderService.NewOrder(o)
+	if err != nil {
+		ws.SendOrderErrorMessage(conn, err.Error(), o.Hash)
+		return
+	}
 }
 
 // handleCancelOrder handles CancelOrder message.
