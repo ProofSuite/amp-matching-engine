@@ -141,12 +141,10 @@ func (a *Account) MarshalJSON() ([]byte, error) {
 
 func (a *Account) UnmarshalJSON(b []byte) error {
 	account := map[string]interface{}{}
-
 	err := json.Unmarshal(b, &account)
 	if err != nil {
 		return err
 	}
-
 	if account["id"] != nil {
 		a.ID = bson.ObjectIdHex(account["id"].(string))
 	}
@@ -191,7 +189,7 @@ func (a *Account) UnmarshalJSON(b []byte) error {
 }
 
 // Validate enforces the account model
-func (a *Account) Validate() error {
+func (a Account) Validate() error {
 	return validation.ValidateStruct(&a,
 		validation.Field(&a.Address, validation.Required),
 	)

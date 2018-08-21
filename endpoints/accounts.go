@@ -29,9 +29,7 @@ func (e *accountEndpoint) create(c *routing.Context) error {
 		})
 	}
 	if err := account.Validate(); err != nil {
-		return errors.NewAPIError(400, "INVALID_ACCOUNT", map[string]interface{}{
-			"details": err.Error(),
-		})
+		return err
 	}
 
 	if err := e.accountService.Create(account); err != nil {

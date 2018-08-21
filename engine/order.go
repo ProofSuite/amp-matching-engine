@@ -40,7 +40,7 @@ func (e *Resource) newOrder(order *types.Order) (err error) {
 		}
 	}
 
-	// Note: Plug the option for orders like FOC, Limit
+	// Note: Plug the option for orders like FOC, Limit here (if needed)
 	err = e.publishEngineResponse(resp)
 	if err != nil {
 		log.Printf("\npublishEngineResponse XXXXXXX\n%s\nXXXXXXX publishEngineResponse\n", err)
@@ -81,8 +81,9 @@ func (e *Resource) buyOrder(order *types.Order) (*Response, error) {
 
 	if len(priceRange) == 0 {
 		resp.FillStatus = NOMATCH
-		order.Status = "OPEN"
+		resp.RemainingOrder = &types.Order{}
 		e.addOrder(order)
+		order.Status = "OPEN"
 		return resp, nil
 	}
 
@@ -106,7 +107,8 @@ func (e *Resource) buyOrder(order *types.Order) (*Response, error) {
 				log.Printf("Error Executing Order: %s\n", err)
 				return nil, err
 			}
-
+			order.Status = "PARTIAL_FILLED"
+			resp.FillStatus = PARTIAL
 			resp.Trades = append(resp.Trades, trade)
 			resp.MatchingOrders = append(resp.MatchingOrders, fillOrder)
 			resp.RemainingOrder.Amount = resp.RemainingOrder.Amount - fillOrder.Amount
@@ -114,7 +116,7 @@ func (e *Resource) buyOrder(order *types.Order) (*Response, error) {
 			if resp.RemainingOrder.Amount == 0 {
 				resp.FillStatus = FULL
 				resp.Order.Status = "FILLED"
-				resp.RemainingOrder = nil
+				resp.RemainingOrder = &types.Order{}
 				return resp, nil
 			}
 
@@ -181,7 +183,8 @@ func (e *Resource) sellOrder(order *types.Order) (resp *Response, err error) {
 				log.Printf("Error Executing Order: %s\n", err)
 				return nil, err
 			}
-
+			order.Status = "PARTIAL_FILLED"
+			resp.FillStatus = PARTIAL
 			resp.Trades = append(resp.Trades, trade)
 			resp.MatchingOrders = append(resp.MatchingOrders, fillOrder)
 			resp.RemainingOrder.Amount = resp.RemainingOrder.Amount - fillOrder.Amount
@@ -189,7 +192,7 @@ func (e *Resource) sellOrder(order *types.Order) (resp *Response, err error) {
 			if resp.RemainingOrder.Amount == 0 {
 				resp.FillStatus = FULL
 				resp.Order.Status = "FILLED"
-				resp.RemainingOrder = nil
+				resp.RemainingOrder = &types.Order{}
 				return resp, nil
 			}
 			resp.Order.Status = "PARTIAL_FILLED"
