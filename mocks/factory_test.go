@@ -234,7 +234,7 @@ func TestNewWebSocketMessage(t *testing.T) {
 
 	msg, order, err := f.NewOrderMessage(ZRX, 1, WETH, 1)
 	if err != nil {
-		t.Errorf("Error creating order factory client: %v", err)
+		t.Errorf("Error creating order message: %v", err)
 	}
 
 	expectedOrder := &types.Order{

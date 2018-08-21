@@ -14,7 +14,7 @@ import (
 
 func testPair(t *testing.T, tokens []types.Token) []types.Pair {
 	fmt.Printf("\n=== Starting Pair test ===\n")
-	router := buildRouter()
+	router := NewRouter()
 	listPairs := make([]types.Pair, 0)
 	neededPair := types.Pair{
 		Name:              strings.ToUpper(tokens[0].Symbol + "/" + tokens[1].Symbol),

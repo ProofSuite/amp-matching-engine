@@ -1,6 +1,7 @@
 package mocks
 
 import (
+	"log"
 	"math/big"
 	"math/rand"
 	"time"
@@ -85,6 +86,17 @@ func (f *OrderFactory) NewOrderMessage(buyToken common.Address, buyAmount int64,
 	return m, o, nil
 }
 
+func (f *OrderFactory) NewCancelOrderMessage(o *types.Order) (*types.WebSocketMessage, *types.OrderCancel, error) {
+	oc, err := f.NewCancelOrder(o)
+	if err != nil {
+		log.Print(err)
+		return nil, nil, err
+	}
+
+	m := types.NewOrderCancelWebsocketMessage(oc)
+	return m, oc, nil
+}
+
 // NewOrder returns a new order with the given params. The order is signed by the factory wallet.
 // Currently the nonce is chosen randomly which will be changed in the future
 func (f *OrderFactory) NewOrder(buyToken common.Address, buyAmount int64, sellToken common.Address, sellAmount int64) (*types.Order, error) {
@@ -127,6 +139,14 @@ func (f *OrderFactory) NewBuyOrder(price uint64, amount uint64) (*types.Order, e
 
 	o.Sign(f.Wallet)
 	return o, nil
+}
+
+func (f *OrderFactory) NewCancelOrder(o *types.Order) (*types.OrderCancel, error) {
+	oc := &types.OrderCancel{}
+
+	oc.OrderHash = o.Hash
+	oc.Sign(f.Wallet)
+	return oc, nil
 }
 
 // NewBuyOrder returns a new order with the given params. The order is signed by the factory wallet

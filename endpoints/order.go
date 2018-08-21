@@ -49,7 +49,7 @@ func (e *orderEndpoint) ws(input interface{}, conn *websocket.Conn) {
 
 	bytes, _ := json.Marshal(input)
 	if err := json.Unmarshal(bytes, &msg); err != nil {
-		log.Println("unmarshal to wsmsg <==>" + err.Error())
+		log.Print(err)
 	}
 
 	switch msg.Type {
@@ -82,14 +82,15 @@ func (e *orderEndpoint) handleNewOrder(msg *types.WebSocketPayload, conn *websoc
 
 	bytes, err := json.Marshal(msg.Data)
 	if err != nil {
-		log.Printf("Error while marshalling msg data: %v", err)
+		log.Print(err)
 		ws.SendOrderErrorMessage(conn, err.Error())
 		return
 	}
 	err = json.Unmarshal(bytes, &o)
 	if err != nil {
-		log.Printf("Error unmarshalling payload data: %v", err)
+		log.Print(err)
 		ws.SendOrderErrorMessage(conn, err.Error())
+		return
 	}
 
 	o.Hash = o.ComputeHash()
@@ -112,22 +113,24 @@ func (e *orderEndpoint) handleNewOrder(msg *types.WebSocketPayload, conn *websoc
 // handleCancelOrder handles CancelOrder message.
 func (e *orderEndpoint) handleCancelOrder(p *types.WebSocketPayload, conn *websocket.Conn) {
 	bytes, err := json.Marshal(p.Data)
-	o := &types.Order{}
+	oc := &types.OrderCancel{}
 
-	err = o.UnmarshalJSON(bytes)
+	err = oc.UnmarshalJSON(bytes)
 	if err != nil {
-		ws.SendOrderErrorMessage(conn, err.Error(), o.Hash)
+		log.Print(err)
+		ws.SendOrderErrorMessage(conn, err.Error(), oc.Hash)
 	}
 
-	ws.RegisterOrderConnection(o.Hash, &ws.OrderConnection{Conn: conn, Active: true})
+	ws.RegisterOrderConnection(oc.Hash, &ws.OrderConnection{Conn: conn, Active: true})
 	ws.RegisterConnectionUnsubscribeHandler(
 		conn,
-		ws.OrderSocketUnsubscribeHandler(o.Hash),
+		ws.OrderSocketUnsubscribeHandler(oc.Hash),
 	)
 
-	err = e.orderService.CancelOrder(o)
+	err = e.orderService.CancelOrder(oc)
 	if err != nil {
-		ws.SendOrderErrorMessage(conn, err.Error(), o.Hash)
+		log.Print(err)
+		ws.SendOrderErrorMessage(conn, err.Error(), oc.Hash)
 		return
 	}
 }

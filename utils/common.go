@@ -1,7 +1,9 @@
 package utils
 
 import (
+	"encoding/json"
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -35,4 +37,17 @@ func GetOHLCVChannelID(bt, qt common.Address, unit string, duration int64) strin
 
 func GetOrderBookChannelID(bt, qt common.Address) string {
 	return strings.ToLower(fmt.Sprintf("%s::%s", bt.Hex(), qt.Hex()))
+}
+
+func PrintJSON(x interface{}) {
+	b, err := json.MarshalIndent(x, "", "  ")
+	if err != nil {
+		fmt.Println("Error: ", err)
+	}
+
+	fmt.Print(string(b))
+}
+
+func PrintError(msg string, err error) {
+	log.Printf("\n%v: %v\n", msg, err)
 }

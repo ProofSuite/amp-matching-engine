@@ -1,6 +1,7 @@
 package daos
 
 import (
+	"log"
 	"time"
 
 	"github.com/Proofsuite/amp-matching-engine/app"
@@ -35,14 +36,19 @@ func NewOrderDao() *OrderDao {
 }
 
 // Create function performs the DB insertion task for Order collection
-func (dao *OrderDao) Create(order *types.Order) (err error) {
+func (dao *OrderDao) Create(order *types.Order) error {
 	order.ID = bson.NewObjectId()
 	order.Status = "NEW"
 	order.CreatedAt = time.Now()
 	order.UpdatedAt = time.Now()
 
-	err = db.Create(dao.dbName, dao.collectionName, order)
-	return
+	err := db.Create(dao.dbName, dao.collectionName, order)
+	if err != nil {
+		log.Print(err)
+		return err
+	}
+
+	return nil
 }
 
 // Update function performs the DB updations task for Order collection
@@ -51,6 +57,7 @@ func (dao *OrderDao) Update(id bson.ObjectId, order *types.Order) error {
 	order.UpdatedAt = time.Now()
 	err := db.Update(dao.dbName, dao.collectionName, bson.M{"_id": id}, order)
 	if err != nil {
+		log.Print(err)
 		return err
 
 	}
@@ -61,6 +68,7 @@ func (dao *OrderDao) UpdateByHash(hash common.Hash, order *types.Order) error {
 	order.UpdatedAt = time.Now()
 	err := db.Update(dao.dbName, dao.collectionName, bson.M{"hash": hash.Hex()}, order)
 	if err != nil {
+		log.Print(err)
 		return err
 	}
 
