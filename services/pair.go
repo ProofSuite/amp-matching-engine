@@ -60,9 +60,11 @@ func (s *PairService) Create(pair *types.Pair) error {
 	pair.QuoteTokenSymbol = st.Symbol
 	pair.QuoteTokenID = st.ID
 	pair.QuoteTokenAddress = st.ContractAddress
+	pair.QuoteTokenDecimal = st.Decimal
 	pair.BaseTokenSymbol = bt.Symbol
 	pair.BaseTokenID = bt.ID
 	pair.BaseTokenAddress = bt.ContractAddress
+	pair.BaseTokenDecimal = bt.Decimal
 	pair.Name = strings.ToUpper(st.Symbol + "/" + bt.Symbol)
 
 	err = s.pairDao.Create(pair)

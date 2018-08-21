@@ -7,12 +7,14 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/Proofsuite/amp-matching-engine/app"
 	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/sha3"
 	validation "github.com/go-ozzo/ozzo-validation"
 	"gopkg.in/mgo.v2/bson"
+	"math"
 )
 
 // Order contains the data related to an order sent by the user
@@ -121,21 +123,31 @@ func (o *Order) Sign(w *Wallet) error {
 
 // Process computes the pricepoint and the amount corresponding to a token pair
 func (o *Order) Process(p *Pair) error {
+	btPow := int64(math.Pow10(p.BaseTokenDecimal - app.Config.Decimal))
+	qtPow := int64(math.Pow10(p.QuoteTokenDecimal - app.Config.Decimal))
+	sa := new(big.Int)
+	ba := new(big.Int)
 	if o.BuyToken == p.BaseTokenAddress {
 		o.Side = "BUY"
-		o.Amount = o.BuyAmount.Int64()
-		o.Price = o.SellAmount.Int64() * 1e8 / o.BuyAmount.Int64()
+		sa.Div(o.SellAmount, o.BuyAmount)
+		sa.Div(o.SellAmount, big.NewInt(qtPow))
+		o.Amount = ba.Div(ba, big.NewInt(btPow)).Int64()
+		o.Price = sa.Int64()
 	} else if o.BuyToken == p.QuoteTokenAddress {
 		o.Side = "SELL"
-		o.Amount = o.SellAmount.Int64()
-		o.Price = o.BuyAmount.Int64() * 1e8 / o.SellAmount.Int64()
+		ba := o.BuyAmount.Div(o.BuyAmount, o.SellAmount)
+		ba.Div(ba, big.NewInt(btPow))
+		o.Amount = o.SellAmount.Div(o.SellAmount, big.NewInt(qtPow)).Int64()
+		o.Price = ba.Int64()
+
 	} else {
-		return errors.New("Could not determine o side")
+		return errors.New("Could not determine order side")
 	}
 
 	o.BaseToken = p.BaseTokenAddress
 	o.QuoteToken = p.QuoteTokenAddress
 	o.PairName = p.Name
+	o.PairID = p.ID
 
 	return nil
 }
@@ -195,7 +207,7 @@ func (o *Order) MarshalJSON() ([]byte, error) {
 		"takeFee":         o.TakeFee.String(),
 		"expires":         o.Expires.String(),
 		"nonce":           o.Nonce.String(),
-		"pairID":          o.PairID,
+		"pairID":          o.PairID.Hex(),
 		"pairName":        o.PairName,
 		"price":           o.Price,
 		"filledAmount":    o.FilledAmount,
@@ -204,7 +216,6 @@ func (o *Order) MarshalJSON() ([]byte, error) {
 		"createdAt":       o.CreatedAt.Format(time.RFC3339Nano),
 		"updatedAt":       o.UpdatedAt.Format(time.RFC3339Nano),
 	}
-
 	if o.Signature != nil {
 		order["signature"] = map[string]interface{}{
 			"V": o.Signature.V,
@@ -224,11 +235,10 @@ func (o *Order) UnmarshalJSON(b []byte) error {
 		return err
 	}
 
-	if order["id"] != nil {
+	if order["id"] != nil && bson.IsObjectIdHex(order["id"].(string)) {
 		o.ID = bson.ObjectIdHex(order["id"].(string))
 	}
-
-	if order["pairID"] != nil {
+	if order["pairID"] != nil && bson.IsObjectIdHex(order["pairID"].(string)) {
 		o.PairID = bson.ObjectIdHex(order["pairID"].(string))
 	}
 
@@ -272,13 +282,12 @@ func (o *Order) UnmarshalJSON(b []byte) error {
 		o.FilledAmount = int64(order["filledAmount"].(float64))
 	}
 
+	o.BuyAmount = big.NewInt(0)
 	if order["buyAmount"] != nil {
-		o.BuyAmount = big.NewInt(0)
 		o.BuyAmount.UnmarshalJSON([]byte(order["buyAmount"].(string)))
 	}
-
+	o.SellAmount = big.NewInt(0)
 	if order["sellAmount"] != nil {
-		o.SellAmount = big.NewInt(0)
 		o.SellAmount.UnmarshalJSON([]byte(order["sellAmount"].(string)))
 	}
 
