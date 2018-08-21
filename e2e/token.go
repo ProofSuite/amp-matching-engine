@@ -13,7 +13,7 @@ import (
 
 func testToken(t *testing.T) []types.Token {
 	fmt.Printf("\n=== Starting Token test ===\n")
-	router := buildRouter()
+	router := NewRouter()
 	listTokens := make([]types.Token, 0)
 	dbTokensList := make([]types.Token, 0)
 

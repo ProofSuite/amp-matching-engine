@@ -27,6 +27,8 @@ type appConfig struct {
 	Rabbitmq string `mapstructure:"rabbitmq"`
 
 	Ethereum string `mapstructure:"ethereum"`
+
+	WETH string `mapstructure:"weth"`
 	// the redis is the URI of redis to use
 	Redis string `mapstructure:"redis"`
 	// the signing method for JWT. Defaults to "HS256"

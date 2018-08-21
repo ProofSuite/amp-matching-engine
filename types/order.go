@@ -4,8 +4,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"math/big"
 	"time"
+
+	"math"
 
 	"github.com/Proofsuite/amp-matching-engine/app"
 	"github.com/Proofsuite/amp-matching-engine/utils"
@@ -14,7 +17,6 @@ import (
 	"github.com/ethereum/go-ethereum/crypto/sha3"
 	validation "github.com/go-ozzo/ozzo-validation"
 	"gopkg.in/mgo.v2/bson"
-	"math"
 )
 
 // Order contains the data related to an order sent by the user
@@ -192,7 +194,6 @@ func (o *Order) GetOBMatchKey() (ss string) {
 // MarshalJSON implements the json.Marshal interface
 func (o *Order) MarshalJSON() ([]byte, error) {
 	order := map[string]interface{}{
-		"id":              o.ID,
 		"exchangeAddress": o.ExchangeAddress,
 		"userAddress":     o.UserAddress,
 		"buyToken":        o.BuyToken,
@@ -207,7 +208,6 @@ func (o *Order) MarshalJSON() ([]byte, error) {
 		"takeFee":         o.TakeFee.String(),
 		"expires":         o.Expires.String(),
 		"nonce":           o.Nonce.String(),
-		"pairID":          o.PairID.Hex(),
 		"pairName":        o.PairName,
 		"price":           o.Price,
 		"filledAmount":    o.FilledAmount,
@@ -216,6 +216,15 @@ func (o *Order) MarshalJSON() ([]byte, error) {
 		"createdAt":       o.CreatedAt.Format(time.RFC3339Nano),
 		"updatedAt":       o.UpdatedAt.Format(time.RFC3339Nano),
 	}
+
+	if o.ID != bson.ObjectId("") {
+		order["id"] = o.ID
+	}
+
+	if o.PairID != bson.ObjectId("") {
+		order["pairID"] = o.PairID
+	}
+
 	if o.Signature != nil {
 		order["signature"] = map[string]interface{}{
 			"V": o.Signature.V,
@@ -473,6 +482,7 @@ func (o *Order) SetBSON(raw bson.Raw) error {
 
 	err := raw.Unmarshal(decoded)
 	if err != nil {
+		log.Print(err)
 		return err
 	}
 
@@ -538,7 +548,7 @@ func (o *Order) Print() {
 		fmt.Println("Error: ", err)
 	}
 
-	fmt.Print(string(b))
+	fmt.Print("\n", string(b))
 }
 
 // type OrderData struct {

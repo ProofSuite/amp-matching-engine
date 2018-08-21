@@ -1,8 +1,8 @@
 package mocks
 
 import (
+	"encoding/json"
 	"flag"
-	"fmt"
 	"log"
 	"net/http"
 	"net/url"
@@ -10,7 +10,6 @@ import (
 
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/gorilla/websocket"
 	"github.com/posener/wstest"
 )
@@ -24,15 +23,15 @@ var addr = flag.String("addr", "localhost:8080", "http service address")
 // wallet is the ethereum account used for orders and trades.
 // mutex is used to prevent concurrent writes on the websocket connection
 type Client struct {
-	connection   *websocket.Conn
-	requests     chan *types.WebSocketMessage
-	responses    chan *types.WebSocketMessage
-	requestLogs  []*types.WebSocketMessage
-	responseLogs []*types.WebSocketMessage
 	// ethereumClient *ethclient.Client
-	wallet *types.Wallet
-	mutex  sync.Mutex
-	logs   chan *ClientLogMessage
+	connection   *websocket.Conn
+	Requests     chan *types.WebSocketMessage
+	Responses    chan *types.WebSocketMessage
+	Logs         chan *ClientLogMessage
+	Wallet       *types.Wallet
+	RequestLogs  []*types.WebSocketMessage
+	ResponseLogs []*types.WebSocketMessage
+	mutex        sync.Mutex
 }
 
 // The client log is mostly used for testing. It optionally takes orders, trade,
@@ -52,18 +51,11 @@ type Server interface {
 }
 
 // NewClient a default client struct connected to the given server
-func NewClient(w *types.Wallet, s *Server) *Client {
+func NewClient(w *types.Wallet, s Server) *Client {
 	flag.Parse()
-	uri := url.URL{Scheme: "ws", Host: *addr, Path: "/api"}
+	uri := url.URL{Scheme: "ws", Host: "localhost:8080", Path: "/socket"}
 
-	// rpcClient, err := rpc.DialWebsocket(context.Background(), "ws://127.0.0.1:8546", "")
-	// if err != nil {
-	// 	log.Printf("Could not connect to ethereum client")
-	// }
-
-	ethClient := ethclient.NewClient(rpcClient)
-
-	d := wstest.NewDialer(*s)
+	d := wstest.NewDialer(s)
 	c, _, err := d.Dial(uri.String(), nil)
 	if err != nil {
 		panic(err)
@@ -75,13 +67,14 @@ func NewClient(w *types.Wallet, s *Server) *Client {
 	reqLogs := make([]*types.WebSocketMessage, 0)
 	respLogs := make([]*types.WebSocketMessage, 0)
 
-	return &Client{connection: c,
-		wallet:       w,
-		requests:     reqs,
-		logs:         logs,
-		responses:    resps,
-		requestLogs:  reqLogs,
-		responseLogs: respLogs,
+	return &Client{
+		connection:   c,
+		Wallet:       w,
+		Requests:     reqs,
+		Responses:    resps,
+		RequestLogs:  reqLogs,
+		ResponseLogs: respLogs,
+		Logs:         logs,
 		// ethereumClient: ethClient,
 	}
 }
@@ -94,7 +87,7 @@ func (c *Client) send(v interface{}) error {
 }
 
 // start listening and handling incoming messages
-func (c *Client) start() {
+func (c *Client) Start() {
 	c.handleMessages()
 	c.handleIncomingMessages()
 }
@@ -107,15 +100,14 @@ func (c *Client) handleMessages() {
 	go func() {
 		for {
 			select {
-			case msg := <-c.requests:
-				fmt.Printf("Handling request: %v\n", msg)
-				c.requestLogs = append(c.requestLogs, msg)
+			case msg := <-c.Requests:
+				log.Print("Handling Request: ", msg)
+				c.RequestLogs = append(c.RequestLogs, msg)
+				c.handleOrderChannelMessagesOut(*msg)
 
-				c.handleOrderChannelMessagesOut(msg)
-
-			case msg := <-c.responses:
-				fmt.Printf("Handling response: %v\n", msg)
-				c.responseLogs = append(c.responseLogs, msg)
+			case msg := <-c.Responses:
+				log.Print("Handling Response: ", msg)
+				c.ResponseLogs = append(c.ResponseLogs, msg)
 
 				switch msg.Channel {
 				case "orders":
@@ -133,21 +125,12 @@ func (c *Client) handleMessages() {
 }
 
 // handleChannelMessagesOut
-func (c *Client) handleOrderChannelMessagesOut(msg interface{}) {
-	// msg := &types.Message{}
-
-	// err := json.Unmarshal()
-
-	// switch msg.Type {
-	// case "NEW_ORDER":
-	// 	c.SendNewOrder(msg)
-	// case "SUBMIT_SIGNATURE":
-	// 	c.SendSubmitNewSignature(msg)
-	// case "CANCEL_ORDER":
-	// 	c.SendCancelOrder(msg)
-	// case "DONE":
-	// 	c.done()
-	// }
+func (c *Client) handleOrderChannelMessagesOut(m types.WebSocketMessage) {
+	err := c.send(m)
+	if err != nil {
+		log.Printf("Error: Could not send signed orders. Payload: %#v", m.Payload)
+		return
+	}
 }
 
 // handleChannelMessagesIn
@@ -155,8 +138,8 @@ func (c *Client) handleOrderChannelMessagesIn(p types.WebSocketPayload) {
 	switch p.Type {
 	case "ORDER_ADDED":
 		c.handleOrderAdded(p)
-	case "ORDER_CANCELED":
-		c.handleOrderCanceled(p)
+	case "ORDER_CANCELLED":
+		c.handleOrderCancelled(p)
 	case "REQUEST_SIGNATURE":
 		c.handleSignatureRequested(p)
 	case "TRADE_EXECUTED":
@@ -209,23 +192,53 @@ func (c *Client) handleIncomingMessages() {
 				break
 			}
 
-			c.responses <- message
+			c.Responses <- message
 		}
 	}()
 }
 
+// handleOrderAdded handles incoming order added messages
 func (c *Client) handleOrderAdded(p types.WebSocketPayload) {
+	o := &types.Order{}
 
-	// l := &ClientLogMessage{
-	// 	MessageType: resp.MessageType,
-	// 	Order:       decoded.Order,
-	// 	Trade:       decoded.Trade,
-	// 	ErrorID:     int8(decoded.ErrorId),
-	// }
+	bytes, err := json.Marshal(p.Data)
+	if err != nil {
+		log.Print(err)
+	}
+
+	err = o.UnmarshalJSON(bytes)
+	if err != nil {
+		log.Print(err)
+	}
+
+	l := &ClientLogMessage{
+		MessageType: "ORDER_ADDED",
+		Order:       o,
+	}
+
+	c.Logs <- l
 }
 
-func (c *Client) handleOrderCanceled(p types.WebSocketPayload) {
+// handleOrderAdded handles incoming order canceled messages
+func (c *Client) handleOrderCancelled(p types.WebSocketPayload) {
+	o := &types.Order{}
 
+	bytes, err := json.Marshal(p.Data)
+	if err != nil {
+		log.Print(err)
+	}
+
+	err = o.UnmarshalJSON(bytes)
+	if err != nil {
+		log.Print(err)
+	}
+
+	l := &ClientLogMessage{
+		MessageType: "ORDER_CANCELLED",
+		Order:       o,
+	}
+
+	c.Logs <- l
 }
 
 func (c *Client) handleSignatureRequested(p types.WebSocketPayload) {
@@ -305,7 +318,7 @@ func (c *Client) handleOHLCVUpdate(p types.WebSocketPayload) {
 // 	fmt.Printf("Log: Handling Order Placed Message:%v\n\n", o)
 // }
 
-// func (c *Client) handleOrderCanceled(r *Message) {
+// func (c *Client) handleOrderCancelled(r *Message) {
 // 	fmt.Printf("Log: Handling Order Canceled Message. Payload: %#v", r.Payload)
 // }
 
@@ -442,3 +455,10 @@ func (c *Client) handleOHLCVUpdate(p types.WebSocketPayload) {
 // func (c *Client) done() {
 
 // }
+
+// rpcClient, err := rpc.DialWebsocket(context.Background(), "ws://127.0.0.1:8546", "")
+// if err != nil {
+// 	log.Printf("Could not connect to ethereum client")
+// }
+
+// ethClient := ethclient.NewClient(rpcClient)
