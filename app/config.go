@@ -39,6 +39,8 @@ type appConfig struct {
 	TickDuration map[string][]int64 `mapstructure:"tick_duration"`
 	// ExchangeAddress is the address of the exchange smart-contract
 	ExchangeAddress string `mapstructure:"exchange"`
+	// Decimal is the number of decimal places used in matching engine
+	Decimal int `mapstructure:"decimal"`
 }
 
 func (config appConfig) Validate() error {

@@ -73,6 +73,8 @@ func (e *Resource) execute(order *types.Order, bookEntry *types.Order) (trade *t
 		Maker:        bookEntry.UserAddress,
 		TakerOrderID: order.ID,
 		MakerOrderID: bookEntry.ID,
+		TradeNonce:   big.NewInt(0),
+		Signature:    &types.Signature{},
 	}
 
 	trade.Hash = trade.ComputeHash()
