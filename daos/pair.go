@@ -66,6 +66,26 @@ func (dao *PairDao) GetByName(name string) (*types.Pair, error) {
 	return res[0], nil
 }
 
+func (dao *PairDao) GetByTokenSymbols(baseTokenSymbol, quoteTokenSymbol string) (*types.Pair, error) {
+	var res []*types.Pair
+
+	q := bson.M{
+		"baseTokenSymbol":  baseTokenSymbol,
+		"quoteTokenSymbol": quoteTokenSymbol,
+	}
+
+	err := db.Get(dao.dbName, dao.collectionName, q, 0, 1, &res)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(res) == 0 {
+		return nil, errors.New("No pair found")
+	}
+
+	return res[0], nil
+}
+
 // GetByTokenAddress function fetches pair based on
 // CONTRACT ADDRESS of base token and quote token
 func (dao *PairDao) GetByTokenAddress(baseToken, quoteToken common.Address) (*types.Pair, error) {

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"fmt"
+
 	"github.com/Proofsuite/amp-matching-engine/app"
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/ethereum/go-ethereum/common"
@@ -62,6 +63,7 @@ func (dao *AccountDao) GetByAddress(owner common.Address) (response *types.Accou
 		response = res[0]
 		return
 	}
+
 	return nil, fmt.Errorf("NO_ACCOUNT_FOUND")
 }
 
@@ -72,9 +74,11 @@ func (dao *AccountDao) GetTokenBalances(owner common.Address) (map[common.Addres
 	if err != nil {
 		return nil, err
 	}
+
 	if len(response) > 0 {
 		return response[0].TokenBalances, nil
 	}
+
 	return nil, fmt.Errorf("NO_ACCOUNT_FOUND")
 }
 

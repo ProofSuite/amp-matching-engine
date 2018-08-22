@@ -4,9 +4,11 @@ import (
 	"encoding/json"
 	"errors"
 	"log"
+	"math/big"
 
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/Proofsuite/amp-matching-engine/utils"
+	"github.com/Proofsuite/amp-matching-engine/utils/math"
 	"github.com/Proofsuite/go-ethereum/common"
 	"github.com/gomodule/redigo/redis"
 )
@@ -14,7 +16,7 @@ import (
 // FillOrder is structure holds the matching order and
 // the amount that has been filled by taker order
 type FillOrder struct {
-	Amount int64
+	Amount *big.Int
 	Order  *types.Order
 }
 
@@ -29,13 +31,14 @@ func (e *Resource) newOrder(order *types.Order) (err error) {
 	if order.Side == "SELL" {
 		resp, err = e.sellOrder(order)
 		if err != nil {
-			log.Printf("\n%s\n", err)
+			log.Print(err)
 			return err
 		}
+
 	} else if order.Side == "BUY" {
 		resp, err = e.buyOrder(order)
 		if err != nil {
-			log.Printf("\n%s\n", err)
+			log.Print(err)
 			return err
 		}
 	}
@@ -43,7 +46,7 @@ func (e *Resource) newOrder(order *types.Order) (err error) {
 	// Note: Plug the option for orders like FOC, Limit here (if needed)
 	err = e.publishEngineResponse(resp)
 	if err != nil {
-		log.Printf("\npublishEngineResponse XXXXXXX\n%s\nXXXXXXX publishEngineResponse\n", err)
+		log.Print(err)
 		return err
 	}
 
@@ -67,7 +70,7 @@ func (e *Resource) buyOrder(order *types.Order) (*Response, error) {
 	oskv := order.GetOBMatchKey()
 
 	// GET Range of sellOrder between minimum Sell order and order.Price
-	orders, err := redis.Values(e.redisConn.Do("ZRANGEBYLEX", oskv, "-", "["+utils.UintToPaddedString(order.Price))) // "ZRANGEBYLEX" key min max
+	orders, err := redis.Values(e.redisConn.Do("ZRANGEBYLEX", oskv, "-", "["+utils.UintToPaddedString(order.PricePoint.Int64()))) // "ZRANGEBYLEX" key min max
 	if err != nil {
 		log.Printf("ZRANGEBYLEX: %s\n", err)
 		return nil, err
@@ -107,13 +110,14 @@ func (e *Resource) buyOrder(order *types.Order) (*Response, error) {
 				log.Printf("Error Executing Order: %s\n", err)
 				return nil, err
 			}
+
 			order.Status = "PARTIAL_FILLED"
 			resp.FillStatus = PARTIAL
 			resp.Trades = append(resp.Trades, trade)
 			resp.MatchingOrders = append(resp.MatchingOrders, fillOrder)
-			resp.RemainingOrder.Amount = resp.RemainingOrder.Amount - fillOrder.Amount
+			resp.RemainingOrder.Amount = math.Sub(resp.RemainingOrder.Amount, fillOrder.Amount)
 
-			if resp.RemainingOrder.Amount == 0 {
+			if math.IsZero(resp.RemainingOrder.Amount) {
 				resp.FillStatus = FULL
 				resp.Order.Status = "FILLED"
 				resp.RemainingOrder = &types.Order{}
@@ -143,16 +147,17 @@ func (e *Resource) sellOrder(order *types.Order) (resp *Response, err error) {
 	resp.MatchingOrders = make([]*FillOrder, 0)
 
 	obkv := order.GetOBMatchKey()
+
 	// GET Range of sellOrder between minimum Sell order and order.Price
-	orders, err := redis.Values(e.redisConn.Do("ZREVRANGEBYLEX", obkv, "+", "["+utils.UintToPaddedString(order.Price))) // "ZREVRANGEBYLEX" key max min
+	orders, err := redis.Values(e.redisConn.Do("ZREVRANGEBYLEX", obkv, "+", "["+utils.UintToPaddedString(order.PricePoint.Int64()))) // "ZREVRANGEBYLEX" key max min
 	if err != nil {
-		log.Printf("ZREVRANGEBYLEX: %s\n", err)
+		log.Print(err)
 		return nil, err
 	}
 
 	priceRange := make([]int64, 0)
 	if err := redis.ScanSlice(orders, &priceRange); err != nil {
-		log.Printf("Scan %s\n", err)
+		log.Print(err)
 		return nil, err
 	}
 
@@ -167,36 +172,38 @@ func (e *Resource) sellOrder(order *types.Order) (resp *Response, err error) {
 	for _, pr := range priceRange {
 		bookEntries, err := redis.ByteSlices(e.redisConn.Do("SORT", obkv+"::"+utils.UintToPaddedString(pr), "GET", obkv+"::"+utils.UintToPaddedString(pr)+"::*", "ALPHA")) // "ZREVRANGEBYLEX" key max min
 		if err != nil {
-			log.Printf("SORT: %s\n", err)
+			log.Print(err)
 			return nil, err
 		}
+
 		for _, o := range bookEntries {
 			var bookEntry *types.Order
 			err = json.Unmarshal(o, &bookEntry)
 			if err != nil {
-				log.Printf("json.Unmarshal: %s\n", err)
+				log.Print(err)
 				return nil, err
 			}
 
 			trade, fillOrder, err := e.execute(order, bookEntry)
 			if err != nil {
-				log.Printf("Error Executing Order: %s\n", err)
+				log.Print(err)
 				return nil, err
 			}
+
 			order.Status = "PARTIAL_FILLED"
 			resp.FillStatus = PARTIAL
 			resp.Trades = append(resp.Trades, trade)
 			resp.MatchingOrders = append(resp.MatchingOrders, fillOrder)
-			resp.RemainingOrder.Amount = resp.RemainingOrder.Amount - fillOrder.Amount
+			resp.RemainingOrder.Amount = math.Sub(resp.RemainingOrder.Amount, fillOrder.Amount)
 
-			if resp.RemainingOrder.Amount == 0 {
+			if math.IsZero(resp.RemainingOrder.Amount) {
 				resp.FillStatus = FULL
 				resp.Order.Status = "FILLED"
 				resp.RemainingOrder = &types.Order{}
 				return resp, nil
 			}
-			resp.Order.Status = "PARTIAL_FILLED"
 
+			resp.Order.Status = "PARTIAL_FILLED"
 		}
 	}
 	return
@@ -205,80 +212,82 @@ func (e *Resource) sellOrder(order *types.Order) (resp *Response, err error) {
 // addOrder adds an order to redis
 func (e *Resource) addOrder(order *types.Order) error {
 	ssKey, listKey := order.GetOBKeys()
-	_, err := e.redisConn.Do("ZADD", ssKey, "NX", 0, utils.UintToPaddedString(order.Price)) // Add price point to order book
+	_, err := e.redisConn.Do("ZADD", ssKey, "NX", 0, utils.UintToPaddedString(order.PricePoint.Int64())) // Add price point to order book
 	if err != nil {
-		log.Printf("ZADD: %s", err)
+		log.Print(err)
 		return err
 	}
 
-	// fmt.Printf("ZADD: %s\n", res)
-	_, err = e.redisConn.Do("INCRBY", ssKey+"::book::"+utils.UintToPaddedString(order.Price), order.Amount-order.FilledAmount) // Add price point to order book
+	// Currently converting amount to int64. In the future, we need to use strings instead of int64
+	amt := math.Sub(order.Amount, order.FilledAmount)
+	_, err = e.redisConn.Do("INCRBY", ssKey+"::book::"+utils.UintToPaddedString(order.PricePoint.Int64()), amt.Int64()) // Add price point to order book
 	if err != nil {
-		log.Printf("INCRBY: %s", err)
+		log.Print(err)
 		return err
 	}
 
 	// Add order to list
 	orderAsBytes, err := json.Marshal(order)
 	if err != nil {
-		log.Printf("orderAsBytes: %s", err)
+		log.Print(err)
 		return err
 	}
 
 	_, err = e.redisConn.Do("SET", listKey+"::"+order.Hash.Hex(), string(orderAsBytes))
 	if err != nil {
-		log.Printf("SET: %s", err)
+		log.Print(err)
 		return err
 	}
 
 	// Add order reference to price sorted set
 	_, err = e.redisConn.Do("ZADD", listKey, "NX", order.CreatedAt.Unix(), order.Hash.Hex())
 	if err != nil {
-		log.Printf("ZADD: %s", err)
+		log.Print(err)
 		return err
 	}
 
-	// fmt.Printf("ZADD: %s\n", res)
 	return nil
 }
 
 // updateOrder updates the order in redis
-func (e *Resource) updateOrder(order *types.Order, tradeAmount int64) error {
+func (e *Resource) updateOrder(order *types.Order, tradeAmount *big.Int) error {
+	stored := &types.Order{}
+
 	ssKey, listKey := order.GetOBKeys()
-	var storedOrder *types.Order
-	storedOrderAsBytes, err := redis.Bytes(e.redisConn.Do("GET", listKey+"::"+order.Hash.Hex()))
+	bytes, err := redis.Bytes(e.redisConn.Do("GET", listKey+"::"+order.Hash.Hex()))
 	if err != nil {
-		log.Printf("orderAsBytes: %s", err)
+		log.Print(err)
 		return err
 	}
 
-	json.Unmarshal(storedOrderAsBytes, &storedOrder)
+	json.Unmarshal(bytes, &stored)
 
-	storedOrder.FilledAmount = storedOrder.FilledAmount + tradeAmount
-	if storedOrder.FilledAmount == 0 {
-		storedOrder.Status = "OPEN"
-	} else if storedOrder.FilledAmount < storedOrder.Amount {
-		storedOrder.Status = "PARTIAL_FILLED"
+	stored.FilledAmount = math.Add(stored.FilledAmount, tradeAmount)
+	if math.IsZero(stored.FilledAmount) {
+		stored.Status = "OPEN"
+	} else if math.IsSmallerThan(stored.FilledAmount, stored.Amount) {
+		stored.Status = "PARTIAL_FILLED"
 	} else {
-		storedOrder.Status = "FILLED"
+		stored.Status = "FILLED"
 	}
 
 	// Add order to list
-	orderAsBytes, err := json.Marshal(storedOrder)
+	bytes, err = json.Marshal(stored)
 	if err != nil {
-		log.Printf("orderAsBytes: %s", err)
+		log.Print(err)
 		return err
 	}
 
-	_, err = e.redisConn.Do("SET", listKey+"::"+order.Hash.Hex(), string(orderAsBytes))
+	_, err = e.redisConn.Do("SET", listKey+"::"+order.Hash.Hex(), string(bytes))
 	if err != nil {
-		log.Printf("SET: %s", err)
+		log.Print(err)
 		return err
 	}
 
-	_, err = e.redisConn.Do("INCRBY", ssKey+"::book::"+utils.UintToPaddedString(order.Price), -1*tradeAmount) // Add price point to order book
+	// Currently converting amount to int64. In the future, we need to use strings instead of int64
+	_, err = e.redisConn.Do("INCRBY", ssKey+"::book::"+utils.UintToPaddedString(order.PricePoint.Int64()), math.Neg(tradeAmount))
 	if err != nil {
-		log.Printf("INCRBY: %s", err)
+		log.Print(err)
 		return err
 	}
 
@@ -288,7 +297,7 @@ func (e *Resource) updateOrder(order *types.Order, tradeAmount int64) error {
 // updateOrderAmount is a less general version of update order that updates the order filled amount after
 // a trade or recover orders
 // EXPERIMENTAL
-func (e *Resource) updateOrderAmount(hash common.Hash, amount int64) error {
+func (e *Resource) updateOrderAmount(hash common.Hash, amount *big.Int) error {
 	stored := &types.Order{}
 	bytes, err := redis.Bytes(e.redisConn.Do("GET", hash.Hex()))
 	if err != nil {
@@ -297,13 +306,15 @@ func (e *Resource) updateOrderAmount(hash common.Hash, amount int64) error {
 
 	err = json.Unmarshal(bytes, stored)
 	if err != nil {
+		log.Print(err)
 		return err
 	}
 
-	stored.FilledAmount += amount
-	if stored.FilledAmount == 0 {
+	stored.FilledAmount = math.Add(stored.FilledAmount, amount)
+
+	if math.IsZero(stored.FilledAmount) {
 		stored.Status = "OPEN"
-	} else if stored.FilledAmount < stored.Amount {
+	} else if math.IsSmallerThan(stored.FilledAmount, stored.Amount) {
 		stored.Status = "PARTIAL_FILLED"
 	} else {
 		stored.Status = "FILLED"
@@ -311,17 +322,22 @@ func (e *Resource) updateOrderAmount(hash common.Hash, amount int64) error {
 
 	bytes, err = json.Marshal(stored)
 	if err != nil {
+		log.Print(err)
 		return err
 	}
 
 	_, err = e.redisConn.Do("SET", hash.Hex(), string(bytes))
 	if err != nil {
+		log.Print(err)
 		return err
 	}
 
 	ssKey, _ := stored.GetOBKeys()
-	_, err = e.redisConn.Do("INCRBY", ssKey+"::book::"+utils.UintToPaddedString(stored.Price), -amount)
+
+	// Currently converting amount to int64. In the future, we need to use strings instead of int64
+	_, err = e.redisConn.Do("INCRBY", ssKey+"::book::"+utils.UintToPaddedString(stored.PricePoint.Int64()), math.Neg(amount))
 	if err != nil {
+		log.Print(err)
 		return err
 	}
 
@@ -329,70 +345,66 @@ func (e *Resource) updateOrderAmount(hash common.Hash, amount int64) error {
 }
 
 // deleteOrder deletes the order in redis
-func (e *Resource) deleteOrder(order *types.Order, tradeAmount int64) (err error) {
+func (e *Resource) deleteOrder(order *types.Order, tradeAmount *big.Int) (err error) {
 
 	ssKey, listKey := order.GetOBKeys()
-	remVolume, err := redis.Int64(e.redisConn.Do("GET", ssKey+"::book::"+utils.UintToPaddedString(order.Price)))
+	remVolume, err := redis.String(e.redisConn.Do("GET", ssKey+"::book::"+utils.UintToPaddedString(order.PricePoint.Int64())))
 	if err != nil {
-		log.Printf("GET remVolume: %s", err)
+		log.Print(err)
 		return
 	}
 
-	if remVolume == tradeAmount {
-		_, err := e.redisConn.Do("ZREM", ssKey, "NX", 0, utils.UintToPaddedString(order.Price)) // Add price point to order book
+	if math.IsEqual(math.ToBigInt(remVolume), tradeAmount) {
+		_, err := e.redisConn.Do("ZREM", ssKey, "NX", 0, utils.UintToPaddedString(order.PricePoint.Int64()))
 		if err != nil {
-			log.Printf("ZREM: %s", err)
+			log.Print(err)
 			return err
 		}
 		// fmt.Printf("ZREM: %s\n", res)
-		_, err = e.redisConn.Do("DEL", ssKey+"::book::"+utils.UintToPaddedString(order.Price)) // Add price point to order book
+		_, err = e.redisConn.Do("DEL", ssKey+"::book::"+utils.UintToPaddedString(order.PricePoint.Int64()))
 		if err != nil {
-			log.Printf("DEL: %s", err)
+			log.Print(err)
 			return err
 		}
 		// fmt.Printf("DEL: %s\n", res)
 
 		_, err = e.redisConn.Do("DEL", listKey+"::"+order.Hash.Hex())
 		if err != nil {
-			log.Printf("DEL: %s", err)
+			log.Print(err)
 			return err
 		}
 		// Add order reference to price sorted set
 		_, err = e.redisConn.Do("ZREM", listKey, order.Hash.Hex())
 		if err != nil {
-			log.Printf("ZREM: %s", err)
+			log.Print(err)
 			return err
 		}
 
-		// fmt.Printf("ZREM: %s\n", res)
 	} else {
-		_, err := e.redisConn.Do("ZADD", ssKey, "NX", 0, utils.UintToPaddedString(order.Price)) // Add price point to order book
+		_, err := e.redisConn.Do("ZADD", ssKey, "NX", 0, utils.UintToPaddedString(order.PricePoint.Int64()))
 		if err != nil {
-			log.Printf("ZADD: %s", err)
+			log.Print(err)
 			return err
 		}
 
-		// fmt.Printf("ZADD: %s\n", res)
-		_, err = e.redisConn.Do("INCRBY", ssKey+"::book::"+utils.UintToPaddedString(order.Price), -1*tradeAmount) // Add price point to order book
+		// Currently converting amount to int64. In the future, we need to use strings instead of int64
+		_, err = e.redisConn.Do("INCRBY", ssKey+"::book::"+utils.UintToPaddedString(order.PricePoint.Int64()), math.Neg(tradeAmount))
 		if err != nil {
-			log.Printf("INCRBY: %s", err)
+			log.Print(err)
 			return err
 		}
-		// fmt.Printf("INCRBY: %s\n", res)
 
 		_, err = e.redisConn.Do("DEL", listKey+"::"+order.Hash.Hex())
 		if err != nil {
-			log.Printf("DEL: %s", err)
+			log.Print(err)
 			return err
 		}
 		// Add order reference to price sorted set
 		_, err = e.redisConn.Do("ZREM", listKey, order.Hash.Hex())
 		if err != nil {
-			log.Printf("ZREM: %s", err)
+			log.Print(err)
 			return err
 		}
-
-		// fmt.Printf("ZREM: %s\n", res)
 	}
 
 	return
@@ -407,8 +419,8 @@ func (e *Resource) RecoverOrders(orders []*FillOrder) error {
 
 		// update order's filled amount and status before updating in redis
 		o.Order.Status = "PARTIAL_FILLED"
-		o.Order.FilledAmount = o.Order.FilledAmount - o.Amount
-		if o.Order.FilledAmount == 0 {
+		o.Order.FilledAmount = math.Sub(o.Order.FilledAmount, o.Amount)
+		if math.IsZero(o.Order.FilledAmount) {
 			o.Order.Status = "OPEN"
 		}
 
@@ -416,10 +428,12 @@ func (e *Resource) RecoverOrders(orders []*FillOrder) error {
 		res, _ := redis.Bytes(e.redisConn.Do("GET", listKey+"::"+o.Order.Hash.Hex()))
 		if res == nil {
 			if err := e.addOrder(o.Order); err != nil {
+				log.Print(err)
 				return err
 			}
 		} else {
-			if err := e.updateOrder(o.Order, -1*o.Amount); err != nil {
+			if err := e.updateOrder(o.Order, math.Neg(o.Amount)); err != nil {
+				log.Print(err)
 				return err
 			}
 		}
@@ -429,10 +443,11 @@ func (e *Resource) RecoverOrders(orders []*FillOrder) error {
 
 // RecoverOrders2 is an alternative suggestion for RecoverOrders2
 // It would requires an alternative key system for redis where we store only the hash with the listkey prefix
-func (e *Resource) RecoverOrders2(hashes []common.Hash, amounts []int64) error {
+func (e *Resource) RecoverOrders2(hashes []common.Hash, amounts []*big.Int) error {
 	for i, _ := range hashes {
 		err := e.updateOrderAmount(hashes[i], amounts[i])
 		if err != nil {
+			log.Print(err)
 			return err
 		}
 	}
@@ -448,27 +463,30 @@ func (e *Resource) CancelOrder(order *types.Order) (*Response, error) {
 	_, listKey := order.GetOBKeys()
 	res, err := redis.Bytes(e.redisConn.Do("GET", listKey+"::"+order.Hash.Hex()))
 	if err != nil {
-		log.Printf("GET: %s", err)
+		log.Print(err)
 		return nil, err
 	}
+
 	if res == nil {
 		return nil, errors.New("Order not found")
 	}
 
-	var storedOrder *types.Order
-	if err := json.Unmarshal(res, &storedOrder); err != nil {
-		log.Printf("G2ET: %s", err)
-		return nil, err
-	}
-	if err := e.deleteOrder(order, storedOrder.Amount-storedOrder.FilledAmount); err != nil {
-		log.Printf("\n%s\n", err)
+	var stored *types.Order
+	if err := json.Unmarshal(res, &stored); err != nil {
+		log.Print(err)
 		return nil, err
 	}
 
-	storedOrder.Status = "CANCELLED"
+	amt := math.Sub(stored.Amount, stored.FilledAmount)
+	if err := e.deleteOrder(order, amt); err != nil {
+		log.Print(err)
+		return nil, err
+	}
+
+	stored.Status = "CANCELLED"
 
 	engineResponse := &Response{
-		Order:          storedOrder,
+		Order:          stored,
 		Trades:         make([]*types.Trade, 0),
 		RemainingOrder: &types.Order{},
 		FillStatus:     CANCELLED,

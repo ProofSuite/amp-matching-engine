@@ -91,7 +91,7 @@ func (c *Client) handleMessages() {
 		for {
 			select {
 			case req := <-c.requests:
-				fmt.Printf("Handling Request: %v\n", req)
+				fmt.Printf("Handling Request: \n%v\n", req)
 				c.requestLogs = append(c.requestLogs, req)
 				switch req.MessageType {
 				case PLACE_ORDER:

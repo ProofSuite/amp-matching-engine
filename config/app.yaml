@@ -10,6 +10,7 @@ ethereum: localhost:8545
 
 exchange: "0xfc074fd5702e6becb78d64acd4126a0079f42d85"
 decimal: 8
+weth: "0x2EB24432177e82907dE24b7c5a6E0a5c03226135"
 
 tick_duration:
     sec: [30]
