@@ -98,8 +98,8 @@ func TestNewFactoryBuyOrder(t *testing.T) {
 		Expires:         big.NewInt(1e18),
 		MakeFee:         big.NewInt(0),
 		TakeFee:         big.NewInt(0),
-		Price:           50 * 1e8, //multiplier from the process order function
-		Amount:          2,
+		Price:           big.NewInt(50 * 1e8), //multiplier from the process order function
+		Amount:          big.NewInt(2),
 		Side:            "BUY",
 		Status:          "NEW",
 		PairName:        "ZRX/WETH",
@@ -156,8 +156,8 @@ func TestNewFactorySellOrder(t *testing.T) {
 		Nonce:           order.Nonce,
 		Signature:       order.Signature,
 		Hash:            order.Hash,
-		Price:           100 * 1e8,
-		Amount:          1,
+		Price:           big.NewInt(100 * 1e8),
+		Amount:          big.NewInt(1),
 	}
 
 	Compare(t, expected, order)
@@ -208,8 +208,8 @@ func TestNewFactorySellOrder2(t *testing.T) {
 		Status:          "NEW",
 		PairName:        "ZRX/WETH",
 		Hash:            order.Hash,
-		Price:           250 * 1e8,
-		Amount:          10,
+		Price:           big.NewInt(250 * 1e8),
+		Amount:          big.NewInt(10),
 	}
 
 	Compare(t, expected, order)

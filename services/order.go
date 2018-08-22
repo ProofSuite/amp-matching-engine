@@ -49,7 +49,6 @@ func (s *OrderService) GetByUserAddress(addr common.Address) ([]*types.Order, er
 // on rabbitmq queue for matching engine to process the order
 func (s *OrderService) NewOrder(o *types.Order) error {
 	// Validate if the address is not blacklisted
-
 	acc, err := s.accountDao.GetByAddress(o.UserAddress)
 	if err != nil {
 		return err
@@ -239,11 +238,11 @@ func (s *OrderService) handleEngineOrderAdded(res *engine.Response) {
 func (s *OrderService) handleEngineOrderMatched(resp *engine.Response) {
 	s.SendMessage("REQUEST_SIGNATURE", resp.Order.Hash, resp)
 	s.orderDao.Update(resp.Order.ID, resp.Order)
-	s.transferAmount(resp.Order, big.NewInt(resp.Order.FilledAmount))
+	s.transferAmount(resp.Order, resp.Order.FilledAmount)
 
 	for _, o := range resp.MatchingOrders {
 		s.orderDao.Update(o.Order.ID, resp.Order)
-		s.transferAmount(o.Order, big.NewInt(o.Amount))
+		s.transferAmount(o.Order, o.Amount)
 	}
 
 	if len(resp.Trades) != 0 {

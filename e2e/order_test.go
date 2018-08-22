@@ -73,117 +73,110 @@ func SetupTest() (*types.Wallet, *types.Wallet, *mocks.Client, *mocks.Client, *m
 	return wallet1, wallet2, client1, client2, factory1, factory2, pair, ZRX, WETH
 }
 
-func TestOrders(t *testing.T) {
-	//TestBuyOrder verifies that a response is received after a client makes a single order
-	t.Run("TestBuyOrder", func(t *testing.T) {
-		_, _, client1, _, factory1, _, _, ZRX, WETH := SetupTest()
-		m1, _, err := factory1.NewOrderMessage(ZRX, 1, WETH, 1)
-		if err != nil {
-			t.Errorf("Could not create new order message: %v", err)
-		}
+func TestBuyOrder(t *testing.T) {
+	_, _, client1, _, factory1, _, _, ZRX, WETH := SetupTest()
+	m1, _, err := factory1.NewOrderMessage(ZRX, 1, WETH, 1)
+	if err != nil {
+		t.Errorf("Could not create new order message: %v", err)
+	}
 
-		client1.Requests <- m1
+	client1.Requests <- m1
 
-		time.Sleep(time.Second)
-		wg := sync.WaitGroup{}
-		wg.Add(1)
+	time.Sleep(time.Second)
+	wg := sync.WaitGroup{}
+	wg.Add(1)
 
-		go func() {
-			for {
-				select {
-				case l := <-client1.Logs:
-					switch l.MessageType {
-					case "ORDER_ADDED":
-						wg.Done()
-					case "ERROR":
-						t.Errorf("Received an error")
-					}
+	go func() {
+		for {
+			select {
+			case l := <-client1.Logs:
+				switch l.MessageType {
+				case "ORDER_ADDED":
+					wg.Done()
+				case "ERROR":
+					t.Errorf("Received an error")
 				}
 			}
-		}()
-
-		wg.Wait()
-	})
-
-	// TestBuyAndCancelOrder verifies that a response is received after a client makes a client
-	// makes an order and cancels
-	t.Run("TestBuyAndCancelOrder", func(t *testing.T) {
-		_, _, client1, client2, factory1, factory2, _, ZRX, WETH := SetupTest()
-		m1, o1, err := factory1.NewOrderMessage(ZRX, 1, WETH, 1)
-		if err != nil {
-			t.Errorf("Error creating order message: %v", err)
 		}
+	}()
 
-		m2, _, err := factory2.NewCancelOrderMessage(o1)
-		if err != nil {
-			t.Errorf("Error creating cancel order message: %v", err)
-		}
+	wg.Wait()
+}
 
-		//We put a millisecond delay between both requests to ensure they are
-		//received in the same order for each test
-		client1.Requests <- m1
-		time.Sleep(time.Second)
-		client2.Requests <- m2
-		time.Sleep(time.Millisecond)
+func TestBuyAndCancelOrder(t *testing.T) {
+	_, _, client1, client2, factory1, factory2, _, ZRX, WETH := SetupTest()
+	m1, o1, err := factory1.NewOrderMessage(ZRX, 1, WETH, 1)
+	if err != nil {
+		t.Errorf("Error creating order message: %v", err)
+	}
 
-		time.Sleep(time.Second)
-		wg := sync.WaitGroup{}
-		wg.Add(2)
+	m2, _, err := factory2.NewCancelOrderMessage(o1)
+	if err != nil {
+		t.Errorf("Error creating cancel order message: %v", err)
+	}
 
-		go func() {
-			for {
-				select {
-				case l := <-client1.Logs:
-					switch l.MessageType {
-					case "ORDER_ADDED":
-						wg.Done()
-					case "ORDER_CANCELLED":
-						wg.Done()
-					case "ERROR":
-						t.Errorf("Received an error")
-					}
+	//We put a millisecond delay between both requests to ensure they are
+	//received in the same order for each test
+	client1.Requests <- m1
+	time.Sleep(time.Second)
+	client2.Requests <- m2
+	time.Sleep(time.Millisecond)
+
+	time.Sleep(time.Second)
+	wg := sync.WaitGroup{}
+	wg.Add(2)
+
+	go func() {
+		for {
+			select {
+			case l := <-client1.Logs:
+				switch l.MessageType {
+				case "ORDER_ADDED":
+					wg.Done()
+				case "ORDER_CANCELLED":
+					wg.Done()
+				case "ERROR":
+					t.Errorf("Received an error")
 				}
 			}
-		}()
+		}
+	}()
 
-		wg.Wait()
-	})
+	wg.Wait()
+}
 
-	// TestMatchOrder verifies that a response is received after two different client make
-	// orders that are expected to match
-	t.Run("TestMatchOrder", func(t *testing.T) {
-		_, _, client1, client2, factory1, factory2, _, ZRX, WETH := SetupTest()
-		m1, _, _ := factory1.NewOrderMessage(ZRX, 1, WETH, 1)
-		m2, _, _ := factory2.NewOrderMessage(WETH, 1, ZRX, 1)
+func TestMatchOrder(t *testing.T) {
+	_, _, client1, client2, factory1, factory2, _, ZRX, WETH := SetupTest()
+	m1, _, _ := factory1.NewOrderMessage(ZRX, 1e18, WETH, 1e18)
+	m2, _, _ := factory2.NewOrderMessage(WETH, 1e18, ZRX, 1e18)
 
-		//We put a millisecond delay between both requests to ensure they are
-		//received in the same order for each test
-		client1.Requests <- m1
-		time.Sleep(time.Millisecond)
-		client2.Requests <- m2
-		time.Sleep(time.Millisecond)
+	//We put a millisecond delay between both requests to ensure they are
+	//received in the same order for each test
+	client1.Requests <- m1
+	time.Sleep(time.Millisecond)
+	client2.Requests <- m2
+	time.Sleep(time.Millisecond)
 
-		wg := sync.WaitGroup{}
-		wg.Add(2)
+	wg := sync.WaitGroup{}
+	wg.Add(2)
 
-		go func() {
-			for {
-				select {
-				case l := <-client1.Logs:
-					switch l.MessageType {
-					case "ORDER_ADDED":
-						wg.Done()
-					case "ORDER_MATCHED":
-						wg.Done()
-					case "ERROR":
-						t.Errorf("Received an error")
-					}
+	go func() {
+		for {
+			select {
+			case l := <-client1.Logs:
+				switch l.MessageType {
+				case "ORDER_ADDED":
+					wg.Done()
+				case "ORDER_MATCHED":
+					wg.Done()
+				case "ERROR":
+					t.Errorf("Received an error")
 				}
 			}
-		}()
+		}
+	}()
 
-		wg.Wait()
-	})
+	wg.Wait()
 }
 
 // func TestBuyOrder(t *testing.T) {

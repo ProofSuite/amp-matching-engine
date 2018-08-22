@@ -7,8 +7,10 @@ import (
 	"time"
 
 	"encoding/json"
+
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/Proofsuite/amp-matching-engine/utils"
+	"github.com/Proofsuite/amp-matching-engine/utils/math"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/mgo.v2/bson"
@@ -28,9 +30,10 @@ func TestAddOrder(t *testing.T) {
 		QuoteToken:      common.HexToAddress("0x12459c951127e0c374ff9105dda097662a027093"),
 		BuyAmount:       big.NewInt(6000000000),
 		SellAmount:      big.NewInt(13800000000),
-		Price:           229999999,
-		Amount:          6000000000,
-		FilledAmount:    0,
+		Price:           big.NewInt(229999999),
+		PricePoint:      big.NewInt(229999999),
+		Amount:          big.NewInt(6000000000),
+		FilledAmount:    big.NewInt(0),
 		Status:          "NEW",
 		Side:            "SELL",
 		PairID:          bson.ObjectIdHex("537f700b537461b70c5f0000"),
@@ -59,7 +62,7 @@ func TestAddOrder(t *testing.T) {
 		t.Error(err)
 	} else {
 		for k, v := range rs {
-			assert.Equalf(t, utils.UintToPaddedString(o1.Price), k, "Expected sorted set value: %v got: %v", utils.UintToPaddedString(o1.Price), k)
+			assert.Equalf(t, utils.UintToPaddedString(o1.PricePoint.Int64()), k, "Expected sorted set value: %v got: %v", utils.UintToPaddedString(o1.PricePoint.Int64()), k)
 			assert.Equalf(t, 0.0, v, "Expected sorted set value: %v got: %v", 0, v)
 		}
 	}
@@ -78,14 +81,15 @@ func TestAddOrder(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	assert.JSONEqf(t, string(bytes), rse, "Expected value for key: %v, was: %s, but got: %v", ssKey, bytes, rse)
 
-	rse, err = getValue(e.redisConn, ssKey+"::book::"+utils.UintToPaddedString(o1.Price))
+	assert.JSONEqf(t, string(bytes), rse, "Expected value for key: %v, was: %s, but got: %v", ssKey, bytes, rse)
+	rse, err = getValue(e.redisConn, ssKey+"::book::"+utils.UintToPaddedString(o1.PricePoint.Int64()))
 	if err != nil {
 		t.Error(err)
 	}
 
-	assert.Equalf(t, strconv.FormatInt(o1.Amount, 10), rse, "Expected value for key: %v, was: %v, but got: %v", ssKey, o1.Amount, rse)
+	// Currently converting amount to int64. In the future, we need to use strings instead of int64
+	assert.Equalf(t, strconv.FormatInt(o1.Amount.Int64(), 10), rse, "Expected value for key: %v, was: %v, but got: %v", ssKey, o1.Amount, rse)
 
 	o2 := &types.Order{
 		ID:              bson.ObjectIdHex("537f700b537461b70c5f0000"),
@@ -97,9 +101,10 @@ func TestAddOrder(t *testing.T) {
 		QuoteToken:      common.HexToAddress("0x12459c951127e0c374ff9105dda097662a027093"),
 		BuyAmount:       big.NewInt(1000),
 		SellAmount:      big.NewInt(100),
-		Price:           6000000000,
-		Amount:          229999999,
-		FilledAmount:    1000000000,
+		Price:           big.NewInt(6000000000),
+		PricePoint:      big.NewInt(6000000000),
+		Amount:          big.NewInt(229999999),
+		FilledAmount:    big.NewInt(1000000000),
 		Status:          "PARTIAL_FILLED",
 		Side:            "BUY",
 		PairID:          bson.ObjectIdHex("537f700b537461b70c5f0000"),
@@ -128,12 +133,12 @@ func TestAddOrder(t *testing.T) {
 	} else {
 		var matched = false
 		for k, v := range rs {
-			if utils.UintToPaddedString(o2.Price) == k && v == 0.0 {
+			if utils.UintToPaddedString(o2.PricePoint.Int64()) == k && v == 0.0 {
 				matched = true
 			}
 		}
 		if !matched {
-			t.Errorf("Expected sorted set value: %v", utils.UintToPaddedString(o2.Price))
+			t.Errorf("Expected sorted set value: %v", utils.UintToPaddedString(o2.PricePoint.Int64()))
 		}
 	}
 
@@ -173,9 +178,10 @@ func TestCancelOrder(t *testing.T) {
 		QuoteToken:      common.HexToAddress("0x12459c951127e0c374ff9105dda097662a027093"),
 		BuyAmount:       big.NewInt(6000000000),
 		SellAmount:      big.NewInt(13800000000),
-		Price:           229999999,
-		Amount:          6000000000,
-		FilledAmount:    0,
+		Price:           big.NewInt(229999999),
+		PricePoint:      big.NewInt(229999999),
+		Amount:          big.NewInt(6000000000),
+		FilledAmount:    big.NewInt(0),
 		Status:          "NEW",
 		Side:            "SELL",
 		PairID:          bson.ObjectIdHex("537f700b537461b70c5f0000"),
@@ -207,9 +213,10 @@ func TestCancelOrder(t *testing.T) {
 		QuoteToken:      common.HexToAddress("0x12459c951127e0c374ff9105dda097662a027093"),
 		BuyAmount:       big.NewInt(6000000000),
 		SellAmount:      big.NewInt(13800000000),
-		Price:           229999999,
-		Amount:          6000000000,
-		FilledAmount:    0,
+		Price:           big.NewInt(229999999),
+		PricePoint:      big.NewInt(229999999),
+		Amount:          big.NewInt(6000000000),
+		FilledAmount:    big.NewInt(0),
 		Status:          "PARTIAL_FILLED",
 		Side:            "SELL",
 		PairID:          bson.ObjectIdHex("537f700b537461b70c5f0000"),
@@ -255,7 +262,7 @@ func TestCancelOrder(t *testing.T) {
 		t.Error(err)
 	} else {
 		for k, v := range rs {
-			assert.Equalf(t, utils.UintToPaddedString(o2.Price), k, "Expected sorted set value: %v got: %v", utils.UintToPaddedString(o2.Price), k)
+			assert.Equalf(t, utils.UintToPaddedString(o2.PricePoint.Int64()), k, "Expected sorted set value: %v got: %v", utils.UintToPaddedString(o2.PricePoint.Int64()), k)
 			assert.Equalf(t, 0.0, v, "Expected sorted set value: %v got: %v", 0, v)
 		}
 	}
@@ -274,11 +281,13 @@ func TestCancelOrder(t *testing.T) {
 		t.Errorf("Key : %v expected to be deleted but key exists", list1Key+"::"+o2.Hash.Hex())
 	}
 
-	rse, err := getValue(e.redisConn, ss1Key+"::book::"+utils.UintToPaddedString(o2.Price))
+	rse, err := getValue(e.redisConn, ss1Key+"::book::"+utils.UintToPaddedString(o2.PricePoint.Int64()))
 	if err != nil {
 		t.Error(err)
 	}
-	assert.Equalf(t, strconv.FormatInt(o1.Amount, 10), rse, "Expected value for key: %v, was: %v, but got: %v", ss1Key, o2.Amount-o2.FilledAmount, rse)
+
+	// Currently converting amount to int64. In the future, we need to use strings instead of int64
+	assert.Equalf(t, strconv.FormatInt(o1.Amount.Int64(), 10), rse, "Expected value for key: %v, was: %v, but got: %v", ss1Key, o2.Amount.Int64()-o2.FilledAmount.Int64(), rse)
 
 	expectedResponse.Order = o1
 	expectedResponse.Order.Status = "CANCELLED"
@@ -306,7 +315,7 @@ func TestCancelOrder(t *testing.T) {
 		t.Errorf("Key : %v expected to be deleted but key exists", ssKey)
 	}
 
-	if exists(e.redisConn, ssKey+"::book::"+utils.UintToPaddedString(o1.Price)) {
+	if exists(e.redisConn, ssKey+"::book::"+utils.UintToPaddedString(o1.PricePoint.Int64())) {
 		t.Errorf("Key : %v expected to be deleted but key exists", ssKey)
 	}
 }
@@ -325,9 +334,10 @@ func TestRecoverOrders(t *testing.T) {
 		QuoteToken:      common.HexToAddress("0x1888a8db0b7db59413ce07150b3373972bf818d3"),
 		BuyAmount:       big.NewInt(6000000000),
 		SellAmount:      big.NewInt(13800000000),
-		Price:           229999999,
-		Amount:          6000000000,
-		FilledAmount:    1000000000,
+		Price:           big.NewInt(229999999),
+		PricePoint:      big.NewInt(229999999),
+		Amount:          big.NewInt(6000000000),
+		FilledAmount:    big.NewInt(1000000000),
 		Status:          "PARTIAL_FILLED",
 		Side:            "SELL",
 		PairID:          bson.ObjectIdHex("537f700b537461b70c5f0000"),
@@ -348,7 +358,7 @@ func TestRecoverOrders(t *testing.T) {
 
 	expectedOrder1 := *o1
 	expectedOrder1.Status = "OPEN"
-	expectedOrder1.FilledAmount = 0
+	expectedOrder1.FilledAmount = big.NewInt(0)
 	expectedOrder1Json, _ := expectedOrder1.MarshalJSON()
 
 	e.addOrder(o1)
@@ -363,9 +373,10 @@ func TestRecoverOrders(t *testing.T) {
 		QuoteToken:      common.HexToAddress("0x1888a8db0b7db59413ce07150b3373972bf818d3"),
 		BuyAmount:       big.NewInt(6000000000),
 		SellAmount:      big.NewInt(13800000000),
-		Price:           229999999,
-		Amount:          6000000000,
-		FilledAmount:    6000000000,
+		Price:           big.NewInt(229999999),
+		PricePoint:      big.NewInt(229999999),
+		Amount:          big.NewInt(6000000000),
+		FilledAmount:    big.NewInt(6000000000),
 		Status:          "FILLED",
 		Side:            "SELL",
 		PairID:          bson.ObjectIdHex("537f700b537461b70c5f0000"),
@@ -386,7 +397,7 @@ func TestRecoverOrders(t *testing.T) {
 
 	expectedOrder2 := *o2
 	expectedOrder2.Status = "OPEN"
-	expectedOrder2.FilledAmount = 0
+	expectedOrder2.FilledAmount = big.NewInt(0)
 	expectedOrder2Json, _ := expectedOrder2.MarshalJSON()
 
 	e.addOrder(o2)
@@ -401,9 +412,10 @@ func TestRecoverOrders(t *testing.T) {
 		QuoteToken:      common.HexToAddress("0x1888a8db0b7db59413ce07150b3373972bf818d3"),
 		BuyAmount:       big.NewInt(6000000000),
 		SellAmount:      big.NewInt(13800000000),
-		Price:           229999999,
-		Amount:          6000000000,
-		FilledAmount:    6000000000,
+		Price:           big.NewInt(229999999),
+		PricePoint:      big.NewInt(229999999),
+		Amount:          big.NewInt(6000000000),
+		FilledAmount:    big.NewInt(6000000000),
 		Status:          "FILLED",
 		Side:            "SELL",
 		PairID:          bson.ObjectIdHex("537f700b537461b70c5f0000"),
@@ -424,20 +436,20 @@ func TestRecoverOrders(t *testing.T) {
 
 	expectedOrder3 := *o3
 	expectedOrder3.Status = "PARTIAL_FILLED"
-	expectedOrder3.FilledAmount = 4000000000
+	expectedOrder3.FilledAmount = big.NewInt(4000000000)
 	expectedOrder3Json, _ := expectedOrder3.MarshalJSON()
 
 	e.addOrder(o3)
 
 	recoverOrders := []*FillOrder{
 		&FillOrder{
-			Amount: 1000000000,
+			Amount: big.NewInt(1000000000),
 			Order:  o1,
 		}, &FillOrder{
-			Amount: 6000000000,
+			Amount: big.NewInt(6000000000),
 			Order:  o2,
 		}, &FillOrder{
-			Amount: 2000000000,
+			Amount: big.NewInt(2000000000),
 			Order:  o3,
 		},
 	}
@@ -458,7 +470,7 @@ func TestRecoverOrders(t *testing.T) {
 		t.Error(err)
 	} else {
 		for k, v := range rs {
-			assert.Equalf(t, utils.UintToPaddedString(o1.Price), k, "Expected sorted set value: %v got: %v", utils.UintToPaddedString(o2.Price), k)
+			assert.Equalf(t, utils.UintToPaddedString(o1.PricePoint.Int64()), k, "Expected sorted set value: %v got: %v", utils.UintToPaddedString(o2.PricePoint.Int64()), k)
 			assert.Equalf(t, 0.0, v, "Expected sorted set value: %v got: %v", 0, v)
 		}
 	}
@@ -497,12 +509,13 @@ func TestRecoverOrders(t *testing.T) {
 
 	assert.JSONEqf(t, string(expectedOrder3Json), rse, "Expected value for key: %v, was: %s, but got: %v", list2Key+"::"+o3.Hash.Hex(), expectedOrder3Json, rse)
 
-	rse, err = getValue(e.redisConn, ssKey+"::book::"+utils.UintToPaddedString(o1.Price))
+	rse, err = getValue(e.redisConn, ssKey+"::book::"+utils.UintToPaddedString(o1.PricePoint.Int64()))
 	if err != nil {
 		t.Error(err)
 	}
 
-	assert.Equalf(t, strconv.FormatInt(o1.Amount+o2.Amount+o3.Amount-o3.FilledAmount, 10), rse, "Expected value for key: %v, was: %v, but got: %v", ssKey, o1.Amount+o2.Amount+o3.Amount, rse)
+	expectedAmt := o1.Amount.Int64() + o2.Amount.Int64() + o3.Amount.Int64() - o3.FilledAmount.Int64()
+	assert.Equalf(t, strconv.FormatInt(expectedAmt, 10), rse, "Expected value for key: %v, was: %v, but got: %v", ssKey, expectedAmt, rse)
 }
 
 func TestSellOrder(t *testing.T) {
@@ -519,9 +532,10 @@ func TestSellOrder(t *testing.T) {
 		QuoteToken:      common.HexToAddress("0x1888a8db0b7db59413ce07150b3373972bf818d3"),
 		BuyAmount:       big.NewInt(6000000000),
 		SellAmount:      big.NewInt(13800000000),
-		Price:           229999999,
-		Amount:          6000000000,
-		FilledAmount:    0,
+		Price:           big.NewInt(229999999),
+		PricePoint:      big.NewInt(229999999),
+		Amount:          big.NewInt(6000000000),
+		FilledAmount:    big.NewInt(0),
 		Status:          "NEW",
 		Side:            "SELL",
 		PairID:          bson.ObjectIdHex("537f700b537461b70c5f0000"),
@@ -571,9 +585,10 @@ func TestBuyOrder(t *testing.T) {
 		QuoteToken:      common.HexToAddress("0x1888a8db0b7db59413ce07150b3373972bf818d3"),
 		BuyAmount:       big.NewInt(6000000000),
 		SellAmount:      big.NewInt(13800000000),
-		Price:           229999999,
-		Amount:          6000000000,
-		FilledAmount:    0,
+		Price:           big.NewInt(229999999),
+		PricePoint:      big.NewInt(229999999),
+		Amount:          big.NewInt(6000000000),
+		FilledAmount:    big.NewInt(0),
 		Status:          "NEW",
 		Side:            "BUY",
 		PairID:          bson.ObjectIdHex("537f700b537461b70c5f0000"),
@@ -623,9 +638,10 @@ func TestFillOrder(t *testing.T) {
 		QuoteToken:      common.HexToAddress("0x1888a8db0b7db59413ce07150b3373972bf818d3"),
 		BuyAmount:       big.NewInt(6000000000),
 		SellAmount:      big.NewInt(13800000000),
-		Price:           229999999,
-		Amount:          6000000000,
-		FilledAmount:    0,
+		Price:           big.NewInt(229999999),
+		PricePoint:      big.NewInt(229999999),
+		Amount:          big.NewInt(6000000000),
+		FilledAmount:    big.NewInt(0),
 		Status:          "NEW",
 		Side:            "SELL",
 		PairID:          bson.ObjectIdHex("537f700b537461b70c5f0000"),
@@ -643,6 +659,7 @@ func TestFillOrder(t *testing.T) {
 		CreatedAt: time.Unix(1405544146, 0),
 		UpdatedAt: time.Unix(1405544146, 0),
 	}
+
 	buyOrder := &types.Order{
 		ID:              bson.ObjectIdHex("537f700b537461b70c5f0000"),
 		UserAddress:     common.HexToAddress("0x7a9f3cd060ab180f36c17fe6bdf9974f577d77aa"),
@@ -651,9 +668,10 @@ func TestFillOrder(t *testing.T) {
 		QuoteToken:      common.HexToAddress("0x1888a8db0b7db59413ce07150b3373972bf818d3"),
 		BuyAmount:       big.NewInt(6000000000),
 		SellAmount:      big.NewInt(13800000000),
-		Price:           229999999,
-		Amount:          6000000000,
-		FilledAmount:    0,
+		Price:           big.NewInt(229999999),
+		PricePoint:      big.NewInt(229999999),
+		Amount:          big.NewInt(6000000000),
+		FilledAmount:    big.NewInt(0),
 		Status:          "NEW",
 		Side:            "BUY",
 		PairID:          bson.ObjectIdHex("537f700b537461b70c5f0000"),
@@ -698,7 +716,7 @@ func TestFillOrder(t *testing.T) {
 	responseSO.FilledAmount = responseSO.Amount
 	responseSO.Status = "FILLED"
 	trade := &types.Trade{
-		Amount:       big.NewInt(responseBO.Amount),
+		Amount:       responseBO.Amount,
 		Price:        buyOrder.Price,
 		BaseToken:    buyOrder.BaseToken,
 		QuoteToken:   buyOrder.QuoteToken,
@@ -743,9 +761,10 @@ func TestFillOrder1(t *testing.T) {
 		QuoteToken:      common.HexToAddress("0x1888a8db0b7db59413ce07150b3373972bf818d3"),
 		BuyAmount:       big.NewInt(6000000000),
 		SellAmount:      big.NewInt(13800000000),
-		Price:           229999999,
-		Amount:          6000000000,
-		FilledAmount:    0,
+		Price:           big.NewInt(229999999),
+		PricePoint:      big.NewInt(229999999),
+		Amount:          big.NewInt(6000000000),
+		FilledAmount:    big.NewInt(0),
 		Status:          "NEW",
 		Side:            "SELL",
 		PairID:          bson.ObjectIdHex("537f700b537461b70c5f0000"),
@@ -772,9 +791,10 @@ func TestFillOrder1(t *testing.T) {
 		QuoteToken:      common.HexToAddress("0x1888a8db0b7db59413ce07150b3373972bf818d3"),
 		BuyAmount:       big.NewInt(6000000000),
 		SellAmount:      big.NewInt(13800000000),
-		Price:           229999999,
-		Amount:          6000000000,
-		FilledAmount:    0,
+		Price:           big.NewInt(229999999),
+		PricePoint:      big.NewInt(229999999),
+		Amount:          big.NewInt(6000000000),
+		FilledAmount:    big.NewInt(0),
 		Status:          "NEW",
 		Side:            "BUY",
 		PairID:          bson.ObjectIdHex("537f700b537461b70c5f0000"),
@@ -820,7 +840,7 @@ func TestFillOrder1(t *testing.T) {
 	responseBO.Status = "FILLED"
 
 	trade := &types.Trade{
-		Amount:       big.NewInt(responseSO.Amount),
+		Amount:       responseSO.Amount,
 		Price:        sellOrder.Price,
 		BaseToken:    sellOrder.BaseToken,
 		QuoteToken:   sellOrder.QuoteToken,
@@ -865,9 +885,10 @@ func TestMultiMatchOrder(t *testing.T) {
 		QuoteToken:      common.HexToAddress("0x1888a8db0b7db59413ce07150b3373972bf818d3"),
 		BuyAmount:       big.NewInt(6000000000),
 		SellAmount:      big.NewInt(13800000000),
-		Price:           229999999,
-		Amount:          6000000000,
-		FilledAmount:    0,
+		Price:           big.NewInt(229999999),
+		PricePoint:      big.NewInt(229999999),
+		Amount:          big.NewInt(6000000000),
+		FilledAmount:    big.NewInt(0),
 		Status:          "NEW",
 		Side:            "SELL",
 		PairID:          bson.ObjectIdHex("537f700b537461b70c5f0000"),
@@ -885,9 +906,10 @@ func TestMultiMatchOrder(t *testing.T) {
 		CreatedAt: time.Unix(1405544146, 0),
 		UpdatedAt: time.Unix(1405544146, 0),
 	}
+
 	sellOrder1 := sellOrder
-	sellOrder1.Price += 10
-	sellOrder1.Nonce = sellOrder1.Nonce.Add(sellOrder1.Nonce, big.NewInt(1))
+	sellOrder1.PricePoint = math.Add(sellOrder.PricePoint, big.NewInt(10))
+	sellOrder1.Nonce = math.Add(sellOrder.Nonce, big.NewInt(1))
 	sellOrder1.Hash = sellOrder1.ComputeHash()
 
 	sellOrder2 := sellOrder1
@@ -906,9 +928,10 @@ func TestMultiMatchOrder(t *testing.T) {
 		QuoteToken:      common.HexToAddress("0x1888a8db0b7db59413ce07150b3373972bf818d3"),
 		BuyAmount:       big.NewInt(6000000000),
 		SellAmount:      big.NewInt(13800000000),
-		Price:           229999999,
-		Amount:          6000000000,
-		FilledAmount:    0,
+		Price:           big.NewInt(229999999),
+		PricePoint:      big.NewInt(229999999),
+		Amount:          big.NewInt(6000000000),
+		FilledAmount:    big.NewInt(0),
 		Status:          "NEW",
 		Side:            "BUY",
 		PairID:          bson.ObjectIdHex("537f700b537461b70c5f0000"),
@@ -926,8 +949,9 @@ func TestMultiMatchOrder(t *testing.T) {
 		CreatedAt: time.Unix(1405544146, 0),
 		UpdatedAt: time.Unix(1405544146, 0),
 	}
-	buyOrder.Price += 10
-	buyOrder.Amount = 3 * buyOrder.Amount
+
+	buyOrder.PricePoint = math.Add(buyOrder.PricePoint, big.NewInt(10))
+	buyOrder.Amount = math.Mul(buyOrder.Amount, big.NewInt(3))
 
 	// Test Case1: Send sellOrder first
 	responseBO := buyOrder
@@ -945,8 +969,8 @@ func TestMultiMatchOrder(t *testing.T) {
 	responseSO2.Status = "FILLED"
 
 	trade := &types.Trade{
-		Amount:       big.NewInt(responseSO.Amount),
-		Price:        buyOrder.Price,
+		Amount:       responseSO.Amount,
+		Price:        buyOrder.PricePoint,
 		BaseToken:    buyOrder.BaseToken,
 		QuoteToken:   buyOrder.QuoteToken,
 		OrderHash:    sellOrder.Hash,
@@ -959,10 +983,12 @@ func TestMultiMatchOrder(t *testing.T) {
 		TradeNonce:   big.NewInt(0),
 		Signature:    &types.Signature{},
 	}
+
 	trade.Hash = trade.ComputeHash()
+
 	trade1 := &types.Trade{
-		Amount:       big.NewInt(responseSO1.Amount),
-		Price:        buyOrder.Price,
+		Amount:       responseSO1.Amount,
+		Price:        buyOrder.PricePoint,
 		BaseToken:    buyOrder.BaseToken,
 		QuoteToken:   buyOrder.QuoteToken,
 		OrderHash:    sellOrder1.Hash,
@@ -975,10 +1001,12 @@ func TestMultiMatchOrder(t *testing.T) {
 		TradeNonce:   big.NewInt(0),
 		Signature:    &types.Signature{},
 	}
+
 	trade1.Hash = trade1.ComputeHash()
+
 	trade2 := &types.Trade{
-		Amount:       big.NewInt(responseSO2.Amount),
-		Price:        buyOrder.Price,
+		Amount:       responseSO2.Amount,
+		Price:        buyOrder.PricePoint,
 		BaseToken:    buyOrder.BaseToken,
 		QuoteToken:   buyOrder.QuoteToken,
 		OrderHash:    sellOrder2.Hash,
@@ -991,6 +1019,7 @@ func TestMultiMatchOrder(t *testing.T) {
 		TradeNonce:   big.NewInt(0),
 		Signature:    &types.Signature{},
 	}
+
 	trade2.Hash = trade2.ComputeHash()
 
 	expectedResponse := &Response{
@@ -1009,7 +1038,6 @@ func TestMultiMatchOrder(t *testing.T) {
 
 	resBytes, _ := json.Marshal(response)
 	assert.JSONEq(t, string(erBytes), string(resBytes))
-
 }
 
 func TestMultiMatchOrder1(t *testing.T) {
@@ -1023,9 +1051,10 @@ func TestMultiMatchOrder1(t *testing.T) {
 		QuoteToken:      common.HexToAddress("0x1888a8db0b7db59413ce07150b3373972bf818d3"),
 		BuyAmount:       big.NewInt(6000000000),
 		SellAmount:      big.NewInt(13800000000),
-		Price:           229999999,
-		Amount:          6000000000,
-		FilledAmount:    0,
+		Price:           big.NewInt(229999999),
+		PricePoint:      big.NewInt(229999999),
+		Amount:          big.NewInt(6000000000),
+		FilledAmount:    big.NewInt(0),
 		Status:          "NEW",
 		Side:            "BUY",
 		PairID:          bson.ObjectIdHex("537f700b537461b70c5f0000"),
@@ -1045,13 +1074,14 @@ func TestMultiMatchOrder1(t *testing.T) {
 	}
 
 	buyOrder1 := buyOrder
-	buyOrder1.Price -= 10
-	buyOrder1.Nonce = buyOrder1.Nonce.Add(buyOrder1.Nonce, big.NewInt(1))
+	buyOrder1.PricePoint = math.Sub(buyOrder1.Price, big.NewInt(10))
+	buyOrder1.Nonce = math.Add(buyOrder1.Nonce, big.NewInt(1))
 	buyOrder1.Hash = buyOrder1.ComputeHash()
 
 	buyOrder2 := buyOrder1
-	buyOrder2.Nonce = buyOrder2.Nonce.Add(buyOrder2.Nonce, big.NewInt(1))
+	buyOrder2.Nonce = math.Add(buyOrder2.Nonce, big.NewInt(1))
 	buyOrder2.Hash = buyOrder2.ComputeHash()
+
 	e.buyOrder(&buyOrder)
 	e.buyOrder(&buyOrder1)
 	e.buyOrder(&buyOrder2)
@@ -1064,9 +1094,10 @@ func TestMultiMatchOrder1(t *testing.T) {
 		QuoteToken:      common.HexToAddress("0x1888a8db0b7db59413ce07150b3373972bf818d3"),
 		BuyAmount:       big.NewInt(6000000000),
 		SellAmount:      big.NewInt(13800000000),
-		Price:           229999999,
-		Amount:          6000000000,
-		FilledAmount:    0,
+		Price:           big.NewInt(229999999),
+		PricePoint:      big.NewInt(229999999),
+		Amount:          big.NewInt(6000000000),
+		FilledAmount:    big.NewInt(0),
 		Status:          "NEW",
 		Side:            "SELL",
 		PairID:          bson.ObjectIdHex("537f700b537461b70c5f0000"),
@@ -1085,8 +1116,8 @@ func TestMultiMatchOrder1(t *testing.T) {
 		UpdatedAt: time.Unix(1405544146, 0),
 	}
 
-	sellOrder.Price -= 10
-	sellOrder.Amount = 3 * sellOrder.Amount
+	sellOrder.PricePoint = math.Sub(sellOrder.Price, big.NewInt(10))
+	sellOrder.Amount = math.Mul(sellOrder.Amount, big.NewInt(3))
 
 	// Test Case2: Send buyOrder first
 	responseSO := sellOrder
@@ -1104,8 +1135,8 @@ func TestMultiMatchOrder1(t *testing.T) {
 	responseBO2.Status = "FILLED"
 
 	trade := &types.Trade{
-		Amount:       big.NewInt(buyOrder.Amount),
-		Price:        sellOrder.Price,
+		Amount:       buyOrder.Amount,
+		Price:        sellOrder.PricePoint,
 		BaseToken:    sellOrder.BaseToken,
 		QuoteToken:   sellOrder.QuoteToken,
 		OrderHash:    buyOrder.Hash,
@@ -1118,10 +1149,12 @@ func TestMultiMatchOrder1(t *testing.T) {
 		TradeNonce:   big.NewInt(0),
 		Signature:    &types.Signature{},
 	}
+
 	trade.Hash = trade.ComputeHash()
+
 	trade1 := &types.Trade{
-		Amount:       big.NewInt(buyOrder1.Amount),
-		Price:        sellOrder.Price,
+		Amount:       buyOrder1.Amount,
+		Price:        sellOrder.PricePoint,
 		BaseToken:    sellOrder.BaseToken,
 		QuoteToken:   sellOrder.QuoteToken,
 		OrderHash:    buyOrder1.Hash,
@@ -1134,10 +1167,12 @@ func TestMultiMatchOrder1(t *testing.T) {
 		TradeNonce:   big.NewInt(0),
 		Signature:    &types.Signature{},
 	}
+
 	trade1.Hash = trade1.ComputeHash()
+
 	trade2 := &types.Trade{
-		Amount:       big.NewInt(buyOrder2.Amount),
-		Price:        sellOrder.Price,
+		Amount:       buyOrder2.Amount,
+		Price:        sellOrder.PricePoint,
 		BaseToken:    sellOrder.BaseToken,
 		QuoteToken:   sellOrder.QuoteToken,
 		OrderHash:    buyOrder2.Hash,
@@ -1185,9 +1220,10 @@ func TestPartialMatchOrder(t *testing.T) {
 		QuoteToken:      common.HexToAddress("0x1888a8db0b7db59413ce07150b3373972bf818d3"),
 		BuyAmount:       big.NewInt(6000000000),
 		SellAmount:      big.NewInt(13800000000),
-		Price:           229999999,
-		Amount:          6000000000,
-		FilledAmount:    0,
+		Price:           big.NewInt(229999999),
+		PricePoint:      big.NewInt(229999999),
+		Amount:          big.NewInt(6000000000),
+		FilledAmount:    big.NewInt(0),
 		Status:          "NEW",
 		Side:            "SELL",
 		PairID:          bson.ObjectIdHex("537f700b537461b70c5f0000"),
@@ -1205,6 +1241,7 @@ func TestPartialMatchOrder(t *testing.T) {
 		CreatedAt: time.Unix(1405544146, 0),
 		UpdatedAt: time.Unix(1405544146, 0),
 	}
+
 	sampleBuyOrder := types.Order{
 		ID:              bson.ObjectIdHex("537f700b537461b70c5f0000"),
 		UserAddress:     common.HexToAddress("0x7a9f3cd060ab180f36c17fe6bdf9974f577d77aa"),
@@ -1213,9 +1250,10 @@ func TestPartialMatchOrder(t *testing.T) {
 		QuoteToken:      common.HexToAddress("0x1888a8db0b7db59413ce07150b3373972bf818d3"),
 		BuyAmount:       big.NewInt(6000000000),
 		SellAmount:      big.NewInt(13800000000),
-		Price:           229999999,
-		Amount:          6000000000,
-		FilledAmount:    0,
+		Price:           big.NewInt(229999999),
+		PricePoint:      big.NewInt(229999999),
+		Amount:          big.NewInt(6000000000),
+		FilledAmount:    big.NewInt(0),
 		Status:          "NEW",
 		Side:            "BUY",
 		PairID:          bson.ObjectIdHex("537f700b537461b70c5f0000"),
@@ -1233,20 +1271,22 @@ func TestPartialMatchOrder(t *testing.T) {
 		CreatedAt: time.Unix(1405544146, 0),
 		UpdatedAt: time.Unix(1405544146, 0),
 	}
+
 	sellOrder := sampleSellOrder
 	buyOrder := sampleBuyOrder
 	sellOrder1 := sampleSellOrder
-	sellOrder1.Price += 10
-	sellOrder1.Nonce = sellOrder1.Nonce.Add(sellOrder1.Nonce, big.NewInt(1))
+
+	sellOrder1.PricePoint = math.Add(sellOrder1.PricePoint, big.NewInt(10))
+	sellOrder1.Nonce = math.Add(sellOrder1.Nonce, big.NewInt(1))
 	sellOrder1.Hash = sellOrder1.ComputeHash()
 
 	sellOrder2 := sellOrder1
-	sellOrder2.Nonce = sellOrder2.Nonce.Add(sellOrder2.Nonce, big.NewInt(1))
+	sellOrder2.Nonce = math.Add(sellOrder2.Nonce, big.NewInt(1))
 	sellOrder2.Hash = sellOrder2.ComputeHash()
 
 	sellOrder3 := sellOrder1
-	sellOrder3.Price += 10
-	sellOrder3.Amount = 2 * sellOrder3.Amount
+	sellOrder3.PricePoint = math.Add(sellOrder3.PricePoint, big.NewInt(10))
+	sellOrder3.Amount = math.Mul(sellOrder3.Amount, big.NewInt(2))
 
 	sellOrder3.Nonce = sellOrder3.Nonce.Add(sellOrder3.Nonce, big.NewInt(1))
 	sellOrder3.Hash = sellOrder3.ComputeHash()
@@ -1256,14 +1296,13 @@ func TestPartialMatchOrder(t *testing.T) {
 	e.sellOrder(&sellOrder2)
 	e.sellOrder(&sellOrder3)
 
-	buyOrder.Price += 20
-	buyOrder.Amount = 4 * buyOrder.Amount
+	buyOrder.PricePoint = math.Add(buyOrder.PricePoint, big.NewInt(20))
+	buyOrder.Amount = math.Mul(buyOrder.Amount, big.NewInt(4))
 
 	// Test Case1: Send sellOrder first
 	responseBO := buyOrder
 	responseBO.FilledAmount = buyOrder.Amount
 	responseBO.Status = "FILLED"
-
 	responseSO := sellOrder
 	responseSO.FilledAmount = responseSO.Amount
 	responseSO.Status = "FILLED"
@@ -1274,12 +1313,12 @@ func TestPartialMatchOrder(t *testing.T) {
 	responseSO2.FilledAmount = responseSO2.Amount
 	responseSO2.Status = "FILLED"
 	responseSO3 := sellOrder3
-	responseSO3.FilledAmount = responseSO3.Amount / 2
+	responseSO3.FilledAmount = math.Div(responseSO3.Amount, big.NewInt(2))
 	responseSO3.Status = "PARTIAL_FILLED"
 
 	trade := &types.Trade{
-		Amount:       big.NewInt(responseSO.FilledAmount),
-		Price:        buyOrder.Price,
+		Amount:       responseSO.FilledAmount,
+		Price:        buyOrder.PricePoint,
 		BaseToken:    buyOrder.BaseToken,
 		QuoteToken:   buyOrder.QuoteToken,
 		OrderHash:    sellOrder.Hash,
@@ -1295,8 +1334,8 @@ func TestPartialMatchOrder(t *testing.T) {
 	trade.Hash = trade.ComputeHash()
 
 	trade1 := &types.Trade{
-		Amount:       big.NewInt(responseSO1.FilledAmount),
-		Price:        buyOrder.Price,
+		Amount:       responseSO1.FilledAmount,
+		Price:        buyOrder.PricePoint,
 		BaseToken:    buyOrder.BaseToken,
 		QuoteToken:   buyOrder.QuoteToken,
 		OrderHash:    sellOrder1.Hash,
@@ -1312,8 +1351,8 @@ func TestPartialMatchOrder(t *testing.T) {
 	trade1.Hash = trade1.ComputeHash()
 
 	trade2 := &types.Trade{
-		Amount:       big.NewInt(responseSO2.FilledAmount),
-		Price:        buyOrder.Price,
+		Amount:       responseSO2.FilledAmount,
+		Price:        buyOrder.PricePoint,
 		BaseToken:    buyOrder.BaseToken,
 		QuoteToken:   buyOrder.QuoteToken,
 		OrderHash:    sellOrder2.Hash,
@@ -1329,8 +1368,8 @@ func TestPartialMatchOrder(t *testing.T) {
 	trade2.Hash = trade2.ComputeHash()
 
 	trade3 := &types.Trade{
-		Amount:       big.NewInt(responseSO3.FilledAmount),
-		Price:        buyOrder.Price,
+		Amount:       responseSO3.FilledAmount,
+		Price:        buyOrder.PricePoint,
 		BaseToken:    buyOrder.BaseToken,
 		QuoteToken:   buyOrder.QuoteToken,
 		OrderHash:    sellOrder3.Hash,
@@ -1368,21 +1407,21 @@ func TestPartialMatchOrder(t *testing.T) {
 
 	// Try matching remaining sellOrder with bigger buyOrder amount (partial filled buy Order)
 	buyOrder = sampleBuyOrder
-	buyOrder.Price += 20
-	buyOrder.Amount = 2 * buyOrder.Amount
+	buyOrder.PricePoint = math.Add(buyOrder.PricePoint, big.NewInt(20))
+	buyOrder.Amount = math.Mul(buyOrder.Amount, big.NewInt(2))
 
 	responseBO = buyOrder
 	responseBO.Status = "PARTIAL_FILLED"
-	responseBO.FilledAmount = buyOrder.Amount / 2
+	responseBO.FilledAmount = math.Div(buyOrder.Amount, big.NewInt(2))
 
 	remOrder := sampleBuyOrder
-	remOrder.Price += 20
+	remOrder.PricePoint = math.Add(remOrder.PricePoint, big.NewInt(20))
 
 	responseSO3.Status = "FILLED"
 	responseSO3.FilledAmount = responseSO3.Amount
 	trade4 := &types.Trade{
-		Amount:       big.NewInt(responseBO.FilledAmount),
-		Price:        buyOrder.Price,
+		Amount:       responseBO.FilledAmount,
+		Price:        buyOrder.PricePoint,
 		BaseToken:    buyOrder.BaseToken,
 		QuoteToken:   buyOrder.QuoteToken,
 		OrderHash:    sellOrder3.Hash,
@@ -1425,9 +1464,10 @@ func TestPartialMatchOrder1(t *testing.T) {
 		QuoteToken:      common.HexToAddress("0x1888a8db0b7db59413ce07150b3373972bf818d3"),
 		BuyAmount:       big.NewInt(6000000000),
 		SellAmount:      big.NewInt(13800000000),
-		Price:           229999999,
-		Amount:          6000000000,
-		FilledAmount:    0,
+		Price:           big.NewInt(229999999),
+		PricePoint:      big.NewInt(229999999),
+		Amount:          big.NewInt(6000000000),
+		FilledAmount:    big.NewInt(0),
 		Status:          "NEW",
 		Side:            "SELL",
 		PairID:          bson.ObjectIdHex("537f700b537461b70c5f0000"),
@@ -1453,9 +1493,10 @@ func TestPartialMatchOrder1(t *testing.T) {
 		QuoteToken:      common.HexToAddress("0x1888a8db0b7db59413ce07150b3373972bf818d3"),
 		BuyAmount:       big.NewInt(6000000000),
 		SellAmount:      big.NewInt(13800000000),
-		Price:           229999999,
-		Amount:          6000000000,
-		FilledAmount:    0,
+		PricePoint:      big.NewInt(229999999),
+		Price:           big.NewInt(229999999),
+		Amount:          big.NewInt(6000000000),
+		FilledAmount:    big.NewInt(0),
 		Status:          "NEW",
 		Side:            "BUY",
 		PairID:          bson.ObjectIdHex("537f700b537461b70c5f0000"),
@@ -1473,21 +1514,22 @@ func TestPartialMatchOrder1(t *testing.T) {
 		CreatedAt: time.Unix(1405544146, 0),
 		UpdatedAt: time.Unix(1405544146, 0),
 	}
+
 	sellOrder := sampleSellOrder
 	buyOrder := sampleBuyOrder
 
 	buyOrder1 := sampleBuyOrder
-	buyOrder1.Price -= 10
-	buyOrder1.Nonce = buyOrder1.Nonce.Add(buyOrder1.Nonce, big.NewInt(1))
+	buyOrder1.PricePoint = math.Sub(buyOrder1.PricePoint, big.NewInt(10))
+	buyOrder1.Nonce = math.Add(buyOrder1.Nonce, big.NewInt(1))
 	buyOrder1.Hash = buyOrder1.ComputeHash()
 
 	buyOrder2 := buyOrder1
-	buyOrder2.Nonce = buyOrder2.Nonce.Add(buyOrder2.Nonce, big.NewInt(1))
+	buyOrder2.Nonce = math.Add(buyOrder2.Nonce, big.NewInt(1))
 	buyOrder2.Hash = buyOrder2.ComputeHash()
 
 	buyOrder3 := buyOrder1
-	buyOrder3.Price -= 10
-	buyOrder3.Amount = 2 * buyOrder3.Amount
+	buyOrder3.PricePoint = math.Sub(buyOrder3.PricePoint, big.NewInt(10))
+	buyOrder3.Amount = math.Mul(buyOrder3.Amount, big.NewInt(2))
 
 	buyOrder3.Nonce = buyOrder3.Nonce.Add(buyOrder3.Nonce, big.NewInt(1))
 	buyOrder3.Hash = buyOrder3.ComputeHash()
@@ -1497,8 +1539,8 @@ func TestPartialMatchOrder1(t *testing.T) {
 	e.buyOrder(&buyOrder2)
 	e.buyOrder(&buyOrder3)
 
-	sellOrder.Price -= 20
-	sellOrder.Amount = 4 * sellOrder.Amount
+	sellOrder.PricePoint = math.Sub(sellOrder.PricePoint, big.NewInt(20))
+	sellOrder.Amount = math.Mul(sellOrder.Amount, big.NewInt(4))
 
 	// Test Case1: Send sellOrder first
 	responseSO := sellOrder
@@ -1515,12 +1557,12 @@ func TestPartialMatchOrder1(t *testing.T) {
 	responseBO2.FilledAmount = responseBO2.Amount
 	responseBO2.Status = "FILLED"
 	responseBO3 := buyOrder3
-	responseBO3.FilledAmount = responseBO3.Amount / 2
+	responseBO3.FilledAmount = math.Div(responseBO3.Amount, big.NewInt(2))
 	responseBO3.Status = "PARTIAL_FILLED"
 
 	trade := &types.Trade{
-		Amount:       big.NewInt(responseBO.FilledAmount),
-		Price:        sellOrder.Price,
+		Amount:       responseBO.FilledAmount,
+		Price:        sellOrder.PricePoint,
 		BaseToken:    sellOrder.BaseToken,
 		QuoteToken:   sellOrder.QuoteToken,
 		OrderHash:    buyOrder.Hash,
@@ -1536,8 +1578,8 @@ func TestPartialMatchOrder1(t *testing.T) {
 	trade.Hash = trade.ComputeHash()
 
 	trade1 := &types.Trade{
-		Amount:       big.NewInt(responseBO1.FilledAmount),
-		Price:        sellOrder.Price,
+		Amount:       responseBO1.FilledAmount,
+		Price:        sellOrder.PricePoint,
 		BaseToken:    sellOrder.BaseToken,
 		QuoteToken:   sellOrder.QuoteToken,
 		OrderHash:    buyOrder1.Hash,
@@ -1553,8 +1595,8 @@ func TestPartialMatchOrder1(t *testing.T) {
 	trade1.Hash = trade1.ComputeHash()
 
 	trade2 := &types.Trade{
-		Amount:       big.NewInt(responseBO2.FilledAmount),
-		Price:        sellOrder.Price,
+		Amount:       responseBO2.FilledAmount,
+		Price:        sellOrder.PricePoint,
 		BaseToken:    sellOrder.BaseToken,
 		QuoteToken:   sellOrder.QuoteToken,
 		OrderHash:    buyOrder2.Hash,
@@ -1570,8 +1612,8 @@ func TestPartialMatchOrder1(t *testing.T) {
 	trade2.Hash = trade2.ComputeHash()
 
 	trade3 := &types.Trade{
-		Amount:       big.NewInt(responseBO3.FilledAmount),
-		Price:        sellOrder.Price,
+		Amount:       responseBO3.FilledAmount,
+		Price:        sellOrder.PricePoint,
 		BaseToken:    sellOrder.BaseToken,
 		QuoteToken:   sellOrder.QuoteToken,
 		OrderHash:    buyOrder3.Hash,
@@ -1609,21 +1651,21 @@ func TestPartialMatchOrder1(t *testing.T) {
 
 	// Try matching remaining buyOrder with bigger sellOrder amount (partial filled sell Order)
 	sellOrder = sampleSellOrder
-	sellOrder.Price -= 20
-	sellOrder.Amount = 2 * sellOrder.Amount
+	sellOrder.PricePoint = math.Sub(sellOrder.PricePoint, big.NewInt(20))
+	sellOrder.Amount = math.Mul(sellOrder.Amount, big.NewInt(2))
 
 	responseSO = sellOrder
 	responseSO.Status = "PARTIAL_FILLED"
-	responseSO.FilledAmount = sellOrder.Amount / 2
+	responseSO.FilledAmount = math.Div(sellOrder.Amount, big.NewInt(2))
 
 	remOrder := sampleSellOrder
-	remOrder.Price -= 20
+	remOrder.PricePoint = math.Sub(remOrder.PricePoint, big.NewInt(20))
 
 	responseBO3.Status = "FILLED"
 	responseBO3.FilledAmount = responseBO3.Amount
 	trade4 := &types.Trade{
-		Amount:       big.NewInt(responseSO.FilledAmount),
-		Price:        sellOrder.Price,
+		Amount:       responseSO.FilledAmount,
+		Price:        sellOrder.PricePoint,
 		BaseToken:    sellOrder.BaseToken,
 		QuoteToken:   sellOrder.QuoteToken,
 		OrderHash:    buyOrder3.Hash,

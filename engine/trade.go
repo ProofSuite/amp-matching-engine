@@ -1,9 +1,11 @@
 package engine
 
 import (
+	"log"
 	"math/big"
 
 	"github.com/Proofsuite/amp-matching-engine/types"
+	"github.com/Proofsuite/amp-matching-engine/utils/math"
 )
 
 // FillStatus is enum used to signify the filled status of order in engineResponse
@@ -34,36 +36,39 @@ const (
 // with trade instance and fillOrder
 func (e *Resource) execute(order *types.Order, bookEntry *types.Order) (trade *types.Trade, fillOrder *FillOrder, err error) {
 	fillOrder = &FillOrder{}
-	beAmtAvailable := bookEntry.Amount - bookEntry.FilledAmount
-	orderUnfilledAmt := order.Amount - order.FilledAmount
-	if beAmtAvailable > orderUnfilledAmt {
-		fillOrder.Amount = orderUnfilledAmt
-		bookEntry.FilledAmount = bookEntry.FilledAmount + orderUnfilledAmt
+	bookEntryAvailableAmount := math.Sub(bookEntry.Amount, bookEntry.FilledAmount)
+	orderAvailableAmount := math.Sub(order.Amount, order.FilledAmount)
+
+	if math.IsGreaterThan(bookEntryAvailableAmount, orderAvailableAmount) {
+		fillOrder.Amount = orderAvailableAmount
+		bookEntry.FilledAmount = math.Add(bookEntry.FilledAmount, orderAvailableAmount)
 		bookEntry.Status = "PARTIAL_FILLED"
 		fillOrder.Order = bookEntry
 
 		err := e.updateOrder(bookEntry, fillOrder.Amount)
 		if err != nil {
+			log.Print(err)
 			return nil, nil, err
 		}
 
 	} else {
-		fillOrder.Amount = beAmtAvailable
-		bookEntry.FilledAmount = bookEntry.FilledAmount + beAmtAvailable
+		fillOrder.Amount = bookEntryAvailableAmount
+		bookEntry.FilledAmount = math.Add(bookEntry.FilledAmount, bookEntryAvailableAmount)
 		bookEntry.Status = "FILLED"
 		fillOrder.Order = bookEntry
 
 		err := e.deleteOrder(bookEntry, fillOrder.Amount)
 		if err != nil {
+			log.Print(err)
 			return nil, nil, err
 		}
 	}
 
-	order.FilledAmount = order.FilledAmount + fillOrder.Amount
+	order.FilledAmount = math.Add(order.FilledAmount, fillOrder.Amount)
 	// Create trade object to be passed to the system for further processing
 	trade = &types.Trade{
-		Amount:       big.NewInt(fillOrder.Amount),
-		Price:        order.Price,
+		Amount:       fillOrder.Amount,
+		Price:        order.PricePoint,
 		BaseToken:    order.BaseToken,
 		QuoteToken:   order.QuoteToken,
 		OrderHash:    bookEntry.Hash,

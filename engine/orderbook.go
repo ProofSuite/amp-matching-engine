@@ -14,8 +14,9 @@ func (e *Resource) GetOrderBook(pair *types.Pair) (sellBook, buyBook []*map[stri
 	sKey, bKey := pair.GetOrderBookKeys()
 	res, err := redis.Int64s(e.redisConn.Do("SORT", sKey, "GET", sKey+"::book::*", "GET", "#")) // Add price point to order book
 	if err != nil {
-		log.Printf("sKey %s", err)
+		log.Print(err)
 	}
+
 	for i := 0; i < len(res); i = i + 2 {
 		temp := &map[string]float64{
 			"volume": float64(res[i]) / math.Pow10(8),
@@ -23,10 +24,12 @@ func (e *Resource) GetOrderBook(pair *types.Pair) (sellBook, buyBook []*map[stri
 		}
 		sellBook = append(sellBook, temp)
 	}
+
 	res, err = redis.Int64s(e.redisConn.Do("SORT", bKey, "GET", bKey+"::book::*", "GET", "#", "DESC"))
 	if err != nil {
-		log.Printf("bKey %s", err)
+		log.Print(err)
 	}
+
 	for i := 0; i < len(res); i = i + 2 {
 		temp := &map[string]float64{
 			"volume": float64(res[i]) / math.Pow10(8),
@@ -34,5 +37,6 @@ func (e *Resource) GetOrderBook(pair *types.Pair) (sellBook, buyBook []*map[stri
 		}
 		buyBook = append(buyBook, temp)
 	}
+
 	return
 }

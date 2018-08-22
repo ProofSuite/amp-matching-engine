@@ -3,10 +3,11 @@ package engine
 import (
 	"sync"
 
-	"github.com/alicebob/miniredis"
-	"github.com/gomodule/redigo/redis"
 	"os"
 	"strconv"
+
+	"github.com/alicebob/miniredis"
+	"github.com/gomodule/redigo/redis"
 )
 
 var redisServer int
@@ -27,6 +28,7 @@ func getResource() *Resource {
 		flushData(c)
 		return &Resource{c, &sync.Mutex{}}
 	}
+
 	s, err := miniredis.Run()
 	if err != nil {
 		panic(err)
@@ -36,6 +38,7 @@ func getResource() *Resource {
 	if err != nil {
 		panic(err)
 	}
+
 	return &Resource{c, &sync.Mutex{}}
 }
 
@@ -45,14 +48,18 @@ func getSortedSet(c redis.Conn, key string) (map[string]float64, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	for i := 0; i < len(res); i = i + 2 {
 		resMap[res[i]], _ = strconv.ParseFloat(res[i+1], 64)
 	}
+
 	return resMap, nil
 }
+
 func getValue(c redis.Conn, key string) (string, error) {
 	return redis.String(c.Do("GET", key))
 }
+
 func exists(c redis.Conn, key string) bool {
 	exists, err := redis.Bool(c.Do("EXISTS", key))
 	if err != nil {
