@@ -101,12 +101,12 @@ func (c *Client) handleMessages() {
 		for {
 			select {
 			case msg := <-c.Requests:
-				log.Print("Handling Request: ", msg)
+				// log.Print("Handling Request: ", msg)
 				c.RequestLogs = append(c.RequestLogs, msg)
 				c.handleOrderChannelMessagesOut(*msg)
 
 			case msg := <-c.Responses:
-				log.Print("Handling Response: ", msg)
+				// log.Print("Handling Response: ", msg)
 				c.ResponseLogs = append(c.ResponseLogs, msg)
 
 				switch msg.Channel {

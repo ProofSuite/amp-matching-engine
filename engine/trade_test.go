@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Proofsuite/amp-matching-engine/types"
+	"github.com/Proofsuite/amp-matching-engine/utils/math"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/mgo.v2/bson"
@@ -28,9 +29,10 @@ func TestExecute(t *testing.T) {
 		Nonce:           big.NewInt(0),
 		Expires:         big.NewInt(0),
 		Side:            "BUY",
-		Amount:          6000000000,
-		Price:           229999999,
-		FilledAmount:    1000000000,
+		Amount:          big.NewInt(6000000000),
+		Price:           big.NewInt(229999999),
+		PricePoint:      big.NewInt(229999999),
+		FilledAmount:    big.NewInt(1000000000),
 		MakeFee:         big.NewInt(0),
 		TakeFee:         big.NewInt(0),
 		ExchangeAddress: common.HexToAddress("0xae55690d4b079460e6ac28aaa58c9ec7b73a7485"),
@@ -58,12 +60,13 @@ func TestExecute(t *testing.T) {
 		BuyToken:        common.HexToAddress("0x1888a8db0b7db59413ce07150b3373972bf818d3"),
 		BaseToken:       common.HexToAddress("0x2034842261b82651885751fc293bba7ba5398156"),
 		QuoteToken:      common.HexToAddress("0x1888a8db0b7db59413ce07150b3373972bf818d3"),
-		Amount:          6000000000,
-		Price:           229999999,
+		Amount:          big.NewInt(6000000000),
+		Price:           big.NewInt(229999999),
+		PricePoint:      big.NewInt(229999999),
 		BuyAmount:       big.NewInt(6000000000),
 		SellAmount:      big.NewInt(13800000000),
+		FilledAmount:    big.NewInt(0),
 		Side:            "SELL",
-		FilledAmount:    0,
 		MakeFee:         big.NewInt(0),
 		TakeFee:         big.NewInt(0),
 		Status:          "NEW",
@@ -82,10 +85,10 @@ func TestExecute(t *testing.T) {
 	orderJSON, _ := json.Marshal(order)
 
 	// orderBytes, _ := bookEntry.MarshalJSON()
-	expectedAmount := bookEntry.Amount - bookEntry.FilledAmount
+	expectedAmount := math.Sub(bookEntry.Amount, bookEntry.FilledAmount)
 
 	expectedTrade := &types.Trade{
-		Amount:       big.NewInt(expectedAmount),
+		Amount:       expectedAmount,
 		Price:        order.Price,
 		BaseToken:    order.BaseToken,
 		QuoteToken:   order.QuoteToken,
@@ -108,7 +111,7 @@ func TestExecute(t *testing.T) {
 	expectedBookEntry.FilledAmount = bookEntry.Amount
 
 	expectedFillOrder := &FillOrder{
-		Amount: bookEntry.Amount - bookEntry.FilledAmount,
+		Amount: math.Sub(bookEntry.Amount, bookEntry.FilledAmount),
 		Order:  &expectedBookEntry,
 	}
 	efob, _ := json.Marshal(expectedFillOrder)
@@ -129,10 +132,10 @@ func TestExecute(t *testing.T) {
 	json.Unmarshal(bookEntryJSON, &bookEntry)
 	json.Unmarshal(orderJSON, &order)
 
-	bookEntry.FilledAmount = 0
-	expectedAmount = bookEntry.Amount - bookEntry.FilledAmount
+	bookEntry.FilledAmount = big.NewInt(0)
+	expectedAmount = math.Sub(bookEntry.Amount, bookEntry.FilledAmount)
 	expectedTrade = &types.Trade{
-		Amount:       big.NewInt(expectedAmount),
+		Amount:       expectedAmount,
 		Price:        order.Price,
 		BaseToken:    order.BaseToken,
 		QuoteToken:   order.QuoteToken,
@@ -177,11 +180,11 @@ func TestExecute(t *testing.T) {
 	// unmarshal bookentry and order from json string
 	json.Unmarshal(bookEntryJSON, &bookEntry)
 	json.Unmarshal(orderJSON, &order)
-	bookEntry.Amount = bookEntry.Amount + bookEntry.FilledAmount
-	bookEntry.FilledAmount = 0
+	bookEntry.Amount = math.Add(bookEntry.Amount, bookEntry.FilledAmount)
+	bookEntry.FilledAmount = big.NewInt(0)
 	expectedAmount = order.Amount
 	expectedTrade = &types.Trade{
-		Amount:       big.NewInt(expectedAmount),
+		Amount:       expectedAmount,
 		Price:        order.Price,
 		BaseToken:    order.BaseToken,
 		QuoteToken:   order.QuoteToken,
@@ -200,7 +203,7 @@ func TestExecute(t *testing.T) {
 	etb, _ = json.Marshal(expectedTrade)
 	expectedBookEntry = *bookEntry
 	expectedBookEntry.Status = "PARTIAL_FILLED"
-	expectedBookEntry.FilledAmount = expectedBookEntry.FilledAmount + order.Amount
+	expectedBookEntry.FilledAmount = math.Add(expectedBookEntry.FilledAmount, order.Amount)
 
 	expectedFillOrder = &FillOrder{
 		Amount: order.Amount,

@@ -162,14 +162,15 @@ func (e *Resource) subscribeMessage() error {
 
 		go func() {
 			for d := range msgs {
-				var msg Message
-				err := json.Unmarshal(d.Body, &msg)
+				msg := &Message{}
+				err := json.Unmarshal(d.Body, msg)
 				if err != nil {
 					log.Printf("Message Unmarshal error: %s", err)
 					continue
 				}
-				var order *types.Order
-				err = json.Unmarshal(msg.Data, &order)
+
+				order := &types.Order{}
+				err = json.Unmarshal(msg.Data, order)
 				if err != nil {
 					log.Printf("Order Unmarshal error: %s", err)
 					continue

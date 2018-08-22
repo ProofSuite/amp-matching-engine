@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"strconv"
 	"time"
 
+	"github.com/Proofsuite/amp-matching-engine/utils/math"
 	"github.com/ethereum/go-ethereum/common"
 	eth "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto/sha3"
@@ -35,13 +35,14 @@ type Trade struct {
 	CreatedAt    time.Time        `json:"createdAt" bson:"createdAt" redis:"createdAt"`
 	UpdatedAt    time.Time        `json:"updatedAt" bson:"updatedAt" redis:"updatedAt"`
 
-	Price  int64    `json:"price" bson:"price"`
-	Side   string   `json:"side" bson:"side"`
-	Amount *big.Int `json:"amount" bson:"amount"`
+	Price      *big.Int `json:"price" bson:"price"`
+	PricePoint *big.Int `json:"pricepoint" bson:"pricepoint"`
+	Side       string   `json:"side" bson:"side"`
+	Amount     *big.Int `json:"amount" bson:"amount"`
 }
 
 // NewTrade returns a new unsigned trade corresponding to an Order, amount and taker address
-func NewTrade(o *Order, amount *big.Int, price int64, taker common.Address) *Trade {
+func NewTrade(o *Order, amount *big.Int, price *big.Int, taker common.Address) *Trade {
 	t := &Trade{
 		OrderHash:  o.Hash,
 		PairName:   o.PairName,
@@ -77,11 +78,25 @@ func (t *Trade) MarshalJSON() ([]byte, error) {
 			"R":      t.Signature.R,
 			"S":      t.Signature.S,
 		},
-		"createdAt": t.CreatedAt.String(),
-		"updatedAt": t.UpdatedAt.String(),
-		"price":     strconv.Itoa(int(t.Price)),
-		"amount":    t.Amount.String(),
+		"createdAt":  t.CreatedAt.String(),
+		"updatedAt":  t.UpdatedAt.String(),
+		"price":      t.Price.String(),
+		"pricepoint": t.PricePoint.String(),
+		"amount":     t.Amount.String(),
 	}
+
+	if t.ID != bson.ObjectId("") {
+		trade["id"] = t.ID
+	}
+
+	if t.TakerOrderID != bson.ObjectId("") {
+		trade["takerOrderId"] = t.TakerOrderID
+	}
+
+	if t.MakerOrderID != bson.ObjectId("") {
+		trade["makerOrderId"] = t.MakerOrderID
+	}
+
 	return json.Marshal(trade)
 }
 
@@ -96,46 +111,85 @@ func (t *Trade) UnmarshalJSON(b []byte) error {
 
 	if trade["orderHash"] == nil {
 		return errors.New("Order Hash is not set")
+	} else {
+		t.OrderHash = common.HexToHash(trade["orderHash"].(string))
 	}
 
 	if trade["hash"] == nil {
 		return errors.New("Hash is not set")
+	} else {
+		t.Hash = common.HexToHash(trade["hash"].(string))
 	}
 
 	if trade["quoteToken"] == nil {
 		return errors.New("Quote token is not set")
+	} else {
+		t.QuoteToken = common.HexToAddress(trade["quoteToken"].(string))
 	}
 
 	if trade["baseToken"] == nil {
 		return errors.New("Base token is not set")
+	} else {
+		t.BaseToken = common.HexToAddress(trade["baseToken"].(string))
 	}
 
-	t.ID = bson.ObjectIdHex(trade["id"].(string))
-	t.QuoteToken = common.HexToAddress(trade["quoteToken"].(string))
-	t.BaseToken = common.HexToAddress(trade["baseToken"].(string))
-	t.TakerOrderID = bson.ObjectIdHex(trade["takerOrderId"].(string))
-	t.MakerOrderID = bson.ObjectIdHex(trade["makerOrderId"].(string))
-	t.Hash = common.HexToHash(trade["hash"].(string))
-	t.OrderHash = common.HexToHash(trade["orderHash"].(string))
+	if trade["maker"] == nil {
+		return errors.New("Maker is not set")
+	} else {
+		t.Taker = common.HexToAddress(trade["taker"].(string))
+	}
 
-	t.PairName = trade["pairName"].(string)
-	t.Side = trade["side"].(string)
-	t.Price, _ = strconv.ParseInt(trade["price"].(string), 10, 64)
+	if trade["taker"] == nil {
+		return errors.New("Taker is not set")
+	} else {
+		t.Maker = common.HexToAddress(trade["maker"].(string))
+	}
 
-	t.Amount = new(big.Int)
-	t.Amount.UnmarshalJSON([]byte(trade["amount"].(string)))
-	t.TradeNonce = new(big.Int)
-	t.TradeNonce.UnmarshalJSON([]byte(trade["amount"].(string)))
-	t.Taker = common.HexToAddress(trade["taker"].(string))
-	t.Taker.UnmarshalJSON([]byte(trade["taker"].(string)))
-	t.Maker = common.HexToAddress(trade["maker"].(string))
-	t.Maker.UnmarshalJSON([]byte(trade["maker"].(string)))
+	if trade["id"] != nil && bson.IsObjectIdHex(trade["id"].(string)) {
+		t.ID = bson.ObjectIdHex(trade["id"].(string))
+	}
 
-	signature := trade["signature"].(map[string]interface{})
-	t.Signature = &Signature{
-		V: byte(signature["V"].(float64)),
-		R: common.HexToHash(signature["R"].(string)),
-		S: common.HexToHash(signature["S"].(string)),
+	if trade["takerOrderId"] != nil && bson.IsObjectIdHex(trade["takerOrderId"].(string)) {
+		t.TakerOrderID = bson.ObjectIdHex(trade["takerOrderId"].(string))
+	}
+
+	if trade["makerOrderId"] != nil && bson.IsObjectIdHex(trade["makerOrderId"].(string)) {
+		t.MakerOrderID = bson.ObjectIdHex(trade["makerOrderId"].(string))
+	}
+
+	if trade["pairName"] != nil {
+		t.PairName = trade["pairName"].(string)
+	}
+
+	if trade["side"] != nil {
+		t.Side = trade["side"].(string)
+	}
+
+	if trade["price"] != nil {
+		t.Price = math.ToBigInt(trade["price"].(string))
+	}
+
+	if trade["pricepoint"] != nil {
+		t.PricePoint = math.ToBigInt(trade["pricepoint"].(string))
+	}
+
+	if trade["amount"] != nil {
+		t.Amount = new(big.Int)
+		t.Amount.UnmarshalJSON([]byte(trade["amount"].(string)))
+	}
+
+	if trade["tradeNonce"] != nil {
+		t.TradeNonce = new(big.Int)
+		t.TradeNonce.UnmarshalJSON([]byte(trade["amount"].(string)))
+	}
+
+	if trade["signature"] != nil {
+		signature := trade["signature"].(map[string]interface{})
+		t.Signature = &Signature{
+			V: byte(signature["V"].(float64)),
+			R: common.HexToHash(signature["R"].(string)),
+			S: common.HexToHash(signature["S"].(string)),
+		}
 	}
 
 	return nil
@@ -158,7 +212,8 @@ func (t *Trade) GetBSON() (interface{}, error) {
 		Signature    SignatureRecord `json:"signature" bson:"signature"`
 		CreatedAt    time.Time       `json:"createdAt" bson:"createdAt" redis:"createdAt"`
 		UpdatedAt    time.Time       `json:"updatedAt" bson:"updatedAt" redis:"updatedAt"`
-		Price        int64           `json:"price" bson:"price"`
+		Price        string          `json:"price" bson:"price"`
+		PricePoint   string          `json:"pricepoint" bson:"pricepoint"`
 		Side         string          `json:"side" bson:"side"`
 		Amount       string          `json:"amount" bson:"amount"`
 	}{
@@ -178,11 +233,12 @@ func (t *Trade) GetBSON() (interface{}, error) {
 			R: t.Signature.R.Hex(),
 			S: t.Signature.S.Hex(),
 		},
-		CreatedAt: t.CreatedAt,
-		UpdatedAt: t.UpdatedAt,
-		Price:     t.Price,
-		Side:      t.Side,
-		Amount:    t.Amount.String(),
+		CreatedAt:  t.CreatedAt,
+		UpdatedAt:  t.UpdatedAt,
+		Price:      t.Price.String(),
+		PricePoint: t.PricePoint.String(),
+		Side:       t.Side,
+		Amount:     t.Amount.String(),
 	}, nil
 }
 
@@ -202,7 +258,8 @@ func (t *Trade) SetBSON(raw bson.Raw) error {
 		Signature    SignatureRecord `json:"signature" bson:"signature"`
 		CreatedAt    time.Time       `json:"createdAt" bson:"createdAt" redis:"createdAt"`
 		UpdatedAt    time.Time       `json:"updatedAt" bson:"updatedAt" redis:"updatedAt"`
-		Price        int64           `json:"price" bson:"price"`
+		Price        string          `json:"price" bson:"price"`
+		PricePoint   string          `json:"pricepoint" bson:"pricepoint"`
 		Side         string          `json:"side" bson:"side"`
 		Amount       string          `json:"amount" bson:"amount"`
 	})
@@ -223,13 +280,12 @@ func (t *Trade) SetBSON(raw bson.Raw) error {
 	t.OrderHash = common.HexToHash(decoded.OrderHash)
 	t.Hash = common.HexToHash(decoded.Hash)
 
-	t.TradeNonce = new(big.Int)
-	t.TradeNonce, _ = t.TradeNonce.SetString(decoded.TradeNonce, 10)
-	t.Amount = new(big.Int)
-	t.Amount, _ = t.Amount.SetString(decoded.Amount, 10)
+	t.TradeNonce = math.ToBigInt(decoded.TradeNonce)
+	t.Amount = math.ToBigInt(decoded.Amount)
+	t.Price = math.ToBigInt(decoded.Price)
+	t.PricePoint = math.ToBigInt(decoded.PricePoint)
 
 	t.Side = decoded.Side
-	t.Price = decoded.Price
 
 	t.Signature = &Signature{
 		V: byte(decoded.Signature.V),

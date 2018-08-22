@@ -57,8 +57,6 @@ func (dao *AccountDao) GetByAddress(owner common.Address) (response *types.Accou
 	q := bson.M{"address": owner.Hex()}
 	err = db.Get(dao.dbName, dao.collectionName, q, 0, 1, &res)
 
-	fmt.Printf("%v", q)
-
 	if err != nil {
 		return
 	} else if len(res) > 0 {
