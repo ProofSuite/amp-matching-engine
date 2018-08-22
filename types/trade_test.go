@@ -31,9 +31,10 @@ func TestTradeJSON(t *testing.T) {
 			R: common.HexToHash("0x10b30eb0072a4f0a38b6fca0b731cba15eb2e1702845d97c1230b53a839bcb85"),
 			S: common.HexToHash("0x6d9ad89548c9e3ce4c97825d027291477f2c44a8caef792095f2cabc978493ff"),
 		},
-		Price:  100,
-		Side:   "BUY",
-		Amount: big.NewInt(100),
+		Price:      big.NewInt(100),
+		PricePoint: big.NewInt(10000),
+		Side:       "BUY",
+		Amount:     big.NewInt(100),
 	}
 
 	encoded, err := json.Marshal(expected)
@@ -70,11 +71,12 @@ func TestTradeBSON(t *testing.T) {
 			R: common.HexToHash("0x10b30eb0072a4f0a38b6fca0b731cba15eb2e1702845d97c1230b53a839bcb85"),
 			S: common.HexToHash("0x6d9ad89548c9e3ce4c97825d027291477f2c44a8caef792095f2cabc978493ff"),
 		},
-		Price:     100,
-		Side:      "BUY",
-		Amount:    big.NewInt(100),
-		CreatedAt: time.Unix(1405544146, 0),
-		UpdatedAt: time.Unix(1405544146, 0),
+		Price:      big.NewInt(100),
+		PricePoint: big.NewInt(10000),
+		Side:       "BUY",
+		Amount:     big.NewInt(100),
+		CreatedAt:  time.Unix(1405544146, 0),
+		UpdatedAt:  time.Unix(1405544146, 0),
 	}
 
 	data, err := bson.Marshal(expected)

@@ -49,11 +49,11 @@ func (s *OrderService) GetByUserAddress(addr common.Address) ([]*types.Order, er
 // on rabbitmq queue for matching engine to process the order
 func (s *OrderService) NewOrder(o *types.Order) error {
 	// Validate if the address is not blacklisted
-
 	acc, err := s.accountDao.GetByAddress(o.UserAddress)
 	if err != nil {
 		return err
 	}
+
 	if acc.IsBlocked {
 		return fmt.Errorf("Address: %+v isBlocked", acc)
 	}
@@ -72,8 +72,10 @@ func (s *OrderService) NewOrder(o *types.Order) error {
 
 	p, err := s.pairDao.GetByBuySellTokenAddress(o.BuyToken, o.SellToken)
 	if err != nil {
+		log.Print(err)
 		return err
 	}
+
 	if p == nil {
 		return errors.New("Pair not found")
 	}
@@ -81,42 +83,51 @@ func (s *OrderService) NewOrder(o *types.Order) error {
 	// Fill token and pair data
 	err = o.Process(p)
 	if err != nil {
+		log.Print(err)
 		return err
 	}
 
 	// fee balance validation
-	//wethTokenBalance, err := s.accountDao.GetWethTokenBalance(o.UserAddress)
-	//if err != nil {
-	//	return err
-	//}
-	//
-	//if wethTokenBalance.Balance.Cmp(o.MakeFee) == -1 {
-	//	return errors.New("Insufficient WETH Balance")
-	//}
-	//
-	//if wethTokenBalance.Balance.Cmp(o.TakeFee) == -1 {
-	//	return errors.New("Insufficient WETH Balance")
-	//}
-	//
-	//if wethTokenBalance.Allowance.Cmp(o.MakeFee) == -1 {
-	//	return errors.New("Insufficient WETH Allowance")
-	//}
-	//
-	//if wethTokenBalance.Allowance.Cmp(o.TakeFee) == -1 {
-	//	return errors.New("Insufficient WETH Allowance")
-	//}
-	//
-	//wethTokenBalance.Balance.Sub(wethTokenBalance.Balance, o.MakeFee)
-	//wethTokenBalance.LockedBalance.Add(wethTokenBalance.LockedBalance, o.TakeFee)
-	//
-	//err = s.accountDao.UpdateTokenBalance(o.UserAddress, o.QuoteToken, wethTokenBalance)
-	//if err != nil {
-	//	return err
-	//}
+	wethTokenBalance, err := s.accountDao.GetTokenBalance(
+		o.UserAddress,
+		common.HexToAddress("0x2EB24432177e82907dE24b7c5a6E0a5c03226135"),
+	)
+
+	if err != nil {
+		log.Printf("Error retrieving WETH balance: %v", err.Error())
+		return err
+	}
+
+	if wethTokenBalance.Balance.Cmp(o.MakeFee) == -1 {
+		log.Printf("Error retrieving ")
+		return errors.New("Insufficient WETH Balance")
+	}
+
+	if wethTokenBalance.Balance.Cmp(o.TakeFee) == -1 {
+		return errors.New("Insufficient WETH Balance")
+	}
+
+	if wethTokenBalance.Allowance.Cmp(o.MakeFee) == -1 {
+		return errors.New("Insufficient WETH Allowance")
+	}
+
+	if wethTokenBalance.Allowance.Cmp(o.TakeFee) == -1 {
+		return errors.New("Insufficient WETH Allowance")
+	}
+
+	wethTokenBalance.Balance.Sub(wethTokenBalance.Balance, o.MakeFee)
+	wethTokenBalance.LockedBalance.Add(wethTokenBalance.LockedBalance, o.TakeFee)
+
+	err = s.accountDao.UpdateTokenBalance(o.UserAddress, o.QuoteToken, wethTokenBalance)
+	if err != nil {
+		log.Print(err)
+		return err
+	}
 
 	// balance validation
 	sellTokenBalance, err := s.accountDao.GetTokenBalance(o.UserAddress, o.SellToken)
 	if err != nil {
+		log.Print(err)
 		return err
 	}
 
@@ -132,17 +143,17 @@ func (s *OrderService) NewOrder(o *types.Order) error {
 	sellTokenBalance.LockedBalance.Add(sellTokenBalance.Balance, o.SellAmount)
 	err = s.accountDao.UpdateTokenBalance(o.UserAddress, o.SellToken, sellTokenBalance)
 	if err != nil {
+		log.Print(err)
 		return err
 	}
 
 	if err = s.orderDao.Create(o); err != nil {
+		log.Print(err)
 		return err
 	}
 
 	// Push o to queue
 	bytes, _ := json.Marshal(o)
-
-	s.SendMessage("ORDER_ADDED", o.Hash, o)
 	s.engine.PublishMessage(&engine.Message{Type: "NEW_ORDER", Data: bytes})
 	return nil
 }
@@ -150,9 +161,10 @@ func (s *OrderService) NewOrder(o *types.Order) error {
 // CancelOrder handles the cancellation order requests.
 // Only Orders which are OPEN or NEW i.e. Not yet filled/partially filled
 // can be cancelled
-func (s *OrderService) CancelOrder(order *types.Order) error {
-	dbOrder, err := s.orderDao.GetByHash(order.Hash)
+func (s *OrderService) CancelOrder(oc *types.OrderCancel) error {
+	dbOrder, err := s.orderDao.GetByHash(oc.OrderHash)
 	if err != nil {
+		log.Print(err)
 		return err
 	}
 
@@ -162,21 +174,24 @@ func (s *OrderService) CancelOrder(order *types.Order) error {
 
 	_, err = json.Marshal(dbOrder)
 	if err != nil {
+		log.Print(err)
 		return err
 	}
 
 	if dbOrder.Status == "OPEN" || dbOrder.Status == "NEW" {
 		res, err := s.engine.CancelOrder(dbOrder)
 		if err != nil {
+			log.Print(err)
 			return err
 		}
 
 		s.orderDao.Update(res.Order.ID, res.Order)
 		if err := s.cancelOrderUnlockAmount(res.Order); err != nil {
+			log.Print(err)
 			return err
 		}
 
-		s.SendMessage("ORDER_CANCELLED", res.Order.Hash, res)
+		s.SendMessage("ORDER_CANCELLED", res.Order.Hash, res.Order)
 		s.RelayUpdateOverSocket(res)
 		return nil
 	}
@@ -215,7 +230,7 @@ func (s *OrderService) handleEngineError(res *engine.Response) {
 // handleEngineOrderAdded returns a websocket message informing the client that his order has been added
 // to the orderbook (but currently not matched)
 func (s *OrderService) handleEngineOrderAdded(res *engine.Response) {
-	s.SendMessage("ORDER_ADDED", res.Order.Hash, res)
+	s.SendMessage("ORDER_ADDED", res.Order.Hash, res.Order)
 }
 
 // handleEngineOrderMatched returns a websocket message informing the client that his order has been added.
@@ -223,11 +238,11 @@ func (s *OrderService) handleEngineOrderAdded(res *engine.Response) {
 func (s *OrderService) handleEngineOrderMatched(resp *engine.Response) {
 	s.SendMessage("REQUEST_SIGNATURE", resp.Order.Hash, resp)
 	s.orderDao.Update(resp.Order.ID, resp.Order)
-	s.transferAmount(resp.Order, big.NewInt(resp.Order.FilledAmount))
+	s.transferAmount(resp.Order, resp.Order.FilledAmount)
 
 	for _, o := range resp.MatchingOrders {
 		s.orderDao.Update(o.Order.ID, resp.Order)
-		s.transferAmount(o.Order, big.NewInt(o.Amount))
+		s.transferAmount(o.Order, o.Amount)
 	}
 
 	if len(resp.Trades) != 0 {

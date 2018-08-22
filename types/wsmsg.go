@@ -51,19 +51,19 @@ func NewOrderWebsocketMessage(o *Order) *WebSocketMessage {
 		Channel: "orders",
 		Payload: WebSocketPayload{
 			Type: "NEW_ORDER",
-			Hash: "",
+			Hash: o.Hash.Hex(),
 			Data: o,
 		},
 	}
 }
 
-func NewCancelOrderWebSocketMessage(o *Order) *WebSocketMessage {
+func NewOrderCancelWebsocketMessage(oc *OrderCancel) *WebSocketMessage {
 	return &WebSocketMessage{
 		Channel: "orders",
 		Payload: WebSocketPayload{
 			Type: "CANCEL_ORDER",
-			Hash: "",
-			Data: o,
+			Hash: oc.Hash.Hex(),
+			Data: oc,
 		},
 	}
 }

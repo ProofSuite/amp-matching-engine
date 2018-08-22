@@ -15,6 +15,8 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/daos"
 	"github.com/Proofsuite/amp-matching-engine/endpoints"
 	"github.com/Proofsuite/amp-matching-engine/engine"
+	"github.com/Proofsuite/amp-matching-engine/ethereum"
+	"github.com/Proofsuite/amp-matching-engine/rabbitmq"
 	"github.com/Proofsuite/amp-matching-engine/redis"
 	"github.com/Proofsuite/amp-matching-engine/services"
 	routing "github.com/go-ozzo/ozzo-routing"
@@ -36,25 +38,56 @@ type apiTestCase struct {
 
 // Init function initializes the e2e testing
 func Init(t *testing.T) {
-	// the test may be started from the home dire
+	rabbitmq.InitConnection(app.Config.Rabbitmq)
+	ethereum.InitConnection(app.Config.Ethereum)
+
 	if session, err := daos.InitSession(); err != nil {
 		panic(err)
 	} else {
 		err = session.DB(app.Config.DBName).DropDatabase()
-
-		// === drop database on test end ===
-		// defer session.DB(app.Config.DBName).DropDatabase()
 	}
 
-	tokens := testToken(t)
-	testPair(t, tokens)
+	// === drop database on test end ===
+	// defer session.DB(app.Config.DBName).DropDatabase()
+	// tokens := testToken(t)
+	// testPair(t, tokens)
 	// address := testAddress(t, tokens)
 	// testBalance(t, tokens, address)
-
 }
 
-func buildRouter() *routing.Router {
+// func InitServer(router *routing.Router) {
+// 	err := app.LoadConfig("../config")
+// 	if err != nil {
+// 		panic(err)
+// 	}
 
+// 	// rabbitmq.InitConnection(app.Config.Rabbitmq)
+// 	// ethereum.InitConnection(app.Config.Ethereum)
+
+// 	// if session, err := daos.InitSession(); err != nil {
+// 	// 	panic(err)
+// 	// } else {
+// 	// 	err = session.DB(app.Config.DBName).DropDatabase()
+// 	// }
+
+// 	// wg := sync.WaitGroup{}
+// 	// wg.Add(1)
+
+// 	// _, err = daos.InitSession()
+// 	// if err != nil {
+// 	// 	t.Errorf("Could not load db session")
+// 	// }
+
+// 	// wallet := types.NewWallet()
+
+// 	//setup server
+// 	http.Handle("/", router)
+// 	http.HandleFunc("/socket", ws.ConnectionEndpoint)
+// 	address := fmt.Sprintf(":%v", app.Config.ServerPort)
+// 	panic(http.ListenAndServe(address, nil))
+// }
+
+func NewRouter() *routing.Router {
 	logger := logrus.New()
 	logger.SetLevel(logrus.PanicLevel)
 	router := routing.New()
@@ -76,20 +109,20 @@ func buildRouter() *routing.Router {
 
 	rg := router.Group("")
 
-	// get daos for dependency injection
+	// setup daos
 	accountDao := daos.NewAccountDao()
 	orderDao := daos.NewOrderDao()
 	tokenDao := daos.NewTokenDao()
 	pairDao := daos.NewPairDao()
 	tradeDao := daos.NewTradeDao()
 
-	// instantiate engine
-	engineResource, err := engine.InitEngine(redis.InitConnection(app.Config.Redis))
+	redisClient := redis.InitConnection(app.Config.Redis)
+	engineResource, err := engine.InitEngine(redisClient)
 	if err != nil {
 		panic(err)
 	}
 
-	// get services for injection
+	// setup services
 	accountService := services.NewAccountService(accountDao, tokenDao)
 	ohlcvService := services.NewOHLCVService(tradeDao)
 	tokenService := services.NewTokenService(tokenDao)
@@ -99,6 +132,7 @@ func buildRouter() *routing.Router {
 	orderBookService := services.NewOrderBookService(pairDao, tokenDao, engineResource)
 	cronService := crons.NewCronService(ohlcvService)
 
+	// setup endpoints
 	endpoints.ServeAccountResource(rg, accountService)
 	endpoints.ServeTokenResource(rg, tokenService)
 	endpoints.ServePairResource(rg, pairService)

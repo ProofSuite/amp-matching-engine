@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/Proofsuite/amp-matching-engine/crons"
@@ -32,6 +33,8 @@ func main() {
 		panic(fmt.Errorf("Failed to read the error message file: %s", err))
 	}
 
+	log.SetFlags(log.LstdFlags | log.Llongfile)
+	log.SetPrefix("\nLOG: ")
 	logger := logrus.New()
 
 	rabbitmq.InitConnection(app.Config.Rabbitmq)
@@ -42,6 +45,7 @@ func main() {
 	if _, err := daos.InitSession(); err != nil {
 		panic(err)
 	}
+
 	http.Handle("/", buildRouter(logger))
 	http.HandleFunc("/socket", ws.ConnectionEndpoint)
 
@@ -71,19 +75,12 @@ func buildRouter(logger *logrus.Logger) *routing.Router {
 
 	rg := router.Group("")
 
-	// rg.Post("/auth", apis.Auth(app.Config.JWTSigningKey))
-	// rg.Use(auth.JWT(app.Config.JWTVerificationKey, auth.JWTOptions{
-	// 	SigningMethod: app.Config.JWTSigningMethod,
-	// 	TokenHandler:  apis.JWTHandler,
-	// }))
-
 	// get daos for dependency injection
 	orderDao := daos.NewOrderDao()
 	tokenDao := daos.NewTokenDao()
 	pairDao := daos.NewPairDao()
 	tradeDao := daos.NewTradeDao()
 	accountDao := daos.NewAccountDao()
-	// walletDao := daos.NewWalletDao()
 
 	redisClient := redis.InitConnection(app.Config.Redis)
 
@@ -115,3 +112,9 @@ func buildRouter(logger *logrus.Logger) *routing.Router {
 	cronService.InitCrons()
 	return router
 }
+
+// rg.Post("/auth", apis.Auth(app.Config.JWTSigningKey))
+// rg.Use(auth.JWT(app.Config.JWTVerificationKey, auth.JWTOptions{
+// 	SigningMethod: app.Config.JWTSigningMethod,
+// 	TokenHandler:  apis.JWTHandler,
+// }))
