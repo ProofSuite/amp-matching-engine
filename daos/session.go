@@ -16,13 +16,16 @@ type Database struct {
 var db *Database
 
 // InitSession initializes a new session with mongodb
-func InitSession() (*mgo.Session, error) {
+func InitSession(session *mgo.Session) (*mgo.Session, error) {
 	if db == nil {
-		db1, err := mgo.Dial(app.Config.DSN)
-		if err != nil {
-			return nil, err
+		if session == nil {
+			db1, err := mgo.Dial(app.Config.DSN)
+			if err != nil {
+				return nil, err
+			}
+			session = db1
 		}
-		db = &Database{db1}
+		db = &Database{session}
 	}
 	return db.session, nil
 }

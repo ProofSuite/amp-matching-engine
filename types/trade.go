@@ -166,21 +166,21 @@ func (t *Trade) UnmarshalJSON(b []byte) error {
 	}
 
 	if trade["price"] != nil {
-		t.Price = math.ToBigInt(trade["price"].(string))
+		t.Price = math.ToBigInt(fmt.Sprintf("%v", trade["price"]))
 	}
 
 	if trade["pricepoint"] != nil {
-		t.PricePoint = math.ToBigInt(trade["pricepoint"].(string))
+		t.PricePoint = math.ToBigInt(fmt.Sprintf("%v", trade["pricepoint"]))
 	}
 
 	if trade["amount"] != nil {
 		t.Amount = new(big.Int)
-		t.Amount.UnmarshalJSON([]byte(trade["amount"].(string)))
+		t.Amount.UnmarshalJSON([]byte(fmt.Sprintf("%v", trade["amount"])))
 	}
 
 	if trade["tradeNonce"] != nil {
 		t.TradeNonce = new(big.Int)
-		t.TradeNonce.UnmarshalJSON([]byte(trade["amount"].(string)))
+		t.TradeNonce.UnmarshalJSON([]byte(fmt.Sprintf("%v", trade["tradeNonce"])))
 	}
 
 	if trade["signature"] != nil {
