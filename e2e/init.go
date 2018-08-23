@@ -41,7 +41,7 @@ func Init(t *testing.T) {
 	rabbitmq.InitConnection(app.Config.Rabbitmq)
 	ethereum.InitConnection(app.Config.Ethereum)
 
-	if session, err := daos.InitSession(); err != nil {
+	if session, err := daos.InitSession(nil); err != nil {
 		panic(err)
 	} else {
 		err = session.DB(app.Config.DBName).DropDatabase()

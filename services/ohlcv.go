@@ -3,7 +3,6 @@ package services
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"math"
 	"time"
 
@@ -60,7 +59,7 @@ func (s *OHLCVService) Subscribe(conn *websocket.Conn, bt, qt common.Address, pa
 	ws.SendTradeInitMessage(conn, ohlcv)
 }
 
-// GETOHLCV fetches OHLCV data using
+// GetOHLCV fetches OHLCV data using
 // pairName: can be "" for fetching data for all pairs
 // duration: in integer
 // unit: sec,min,hour,day,week,month,yr
@@ -68,7 +67,7 @@ func (s *OHLCVService) Subscribe(conn *websocket.Conn, bt, qt common.Address, pa
 func (s *OHLCVService) GetOHLCV(pairs []types.PairSubDoc, duration int64, unit string, timeInterval ...int64) ([]*types.Tick, error) {
 	match := bson.M{}
 	addFields := bson.M{}
-	resp := []*types.Tick{}
+	resp := make([]*types.Tick, 0)
 
 	currentTs := time.Now().UnixNano() / int64(time.Second)
 	sort := bson.M{"$sort": bson.M{"createdAt": 1}}
@@ -106,16 +105,16 @@ func (s *OHLCVService) GetOHLCV(pairs []types.PairSubDoc, duration int64, unit s
 
 	case "month":
 		group["_id"], addFields = getGroupTsBson("$createdAt", "month", duration)
-		d := time.Date(time.Now().Year(), time.Now().Month()+1, 0, 0, 0, 0, 0, time.UTC).Day()
-		intervalSeconds = duration * int64(d) * 7 * 24 * 60 * 60
+		d := time.Date(time.Now().Year(), time.Now().Month()+1, 1, 0, 0, 0, 0, time.UTC).Day()
+		intervalSeconds = duration * int64(d) * 24 * 60 * 60
 		modTime = currentTs - int64(math.Mod(float64(currentTs), float64(intervalSeconds)))
 
-	case "yr":
-		group["_id"], addFields = getGroupTsBson("$createdAt", "yr", duration)
+	case "year":
+		group["_id"], addFields = getGroupTsBson("$createdAt", "year", duration)
 		// Number of days in current year
-		d := time.Date(time.Now().Year()+1, 0, 0, 0, 0, 0, 0, time.UTC).Sub(time.Date(time.Now().Year(), 0, 0, 0, 0, 0, 0, time.UTC)).Hours() / 24
+		d := time.Date(time.Now().Year()+1, 1, 1, 0, 0, 0, 0, time.UTC).Sub(time.Date(time.Now().Year(), 0, 0, 0, 0, 0, 0, time.UTC)).Hours() / 24
 
-		intervalSeconds = duration * int64(d) * 7 * 24 * 60 * 60
+		intervalSeconds = duration * int64(d) * 24 * 60 * 60
 		modTime = currentTs - int64(math.Mod(float64(currentTs), float64(intervalSeconds)))
 
 	case "":
@@ -128,7 +127,7 @@ func (s *OHLCVService) GetOHLCV(pairs []types.PairSubDoc, duration int64, unit s
 		return nil, errors.New("Invalid unit")
 	}
 
-	lt := time.Unix(modTime, 0)
+	lt := time.Unix(currentTs, 0)
 	gt := time.Unix(modTime-intervalSeconds, 0)
 
 	if len(timeInterval) == 0 {
@@ -145,7 +144,7 @@ func (s *OHLCVService) GetOHLCV(pairs []types.PairSubDoc, duration int64, unit s
 		for _, pair := range pairs {
 			or = append(or, bson.M{
 				"$and": []bson.M{
-					bson.M{
+					{
 						"baseToken":  pair.BaseToken.Hex(),
 						"quoteToken": pair.QuoteToken.Hex(),
 					},
@@ -155,14 +154,12 @@ func (s *OHLCVService) GetOHLCV(pairs []types.PairSubDoc, duration int64, unit s
 		}
 
 		match["$or"] = or
-		fmt.Println(or)
 	}
 
 	match = bson.M{"$match": match}
 	group = bson.M{"$group": group}
-	query := []bson.M{match, sort, group, addFields, bson.M{"$sort": bson.M{"ts": 1}}}
+	query := []bson.M{match, sort, group, addFields, {"$sort": bson.M{"ts": 1}}}
 	aggregateResp, err := s.tradeDao.Aggregate(query)
-
 	if err != nil {
 		return nil, err
 	}
@@ -276,7 +273,7 @@ func getGroupTsBson(key, units string, duration int64) (resp bson.M, addFields b
 
 	} else if units == "week" {
 		resp = bson.M{
-			"year": bson.M{"$year": d},
+			"year": bson.M{"$isoWeekYear": d},
 			"isoWeek": bson.M{
 				"$subtract": []interface{}{
 					bson.M{"$isoWeek": d},
@@ -286,8 +283,8 @@ func getGroupTsBson(key, units string, duration int64) (resp bson.M, addFields b
 		}
 
 		addFields = bson.M{"$addFields": bson.M{"ts": bson.M{"$subtract": []interface{}{bson.M{"$dateFromParts": bson.M{
-			"year":    "$_id.year",
-			"isoWeek": "$_id.isoWeek",
+			"isoWeekYear": "$_id.year",
+			"isoWeek":     "$_id.isoWeek",
 		}}, t}}}}
 
 	} else if units == "month" {
@@ -295,17 +292,25 @@ func getGroupTsBson(key, units string, duration int64) (resp bson.M, addFields b
 			"year": bson.M{"$year": d},
 			"month": bson.M{
 				"$subtract": []interface{}{
-					bson.M{"$month": d},
-					bson.M{"$mod": []interface{}{bson.M{"$month": d}, duration}},
-				},
+					bson.M{
+						"$multiply": []interface{}{
+							bson.M{"$ceil": bson.M{"$divide": []interface{}{
+								bson.M{"$month": d},
+								duration}},
+							},
+							duration},
+					}, duration - 1},
 			},
 		}
-
+		//resp = bson.M{
+		//	"year": bson.M{"$year": d},
+		//	"month": bson.M{"$month": d,
+		//}}
 		addFields = bson.M{"$addFields": bson.M{"ts": bson.M{"$subtract": []interface{}{bson.M{"$dateFromParts": bson.M{
 			"year":  "$_id.year",
 			"month": "$_id.month",
 		}}, t}}}}
-	} else if units == "yr" {
+	} else if units == "year" {
 		resp = bson.M{
 			"year": bson.M{
 				"$subtract": []interface{}{
