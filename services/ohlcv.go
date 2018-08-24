@@ -1,7 +1,6 @@
 package services
 
 import (
-	"encoding/json"
 	"errors"
 	"math"
 	"time"
@@ -71,13 +70,18 @@ func (s *OHLCVService) GetOHLCV(pairs []types.PairSubDoc, duration int64, unit s
 
 	currentTs := time.Now().UnixNano() / int64(time.Second)
 	sort := bson.M{"$sort": bson.M{"createdAt": 1}}
+	toDecimal := bson.M{"$addFields": bson.M{
+		"pd": bson.M{"$toDecimal": "$price"},
+		"ad": bson.M{"$toDecimal": "$amount"},
+	}}
+	decimal1,_:=bson.ParseDecimal128("1")
 	group := bson.M{
-		"count": bson.M{"$sum": 1},
-		"h":     bson.M{"$max": "$price"},
-		"l":     bson.M{"$min": "$price"},
-		"o":     bson.M{"$first": "$price"},
-		"c":     bson.M{"$last": "$price"},
-		"v":     bson.M{"$sum": "$amount"},
+		"count": bson.M{"$sum": decimal1},
+		"h":     bson.M{"$max": "$pd"},
+		"l":     bson.M{"$min": "$pd"},
+		"o":     bson.M{"$first": "$pd"},
+		"c":     bson.M{"$last": "$pd"},
+		"v":     bson.M{"$sum": "$ad"},
 	}
 
 	var intervalSeconds int64
@@ -158,18 +162,12 @@ func (s *OHLCVService) GetOHLCV(pairs []types.PairSubDoc, duration int64, unit s
 
 	match = bson.M{"$match": match}
 	group = bson.M{"$group": group}
-	query := []bson.M{match, sort, group, addFields, {"$sort": bson.M{"ts": 1}}}
-	aggregateResp, err := s.tradeDao.Aggregate(query)
+	query := []bson.M{match, sort, toDecimal, group, addFields, {"$sort": bson.M{"ts": 1}}}
+	resp,err := s.tradeDao.Aggregate(query)
 	if err != nil {
 		return nil, err
 	}
-
-	bytes, err := json.Marshal(aggregateResp)
-	if err != nil {
-		return nil, err
-	}
-
-	json.Unmarshal(bytes, &resp)
+	//json.Unmarshal(bytes, &resp)
 	return resp, nil
 }
 

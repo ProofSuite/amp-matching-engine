@@ -26,7 +26,7 @@ func (a TickSorter) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a TickSorter) Less(i, j int) bool { return a[i].Ts < a[j].Ts }
 
 var durations = map[string][]int64{
-	"year":  {1},
+	"year": {1},
 	"month": {1, 3, 6, 9},
 	"week":  {1},
 	"day":   {1},
@@ -94,8 +94,8 @@ func TestOHLCV(t *testing.T) {
 		PairName:   pair.Name,
 		TradeNonce: big.NewInt(0),
 		Signature:  &types.Signature{},
-		Price:      big.NewInt(9097),
-		PricePoint: big.NewInt(9097),
+		Price:      big.NewInt(9987),
+		PricePoint: big.NewInt(9987),
 		Side:       "BUY",
 		Amount:     big.NewInt(125772),
 	}
@@ -214,7 +214,9 @@ func tradeToTick(trade *types.Trade, tick *types.Tick, ts int64) *types.Tick {
 		}
 	} else {
 		tick.C = trade.Price
-		tick.V = tick.V.Add(tick.V, trade.Amount)
+		tv:=new(big.Int)
+		tv.Add(tick.V, trade.Amount)
+		tick.V = tv
 
 		tick.Count.Add(tick.Count, big.NewInt(1))
 		if trade.Price.Cmp(tick.H) == 1 {
