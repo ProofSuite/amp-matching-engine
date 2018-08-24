@@ -126,17 +126,17 @@ func (dao *AccountDao) GetTokenBalance(owner common.Address, token common.Addres
 			},
 		},
 	}
-
-	res, err := db.Aggregate(dao.dbName, dao.collectionName, q)
+	var res []*types.Account
+	err := db.Aggregate(dao.dbName, dao.collectionName, q,&res)
 	if err != nil {
 		return nil, err
 	}
+	//
+	//a := &types.Account{}
+	//bytes, _ := bson.Marshal(res[0])
+	//bson.Unmarshal(bytes, &a)
 
-	a := &types.Account{}
-	bytes, _ := bson.Marshal(res[0])
-	bson.Unmarshal(bytes, &a)
-
-	return a.TokenBalances[token], nil
+	return res[0].TokenBalances[token], nil
 }
 
 func (dao *AccountDao) UpdateTokenBalance(owner common.Address, token common.Address, tokenBalance *types.TokenBalance) (err error) {

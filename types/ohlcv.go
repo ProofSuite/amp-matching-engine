@@ -51,7 +51,7 @@ func (t *Tick) MarshalJSON() ([]byte, error) {
 		"h":  t.H.String(),
 		"l":  t.L.String(),
 		"c":  t.C.String(),
-		//"v":          t.V.String(),
+		"v":          t.V.String(),
 		"count": t.Count.String(),
 	}
 	tab, err := json.Marshal(tick)
@@ -66,6 +66,7 @@ func (t *Tick) UnmarshalJSON(b []byte) error {
 	if err != nil {
 		return err
 	}
+	fmt.Print(tick)
 	t.ID = TickID{}
 	if tick["_id"] != nil {
 		id := tick["_id"].(map[string]interface{})
@@ -122,32 +123,60 @@ func (t *Tick) UnmarshalJSON(b []byte) error {
 }
 
 func (t *Tick) GetBSON() (interface{}, error) {
+	fmt.Println("CAME HERE.. hopefully can be done")
 	type TID struct {
 		Pair       string `json:"pair" bson:"pair"`
 		BaseToken  string `json:"baseToken" bson:"baseToken"`
 		QuoteToken string `json:"quoteToken" bson:"quoteToken"`
 	}
+
+	count, err := bson.ParseDecimal128(t.Count.String())
+	if err != nil {
+		return nil, err
+	}
+	o, err := bson.ParseDecimal128(t.O.String())
+	if err != nil {
+		return nil, err
+	}
+	h, err := bson.ParseDecimal128(t.H.String())
+	if err != nil {
+		return nil, err
+	}
+	l, err := bson.ParseDecimal128(t.L.String())
+	if err != nil {
+		return nil, err
+	}
+	c, err := bson.ParseDecimal128(t.C.String())
+	if err != nil {
+		return nil, err
+	}
+	v, err := bson.ParseDecimal128(t.V.String())
+	if err != nil {
+		return nil, err
+	}
+
 	return struct {
-		ID    TID    `json:"_id,omitempty" bson:"_id"`
-		C     string `json:"c" bson:"c"`
-		Count string `json:"count" bson:"count"`
-		H     string `json:"h" bson:"h"`
-		L     string `json:"l" bson:"l"`
-		O     string `json:"o" bson:"o"`
-		Ts    int64  `json:"ts" bson:"ts"`
-		V     string `json:"v" bson:"v"`
+		ID    TID             `json:"_id,omitempty" bson:"_id"`
+		Count bson.Decimal128 `json:"count" bson:"count"`
+		O     bson.Decimal128 `json:"o" bson:"o"`
+		H     bson.Decimal128 `json:"h" bson:"h"`
+		L     bson.Decimal128 `json:"l" bson:"l"`
+		C     bson.Decimal128 `json:"c" bson:"c"`
+		V     bson.Decimal128 `json:"v" bson:"v"`
+		Ts    int64           `json:"ts" bson:"ts"`
 	}{
 		ID: TID{
 			t.ID.Pair,
 			t.ID.BaseToken.Hex(),
 			t.ID.QuoteToken.Hex(),
 		},
-		C:     t.C.String(),
-		Count: t.Count.String(),
-		H:     t.H.String(),
-		L:     t.L.String(),
-		O:     t.O.String(),
-		V:     t.V.String(),
+
+		O:     o,
+		H:     h,
+		L:     l,
+		C:     c,
+		V:     v,
+		Count: count,
 		Ts:    t.Ts,
 	}, nil
 }
@@ -159,14 +188,14 @@ func (t *Tick) SetBSON(raw bson.Raw) error {
 		QuoteToken string `json:"quoteToken" bson:"quoteToken"`
 	}
 	decoded := new(struct {
-		ID    TID    `json:"_id,omitempty" bson:"_id"`
-		C     string `json:"c" bson:"c"`
-		Count string `json:"count" bson:"count"`
-		H     string `json:"h" bson:"h"`
-		L     string `json:"l" bson:"l"`
-		O     string `json:"o" bson:"o"`
-		Ts    int64  `json:"ts" bson:"ts"`
-		V     string `json:"v" bson:"v"`
+		ID    TID             `json:"_id,omitempty" bson:"_id"`
+		Count bson.Decimal128 `json:"count" bson:"count"`
+		O     bson.Decimal128 `json:"o" bson:"o"`
+		H     bson.Decimal128 `json:"h" bson:"h"`
+		L     bson.Decimal128 `json:"l" bson:"l"`
+		C     bson.Decimal128 `json:"c" bson:"c"`
+		V     bson.Decimal128 `json:"v" bson:"v"`
+		Ts    int64           `json:"ts" bson:"ts"`
 	})
 
 	err := raw.Unmarshal(decoded)
@@ -184,12 +213,19 @@ func (t *Tick) SetBSON(raw bson.Raw) error {
 	t.L = new(big.Int)
 	t.O = new(big.Int)
 	t.V = new(big.Int)
-	t.Count = math.ToBigInt(decoded.Count)
-	t.C = math.ToBigInt(decoded.C)
-	t.H = math.ToBigInt(decoded.H)
-	t.L = math.ToBigInt(decoded.L)
-	t.O = math.ToBigInt(decoded.O)
-	t.V = math.ToBigInt(decoded.V)
+
+	count := decoded.Count.String()
+	o := decoded.O.String()
+	h := decoded.H.String()
+	l := decoded.L.String()
+	c := decoded.C.String()
+	v := decoded.V.String()
+	t.Count = math.ToBigInt(count)
+	t.C = math.ToBigInt(c)
+	t.H = math.ToBigInt(h)
+	t.L = math.ToBigInt(l)
+	t.O = math.ToBigInt(o)
+	t.V = math.ToBigInt(v)
 
 	t.Ts = decoded.Ts
 	return nil
