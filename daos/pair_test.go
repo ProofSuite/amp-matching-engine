@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"github.com/Proofsuite/amp-matching-engine/types"
+	"github.com/Proofsuite/amp-matching-engine/utils/testutils"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/stretchr/testify/assert"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -17,20 +17,6 @@ func init() {
 
 	session := server.Session()
 	db = &Database{session}
-}
-
-func ComparePair(t *testing.T, a, b *types.Pair) {
-	assert.Equal(t, a.ID, b.ID)
-	assert.Equal(t, a.Name, b.Name)
-	assert.Equal(t, a.BaseTokenID, b.BaseTokenID)
-	assert.Equal(t, a.BaseTokenSymbol, b.BaseTokenSymbol)
-	assert.Equal(t, a.BaseTokenAddress, b.BaseTokenAddress)
-	assert.Equal(t, a.QuoteTokenID, b.QuoteTokenID)
-	assert.Equal(t, a.QuoteTokenSymbol, b.QuoteTokenSymbol)
-	assert.Equal(t, a.QuoteTokenAddress, b.QuoteTokenAddress)
-	assert.Equal(t, a.Active, b.Active)
-	assert.Equal(t, a.MakeFee, b.MakeFee)
-	assert.Equal(t, a.TakeFee, b.TakeFee)
 }
 
 func TestPairDao(t *testing.T) {
@@ -60,19 +46,19 @@ func TestPairDao(t *testing.T) {
 		t.Errorf("Could not get pairs: %+v", err)
 	}
 
-	ComparePair(t, pair, &all[0])
+	testutils.ComparePair(t, pair, &all[0])
 
 	byID, err := dao.GetByID(pair.ID)
 	if err != nil {
 		t.Errorf("Could not get pair by ID: %v", err)
 	}
 
-	ComparePair(t, pair, byID)
+	testutils.ComparePair(t, pair, byID)
 
 	byAddress, err := dao.GetByTokenAddress(pair.BaseTokenAddress, pair.QuoteTokenAddress)
 	if err != nil {
 		t.Errorf("Could not get pair by address: %v", err)
 	}
 
-	ComparePair(t, pair, byAddress)
+	testutils.ComparePair(t, pair, byAddress)
 }

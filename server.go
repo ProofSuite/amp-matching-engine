@@ -37,16 +37,12 @@ func main() {
 	log.SetPrefix("\nLOG: ")
 	logger := logrus.New()
 
-	rabbitmq.InitConnection(app.Config.Rabbitmq)
-	ethereum.InitConnection(app.Config.Ethereum)
-	redis.InitConnection(app.Config.Redis)
-
 	// connect to the database
 	if _, err := daos.InitSession(nil); err != nil {
 		panic(err)
 	}
 
-	http.Handle("/", buildRouter(logger))
+	http.Handle("/", NewRouter(logger))
 	http.HandleFunc("/socket", ws.ConnectionEndpoint)
 
 	// start the server
@@ -55,7 +51,7 @@ func main() {
 	panic(http.ListenAndServe(address, nil))
 }
 
-func buildRouter(logger *logrus.Logger) *routing.Router {
+func NewRouter(logger *logrus.Logger) *routing.Router {
 	router := routing.New()
 
 	router.To("GET,HEAD", "/ping", func(c *routing.Context) error {
@@ -75,13 +71,8 @@ func buildRouter(logger *logrus.Logger) *routing.Router {
 
 	rg := router.Group("")
 
-	// get daos for dependency injection
-	orderDao := daos.NewOrderDao()
-	tokenDao := daos.NewTokenDao()
-	pairDao := daos.NewPairDao()
-	tradeDao := daos.NewTradeDao()
-	accountDao := daos.NewAccountDao()
-
+	rabbitmq.InitConnection(app.Config.Rabbitmq)
+	ethereum.InitConnection(app.Config.Ethereum)
 	redisClient := redis.InitConnection(app.Config.Redis)
 
 	// instantiate engine
@@ -89,6 +80,13 @@ func buildRouter(logger *logrus.Logger) *routing.Router {
 	if err != nil {
 		panic(err)
 	}
+
+	// get daos for dependency injection
+	orderDao := daos.NewOrderDao()
+	tokenDao := daos.NewTokenDao()
+	pairDao := daos.NewPairDao()
+	tradeDao := daos.NewTradeDao()
+	accountDao := daos.NewAccountDao()
 
 	// get services for injection
 	accountService := services.NewAccountService(accountDao, tokenDao)
@@ -109,7 +107,11 @@ func buildRouter(logger *logrus.Logger) *routing.Router {
 	endpoints.ServeTradeResource(rg, tradeService)
 	endpoints.ServeOrderResource(rg, orderService, engineResource)
 
-	fmt.Printf("\n%+v\n", app.Config.TickDuration)
+	//initialize rabbitmq subscriptions
+	orderService.SubscribeQueue(engineResource.HandleOrders)
+	engineResource.SubscribeResponseQueue(orderService.HandleEngineResponse)
+
+	// fmt.Printf("\n%+v\n", app.Config.TickDuration)
 	cronService.InitCrons()
 	return router
 }

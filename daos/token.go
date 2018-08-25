@@ -59,3 +59,13 @@ func (dao *TokenDao) GetByAddress(addr common.Address) (*types.Token, error) {
 	}
 	return &resp[0], nil
 }
+
+// Drop drops all the order documents in the current database
+func (dao *TokenDao) Drop() error {
+	err := db.DropCollection(dao.dbName, dao.collectionName)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

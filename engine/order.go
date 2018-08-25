@@ -158,8 +158,6 @@ func (e *Resource) sellOrder(order *types.Order) (*Response, error) {
 		return nil, err
 	}
 
-	log.Print(orders)
-
 	priceRange := make([]int64, 0)
 	if err := redis.ScanSlice(orders, &priceRange); err != nil {
 		log.Print(err)
@@ -220,8 +218,6 @@ func (e *Resource) sellOrder(order *types.Order) (*Response, error) {
 	)
 	resp.RemainingOrder.Signature = nil
 	resp.RemainingOrder.Hash = resp.RemainingOrder.ComputeHash()
-
-	resp.Print()
 
 	return resp, nil
 }
@@ -366,7 +362,6 @@ func (e *Resource) updateOrderAmount(hash common.Hash, amount *big.Int) error {
 
 // deleteOrder deletes the order in redis
 func (e *Resource) deleteOrder(order *types.Order, tradeAmount *big.Int) (err error) {
-
 	ssKey, listKey := order.GetOBKeys()
 	remVolume, err := redis.String(e.redisConn.Do("GET", ssKey+"::book::"+utils.UintToPaddedString(order.PricePoint.Int64())))
 	if err != nil {

@@ -74,17 +74,15 @@ func (e *Resource) execute(order *types.Order, bookEntry *types.Order) (*types.T
 		Price:      order.PricePoint,
 		PricePoint: order.PricePoint,
 		//NOTE: I don't think these are publicly needed but leaving this until confirmation
-		BaseToken:    order.BaseToken,
-		QuoteToken:   order.QuoteToken,
-		OrderHash:    bookEntry.Hash,
-		Side:         order.Side,
-		Taker:        order.UserAddress,
-		PairName:     order.PairName,
-		Maker:        bookEntry.UserAddress,
-		TakerOrderID: order.ID,
-		MakerOrderID: bookEntry.ID,
-		TradeNonce:   big.NewInt(0),
-		Signature:    nil,
+		BaseToken:  order.BaseToken,
+		QuoteToken: order.QuoteToken,
+		OrderHash:  bookEntry.Hash,
+		Side:       order.Side,
+		Taker:      order.UserAddress,
+		PairName:   order.PairName,
+		Maker:      bookEntry.UserAddress,
+		TradeNonce: big.NewInt(0),
+		Signature:  nil,
 	}
 
 	trade.Hash = trade.ComputeHash()

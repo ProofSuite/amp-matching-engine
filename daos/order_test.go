@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/Proofsuite/amp-matching-engine/types"
+	"github.com/Proofsuite/amp-matching-engine/utils/testutils"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/stretchr/testify/assert"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -18,30 +18,6 @@ func init() {
 
 	session := server.Session()
 	db = &Database{session}
-}
-
-func CompareOrder(t *testing.T, a, b *types.Order) {
-	assert.Equal(t, a.ID, b.ID)
-	assert.Equal(t, a.UserAddress, b.UserAddress)
-	assert.Equal(t, a.ExchangeAddress, b.ExchangeAddress)
-	assert.Equal(t, a.BuyToken, b.BuyToken)
-	assert.Equal(t, a.SellToken, b.SellToken)
-	assert.Equal(t, a.BaseToken, b.BaseToken)
-	assert.Equal(t, a.BuyAmount, b.BuyAmount)
-	assert.Equal(t, a.SellAmount, b.SellAmount)
-	assert.Equal(t, a.Price, b.Price)
-	assert.Equal(t, a.Amount, b.Amount)
-	assert.Equal(t, a.FilledAmount, b.FilledAmount)
-	assert.Equal(t, a.Status, b.Status)
-	assert.Equal(t, a.Side, b.Side)
-	assert.Equal(t, a.PairID, b.PairID)
-	assert.Equal(t, a.PairName, b.PairName)
-	assert.Equal(t, a.Expires, b.Expires)
-	assert.Equal(t, a.MakeFee, b.MakeFee)
-	assert.Equal(t, a.Nonce, b.Nonce)
-	assert.Equal(t, a.TakeFee, b.TakeFee)
-	assert.Equal(t, a.Signature, b.Signature)
-	assert.Equal(t, a.Hash, b.Hash)
 }
 
 func TestUpdateOrderByHash(t *testing.T) {
@@ -125,10 +101,16 @@ func TestUpdateOrderByHash(t *testing.T) {
 		t.Errorf("Could not get order by hash")
 	}
 
-	CompareOrder(t, queried, updated)
+	testutils.CompareOrder(t, queried, updated)
 }
 
 func TestOrderUpdate(t *testing.T) {
+	dao := NewOrderDao()
+	err := dao.Drop()
+	if err != nil {
+		t.Errorf("Could not drop previous order state")
+	}
+
 	o := &types.Order{
 		ID:              bson.ObjectIdHex("537f700b537461b70c5f0000"),
 		UserAddress:     common.HexToAddress("0x7a9f3cd060ab180f36c17fe6bdf9974f577d77aa"),
@@ -139,9 +121,9 @@ func TestOrderUpdate(t *testing.T) {
 		QuoteToken:      common.HexToAddress("0x12459c951127e0c374ff9105dda097662a027093"),
 		BuyAmount:       big.NewInt(1000),
 		SellAmount:      big.NewInt(100),
-		Price:           1000,
-		Amount:          1000,
-		FilledAmount:    100,
+		Price:           big.NewInt(1000),
+		Amount:          big.NewInt(1000),
+		FilledAmount:    big.NewInt(100),
 		Status:          "NEW",
 		Side:            "BUY",
 		PairID:          bson.ObjectIdHex("537f700b537461b70c5f0000"),
@@ -160,9 +142,7 @@ func TestOrderUpdate(t *testing.T) {
 		UpdatedAt: time.Unix(1405544146, 0),
 	}
 
-	dao := NewOrderDao()
-
-	err := dao.Create(o)
+	err = dao.Create(o)
 	if err != nil {
 		t.Errorf("Could not create order object")
 	}
@@ -177,9 +157,9 @@ func TestOrderUpdate(t *testing.T) {
 		QuoteToken:      o.QuoteToken,
 		BuyAmount:       big.NewInt(1000),
 		SellAmount:      big.NewInt(100),
-		Price:           4000,
-		Amount:          4000,
-		FilledAmount:    200,
+		Price:           big.NewInt(4000),
+		Amount:          big.NewInt(4000),
+		FilledAmount:    big.NewInt(200),
 		Status:          "FILLED",
 		Side:            "BUY",
 		PairID:          o.PairID,
@@ -208,10 +188,16 @@ func TestOrderUpdate(t *testing.T) {
 		t.Errorf("Could not get order by hash")
 	}
 
-	CompareOrder(t, queried, updated)
+	testutils.CompareOrder(t, queried, updated)
 }
 
 func TestOrderDao(t *testing.T) {
+	dao := NewOrderDao()
+	err := dao.Drop()
+	if err != nil {
+		t.Errorf("Could not drop previous order state")
+	}
+
 	o := &types.Order{
 		ID:              bson.ObjectIdHex("537f700b537461b70c5f0000"),
 		UserAddress:     common.HexToAddress("0x7a9f3cd060ab180f36c17fe6bdf9974f577d77aa"),
@@ -222,9 +208,9 @@ func TestOrderDao(t *testing.T) {
 		QuoteToken:      common.HexToAddress("0x12459c951127e0c374ff9105dda097662a027093"),
 		BuyAmount:       big.NewInt(1000),
 		SellAmount:      big.NewInt(100),
-		Price:           1000,
-		Amount:          1000,
-		FilledAmount:    100,
+		Price:           big.NewInt(1000),
+		Amount:          big.NewInt(1000),
+		FilledAmount:    big.NewInt(100),
 		Status:          "NEW",
 		Side:            "BUY",
 		PairID:          bson.ObjectIdHex("537f700b537461b70c5f0000"),
@@ -243,9 +229,7 @@ func TestOrderDao(t *testing.T) {
 		UpdatedAt: time.Unix(1405544146, 0),
 	}
 
-	dao := NewOrderDao()
-
-	err := dao.Create(o)
+	err = dao.Create(o)
 	if err != nil {
 		t.Errorf("Could not create order object")
 	}
@@ -255,12 +239,12 @@ func TestOrderDao(t *testing.T) {
 		t.Errorf("Could not get order by hash")
 	}
 
-	CompareOrder(t, o, o1)
+	testutils.CompareOrder(t, o, o1)
 
 	o2, err := dao.GetByUserAddress(common.HexToAddress("0x7a9f3cd060ab180f36c17fe6bdf9974f577d77aa"))
 	if err != nil {
 		t.Errorf("Could not get order by user address")
 	}
 
-	CompareOrder(t, o, o2[0])
+	testutils.CompareOrder(t, o, o2[0])
 }

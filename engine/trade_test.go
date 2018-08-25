@@ -45,12 +45,8 @@ func TestExecute(t *testing.T) {
 		UpdatedAt:       time.Unix(1405544146, 0),
 	}
 	bookEntryJSON, _ := json.Marshal(bookEntry)
-	// bytes, _ := bookEntry.MarshalJSON()
 
-	// json.Unmarshal(bookEntryJSON, &bookEntry)
 	e.addOrder(bookEntry)
-
-	// json.Unmarshal(orderJSON, &order)
 
 	order := &types.Order{
 		ID:              bson.ObjectIdHex("5b6ac5297b4457546d64379d"),
@@ -84,23 +80,20 @@ func TestExecute(t *testing.T) {
 	}
 	orderJSON, _ := json.Marshal(order)
 
-	// orderBytes, _ := bookEntry.MarshalJSON()
 	expectedAmount := math.Sub(bookEntry.Amount, bookEntry.FilledAmount)
 
 	expectedTrade := &types.Trade{
-		Amount:       expectedAmount,
-		Price:        order.Price,
-		BaseToken:    order.BaseToken,
-		QuoteToken:   order.QuoteToken,
-		OrderHash:    bookEntry.Hash,
-		Side:         order.Side,
-		Taker:        order.UserAddress,
-		PairName:     order.PairName,
-		Maker:        bookEntry.UserAddress,
-		TradeNonce:   big.NewInt(0),
-		TakerOrderID: order.ID,
-		MakerOrderID: bookEntry.ID,
-		Signature:    &types.Signature{},
+		Amount:     expectedAmount,
+		PricePoint: order.PricePoint,
+		Price:      order.Price,
+		BaseToken:  order.BaseToken,
+		QuoteToken: order.QuoteToken,
+		OrderHash:  bookEntry.Hash,
+		Side:       order.Side,
+		Taker:      order.UserAddress,
+		PairName:   order.PairName,
+		Maker:      bookEntry.UserAddress,
+		TradeNonce: big.NewInt(0),
 	}
 
 	expectedTrade.Hash = expectedTrade.ComputeHash()
@@ -135,19 +128,17 @@ func TestExecute(t *testing.T) {
 	bookEntry.FilledAmount = big.NewInt(0)
 	expectedAmount = math.Sub(bookEntry.Amount, bookEntry.FilledAmount)
 	expectedTrade = &types.Trade{
-		Amount:       expectedAmount,
-		Price:        order.Price,
-		BaseToken:    order.BaseToken,
-		QuoteToken:   order.QuoteToken,
-		OrderHash:    bookEntry.Hash,
-		Side:         order.Side,
-		Taker:        order.UserAddress,
-		PairName:     order.PairName,
-		Maker:        bookEntry.UserAddress,
-		TakerOrderID: order.ID,
-		MakerOrderID: bookEntry.ID,
-		TradeNonce:   big.NewInt(0),
-		Signature:    &types.Signature{},
+		Amount:     expectedAmount,
+		Price:      order.Price,
+		PricePoint: order.PricePoint,
+		BaseToken:  order.BaseToken,
+		QuoteToken: order.QuoteToken,
+		OrderHash:  bookEntry.Hash,
+		Side:       order.Side,
+		Taker:      order.UserAddress,
+		PairName:   order.PairName,
+		Maker:      bookEntry.UserAddress,
+		TradeNonce: big.NewInt(0),
 	}
 	expectedTrade.Hash = expectedTrade.ComputeHash()
 
@@ -184,19 +175,17 @@ func TestExecute(t *testing.T) {
 	bookEntry.FilledAmount = big.NewInt(0)
 	expectedAmount = order.Amount
 	expectedTrade = &types.Trade{
-		Amount:       expectedAmount,
-		Price:        order.Price,
-		BaseToken:    order.BaseToken,
-		QuoteToken:   order.QuoteToken,
-		OrderHash:    bookEntry.Hash,
-		Side:         order.Side,
-		Taker:        order.UserAddress,
-		PairName:     order.PairName,
-		Maker:        bookEntry.UserAddress,
-		TakerOrderID: order.ID,
-		MakerOrderID: bookEntry.ID,
-		TradeNonce:   big.NewInt(0),
-		Signature:    &types.Signature{},
+		Amount:     expectedAmount,
+		Price:      order.Price,
+		PricePoint: order.PricePoint,
+		BaseToken:  order.BaseToken,
+		QuoteToken: order.QuoteToken,
+		OrderHash:  bookEntry.Hash,
+		Side:       order.Side,
+		Taker:      order.UserAddress,
+		PairName:   order.PairName,
+		Maker:      bookEntry.UserAddress,
+		TradeNonce: big.NewInt(0),
 	}
 	expectedTrade.Hash = expectedTrade.ComputeHash()
 
