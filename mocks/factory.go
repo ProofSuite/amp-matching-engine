@@ -112,7 +112,7 @@ func (f *OrderFactory) NewOrder(buyToken common.Address, buyAmount int64, sellTo
 	o.Expires = f.Params.Expires
 	o.MakeFee = f.Params.MakeFee
 	o.TakeFee = f.Params.TakeFee
-	o.Nonce = big.NewInt(int64(f.NonceGenerator.Intn(1e8)))
+	o.Nonce = big.NewInt(int64(f.NonceGenerator.Intn(1e18)))
 	o.Sign(f.Wallet)
 
 	return o, nil

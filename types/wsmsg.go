@@ -46,6 +46,11 @@ type Params struct {
 	TickID   string `json:"tickID"`
 }
 
+type SignaturePayload struct {
+	Order  *Order   `json:"order"`
+	Trades []*Trade `json:"trade"`
+}
+
 func NewOrderWebsocketMessage(o *Order) *WebSocketMessage {
 	return &WebSocketMessage{
 		Channel: "orders",
@@ -64,6 +69,28 @@ func NewOrderCancelWebsocketMessage(oc *OrderCancel) *WebSocketMessage {
 			Type: "CANCEL_ORDER",
 			Hash: oc.Hash.Hex(),
 			Data: oc,
+		},
+	}
+}
+
+func NewRequestSignaturesWebsocketMEssage(t []*Trade, o *Order) *WebSocketMessage {
+	return &WebSocketMessage{
+		Channel: "orders",
+		Payload: WebSocketPayload{
+			Type: "REQUEST_SIGNATURE",
+			Hash: o.Hash.Hex(),
+			Data: SignaturePayload{o, t},
+		},
+	}
+}
+
+func NewSubmitSignatureWebsocketMessage(hash string, t []*Trade, o *Order) *WebSocketMessage {
+	return &WebSocketMessage{
+		Channel: "orders",
+		Payload: WebSocketPayload{
+			Type: "SUBMIT_SIGNATURE",
+			Hash: hash,
+			Data: SignaturePayload{o, t},
 		},
 	}
 }

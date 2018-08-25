@@ -147,8 +147,8 @@ func TestBuyAndCancelOrder(t *testing.T) {
 
 func TestMatchOrder(t *testing.T) {
 	_, _, client1, client2, factory1, factory2, _, ZRX, WETH := SetupTest()
-	m1, _, _ := factory1.NewOrderMessage(ZRX, 1e18, WETH, 1e18)
-	m2, _, _ := factory2.NewOrderMessage(WETH, 1e18, ZRX, 1e18)
+	m1, _, _ := factory1.NewOrderMessage(ZRX, 1e10, WETH, 1e10)
+	m2, _, _ := factory2.NewOrderMessage(WETH, 1e10, ZRX, 1e10)
 
 	//We put a millisecond delay between both requests to ensure they are
 	//received in the same order for each test
@@ -164,6 +164,47 @@ func TestMatchOrder(t *testing.T) {
 		for {
 			select {
 			case l := <-client1.Logs:
+				switch l.MessageType {
+				case "ORDER_ADDED":
+					wg.Done()
+				case "ORDER_MATCHED":
+					wg.Done()
+				case "ERROR":
+					t.Errorf("Received an error")
+				}
+			}
+		}
+	}()
+
+	wg.Wait()
+}
+
+func TestMatchPartialOrder(t *testing.T) {
+	_, _, client1, client2, factory1, factory2, _, ZRX, WETH := SetupTest()
+	m1, _, _ := factory1.NewOrderMessage(ZRX, 1e10, WETH, 1e10)
+	m2, _, _ := factory2.NewOrderMessage(WETH, 2e10, ZRX, 2e10)
+
+	client1.Requests <- m1
+	time.Sleep(time.Millisecond)
+	client2.Requests <- m2
+	time.Sleep(time.Millisecond)
+
+	wg := sync.WaitGroup{}
+	wg.Add(2)
+
+	go func() {
+		for {
+			select {
+			case l := <-client1.Logs:
+				switch l.MessageType {
+				case "ORDER_ADDDED":
+					wg.Done()
+				case "ORDER_MATCHED":
+					wg.Done()
+				case "ERROR":
+					t.Errorf("Received an error")
+				}
+			case l := <-client2.Logs:
 				switch l.MessageType {
 				case "ORDER_ADDED":
 					wg.Done()

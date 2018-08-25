@@ -1,6 +1,8 @@
 package engine
 
 import (
+	"encoding/json"
+	"fmt"
 	"log"
 	"math/big"
 
@@ -13,12 +15,11 @@ type FillStatus int
 
 // Response is the structure of message response sent by engine
 type Response struct {
-	Order          *types.Order
-	Trades         []*types.Trade
-	RemainingOrder *types.Order
-
-	FillStatus     FillStatus
-	MatchingOrders []*FillOrder
+	FillStatus     FillStatus     `json:"fillStatus,omitempty"`
+	Order          *types.Order   `json:"order,omitempty"`
+	RemainingOrder *types.Order   `json:"remainingOrder,omitempty"`
+	MatchingOrders []*FillOrder   `json:"matchingOrders,omitempty"`
+	Trades         []*types.Trade `json:"trades,omitempty"`
 }
 
 // this const block holds the possible valued of FillStatus
@@ -34,8 +35,10 @@ const (
 // execute function is responsible for executing of matched orders
 // i.e it deletes/updates orders in case of order matching and responds
 // with trade instance and fillOrder
-func (e *Resource) execute(order *types.Order, bookEntry *types.Order) (trade *types.Trade, fillOrder *FillOrder, err error) {
-	fillOrder = &FillOrder{}
+func (e *Resource) execute(order *types.Order, bookEntry *types.Order) (*types.Trade, *FillOrder, error) {
+	fillOrder := &FillOrder{}
+	trade := &types.Trade{}
+
 	bookEntryAvailableAmount := math.Sub(bookEntry.Amount, bookEntry.FilledAmount)
 	orderAvailableAmount := math.Sub(order.Amount, order.FilledAmount)
 
@@ -65,10 +68,12 @@ func (e *Resource) execute(order *types.Order, bookEntry *types.Order) (trade *t
 	}
 
 	order.FilledAmount = math.Add(order.FilledAmount, fillOrder.Amount)
-	// Create trade object to be passed to the system for further processing
+
 	trade = &types.Trade{
-		Amount:       fillOrder.Amount,
-		Price:        order.PricePoint,
+		Amount:     fillOrder.Amount,
+		Price:      order.PricePoint,
+		PricePoint: order.PricePoint,
+		//NOTE: I don't think these are publicly needed but leaving this until confirmation
 		BaseToken:    order.BaseToken,
 		QuoteToken:   order.QuoteToken,
 		OrderHash:    bookEntry.Hash,
@@ -79,9 +84,18 @@ func (e *Resource) execute(order *types.Order, bookEntry *types.Order) (trade *t
 		TakerOrderID: order.ID,
 		MakerOrderID: bookEntry.ID,
 		TradeNonce:   big.NewInt(0),
-		Signature:    &types.Signature{},
+		Signature:    nil,
 	}
 
 	trade.Hash = trade.ComputeHash()
-	return
+	return trade, fillOrder, nil
+}
+
+func (resp *Response) Print() {
+	b, err := json.MarshalIndent(resp, "", "  ")
+	if err != nil {
+		log.Print(err)
+	}
+
+	fmt.Print("\n", string(b))
 }

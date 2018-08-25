@@ -57,21 +57,36 @@ func (e *orderEndpoint) ws(input interface{}, conn *websocket.Conn) {
 		e.handleNewOrder(msg, conn)
 	case "CANCEL_ORDER":
 		e.handleCancelOrder(msg, conn)
-	case "NEW_TRADE":
-		e.handleNewTrade(msg, conn)
+	case "SUBMIT_SIGNATURE":
+		e.handleSubmitSignatures(msg, conn)
 	default:
-		log.Println("Response with error")
+		log.Print("Response with error")
 	}
 }
 
-// handleNewTrade handles NewTrade messages. New trade messages are transmitted to the corresponding order channel
+// handleSubmitSignatures handles NewTrade messages. New trade messages are transmitted to the corresponding order channel
 // and received in the handleClientResponse.
-func (e *orderEndpoint) handleNewTrade(msg *types.WebSocketPayload, conn *websocket.Conn) {
-	hash := common.HexToHash(msg.Hash)
+func (e *orderEndpoint) handleSubmitSignatures(p *types.WebSocketPayload, conn *websocket.Conn) {
+	// hash := common.HexToHash(p.Hash)
+	// data := &types.SignaturePayload{}
 
+	// bytes, err := json.Marshal(p.Data)
+	// if err != nil {
+	// 	log.Print(err)
+	// }
+
+	// err = json.Unmarshal(bytes, data)
+	// if err != nil {
+	// 	log.Print(err)
+	// }
+
+	// e.orderService.HandleSubmitSignatures(data.Order, data.Trades)
+
+	hash := common.HexToHash(p.Hash)
 	ch := ws.GetOrderChannel(hash)
+
 	if ch != nil {
-		ch <- msg
+		ch <- p
 	}
 }
 
@@ -86,6 +101,7 @@ func (e *orderEndpoint) handleNewOrder(msg *types.WebSocketPayload, conn *websoc
 		ws.SendOrderErrorMessage(conn, err.Error())
 		return
 	}
+
 	err = json.Unmarshal(bytes, &o)
 	if err != nil {
 		log.Print(err)
@@ -94,12 +110,6 @@ func (e *orderEndpoint) handleNewOrder(msg *types.WebSocketPayload, conn *websoc
 	}
 
 	o.Hash = o.ComputeHash()
-
-	// NOTE: I've put the connection registration here as i feel it would be preferable to
-	// validate orders but this might leads to race conditions, not exactly sure.
-	// Doing this allows for doing validation in the NewOrder function which seemed more
-	// clean to me
-	// NOTE: It needs to registered first, as need to send message from service
 	ws.RegisterOrderConnection(o.Hash, &ws.OrderConnection{Conn: conn, ReadChannel: ch})
 	ws.RegisterConnectionUnsubscribeHandler(conn, ws.OrderSocketUnsubscribeHandler(o.Hash))
 

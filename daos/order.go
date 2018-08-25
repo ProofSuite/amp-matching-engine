@@ -51,22 +51,73 @@ func (dao *OrderDao) Create(order *types.Order) error {
 	return nil
 }
 
+// q := bson.M{
+// 	"address": owner.Hex(),
+// }
+// updateQuery := bson.M{
+// 	"$set": bson.M{
+// 		"tokenBalances." + token.Hex() + ".balance":       tokenBalance.Balance.String(),
+// 		"tokenBalances." + token.Hex() + ".allowance":     tokenBalance.Allowance.String(),
+// 		"tokenBalances." + token.Hex() + ".lockedBalance": tokenBalance.LockedBalance.String(),
+// 	},
+// }
+
 // Update function performs the DB updations task for Order collection
 // corresponding to a particular order ID
-func (dao *OrderDao) Update(id bson.ObjectId, order *types.Order) error {
-	order.UpdatedAt = time.Now()
-	err := db.Update(dao.dbName, dao.collectionName, bson.M{"_id": id}, order)
+func (dao *OrderDao) Update(id bson.ObjectId, o *types.Order) error {
+	o.UpdatedAt = time.Now()
+
+	err := db.Update(dao.dbName, dao.collectionName, bson.M{"_id": id}, o)
 	if err != nil {
 		log.Print(err)
 		return err
-
 	}
+
 	return nil
+
+	// q := bson.M{
+	// 	"_id": id,
+	// }
+
+	// updateQuery := bson.M{
+	// 	"$set": bson.M{
+	// 		"baseToken": o.BaseToken,
+	// 		"hash":      o.Hash,
+	// 	},
+	// }
+
+	// log.Println(id)
+
+	// log.Print(response)
+
+	// log.Print(id)
+
+	// err := db.Update(dao.dbName, dao.collectionName, bson.M{"_id": id}, bson.M{
+	// 	"baseToken":    o.BaseToken,
+	// 	"quoteToken":   o.QuoteToken,
+	// 	"buyAmount":    o.BuyAmount,
+	// 	"sellAmount":   o.SellAmount,
+	// 	"status":       o.Status,
+	// 	"side":         o.Side,
+	// 	"hash":         o.Hash,
+	// 	"price":        o.Price,
+	// 	"pricepoint":   o.PricePoint,
+	// 	"amount":       o.Amount,
+	// 	"filledAmount": o.FilledAmount,
+	// 	"nonce":        o.Nonce,
+	// 	"expires":      o.Expires,
+	// 	"makeFee":      o.MakeFee,
+	// 	"takeFee":      o.TakeFee,
+	// 	"signature":    o.Signature,
+	// 	"orderBook":    o.OrderBook,
+	// })
+
 }
 
-func (dao *OrderDao) UpdateByHash(hash common.Hash, order *types.Order) error {
-	order.UpdatedAt = time.Now()
-	err := db.Update(dao.dbName, dao.collectionName, bson.M{"hash": hash.Hex()}, order)
+func (dao *OrderDao) UpdateByHash(hash common.Hash, o *types.Order) error {
+	o.UpdatedAt = time.Now()
+
+	err := db.Update(dao.dbName, dao.collectionName, bson.M{"hash": hash.Hex()}, o)
 	if err != nil {
 		log.Print(err)
 		return err
