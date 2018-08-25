@@ -41,7 +41,7 @@ func newRouter() *routing.Router {
 		panic(err)
 	}
 	// connect to the database
-	if _, err := daos.InitSession(); err != nil {
+	if _, err := daos.InitSession(nil); err != nil {
 		panic(err)
 	}
 

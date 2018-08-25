@@ -3,18 +3,19 @@ package services
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/Proofsuite/amp-matching-engine/app"
-	"github.com/Proofsuite/amp-matching-engine/daos"
-	"github.com/Proofsuite/amp-matching-engine/types"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/stretchr/testify/assert"
-	"gopkg.in/mgo.v2/bson"
 	"math"
 	"math/big"
 	"sort"
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/Proofsuite/amp-matching-engine/app"
+	"github.com/Proofsuite/amp-matching-engine/daos"
+	"github.com/Proofsuite/amp-matching-engine/types"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/stretchr/testify/assert"
+	"gopkg.in/mgo.v2/bson"
 )
 
 const timeLayoutString = "Jan 2 2006 15:04:05"
@@ -26,7 +27,7 @@ func (a TickSorter) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a TickSorter) Less(i, j int) bool { return a[i].Ts < a[j].Ts }
 
 var durations = map[string][]int64{
-	"year": {1},
+	"year":  {1},
 	"month": {1, 3, 6, 9},
 	"week":  {1},
 	"day":   {1},
@@ -94,9 +95,9 @@ func TestOHLCV(t *testing.T) {
 		PairName:   pair.Name,
 		TradeNonce: big.NewInt(0),
 		Signature:  &types.Signature{},
-		Price:      big.NewInt(9987),
-		PricePoint: big.NewInt(9987),
 		Side:       "BUY",
+		PricePoint: big.NewInt(9987),
+		Price:      big.NewInt(9987),
 		Amount:     big.NewInt(125772),
 	}
 	app.Config.DBName = "proofdex"
@@ -104,7 +105,6 @@ func TestOHLCV(t *testing.T) {
 	ohlcvService := NewOHLCVService(tradeDao)
 
 	for _, t := range testTimes {
-
 		tTime, err := time.Parse(timeLayoutString, t)
 		if err != nil {
 			panic("invalid date: " + err.Error())
@@ -114,8 +114,6 @@ func TestOHLCV(t *testing.T) {
 		sampleTrade.CreatedAt = tTime
 		sampleTrade.Amount = amt.Add(sampleTrade.Amount, big.NewInt(10))
 		sampleTrade.Price = prc.Add(sampleTrade.Price, big.NewInt(5))
-		sampleTrade.MakerOrderID = bson.NewObjectId()
-		sampleTrade.TakerOrderID = bson.NewObjectId()
 		sampleTrade.ID = bson.NewObjectId()
 
 		if err := db.DB(app.Config.DBName).C("trades").Insert(&sampleTrade); err != nil {
@@ -143,6 +141,7 @@ func TestOHLCV(t *testing.T) {
 		}
 	}
 }
+
 func updateExpectedResponse(trade *types.Trade) error {
 
 	tradeTs := trade.CreatedAt.Unix()
@@ -214,7 +213,7 @@ func tradeToTick(trade *types.Trade, tick *types.Tick, ts int64) *types.Tick {
 		}
 	} else {
 		tick.C = trade.Price
-		tv:=new(big.Int)
+		tv := new(big.Int)
 		tv.Add(tick.V, trade.Amount)
 		tick.V = tv
 

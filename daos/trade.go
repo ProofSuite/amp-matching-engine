@@ -56,8 +56,8 @@ func (dao *TradeDao) GetAll() (response []types.Trade, err error) {
 }
 
 // Aggregate function calls the aggregate pipeline of mongodb
-func (dao *TradeDao) Aggregate(q []bson.M) (response []*types.Tick,err error) {
-	 err= db.Aggregate(dao.dbName, dao.collectionName, q, &response)
+func (dao *TradeDao) Aggregate(q []bson.M) (response []*types.Tick, err error) {
+	err = db.Aggregate(dao.dbName, dao.collectionName, q, &response)
 	return
 }
 
@@ -118,4 +118,9 @@ func (dao *TradeDao) GetByUserAddress(addr common.Address) (response []*types.Tr
 		return
 	}
 	return
+}
+
+// Drop drops all the order documents in the current database
+func (dao *TradeDao) Drop() {
+	db.DropCollection(dao.dbName, dao.collectionName)
 }
