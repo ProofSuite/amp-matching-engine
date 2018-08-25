@@ -39,11 +39,11 @@ type Client struct {
 // allow the client log message to take in a lot of different types of messages
 // An error id of -1 means that there was no error.
 type ClientLogMessage struct {
-	MessageType string       `json:"messageType"`
-	Order       *types.Order `json:"order"`
-	Trade       *types.Trade `json:"trade"`
-	Tx          common.Hash  `json:"tx"`
-	ErrorID     int8         `json:"errorID"`
+	MessageType string         `json:"messageType"`
+	Orders      []*types.Order `json:"order"`
+	Trades      []*types.Trade `json:"trade"`
+	Tx          common.Hash    `json:"tx"`
+	ErrorID     int8           `json:"errorID"`
 }
 
 type Server interface {
@@ -103,10 +103,11 @@ func (c *Client) handleMessages() {
 			case msg := <-c.Requests:
 				// log.Print("Handling Request: ", msg)
 				c.RequestLogs = append(c.RequestLogs, msg)
+				log.Print("SENDING MESSAGE", msg)
 				c.handleOrderChannelMessagesOut(*msg)
 
 			case msg := <-c.Responses:
-				// log.Print("Handling Response: ", msg)
+				log.Print("Handling Response: ", msg)
 				c.ResponseLogs = append(c.ResponseLogs, msg)
 
 				switch msg.Channel {
@@ -187,7 +188,7 @@ func (c *Client) handleIncomingMessages() {
 			err := c.connection.ReadJSON(&message)
 			if err != nil {
 				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-					log.Printf("Error: %#v", err)
+					log.Print(err)
 				}
 				break
 			}
@@ -213,7 +214,7 @@ func (c *Client) handleOrderAdded(p types.WebSocketPayload) {
 
 	l := &ClientLogMessage{
 		MessageType: "ORDER_ADDED",
-		Order:       o,
+		Orders:      []*types.Order{o},
 	}
 
 	c.Logs <- l
@@ -235,14 +236,55 @@ func (c *Client) handleOrderCancelled(p types.WebSocketPayload) {
 
 	l := &ClientLogMessage{
 		MessageType: "ORDER_CANCELLED",
-		Order:       o,
+		Orders:      []*types.Order{o},
 	}
 
 	c.Logs <- l
 }
 
 func (c *Client) handleSignatureRequested(p types.WebSocketPayload) {
+	data := &types.SignaturePayload{}
 
+	bytes, err := json.Marshal(p.Data)
+	if err != nil {
+		log.Print(err)
+	}
+
+	err = json.Unmarshal(bytes, data)
+	if err != nil {
+		log.Print(err)
+	}
+
+	for _, t := range data.Trades {
+		err = c.Wallet.SignTrade(t)
+		if err != nil {
+			log.Print(err)
+		}
+	}
+
+	//sign and return the remaining part of the previous order.
+	if data.Order != nil {
+		err = c.Wallet.SignOrder(data.Order)
+		if err != nil {
+			log.Print(err)
+		}
+	}
+
+	// if data.Order {
+	// 	err = c.Wallet.SignOrder(data.Order)
+	// 	if err != nil {
+	// 		log.Print(err)
+	// 	}
+	// }
+
+	// l := &ClientLogMessage{
+	// 	MessageType: "SIGNATURE_REQUESTED",
+	// 	Orders:      []*types.Order{data.Order},
+	// 	Trades:      data.Trades,
+	// }
+	// c.Logs <- l
+	req := types.NewSubmitSignatureWebsocketMessage(p.Hash, data.Trades, data.Order)
+	c.Requests <- req
 }
 
 func (c *Client) handleTradeExecuted(p types.WebSocketPayload) {

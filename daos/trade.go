@@ -56,9 +56,9 @@ func (dao *TradeDao) GetAll() (response []types.Trade, err error) {
 }
 
 // Aggregate function calls the aggregate pipeline of mongodb
-func (dao *TradeDao) Aggregate(q []bson.M) (response []interface{}, err error) {
-	return db.Aggregate(dao.dbName, dao.collectionName, q)
-
+func (dao *TradeDao) Aggregate(q []bson.M) (response []*types.Tick,err error) {
+	 err= db.Aggregate(dao.dbName, dao.collectionName, q, &response)
+	return
 }
 
 // GetByPairName fetches all the trades corresponding to a particular pair name.

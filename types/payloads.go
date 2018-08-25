@@ -5,6 +5,7 @@ import (
 	"errors"
 	"math/big"
 
+	"github.com/Proofsuite/amp-matching-engine/utils/math"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 
@@ -61,46 +62,49 @@ func (p *NewOrderPayload) UnmarshalJSON(b []byte) error {
 	if err != nil {
 		return err
 	}
+
 	if decoded["pairName"] != nil {
 		p.PairName = decoded["pairName"].(string)
 	}
+
 	if decoded["userAddress"] != nil {
 		p.UserAddress = common.HexToAddress(decoded["userAddress"].(string))
 	}
+
 	if decoded["exchangeAddress"] != nil {
 		p.ExchangeAddress = common.HexToAddress(decoded["exchangeAddress"].(string))
 	}
+
 	if decoded["buyToken"] != nil {
 		p.BuyToken = common.HexToAddress(decoded["buyToken"].(string))
 	}
+
 	if decoded["sellToken"] != nil {
 		p.SellToken = common.HexToAddress(decoded["sellToken"].(string))
 	}
 
-	p.BuyAmount = new(big.Int)
-	p.SellAmount = new(big.Int)
-	p.Expires = new(big.Int)
-	p.Nonce = new(big.Int)
-	p.MakeFee = new(big.Int)
-	p.TakeFee = new(big.Int)
-
 	if decoded["buyAmount"] != nil {
-		p.BuyAmount.UnmarshalJSON([]byte(decoded["buyAmount"].(string)))
+		p.BuyAmount = math.ToBigInt(decoded["buyAmount"].(string))
 	}
+
 	if decoded["sellAmount"] != nil {
-		p.SellAmount.UnmarshalJSON([]byte(decoded["sellAmount"].(string)))
+		p.BuyAmount = math.ToBigInt(decoded["sellAmount"].(string))
 	}
+
 	if decoded["expires"] != nil {
-		p.Expires.UnmarshalJSON([]byte(decoded["expires"].(string)))
+		p.BuyAmount = math.ToBigInt(decoded["expires"].(string))
 	}
+
 	if decoded["nonce"] != nil {
-		p.Nonce.UnmarshalJSON([]byte(decoded["nonce"].(string)))
+		p.BuyAmount = math.ToBigInt(decoded["nonce"].(string))
 	}
+
 	if decoded["makeFee"] != nil {
-		p.MakeFee.UnmarshalJSON([]byte(decoded["makeFee"].(string)))
+		p.BuyAmount = math.ToBigInt(decoded["makeFee"].(string))
 	}
+
 	if decoded["takeFee"] != nil {
-		p.TakeFee.UnmarshalJSON([]byte(decoded["takeFee"].(string)))
+		p.BuyAmount = math.ToBigInt(decoded["takeFee"].(string))
 	}
 
 	if decoded["signature"] != nil {

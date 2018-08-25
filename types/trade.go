@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"math/big"
 	"time"
 
@@ -41,6 +42,27 @@ type Trade struct {
 	Amount     *big.Int `json:"amount" bson:"amount"`
 }
 
+type TradeRecord struct {
+	ID           bson.ObjectId    `json:"id" bson:"_id"`
+	TakerOrderID bson.ObjectId    `json:"takerOrderId" bson:"takerOrderId"`
+	MakerOrderID bson.ObjectId    `json:"makerOrderId" bson:"makerOrderId"`
+	Taker        string           `json:"taker" bson:"taker"`
+	Maker        string           `json:"maker" bson:"maker"`
+	BaseToken    string           `json:"baseToken" bson:"baseToken"`
+	QuoteToken   string           `json:"quoteToken" bson:"quoteToken"`
+	OrderHash    string           `json:"orderHash" bson:"orderHash"`
+	Hash         string           `json:"hash" bson:"hash"`
+	PairName     string           `json:"pairName" bson:"pairName"`
+	TradeNonce   string           `json:"tradeNonce" bson:"tradeNonce"`
+	Signature    *SignatureRecord `json:"signature" bson:"signature"`
+	CreatedAt    time.Time        `json:"createdAt" bson:"createdAt"`
+	UpdatedAt    time.Time        `json:"updatedAt" bson:"updatedAt"`
+	Price        string           `json:"price" bson:"price"`
+	PricePoint   string           `json:"pricepoint" bson:"pricepoint"`
+	Side         string           `json:"side" bson:"side"`
+	Amount       string           `json:"amount" bson:"amount"`
+}
+
 // NewTrade returns a new unsigned trade corresponding to an Order, amount and taker address
 func NewTrade(o *Order, amount *big.Int, price *big.Int, taker common.Address) *Trade {
 	t := &Trade{
@@ -72,17 +94,20 @@ func (t *Trade) MarshalJSON() ([]byte, error) {
 		"hash":         t.Hash,
 		"pairName":     t.PairName,
 		"tradeNonce":   t.TradeNonce.String(),
-		"signature": map[string]interface{}{
-			"V":      t.Signature.V,
-			"amount": t.Amount.String(),
-			"R":      t.Signature.R,
-			"S":      t.Signature.S,
-		},
-		"createdAt":  t.CreatedAt.String(),
-		"updatedAt":  t.UpdatedAt.String(),
+		// NOTE: I don't these are publicly needed but leaving this here until confirmation
+		// "createdAt":    t.CreatedAt.String(),
+		// "updatedAt":    t.UpdatedAt.String(),
 		"price":      t.Price.String(),
 		"pricepoint": t.PricePoint.String(),
 		"amount":     t.Amount.String(),
+	}
+
+	if (t.BaseToken != common.Address{}) {
+		trade["baseToken"] = t.BaseToken.Hex()
+	}
+
+	if (t.QuoteToken != common.Address{}) {
+		trade["quoteToken"] = t.QuoteToken.Hex()
 	}
 
 	if t.ID != bson.ObjectId("") {
@@ -95,6 +120,14 @@ func (t *Trade) MarshalJSON() ([]byte, error) {
 
 	if t.MakerOrderID != bson.ObjectId("") {
 		trade["makerOrderId"] = t.MakerOrderID
+	}
+
+	if t.Signature != nil {
+		trade["signature"] = map[string]interface{}{
+			"V": t.Signature.V,
+			"R": t.Signature.R,
+			"S": t.Signature.S,
+		}
 	}
 
 	return json.Marshal(trade)
@@ -166,21 +199,21 @@ func (t *Trade) UnmarshalJSON(b []byte) error {
 	}
 
 	if trade["price"] != nil {
-		t.Price = math.ToBigInt(trade["price"].(string))
+		t.Price = math.ToBigInt(fmt.Sprintf("%v", trade["price"]))
 	}
 
 	if trade["pricepoint"] != nil {
-		t.PricePoint = math.ToBigInt(trade["pricepoint"].(string))
+		t.PricePoint = math.ToBigInt(fmt.Sprintf("%v", trade["pricepoint"]))
 	}
 
 	if trade["amount"] != nil {
 		t.Amount = new(big.Int)
-		t.Amount.UnmarshalJSON([]byte(trade["amount"].(string)))
+		t.Amount.UnmarshalJSON([]byte(fmt.Sprintf("%v", trade["amount"])))
 	}
 
 	if trade["tradeNonce"] != nil {
 		t.TradeNonce = new(big.Int)
-		t.TradeNonce.UnmarshalJSON([]byte(trade["amount"].(string)))
+		t.TradeNonce.UnmarshalJSON([]byte(fmt.Sprintf("%v", trade["tradeNonce"])))
 	}
 
 	if trade["signature"] != nil {
@@ -195,28 +228,8 @@ func (t *Trade) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// GetBSON implements the bson.Getter interface
 func (t *Trade) GetBSON() (interface{}, error) {
-	return struct {
-		ID           bson.ObjectId   `json:"id,omitempty" bson:"_id"`
-		TakerOrderID bson.ObjectId   `json:"takerOrderId" bson:"takerOrderId"`
-		MakerOrderID bson.ObjectId   `json:"makerOrderId" bson:"makerOrderId"`
-		PairName     string          `json:"pairName" bson:"pairName"`
-		Taker        string          `json:"taker" bson:"taker"`
-		Maker        string          `json:"maker" bson:"maker"`
-		BaseToken    string          `json:"baseToken" bson:"baseToken"`
-		QuoteToken   string          `json:"quoteToken" bson:"quoteToken"`
-		OrderHash    string          `json:"orderHash" bson:"orderHash"`
-		Hash         string          `json:"hash" bson:"hash"`
-		TradeNonce   string          `json:"tradeNonce" bson:"tradeNonce"`
-		Signature    SignatureRecord `json:"signature" bson:"signature"`
-		CreatedAt    time.Time       `json:"createdAt" bson:"createdAt" redis:"createdAt"`
-		UpdatedAt    time.Time       `json:"updatedAt" bson:"updatedAt" redis:"updatedAt"`
-		Price        string          `json:"price" bson:"price"`
-		PricePoint   string          `json:"pricepoint" bson:"pricepoint"`
-		Side         string          `json:"side" bson:"side"`
-		Amount       string          `json:"amount" bson:"amount"`
-	}{
+	tr := TradeRecord{
 		ID:           t.ID,
 		TakerOrderID: t.TakerOrderID,
 		MakerOrderID: t.MakerOrderID,
@@ -228,40 +241,45 @@ func (t *Trade) GetBSON() (interface{}, error) {
 		OrderHash:    t.OrderHash.Hex(),
 		Hash:         t.Hash.Hex(),
 		TradeNonce:   t.TradeNonce.String(),
-		Signature: SignatureRecord{
+		CreatedAt:    t.CreatedAt,
+		UpdatedAt:    t.UpdatedAt,
+		Price:        t.Price.String(),
+		PricePoint:   t.PricePoint.String(),
+		Side:         t.Side,
+		Amount:       t.Amount.String(),
+	}
+
+	if tr.Signature != nil {
+		tr.Signature = &SignatureRecord{
 			V: t.Signature.V,
 			R: t.Signature.R.Hex(),
 			S: t.Signature.S.Hex(),
-		},
-		CreatedAt:  t.CreatedAt,
-		UpdatedAt:  t.UpdatedAt,
-		Price:      t.Price.String(),
-		PricePoint: t.PricePoint.String(),
-		Side:       t.Side,
-		Amount:     t.Amount.String(),
-	}, nil
+		}
+	}
+
+	return tr, nil
 }
 
 func (t *Trade) SetBSON(raw bson.Raw) error {
 	decoded := new(struct {
-		ID           bson.ObjectId   `json:"id,omitempty" bson:"_id"`
-		TakerOrderID bson.ObjectId   `json:"takerOrderId" bson:"takerOrderId"`
-		MakerOrderID bson.ObjectId   `json:"makerOrderId" bson:"makerOrderId"`
-		PairName     string          `json:"pairName" bson:"pairName"`
-		Taker        string          `json:"taker" bson:"taker"`
-		Maker        string          `json:"maker" bson:"maker"`
-		BaseToken    string          `json:"baseToken" bson:"baseToken"`
-		QuoteToken   string          `json:"quoteToken" bson:"quoteToken"`
-		OrderHash    string          `json:"orderHash" bson:"orderHash"`
-		Hash         string          `json:"hash" bson:"hash"`
-		TradeNonce   string          `json:"tradeNonce" bson:"tradeNonce"`
-		Signature    SignatureRecord `json:"signature" bson:"signature"`
-		CreatedAt    time.Time       `json:"createdAt" bson:"createdAt" redis:"createdAt"`
-		UpdatedAt    time.Time       `json:"updatedAt" bson:"updatedAt" redis:"updatedAt"`
-		Price        string          `json:"price" bson:"price"`
-		PricePoint   string          `json:"pricepoint" bson:"pricepoint"`
-		Side         string          `json:"side" bson:"side"`
-		Amount       string          `json:"amount" bson:"amount"`
+		ID           bson.ObjectId    `json:"id,omitempty" bson:"_id"`
+		TakerOrderID bson.ObjectId    `json:"takerOrderId" bson:"takerOrderId"`
+		MakerOrderID bson.ObjectId    `json:"makerOrderId" bson:"makerOrderId"`
+		PairName     string           `json:"pairName" bson:"pairName"`
+		Taker        string           `json:"taker" bson:"taker"`
+		Maker        string           `json:"maker" bson:"maker"`
+		BaseToken    string           `json:"baseToken" bson:"baseToken"`
+		QuoteToken   string           `json:"quoteToken" bson:"quoteToken"`
+		OrderHash    string           `json:"orderHash" bson:"orderHash"`
+		Hash         string           `json:"hash" bson:"hash"`
+		TradeNonce   string           `json:"tradeNonce" bson:"tradeNonce"`
+		Signature    *SignatureRecord `json:"signature" bson:"signature"`
+		CreatedAt    time.Time        `json:"createdAt" bson:"createdAt" redis:"createdAt"`
+		UpdatedAt    time.Time        `json:"updatedAt" bson:"updatedAt" redis:"updatedAt"`
+		Price        string           `json:"price" bson:"price"`
+		PricePoint   string           `json:"pricepoint" bson:"pricepoint"`
+		Side         string           `json:"side" bson:"side"`
+		Amount       string           `json:"amount" bson:"amount"`
 	})
 
 	err := raw.Unmarshal(decoded)
@@ -284,13 +302,14 @@ func (t *Trade) SetBSON(raw bson.Raw) error {
 	t.Amount = math.ToBigInt(decoded.Amount)
 	t.Price = math.ToBigInt(decoded.Price)
 	t.PricePoint = math.ToBigInt(decoded.PricePoint)
-
 	t.Side = decoded.Side
 
-	t.Signature = &Signature{
-		V: byte(decoded.Signature.V),
-		R: common.HexToHash(decoded.Signature.R),
-		S: common.HexToHash(decoded.Signature.S),
+	if decoded.Signature != nil {
+		t.Signature = &Signature{
+			V: byte(decoded.Signature.V),
+			R: common.HexToHash(decoded.Signature.R),
+			S: common.HexToHash(decoded.Signature.S),
+		}
 	}
 
 	t.CreatedAt = decoded.CreatedAt
@@ -299,7 +318,6 @@ func (t *Trade) SetBSON(raw bson.Raw) error {
 }
 
 // ComputeHash returns hashes the trade
-//
 // The OrderHash, Amount, Taker and TradeNonce attributes must be
 // set before attempting to compute the trade hash
 func (t *Trade) ComputeHash() common.Hash {
@@ -344,7 +362,7 @@ func (t *Trade) Sign(w *Wallet) error {
 func (t *Trade) Print() {
 	b, err := json.MarshalIndent(t, "", "  ")
 	if err != nil {
-		fmt.Println("Error: ", err)
+		log.Print(err)
 	}
 
 	fmt.Print(string(b))

@@ -85,8 +85,8 @@ func (o *Order) ComputeHash() common.Hash {
 	sha.Write(o.UserAddress.Bytes())
 	sha.Write(o.ExchangeAddress.Bytes())
 	sha.Write(o.BuyToken.Bytes())
-	sha.Write(common.BigToHash(o.BuyAmount).Bytes())
 	sha.Write(o.SellToken.Bytes())
+	sha.Write(common.BigToHash(o.BuyAmount).Bytes())
 	sha.Write(common.BigToHash(o.SellAmount).Bytes())
 	sha.Write(common.BigToHash(o.Expires).Bytes())
 	sha.Write(common.BigToHash(o.Nonce).Bytes())
@@ -144,7 +144,8 @@ func (o *Order) Process(p *Pair) error {
 
 	o.BaseToken = p.BaseTokenAddress
 	o.QuoteToken = p.QuoteTokenAddress
-	o.PairName = p.Name
+	o.PairName = p.GetPairName()
+	o.PairID = p.ID
 	return nil
 }
 
@@ -295,6 +296,7 @@ func (o *Order) UnmarshalJSON(b []byte) error {
 	if order["id"] != nil && bson.IsObjectIdHex(order["id"].(string)) {
 		o.ID = bson.ObjectIdHex(order["id"].(string))
 	}
+
 	if order["pairID"] != nil && bson.IsObjectIdHex(order["pairID"].(string)) {
 		o.PairID = bson.ObjectIdHex(order["pairID"].(string))
 	}

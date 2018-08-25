@@ -42,7 +42,7 @@ func main() {
 	redis.InitConnection(app.Config.Redis)
 
 	// connect to the database
-	if _, err := daos.InitSession(); err != nil {
+	if _, err := daos.InitSession(nil); err != nil {
 		panic(err)
 	}
 
@@ -109,6 +109,7 @@ func buildRouter(logger *logrus.Logger) *routing.Router {
 	endpoints.ServeTradeResource(rg, tradeService)
 	endpoints.ServeOrderResource(rg, orderService, engineResource)
 
+	fmt.Printf("\n%+v\n", app.Config.TickDuration)
 	cronService.InitCrons()
 	return router
 }

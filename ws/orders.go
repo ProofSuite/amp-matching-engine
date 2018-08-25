@@ -30,9 +30,14 @@ func GetOrderChannel(h common.Hash) chan *types.WebSocketPayload {
 
 	if orderConnections[hash] == nil {
 		return nil
+	}
+
+	if orderConnections[hash] == nil {
+		return nil
 	} else if !orderConnections[hash].Active {
 		return nil
 	}
+
 	return orderConnections[hash].ReadChannel
 }
 

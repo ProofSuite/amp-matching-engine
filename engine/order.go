@@ -63,56 +63,54 @@ func (e *Resource) buyOrder(order *types.Order) (*Response, error) {
 		FillStatus: NOMATCH,
 	}
 
-	remOrder := *order
+	remainingOrder := *order
+	resp.RemainingOrder = &remainingOrder
 	resp.Trades = make([]*types.Trade, 0)
-	resp.RemainingOrder = &remOrder
 	resp.MatchingOrders = make([]*FillOrder, 0)
 	oskv := order.GetOBMatchKey()
 
 	// GET Range of sellOrder between minimum Sell order and order.Price
 	orders, err := redis.Values(e.redisConn.Do("ZRANGEBYLEX", oskv, "-", "["+utils.UintToPaddedString(order.PricePoint.Int64()))) // "ZRANGEBYLEX" key min max
 	if err != nil {
-		log.Printf("ZRANGEBYLEX: %s\n", err)
+		log.Print(err)
 		return nil, err
 	}
 
 	priceRange := make([]int64, 0)
 	if err := redis.ScanSlice(orders, &priceRange); err != nil {
-		log.Printf("Scan %s\n", err)
+		log.Print(err)
 		return nil, err
 	}
 
 	if len(priceRange) == 0 {
 		resp.FillStatus = NOMATCH
-		resp.RemainingOrder = &types.Order{}
-		e.addOrder(order)
+		resp.RemainingOrder = nil
 		order.Status = "OPEN"
+		e.addOrder(order)
 		return resp, nil
 	}
 
 	for _, pr := range priceRange {
 		bookEntries, err := redis.ByteSlices(e.redisConn.Do("SORT", oskv+"::"+utils.UintToPaddedString(pr), "GET", oskv+"::"+utils.UintToPaddedString(pr)+"::*", "ALPHA")) // "ZREVRANGEBYLEX" key max min
 		if err != nil {
-			log.Printf("LRANGE: %s\n", err)
+			log.Print(err)
 			return nil, err
 		}
 
 		for _, o := range bookEntries {
-			var bookEntry *types.Order
+			bookEntry := &types.Order{}
 			err = json.Unmarshal(o, &bookEntry)
 			if err != nil {
-				log.Printf("json.Unmarshal: %s\n", err)
+				log.Print(err)
 				return nil, err
 			}
 
 			trade, fillOrder, err := e.execute(order, bookEntry)
 			if err != nil {
-				log.Printf("Error Executing Order: %s\n", err)
+				log.Print(err)
 				return nil, err
 			}
 
-			order.Status = "PARTIAL_FILLED"
-			resp.FillStatus = PARTIAL
 			resp.Trades = append(resp.Trades, trade)
 			resp.MatchingOrders = append(resp.MatchingOrders, fillOrder)
 			resp.RemainingOrder.Amount = math.Sub(resp.RemainingOrder.Amount, fillOrder.Amount)
@@ -120,13 +118,19 @@ func (e *Resource) buyOrder(order *types.Order) (*Response, error) {
 			if math.IsZero(resp.RemainingOrder.Amount) {
 				resp.FillStatus = FULL
 				resp.Order.Status = "FILLED"
-				resp.RemainingOrder = &types.Order{}
+				resp.RemainingOrder = nil
 				return resp, nil
 			}
-
-			resp.Order.Status = "PARTIAL_FILLED"
 		}
 	}
+
+	resp.Order.Status = "PARTIAL_FILLED"
+	resp.FillStatus = PARTIAL
+	resp.RemainingOrder.BuyAmount = resp.RemainingOrder.Amount
+	resp.RemainingOrder.SellAmount = math.Div(
+		math.Mul(resp.RemainingOrder.Amount, resp.RemainingOrder.SellAmount),
+		resp.RemainingOrder.BuyAmount,
+	)
 
 	return resp, nil
 }
@@ -135,8 +139,8 @@ func (e *Resource) buyOrder(order *types.Order) (*Response, error) {
 // from orderbook. First it checks ths price point list to check whether the order can be matched
 // or not, if there are pricepoints that can satisfy the order then corresponding list of orders
 // are fetched and trade is executed
-func (e *Resource) sellOrder(order *types.Order) (resp *Response, err error) {
-	resp = &Response{
+func (e *Resource) sellOrder(order *types.Order) (*Response, error) {
+	resp := &Response{
 		Order:      order,
 		FillStatus: NOMATCH,
 	}
@@ -145,7 +149,6 @@ func (e *Resource) sellOrder(order *types.Order) (resp *Response, err error) {
 	resp.Trades = make([]*types.Trade, 0)
 	resp.RemainingOrder = &remOrder
 	resp.MatchingOrders = make([]*FillOrder, 0)
-
 	obkv := order.GetOBMatchKey()
 
 	// GET Range of sellOrder between minimum Sell order and order.Price
@@ -155,6 +158,8 @@ func (e *Resource) sellOrder(order *types.Order) (resp *Response, err error) {
 		return nil, err
 	}
 
+	log.Print(orders)
+
 	priceRange := make([]int64, 0)
 	if err := redis.ScanSlice(orders, &priceRange); err != nil {
 		log.Print(err)
@@ -163,7 +168,7 @@ func (e *Resource) sellOrder(order *types.Order) (resp *Response, err error) {
 
 	if len(priceRange) == 0 {
 		resp.FillStatus = NOMATCH
-		resp.RemainingOrder = &types.Order{}
+		resp.RemainingOrder = nil
 		e.addOrder(order)
 		order.Status = "OPEN"
 		return resp, nil
@@ -177,8 +182,9 @@ func (e *Resource) sellOrder(order *types.Order) (resp *Response, err error) {
 		}
 
 		for _, o := range bookEntries {
-			var bookEntry *types.Order
+			bookEntry := &types.Order{}
 			err = json.Unmarshal(o, &bookEntry)
+
 			if err != nil {
 				log.Print(err)
 				return nil, err
@@ -199,14 +205,25 @@ func (e *Resource) sellOrder(order *types.Order) (resp *Response, err error) {
 			if math.IsZero(resp.RemainingOrder.Amount) {
 				resp.FillStatus = FULL
 				resp.Order.Status = "FILLED"
-				resp.RemainingOrder = &types.Order{}
+				resp.RemainingOrder = nil
 				return resp, nil
 			}
-
-			resp.Order.Status = "PARTIAL_FILLED"
 		}
 	}
-	return
+
+	resp.Order.Status = "PARTIAL_FILLED"
+	resp.FillStatus = PARTIAL
+	resp.RemainingOrder.BuyAmount = resp.RemainingOrder.Amount
+	resp.RemainingOrder.SellAmount = math.Div(
+		math.Mul(resp.RemainingOrder.Amount, resp.Order.SellAmount),
+		resp.Order.BuyAmount,
+	)
+	resp.RemainingOrder.Signature = nil
+	resp.RemainingOrder.Hash = resp.RemainingOrder.ComputeHash()
+
+	resp.Print()
+
+	return resp, nil
 }
 
 // addOrder adds an order to redis
@@ -232,6 +249,9 @@ func (e *Resource) addOrder(order *types.Order) error {
 		log.Print(err)
 		return err
 	}
+
+	decoded := &types.Order{}
+	json.Unmarshal(orderAsBytes, decoded)
 
 	_, err = e.redisConn.Do("SET", listKey+"::"+order.Hash.Hex(), string(orderAsBytes))
 	if err != nil {
