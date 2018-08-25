@@ -1,7 +1,6 @@
 package engine
 
 import (
-	"log"
 	"math/big"
 	"strconv"
 	"testing"
@@ -714,19 +713,17 @@ func TestFillOrder1(t *testing.T) {
 	expectedResponseSellOrder.FilledAmount = expectedResponseSellOrder.Amount
 	expectedResponseSellOrder.Status = "FILLED"
 	trade := &types.Trade{
-		Amount:       expectedResponseBuyOrder.Amount,
-		Price:        buyOrder.PricePoint,
-		PricePoint:   buyOrder.PricePoint,
-		BaseToken:    buyOrder.BaseToken,
-		QuoteToken:   buyOrder.QuoteToken,
-		OrderHash:    sellOrder.Hash,
-		Side:         buyOrder.Side,
-		Taker:        buyOrder.UserAddress,
-		PairName:     buyOrder.PairName,
-		Maker:        sellOrder.UserAddress,
-		TakerOrderID: buyOrder.ID,
-		MakerOrderID: sellOrder.ID,
-		TradeNonce:   big.NewInt(0),
+		Amount:     expectedResponseBuyOrder.Amount,
+		Price:      buyOrder.PricePoint,
+		PricePoint: buyOrder.PricePoint,
+		BaseToken:  buyOrder.BaseToken,
+		QuoteToken: buyOrder.QuoteToken,
+		OrderHash:  sellOrder.Hash,
+		Side:       buyOrder.Side,
+		Taker:      buyOrder.UserAddress,
+		PairName:   buyOrder.PairName,
+		Maker:      sellOrder.UserAddress,
+		TradeNonce: big.NewInt(0),
 	}
 	trade.Hash = trade.ComputeHash()
 
@@ -837,19 +834,17 @@ func TestFillOrder2(t *testing.T) {
 	expectedResponseBuyOrder.Status = "FILLED"
 
 	trade := &types.Trade{
-		Amount:       expectedResponseSellOrder.Amount,
-		Price:        sellOrder.Price,
-		PricePoint:   sellOrder.PricePoint,
-		BaseToken:    sellOrder.BaseToken,
-		QuoteToken:   sellOrder.QuoteToken,
-		OrderHash:    buyOrder.Hash,
-		Side:         sellOrder.Side,
-		Taker:        sellOrder.UserAddress,
-		PairName:     sellOrder.PairName,
-		Maker:        buyOrder.UserAddress,
-		TakerOrderID: sellOrder.ID,
-		MakerOrderID: buyOrder.ID,
-		TradeNonce:   big.NewInt(0),
+		Amount:     expectedResponseSellOrder.Amount,
+		Price:      sellOrder.Price,
+		PricePoint: sellOrder.PricePoint,
+		BaseToken:  sellOrder.BaseToken,
+		QuoteToken: sellOrder.QuoteToken,
+		OrderHash:  buyOrder.Hash,
+		Side:       sellOrder.Side,
+		Taker:      sellOrder.UserAddress,
+		PairName:   sellOrder.PairName,
+		Maker:      buyOrder.UserAddress,
+		TradeNonce: big.NewInt(0),
 	}
 
 	trade.Hash = trade.ComputeHash()
@@ -965,55 +960,49 @@ func TestMultiMatchOrder1(t *testing.T) {
 	responseSO2.Status = "FILLED"
 
 	trade := &types.Trade{
-		Amount:       responseSO.Amount,
-		Price:        buyOrder.PricePoint,
-		PricePoint:   buyOrder.PricePoint,
-		BaseToken:    buyOrder.BaseToken,
-		QuoteToken:   buyOrder.QuoteToken,
-		OrderHash:    sellOrder.Hash,
-		Side:         buyOrder.Side,
-		Taker:        buyOrder.UserAddress,
-		PairName:     buyOrder.PairName,
-		Maker:        sellOrder.UserAddress,
-		TakerOrderID: buyOrder.ID,
-		MakerOrderID: sellOrder.ID,
-		TradeNonce:   big.NewInt(0),
+		Amount:     responseSO.Amount,
+		Price:      buyOrder.PricePoint,
+		PricePoint: buyOrder.PricePoint,
+		BaseToken:  buyOrder.BaseToken,
+		QuoteToken: buyOrder.QuoteToken,
+		OrderHash:  sellOrder.Hash,
+		Side:       buyOrder.Side,
+		Taker:      buyOrder.UserAddress,
+		PairName:   buyOrder.PairName,
+		Maker:      sellOrder.UserAddress,
+		TradeNonce: big.NewInt(0),
 	}
 
 	trade.Hash = trade.ComputeHash()
 
 	trade1 := &types.Trade{
-		Amount:       responseSO1.Amount,
-		Price:        buyOrder.PricePoint,
-		PricePoint:   buyOrder.PricePoint,
-		BaseToken:    buyOrder.BaseToken,
-		QuoteToken:   buyOrder.QuoteToken,
-		OrderHash:    sellOrder1.Hash,
-		Side:         buyOrder.Side,
-		Taker:        buyOrder.UserAddress,
-		PairName:     buyOrder.PairName,
-		Maker:        sellOrder.UserAddress,
-		TakerOrderID: buyOrder.ID,
-		MakerOrderID: sellOrder.ID,
-		TradeNonce:   big.NewInt(0),
+		Amount:     responseSO1.Amount,
+		Price:      buyOrder.PricePoint,
+		PricePoint: buyOrder.PricePoint,
+		BaseToken:  buyOrder.BaseToken,
+		QuoteToken: buyOrder.QuoteToken,
+		OrderHash:  sellOrder1.Hash,
+		Side:       buyOrder.Side,
+		Taker:      buyOrder.UserAddress,
+		PairName:   buyOrder.PairName,
+		Maker:      sellOrder.UserAddress,
+		TradeNonce: big.NewInt(0),
 	}
 
 	trade1.Hash = trade1.ComputeHash()
 
 	trade2 := &types.Trade{
-		Amount:       responseSO2.Amount,
-		Price:        buyOrder.PricePoint,
-		PricePoint:   buyOrder.PricePoint,
-		BaseToken:    buyOrder.BaseToken,
-		QuoteToken:   buyOrder.QuoteToken,
-		OrderHash:    sellOrder2.Hash,
-		Side:         buyOrder.Side,
-		Taker:        buyOrder.UserAddress,
-		PairName:     buyOrder.PairName,
-		Maker:        sellOrder.UserAddress,
-		TakerOrderID: buyOrder.ID,
-		MakerOrderID: sellOrder.ID,
-		TradeNonce:   big.NewInt(0),
+		Amount:     responseSO2.Amount,
+		Price:      buyOrder.PricePoint,
+		PricePoint: buyOrder.PricePoint,
+		BaseToken:  buyOrder.BaseToken,
+		QuoteToken: buyOrder.QuoteToken,
+		OrderHash:  sellOrder2.Hash,
+		Side:       buyOrder.Side,
+		Taker:      buyOrder.UserAddress,
+		PairName:   buyOrder.PairName,
+		Maker:      sellOrder.UserAddress,
+		TradeNonce: big.NewInt(0),
 	}
 
 	trade2.Hash = trade2.ComputeHash()
@@ -1132,55 +1121,49 @@ func TestMultiMatchOrder2(t *testing.T) {
 	responseBO2.Status = "FILLED"
 
 	trade := &types.Trade{
-		Amount:       buyOrder.Amount,
-		Price:        sellOrder.PricePoint,
-		PricePoint:   sellOrder.PricePoint,
-		BaseToken:    sellOrder.BaseToken,
-		QuoteToken:   sellOrder.QuoteToken,
-		OrderHash:    buyOrder.Hash,
-		Side:         sellOrder.Side,
-		Taker:        sellOrder.UserAddress,
-		PairName:     sellOrder.PairName,
-		Maker:        buyOrder.UserAddress,
-		TakerOrderID: sellOrder.ID,
-		MakerOrderID: buyOrder.ID,
-		TradeNonce:   big.NewInt(0),
+		Amount:     buyOrder.Amount,
+		Price:      sellOrder.PricePoint,
+		PricePoint: sellOrder.PricePoint,
+		BaseToken:  sellOrder.BaseToken,
+		QuoteToken: sellOrder.QuoteToken,
+		OrderHash:  buyOrder.Hash,
+		Side:       sellOrder.Side,
+		Taker:      sellOrder.UserAddress,
+		PairName:   sellOrder.PairName,
+		Maker:      buyOrder.UserAddress,
+		TradeNonce: big.NewInt(0),
 	}
 
 	trade.Hash = trade.ComputeHash()
 
 	trade1 := &types.Trade{
-		Amount:       buyOrder1.Amount,
-		Price:        sellOrder.PricePoint,
-		PricePoint:   sellOrder.PricePoint,
-		BaseToken:    sellOrder.BaseToken,
-		QuoteToken:   sellOrder.QuoteToken,
-		OrderHash:    buyOrder1.Hash,
-		Side:         sellOrder.Side,
-		Taker:        sellOrder.UserAddress,
-		PairName:     sellOrder.PairName,
-		Maker:        buyOrder.UserAddress,
-		TakerOrderID: sellOrder.ID,
-		MakerOrderID: buyOrder.ID,
-		TradeNonce:   big.NewInt(0),
+		Amount:     buyOrder1.Amount,
+		Price:      sellOrder.PricePoint,
+		PricePoint: sellOrder.PricePoint,
+		BaseToken:  sellOrder.BaseToken,
+		QuoteToken: sellOrder.QuoteToken,
+		OrderHash:  buyOrder1.Hash,
+		Side:       sellOrder.Side,
+		Taker:      sellOrder.UserAddress,
+		PairName:   sellOrder.PairName,
+		Maker:      buyOrder.UserAddress,
+		TradeNonce: big.NewInt(0),
 	}
 
 	trade1.Hash = trade1.ComputeHash()
 
 	trade2 := &types.Trade{
-		Amount:       buyOrder2.Amount,
-		Price:        sellOrder.PricePoint,
-		PricePoint:   sellOrder.PricePoint,
-		BaseToken:    sellOrder.BaseToken,
-		QuoteToken:   sellOrder.QuoteToken,
-		OrderHash:    buyOrder2.Hash,
-		Side:         sellOrder.Side,
-		Taker:        sellOrder.UserAddress,
-		PairName:     sellOrder.PairName,
-		Maker:        buyOrder.UserAddress,
-		TakerOrderID: sellOrder.ID,
-		MakerOrderID: buyOrder.ID,
-		TradeNonce:   big.NewInt(0),
+		Amount:     buyOrder2.Amount,
+		Price:      sellOrder.PricePoint,
+		PricePoint: sellOrder.PricePoint,
+		BaseToken:  sellOrder.BaseToken,
+		QuoteToken: sellOrder.QuoteToken,
+		OrderHash:  buyOrder2.Hash,
+		Side:       sellOrder.Side,
+		Taker:      sellOrder.UserAddress,
+		PairName:   sellOrder.PairName,
+		Maker:      buyOrder.UserAddress,
+		TradeNonce: big.NewInt(0),
 	}
 	trade2.Hash = trade2.ComputeHash()
 
@@ -1314,73 +1297,65 @@ func TestPartialMatchOrder1(t *testing.T) {
 	responseSO3.Status = "PARTIAL_FILLED"
 
 	trade := &types.Trade{
-		Amount:       responseSO.FilledAmount,
-		Price:        buyOrder.PricePoint,
-		PricePoint:   buyOrder.PricePoint,
-		BaseToken:    buyOrder.BaseToken,
-		QuoteToken:   buyOrder.QuoteToken,
-		OrderHash:    sellOrder.Hash,
-		Side:         buyOrder.Side,
-		Taker:        buyOrder.UserAddress,
-		PairName:     buyOrder.PairName,
-		Maker:        sellOrder.UserAddress,
-		TakerOrderID: buyOrder.ID,
-		MakerOrderID: sellOrder.ID,
-		TradeNonce:   big.NewInt(0),
+		Amount:     responseSO.FilledAmount,
+		Price:      buyOrder.PricePoint,
+		PricePoint: buyOrder.PricePoint,
+		BaseToken:  buyOrder.BaseToken,
+		QuoteToken: buyOrder.QuoteToken,
+		OrderHash:  sellOrder.Hash,
+		Side:       buyOrder.Side,
+		Taker:      buyOrder.UserAddress,
+		PairName:   buyOrder.PairName,
+		Maker:      sellOrder.UserAddress,
+		TradeNonce: big.NewInt(0),
 	}
 
 	trade.Hash = trade.ComputeHash()
 
 	trade1 := &types.Trade{
-		Amount:       responseSO1.FilledAmount,
-		Price:        buyOrder.PricePoint,
-		PricePoint:   buyOrder.PricePoint,
-		BaseToken:    buyOrder.BaseToken,
-		QuoteToken:   buyOrder.QuoteToken,
-		OrderHash:    sellOrder1.Hash,
-		Side:         buyOrder.Side,
-		Taker:        buyOrder.UserAddress,
-		PairName:     buyOrder.PairName,
-		Maker:        sellOrder.UserAddress,
-		TakerOrderID: buyOrder.ID,
-		MakerOrderID: sellOrder.ID,
-		TradeNonce:   big.NewInt(0),
+		Amount:     responseSO1.FilledAmount,
+		Price:      buyOrder.PricePoint,
+		PricePoint: buyOrder.PricePoint,
+		BaseToken:  buyOrder.BaseToken,
+		QuoteToken: buyOrder.QuoteToken,
+		OrderHash:  sellOrder1.Hash,
+		Side:       buyOrder.Side,
+		Taker:      buyOrder.UserAddress,
+		PairName:   buyOrder.PairName,
+		Maker:      sellOrder.UserAddress,
+		TradeNonce: big.NewInt(0),
 	}
 
 	trade1.Hash = trade1.ComputeHash()
 
 	trade2 := &types.Trade{
-		Amount:       responseSO2.FilledAmount,
-		Price:        buyOrder.PricePoint,
-		PricePoint:   buyOrder.PricePoint,
-		BaseToken:    buyOrder.BaseToken,
-		QuoteToken:   buyOrder.QuoteToken,
-		OrderHash:    sellOrder2.Hash,
-		Side:         buyOrder.Side,
-		Taker:        buyOrder.UserAddress,
-		PairName:     buyOrder.PairName,
-		Maker:        sellOrder.UserAddress,
-		TakerOrderID: buyOrder.ID,
-		MakerOrderID: sellOrder.ID,
-		TradeNonce:   big.NewInt(0),
+		Amount:     responseSO2.FilledAmount,
+		Price:      buyOrder.PricePoint,
+		PricePoint: buyOrder.PricePoint,
+		BaseToken:  buyOrder.BaseToken,
+		QuoteToken: buyOrder.QuoteToken,
+		OrderHash:  sellOrder2.Hash,
+		Side:       buyOrder.Side,
+		Taker:      buyOrder.UserAddress,
+		PairName:   buyOrder.PairName,
+		Maker:      sellOrder.UserAddress,
+		TradeNonce: big.NewInt(0),
 	}
 
 	trade2.Hash = trade2.ComputeHash()
 
 	trade3 := &types.Trade{
-		Amount:       responseSO3.FilledAmount,
-		Price:        buyOrder.PricePoint,
-		PricePoint:   buyOrder.PricePoint,
-		BaseToken:    buyOrder.BaseToken,
-		QuoteToken:   buyOrder.QuoteToken,
-		OrderHash:    sellOrder3.Hash,
-		Side:         buyOrder.Side,
-		Taker:        buyOrder.UserAddress,
-		PairName:     buyOrder.PairName,
-		Maker:        sellOrder.UserAddress,
-		TakerOrderID: buyOrder.ID,
-		MakerOrderID: sellOrder.ID,
-		TradeNonce:   big.NewInt(0),
+		Amount:     responseSO3.FilledAmount,
+		Price:      buyOrder.PricePoint,
+		PricePoint: buyOrder.PricePoint,
+		BaseToken:  buyOrder.BaseToken,
+		QuoteToken: buyOrder.QuoteToken,
+		OrderHash:  sellOrder3.Hash,
+		Side:       buyOrder.Side,
+		Taker:      buyOrder.UserAddress,
+		PairName:   buyOrder.PairName,
+		Maker:      sellOrder.UserAddress,
+		TradeNonce: big.NewInt(0),
 	}
 
 	trade3.Hash = trade3.ComputeHash()
@@ -1420,20 +1395,19 @@ func TestPartialMatchOrder1(t *testing.T) {
 	responseSO3.Status = "FILLED"
 	responseSO3.FilledAmount = responseSO3.Amount
 	trade4 := &types.Trade{
-		Amount:       responseBO.FilledAmount,
-		Price:        buyOrder.PricePoint,
-		PricePoint:   buyOrder.PricePoint,
-		BaseToken:    buyOrder.BaseToken,
-		QuoteToken:   buyOrder.QuoteToken,
-		OrderHash:    sellOrder3.Hash,
-		Side:         buyOrder.Side,
-		Taker:        buyOrder.UserAddress,
-		PairName:     buyOrder.PairName,
-		Maker:        sellOrder.UserAddress,
-		TakerOrderID: buyOrder.ID,
-		MakerOrderID: sellOrder.ID,
-		TradeNonce:   big.NewInt(0),
+		Amount:     responseBO.FilledAmount,
+		Price:      buyOrder.PricePoint,
+		PricePoint: buyOrder.PricePoint,
+		BaseToken:  buyOrder.BaseToken,
+		QuoteToken: buyOrder.QuoteToken,
+		OrderHash:  sellOrder3.Hash,
+		Side:       buyOrder.Side,
+		Taker:      buyOrder.UserAddress,
+		PairName:   buyOrder.PairName,
+		Maker:      sellOrder.UserAddress,
+		TradeNonce: big.NewInt(0),
 	}
+
 	trade4.Hash = trade4.ComputeHash()
 	expectedResponse = &Response{
 		Order:          &responseBO,
@@ -1560,73 +1534,65 @@ func TestPartialMatchOrder2(t *testing.T) {
 	responseBO3.Status = "PARTIAL_FILLED"
 
 	trade := &types.Trade{
-		Amount:       responseBO.FilledAmount,
-		Price:        sellOrder.PricePoint,
-		PricePoint:   sellOrder.PricePoint,
-		BaseToken:    sellOrder.BaseToken,
-		QuoteToken:   sellOrder.QuoteToken,
-		OrderHash:    buyOrder.Hash,
-		Side:         sellOrder.Side,
-		Taker:        sellOrder.UserAddress,
-		PairName:     sellOrder.PairName,
-		Maker:        buyOrder.UserAddress,
-		TakerOrderID: sellOrder.ID,
-		MakerOrderID: buyOrder.ID,
-		TradeNonce:   big.NewInt(0),
+		Amount:     responseBO.FilledAmount,
+		Price:      sellOrder.PricePoint,
+		PricePoint: sellOrder.PricePoint,
+		BaseToken:  sellOrder.BaseToken,
+		QuoteToken: sellOrder.QuoteToken,
+		OrderHash:  buyOrder.Hash,
+		Side:       sellOrder.Side,
+		Taker:      sellOrder.UserAddress,
+		PairName:   sellOrder.PairName,
+		Maker:      buyOrder.UserAddress,
+		TradeNonce: big.NewInt(0),
 	}
 
 	trade.Hash = trade.ComputeHash()
 
 	trade1 := &types.Trade{
-		Amount:       responseBO1.FilledAmount,
-		Price:        sellOrder.PricePoint,
-		PricePoint:   sellOrder.PricePoint,
-		BaseToken:    sellOrder.BaseToken,
-		QuoteToken:   sellOrder.QuoteToken,
-		OrderHash:    buyOrder1.Hash,
-		Side:         sellOrder.Side,
-		Taker:        sellOrder.UserAddress,
-		PairName:     sellOrder.PairName,
-		Maker:        buyOrder.UserAddress,
-		TakerOrderID: sellOrder.ID,
-		MakerOrderID: buyOrder.ID,
-		TradeNonce:   big.NewInt(0),
+		Amount:     responseBO1.FilledAmount,
+		Price:      sellOrder.PricePoint,
+		PricePoint: sellOrder.PricePoint,
+		BaseToken:  sellOrder.BaseToken,
+		QuoteToken: sellOrder.QuoteToken,
+		OrderHash:  buyOrder1.Hash,
+		Side:       sellOrder.Side,
+		Taker:      sellOrder.UserAddress,
+		PairName:   sellOrder.PairName,
+		Maker:      buyOrder.UserAddress,
+		TradeNonce: big.NewInt(0),
 	}
 
 	trade1.Hash = trade1.ComputeHash()
 
 	trade2 := &types.Trade{
-		Amount:       responseBO2.FilledAmount,
-		Price:        sellOrder.PricePoint,
-		PricePoint:   sellOrder.PricePoint,
-		BaseToken:    sellOrder.BaseToken,
-		QuoteToken:   sellOrder.QuoteToken,
-		OrderHash:    buyOrder2.Hash,
-		Side:         sellOrder.Side,
-		Taker:        sellOrder.UserAddress,
-		PairName:     sellOrder.PairName,
-		Maker:        buyOrder.UserAddress,
-		TakerOrderID: sellOrder.ID,
-		MakerOrderID: buyOrder.ID,
-		TradeNonce:   big.NewInt(0),
+		Amount:     responseBO2.FilledAmount,
+		Price:      sellOrder.PricePoint,
+		PricePoint: sellOrder.PricePoint,
+		BaseToken:  sellOrder.BaseToken,
+		QuoteToken: sellOrder.QuoteToken,
+		OrderHash:  buyOrder2.Hash,
+		Side:       sellOrder.Side,
+		Taker:      sellOrder.UserAddress,
+		PairName:   sellOrder.PairName,
+		Maker:      buyOrder.UserAddress,
+		TradeNonce: big.NewInt(0),
 	}
 
 	trade2.Hash = trade2.ComputeHash()
 
 	trade3 := &types.Trade{
-		Amount:       responseBO3.FilledAmount,
-		Price:        sellOrder.PricePoint,
-		PricePoint:   sellOrder.PricePoint,
-		BaseToken:    sellOrder.BaseToken,
-		QuoteToken:   sellOrder.QuoteToken,
-		OrderHash:    buyOrder3.Hash,
-		Side:         sellOrder.Side,
-		Taker:        sellOrder.UserAddress,
-		PairName:     sellOrder.PairName,
-		Maker:        buyOrder.UserAddress,
-		TakerOrderID: sellOrder.ID,
-		MakerOrderID: buyOrder.ID,
-		TradeNonce:   big.NewInt(0),
+		Amount:     responseBO3.FilledAmount,
+		Price:      sellOrder.PricePoint,
+		PricePoint: sellOrder.PricePoint,
+		BaseToken:  sellOrder.BaseToken,
+		QuoteToken: sellOrder.QuoteToken,
+		OrderHash:  buyOrder3.Hash,
+		Side:       sellOrder.Side,
+		Taker:      sellOrder.UserAddress,
+		PairName:   sellOrder.PairName,
+		Maker:      buyOrder.UserAddress,
+		TradeNonce: big.NewInt(0),
 	}
 
 	trade3.Hash = trade3.ComputeHash()
@@ -1647,9 +1613,6 @@ func TestPartialMatchOrder2(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error in buyOrder: %s", err)
 	}
-
-	log.Print("Lets asdfkasdjf;asldkf")
-	response.Print()
 
 	resBytes, _ := json.Marshal(response)
 	assert.JSONEq(t, string(erBytes), string(resBytes))
@@ -1672,19 +1635,17 @@ func TestPartialMatchOrder2(t *testing.T) {
 	responseBO3.FilledAmount = responseBO3.Amount
 
 	trade4 := &types.Trade{
-		Amount:       responseSO.FilledAmount,
-		Price:        sellOrder.PricePoint,
-		PricePoint:   sellOrder.PricePoint,
-		BaseToken:    sellOrder.BaseToken,
-		QuoteToken:   sellOrder.QuoteToken,
-		OrderHash:    buyOrder3.Hash,
-		Side:         sellOrder.Side,
-		Taker:        sellOrder.UserAddress,
-		PairName:     sellOrder.PairName,
-		Maker:        buyOrder.UserAddress,
-		TakerOrderID: sellOrder.ID,
-		MakerOrderID: buyOrder.ID,
-		TradeNonce:   big.NewInt(0),
+		Amount:     responseSO.FilledAmount,
+		Price:      sellOrder.PricePoint,
+		PricePoint: sellOrder.PricePoint,
+		BaseToken:  sellOrder.BaseToken,
+		QuoteToken: sellOrder.QuoteToken,
+		OrderHash:  buyOrder3.Hash,
+		Side:       sellOrder.Side,
+		Taker:      sellOrder.UserAddress,
+		PairName:   sellOrder.PairName,
+		Maker:      buyOrder.UserAddress,
+		TradeNonce: big.NewInt(0),
 	}
 
 	trade4.Hash = trade4.ComputeHash()

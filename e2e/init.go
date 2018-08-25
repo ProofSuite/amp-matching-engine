@@ -38,8 +38,8 @@ type apiTestCase struct {
 
 // Init function initializes the e2e testing
 func Init(t *testing.T) {
-	rabbitmq.InitConnection(app.Config.Rabbitmq)
-	ethereum.InitConnection(app.Config.Ethereum)
+	// rabbitmq.InitConnection(app.Config.Rabbitmq)
+	// ethereum.InitConnection(app.Config.Ethereum)
 
 	if session, err := daos.InitSession(nil); err != nil {
 		panic(err)
@@ -64,7 +64,7 @@ func Init(t *testing.T) {
 // 	// rabbitmq.InitConnection(app.Config.Rabbitmq)
 // 	// ethereum.InitConnection(app.Config.Ethereum)
 
-// 	// if session, err := daos.InitSession(); err != nil {
+// 	// if session, err := daos.InitSession(nil); err != nil {
 // 	// 	panic(err)
 // 	// } else {
 // 	// 	err = session.DB(app.Config.DBName).DropDatabase()
@@ -73,7 +73,7 @@ func Init(t *testing.T) {
 // 	// wg := sync.WaitGroup{}
 // 	// wg.Add(1)
 
-// 	// _, err = daos.InitSession()
+// 	// _, err = daos.InitSession(nil)
 // 	// if err != nil {
 // 	// 	t.Errorf("Could not load db session")
 // 	// }
@@ -87,9 +87,7 @@ func Init(t *testing.T) {
 // 	panic(http.ListenAndServe(address, nil))
 // }
 
-func NewRouter() *routing.Router {
-	logger := logrus.New()
-	logger.SetLevel(logrus.PanicLevel)
+func NewRouter(logger *logrus.Logger) *routing.Router {
 	router := routing.New()
 
 	router.To("GET,HEAD", "/ping", func(c *routing.Context) error {
@@ -109,20 +107,24 @@ func NewRouter() *routing.Router {
 
 	rg := router.Group("")
 
-	// setup daos
-	accountDao := daos.NewAccountDao()
-	orderDao := daos.NewOrderDao()
-	tokenDao := daos.NewTokenDao()
-	pairDao := daos.NewPairDao()
-	tradeDao := daos.NewTradeDao()
-
+	rabbitmq.InitConnection(app.Config.Rabbitmq)
+	ethereum.InitConnection(app.Config.Ethereum)
 	redisClient := redis.InitConnection(app.Config.Redis)
+
+	// instantiate engine
 	engineResource, err := engine.InitEngine(redisClient)
 	if err != nil {
 		panic(err)
 	}
 
-	// setup services
+	// get daos for dependency injection
+	orderDao := daos.NewOrderDao()
+	tokenDao := daos.NewTokenDao()
+	pairDao := daos.NewPairDao()
+	tradeDao := daos.NewTradeDao()
+	accountDao := daos.NewAccountDao()
+
+	// get services for injection
 	accountService := services.NewAccountService(accountDao, tokenDao)
 	ohlcvService := services.NewOHLCVService(tradeDao)
 	tokenService := services.NewTokenService(tokenDao)
@@ -131,8 +133,8 @@ func NewRouter() *routing.Router {
 	orderService := services.NewOrderService(orderDao, pairDao, accountDao, tradeDao, engineResource)
 	orderBookService := services.NewOrderBookService(pairDao, tokenDao, engineResource)
 	cronService := crons.NewCronService(ohlcvService)
+	// walletService := services.NewWalletService(walletDao, balanceDao)
 
-	// setup endpoints
 	endpoints.ServeAccountResource(rg, accountService)
 	endpoints.ServeTokenResource(rg, tokenService)
 	endpoints.ServePairResource(rg, pairService)
@@ -141,9 +143,76 @@ func NewRouter() *routing.Router {
 	endpoints.ServeTradeResource(rg, tradeService)
 	endpoints.ServeOrderResource(rg, orderService, engineResource)
 
+	//initialize rabbitmq subscriptions
+	orderService.SubscribeQueue(engineResource.HandleOrders)
+	engineResource.SubscribeResponseQueue(orderService.HandleEngineResponse)
+
+	// fmt.Printf("\n%+v\n", app.Config.TickDuration)
 	cronService.InitCrons()
 	return router
 }
+
+// func NewRouter() *routing.Router {
+// 	logger := logrus.New()
+// 	logger.SetLevel(logrus.PanicLevel)
+// 	router := routing.New()
+
+// 	router.To("GET,HEAD", "/ping", func(c *routing.Context) error {
+// 		c.Abort() // skip all other middlewares/handlers
+// 		return c.Write("OK " + app.Version)
+// 	})
+
+// 	router.Use(
+// 		app.Init(logger),
+// 		content.TypeNegotiator(content.JSON),
+// 		cors.Handler(cors.Options{
+// 			AllowOrigins: "*",
+// 			AllowHeaders: "*",
+// 			AllowMethods: "*",
+// 		}),
+// 	)
+
+// 	rg := router.Group("")
+
+// 	// setup daos
+// 	accountDao := daos.NewAccountDao()
+// 	orderDao := daos.NewOrderDao()
+// 	tokenDao := daos.NewTokenDao()
+// 	pairDao := daos.NewPairDao()
+// 	tradeDao := daos.NewTradeDao()
+
+// 	redisClient := redis.InitConnection(app.Config.Redis)
+// 	engineResource, err := engine.InitEngine(redisClient)
+// 	if err != nil {
+// 		panic(err)
+// 	}
+
+// 	// setup services
+// 	accountService := services.NewAccountService(accountDao, tokenDao)
+// 	ohlcvService := services.NewOHLCVService(tradeDao)
+// 	tokenService := services.NewTokenService(tokenDao)
+// 	tradeService := services.NewTradeService(tradeDao)
+// 	pairService := services.NewPairService(pairDao, tokenDao, engineResource, tradeService)
+// 	orderService := services.NewOrderService(orderDao, pairDao, accountDao, tradeDao, engineResource)
+// 	orderBookService := services.NewOrderBookService(pairDao, tokenDao, engineResource)
+// 	cronService := crons.NewCronService(ohlcvService)
+
+// 	// setup endpoints
+// 	endpoints.ServeAccountResource(rg, accountService)
+// 	endpoints.ServeTokenResource(rg, tokenService)
+// 	endpoints.ServePairResource(rg, pairService)
+// 	endpoints.ServeOrderBookResource(rg, orderBookService)
+// 	endpoints.ServeOHLCVResource(rg, ohlcvService)
+// 	endpoints.ServeTradeResource(rg, tradeService)
+// 	endpoints.ServeOrderResource(rg, orderService, engineResource)
+
+// 	//initialize rabbitmq subscriptions
+// 	orderService.SubscribeQueue(engineResource.HandleOrders)
+// 	engineResource.SubscribeResponseQueue(orderService.HandleEngineResponse)
+
+// 	cronService.InitCrons()
+// 	return router
+// }
 
 func testAPI(router *routing.Router, method, URL, body string) *httptest.ResponseRecorder {
 	req, _ := http.NewRequest(method, URL, bytes.NewBufferString(body))

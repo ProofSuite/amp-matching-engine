@@ -36,7 +36,7 @@ func SetupTest() (*types.Wallet, *types.Wallet, *mocks.Client, *mocks.Client, *m
 	ethereum.InitConnection(app.Config.Ethereum)
 	redis.InitConnection(app.Config.Redis)
 
-	_, err = daos.InitSession()
+	_, err = daos.InitSession(nil)
 	if err != nil {
 		panic(err)
 	}
@@ -179,7 +179,7 @@ func TestMatchOrder(t *testing.T) {
 	wg.Wait()
 }
 
-func TestMatchPartialOrder(t *testing.T) {
+func TestMatchPartialOrder1(t *testing.T) {
 	_, _, client1, client2, factory1, factory2, _, ZRX, WETH := SetupTest()
 	m1, _, _ := factory1.NewOrderMessage(ZRX, 1e10, WETH, 1e10)
 	m2, _, _ := factory2.NewOrderMessage(WETH, 2e10, ZRX, 2e10)
@@ -205,6 +205,51 @@ func TestMatchPartialOrder(t *testing.T) {
 					t.Errorf("Received an error")
 				}
 			case l := <-client2.Logs:
+				switch l.MessageType {
+				case "ORDER_ADDED":
+					wg.Done()
+				case "ORDER_MATCHED":
+					wg.Done()
+				case "ERROR":
+					t.Errorf("Received an error")
+				}
+			}
+		}
+	}()
+
+	wg.Wait()
+}
+
+func TestMatchPartialOrder2(t *testing.T) {
+	_, _, client1, client2, factory1, factory2, _, ZRX, WETH := SetupTest()
+	m1, _, _ := factory1.NewOrderMessage(WETH, 2e18, ZRX, 2e18)
+	m2, _, _ := factory2.NewOrderMessage(ZRX, 1e18, WETH, 1e18)
+	m3, _, _ := factory2.NewOrderMessage(ZRX, 1e18, WETH, 1e18)
+
+	client1.Requests <- m1
+	time.Sleep(time.Millisecond)
+	client2.Requests <- m2
+	time.Sleep(time.Millisecond)
+	client2.Requests <- m3
+
+	wg := sync.WaitGroup{}
+	wg.Add(2)
+
+	go func() {
+		for {
+			select {
+			case l := <-client1.Logs:
+				log.Print(l)
+				switch l.MessageType {
+				case "ORDER_ADDDED":
+					wg.Done()
+				case "ORDER_MATCHED":
+					wg.Done()
+				case "ERROR":
+					t.Errorf("Received an error")
+				}
+			case l := <-client2.Logs:
+				log.Print(l)
 				switch l.MessageType {
 				case "ORDER_ADDED":
 					wg.Done()
@@ -262,7 +307,7 @@ func TestMatchPartialOrder(t *testing.T) {
 // 	ethereum.InitConnection(app.Config.Ethereum)
 // 	redis.InitConnection(app.Config.Redis)
 
-// 	_, err = daos.InitSession()
+// 	_, err = daos.InitSession(nil)
 // 	if err != nil {
 // 		t.Errorf("Could not load db session")
 // 	}
@@ -330,7 +375,7 @@ func TestMatchPartialOrder(t *testing.T) {
 // 	ethereum.InitConnection(app.Config.Ethereum)
 // 	redis.InitConnection(app.Config.Redis)
 
-// 	_, err = daos.InitSession()
+// 	_, err = daos.InitSession(nil)
 // 	if err != nil {
 // 		t.Errorf("Could not load db session")
 // 	}
@@ -408,7 +453,7 @@ func TestMatchPartialOrder(t *testing.T) {
 // 	ethereum.InitConnection(app.Config.Ethereum)
 // 	redis.InitConnection(app.Config.Redis)
 
-// 	_, err = daos.InitSession()
+// 	_, err = daos.InitSession(nil)
 // 	if err != nil {
 // 		t.Errorf("Could not load db session")
 // 	}
