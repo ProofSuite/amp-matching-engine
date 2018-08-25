@@ -1,35 +1,27 @@
-package daos
+package daos_test
 
 import (
-	"fmt"
 	"io/ioutil"
 	"testing"
 
+	"github.com/Proofsuite/amp-matching-engine/daos"
 	"github.com/Proofsuite/amp-matching-engine/types"
+	"github.com/Proofsuite/amp-matching-engine/utils/testutils"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/stretchr/testify/assert"
 )
 
 func init() {
+	server := testutils.NewDBTestServer()
 	temp, _ := ioutil.TempDir("", "test")
 	server.SetPath(temp)
 
 	session := server.Session()
-	db = &Database{session}
-}
-
-func Compare(t *testing.T, a, b *types.Token) {
-	assert.Equal(t, a.Name, b.Name)
-	assert.Equal(t, a.Symbol, b.Symbol)
-	assert.Equal(t, a.ContractAddress, b.ContractAddress)
-	assert.Equal(t, a.Decimal, b.Decimal)
-	assert.Equal(t, a.Active, b.Active)
-	assert.Equal(t, a.Quote, b.Quote)
-	assert.Equal(t, a.ID, b.ID)
+	db = &daos.Database{Session: session}
 }
 
 func TestTokenDao(t *testing.T) {
-	dao := NewTokenDao()
+	dao := daos.NewTokenDao()
+	dao.Drop()
 
 	token := &types.Token{
 		Name:            "PRFT",
@@ -50,21 +42,19 @@ func TestTokenDao(t *testing.T) {
 		t.Errorf("Could not get wallets: %+v", err)
 	}
 
-	Compare(t, token, &all[0])
+	testutils.CompareToken(t, token, &all[0])
 
 	byId, err := dao.GetByID(token.ID)
 	if err != nil {
 		t.Errorf("Could not get token by ID: %+v", err)
 	}
 
-	Compare(t, token, byId)
+	testutils.CompareToken(t, token, byId)
 
 	byAddress, err := dao.GetByAddress(common.HexToAddress("0x6e9a406696617ec5105f9382d33ba3360fcfabcc"))
 	if err != nil {
 		t.Errorf("Could not get token by address: %+v", err)
 	}
 
-	fmt.Printf(":Headsfasdfasdf%+v", byAddress)
-
-	Compare(t, token, byAddress)
+	testutils.CompareToken(t, token, byAddress)
 }

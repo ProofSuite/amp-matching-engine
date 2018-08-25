@@ -28,7 +28,7 @@ func NewOrderDao() *OrderDao {
 		Unique: true,
 	}
 
-	err := db.session.DB(dbName).C(collection).EnsureIndex(index)
+	err := db.Session.DB(dbName).C(collection).EnsureIndex(index)
 	if err != nil {
 		panic(err)
 	}
@@ -151,4 +151,15 @@ func (dao *OrderDao) GetByUserAddress(addr common.Address) (response []*types.Or
 	q := bson.M{"userAddress": addr.Hex()}
 	err = db.Get(dao.dbName, dao.collectionName, q, 0, 0, &response)
 	return
+}
+
+// Drop drops all the order documents in the current database
+func (dao *OrderDao) Drop() error {
+	err := db.DropCollection(dao.dbName, dao.collectionName)
+	if err != nil {
+		log.Print(err)
+		return err
+	}
+
+	return nil
 }

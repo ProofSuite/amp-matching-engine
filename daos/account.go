@@ -127,7 +127,7 @@ func (dao *AccountDao) GetTokenBalance(owner common.Address, token common.Addres
 		},
 	}
 	var res []*types.Account
-	err := db.Aggregate(dao.dbName, dao.collectionName, q,&res)
+	err := db.Aggregate(dao.dbName, dao.collectionName, q, &res)
 	if err != nil {
 		return nil, err
 	}
@@ -178,6 +178,11 @@ func (dao *AccountDao) UpdateAllowance(owner common.Address, token common.Addres
 
 	err = db.Update(dao.dbName, dao.collectionName, q, updateQuery)
 	return
+}
+
+// Drop drops all the order documents in the current database
+func (dao *AccountDao) Drop() {
+	db.DropCollection(dao.dbName, dao.collectionName)
 }
 
 // func (dao *AccountDao) UpdateAllowance(owner common.Address, token common.Address, allowance *big.Int) (err error) {

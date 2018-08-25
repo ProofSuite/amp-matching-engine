@@ -25,7 +25,6 @@ func ServeOrderResource(rg *routing.RouteGroup, orderService *services.OrderServ
 	e := &orderEndpoint{orderService, engine}
 	rg.Get("/orders/<address>", e.get)
 	ws.RegisterChannel(ws.OrderChannel, e.ws)
-	engine.SubscribeEngineResponse(e.orderService.HandleEngineResponse)
 }
 
 func (e *orderEndpoint) get(c *routing.Context) error {

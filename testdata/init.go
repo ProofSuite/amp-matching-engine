@@ -12,7 +12,7 @@ func init() {
 		panic(err)
 	}
 	// connect to the database
-	if err := daos.InitSession(); err != nil {
+	if err := daos.InitSession(nil); err != nil {
 		panic(err)
 	}
 }
