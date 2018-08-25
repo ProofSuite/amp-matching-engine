@@ -72,11 +72,11 @@ func (e *Resource) PublishMessage(order *Message) error {
 
 // publishEngineResponse is used by matching engine to publish or send response of matching engine to
 // system for further processing
-func (e *Resource) publishEngineResponse(er *Response) error {
+func (e *Resource) publishEngineResponse(resp *Response) error {
 	ch := getChannel("erPub")
 	q := getQueue(ch, "engineResponse")
 
-	erAsBytes, err := json.Marshal(er)
+	bytes, err := json.Marshal(resp)
 	if err != nil {
 		log.Fatalf("Failed to marshal Engine Response: %s", err)
 		return errors.New("Failed to marshal Engine Response: " + err.Error())
@@ -89,8 +89,10 @@ func (e *Resource) publishEngineResponse(er *Response) error {
 		false,  // immediate
 		amqp.Publishing{
 			ContentType: "text/json",
-			Body:        erAsBytes,
-		})
+			Body:        bytes,
+		},
+	)
+
 	if err != nil {
 		log.Fatalf("Failed to publish order: %s", err)
 		return errors.New("Failed to publish order: " + err.Error())
@@ -103,6 +105,7 @@ func (e *Resource) publishEngineResponse(er *Response) error {
 func (e *Resource) SubscribeEngineResponse(fn func(*Response) error) error {
 	ch := getChannel("erSub")
 	q := getQueue(ch, "engineResponse")
+
 	go func() {
 		msgs, err := ch.Consume(
 			q.Name, // queue
@@ -113,23 +116,22 @@ func (e *Resource) SubscribeEngineResponse(fn func(*Response) error) error {
 			false,  // no-wait
 			nil,    // args
 		)
+
 		if err != nil {
 			log.Fatalf("Failed to register a consumer: %s", err)
-
 		}
 
 		forever := make(chan bool)
 
 		go func() {
 			for d := range msgs {
-				// log.Printf("Received a message: %s", d.Body)
-				var er *Response
-				err := json.Unmarshal(d.Body, &er)
+				var resp *Response
+				err := json.Unmarshal(d.Body, &resp)
 				if err != nil {
-					log.Printf("error: %s", err)
+					log.Print(err)
 					continue
 				}
-				go fn(er)
+				go fn(resp)
 			}
 		}()
 
@@ -153,9 +155,9 @@ func (e *Resource) subscribeMessage() error {
 			false,  // no-wait
 			nil,    // args
 		)
-		if err != nil {
-			log.Fatalf("Failed to register a consumer: %s", err)
 
+		if err != nil {
+			log.Print(err)
 		}
 
 		forever := make(chan bool)
@@ -165,14 +167,14 @@ func (e *Resource) subscribeMessage() error {
 				msg := &Message{}
 				err := json.Unmarshal(d.Body, msg)
 				if err != nil {
-					log.Printf("Message Unmarshal error: %s", err)
+					log.Print(err)
 					continue
 				}
 
 				order := &types.Order{}
 				err = json.Unmarshal(msg.Data, order)
 				if err != nil {
-					log.Printf("Order Unmarshal error: %s", err)
+					log.Print(err)
 					continue
 				}
 

@@ -3,6 +3,7 @@ package types
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"math/big"
 	"time"
 
@@ -128,10 +129,14 @@ func (p *Pair) GetOrderBookKeys() (sell, buy string) {
 	return p.BaseTokenAddress.Hex() + "::" + p.QuoteTokenAddress.Hex() + "::SELL", p.BaseTokenAddress.Hex() + "::" + p.QuoteTokenAddress.Hex() + "::BUY"
 }
 
+func (p *Pair) GetPairName() string {
+	return p.BaseTokenSymbol + "/" + p.QuoteTokenSymbol
+}
+
 func (p *Pair) Print() {
 	b, err := json.MarshalIndent(p, "", "  ")
 	if err != nil {
-		fmt.Println("Error: ", err)
+		log.Print(err)
 	}
 
 	fmt.Print(string(b))

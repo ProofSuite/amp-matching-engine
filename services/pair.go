@@ -42,6 +42,7 @@ func (s *PairService) Create(pair *types.Pair) error {
 	if err != nil {
 		return aerrors.NewAPIError(400, err.Error(), nil)
 	}
+
 	if bt == nil {
 		return aerrors.NewAPIError(401, "BaseTokenAddress_DOESNT_EXIST", nil)
 	}
@@ -50,9 +51,11 @@ func (s *PairService) Create(pair *types.Pair) error {
 	if err != nil {
 		return aerrors.NewAPIError(400, err.Error(), nil)
 	}
+
 	if st == nil {
 		return aerrors.NewAPIError(401, "QuoteTokenAddress_DOESNT_EXIST", nil)
 	}
+
 	if !st.Quote {
 		return aerrors.NewAPIError(401, "QuoteTokenAddress_CAN_NOT_BE_USED_AS_QUOTE_TOKEN", nil)
 	}

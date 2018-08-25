@@ -77,7 +77,6 @@ func TestSocketOrderFill(t *testing.T) {
 	client1.requests <- m1
 	time.Sleep(time.Millisecond)
 	client2.requests <- m2
-
 	time.Sleep(time.Second)
 
 	logs := server.engine.orderbooks[ZRXWETH].logger
