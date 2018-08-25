@@ -2,8 +2,9 @@ package daos
 
 import (
 	"github.com/Proofsuite/amp-matching-engine/app"
-	mgo "gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
+	"reflect"
 )
 
 // Database struct contains the pointer to mgo.session
@@ -16,13 +17,16 @@ type Database struct {
 var db *Database
 
 // InitSession initializes a new session with mongodb
-func InitSession() (*mgo.Session, error) {
+func InitSession(session *mgo.Session) (*mgo.Session, error) {
 	if db == nil {
-		db1, err := mgo.Dial(app.Config.DSN)
-		if err != nil {
-			return nil, err
+		if session == nil {
+			db1, err := mgo.Dial(app.Config.DSN)
+			if err != nil {
+				return nil, err
+			}
+			session = db1
 		}
-		db = &Database{db1}
+		db = &Database{session}
 	}
 	return db.session, nil
 }
@@ -94,9 +98,10 @@ func (d *Database) Update(dbName, collection string, query interface{}, update i
 // It is used to make mongo aggregate pipeline queries
 // It creates a copy of session initialized, sends query over this session
 // and returns the session to connection pool
-func (d *Database) Aggregate(dbName, collection string, query []bson.M) (response []interface{}, err error) {
+func (d *Database) Aggregate(dbName, collection string, query []bson.M, response interface{}) (error) {
 	sc := d.session.Copy()
 	defer sc.Close()
-	err = sc.DB(dbName).C(collection).Pipe(query).All(&response)
-	return
+
+	resultv := reflect.ValueOf(response).Interface()
+	return sc.DB(dbName).C(collection).Pipe(query).All(resultv)
 }

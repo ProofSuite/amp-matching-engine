@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"log"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -35,7 +36,7 @@ func NewWallet() *Wallet {
 func NewWalletFromPrivateKey(key string) *Wallet {
 	privateKey, err := crypto.HexToECDSA(key)
 	if err != nil {
-		fmt.Printf("Error: %v", err)
+		log.Print(err)
 	}
 
 	return &Wallet{
@@ -121,6 +122,18 @@ func (w *Wallet) SignTrade(t *Trade) error {
 	// }
 
 	// t.Signature = sig
+	return nil
+}
+
+func (w *Wallet) SignOrder(o *Order) error {
+	hash := o.ComputeHash()
+	sig, err := w.SignHash(hash)
+	if err != nil {
+		return err
+	}
+
+	o.Hash = hash
+	o.Signature = sig
 	return nil
 }
 

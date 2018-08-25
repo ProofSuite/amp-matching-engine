@@ -99,7 +99,6 @@ func (s *OrderService) NewOrder(o *types.Order) error {
 	}
 
 	if wethTokenBalance.Balance.Cmp(o.MakeFee) == -1 {
-		log.Printf("Error retrieving ")
 		return errors.New("Insufficient WETH Balance")
 	}
 
@@ -116,6 +115,7 @@ func (s *OrderService) NewOrder(o *types.Order) error {
 	}
 
 	wethTokenBalance.Balance.Sub(wethTokenBalance.Balance, o.MakeFee)
+
 	wethTokenBalance.LockedBalance.Add(wethTokenBalance.LockedBalance, o.TakeFee)
 
 	err = s.accountDao.UpdateTokenBalance(o.UserAddress, o.QuoteToken, wethTokenBalance)
@@ -208,14 +208,15 @@ func (s *OrderService) HandleEngineResponse(res *engine.Response) error {
 	case engine.NOMATCH:
 		s.handleEngineOrderAdded(res)
 	case engine.FULL:
+		s.handleEngineOrderMatched(res)
 	case engine.PARTIAL:
 		s.handleEngineOrderMatched(res)
 	default:
 		s.handleEngineUnknownMessage(res)
 	}
 
-	s.RelayUpdateOverSocket(res)
-	ws.CloseOrderReadChannel(res.Order.Hash)
+	// s.RelayUpdateOverSocket(res)
+	// ws.CloseOrderReadChannel(res.Order.Hash)
 	return nil
 }
 
@@ -229,65 +230,72 @@ func (s *OrderService) handleEngineError(res *engine.Response) {
 
 // handleEngineOrderAdded returns a websocket message informing the client that his order has been added
 // to the orderbook (but currently not matched)
-func (s *OrderService) handleEngineOrderAdded(res *engine.Response) {
-	s.SendMessage("ORDER_ADDED", res.Order.Hash, res.Order)
+func (s *OrderService) handleEngineOrderAdded(resp *engine.Response) {
+	s.SendMessage("ORDER_ADDED", resp.Order.Hash, resp.Order)
 }
 
 // handleEngineOrderMatched returns a websocket message informing the client that his order has been added.
 // The request signature message also signals the client to sign trades.
 func (s *OrderService) handleEngineOrderMatched(resp *engine.Response) {
-	s.SendMessage("REQUEST_SIGNATURE", resp.Order.Hash, resp)
+
+	// resp.RemainingOrder.Print()
 	s.orderDao.Update(resp.Order.ID, resp.Order)
 	s.transferAmount(resp.Order, resp.Order.FilledAmount)
 
-	for _, o := range resp.MatchingOrders {
-		s.orderDao.Update(o.Order.ID, resp.Order)
-		s.transferAmount(o.Order, o.Amount)
+	for _, mo := range resp.MatchingOrders {
+		s.orderDao.Update(mo.Order.ID, mo.Order)
+		s.transferAmount(mo.Order, mo.Amount)
 	}
 
 	if len(resp.Trades) != 0 {
 		err := s.tradeDao.Create(resp.Trades...)
 		if err != nil {
-			log.Fatalf("\n Error saving trades to db: %s\n", err)
+			log.Fatal(err)
 		}
 	}
 
-	t := time.NewTimer(10 * time.Second)
+	go s.handleSubmitSignatures(resp)
+	s.SendMessage("REQUEST_SIGNATURE", resp.Order.Hash, types.SignaturePayload{resp.RemainingOrder, resp.Trades})
+}
+
+// handleSubmitSignatures wait for a submit signature message that provides the matching engine with orders
+// that can be broadcast to the exchange smart contrct
+func (s *OrderService) handleSubmitSignatures(resp *engine.Response) {
 	ch := ws.GetOrderChannel(resp.Order.Hash)
+	t := time.NewTimer(30 * time.Second)
 
-	if ch == nil {
-		s.RecoverOrders(resp)
-	} else {
-		select {
-		case msg := <-ch:
-			if msg.Type == "SUBMIT_SIGNATURE" {
-				bytes, err := json.Marshal(msg.Data)
+	select {
+	case msg := <-ch:
+		if msg != nil && msg.Type == "SUBMIT_SIGNATURE" {
+			bytes, err := json.Marshal(msg.Data)
+			if err != nil {
+				s.RecoverOrders(resp)
+				ws.SendOrderErrorMessage(ws.GetOrderConnection(resp.Order.Hash), err.Error(), resp.Order.Hash)
+			}
+
+			data := &types.SignaturePayload{}
+			err = json.Unmarshal(bytes, data)
+			if err != nil {
+				log.Print(err)
+				s.RecoverOrders(resp)
+				ws.SendOrderErrorMessage(ws.GetOrderConnection(resp.Order.Hash), err.Error(), resp.Order.Hash)
+			}
+
+			if data.Order != nil {
+				bytes, err := json.Marshal(resp.Order)
 				if err != nil {
-					s.RecoverOrders(resp)
-					ws.SendOrderErrorMessage(ws.GetOrderConnection(resp.Order.Hash), err.Error(), resp.Order.Hash)
-				}
-
-				clientResponse := &engine.Response{}
-				err = json.Unmarshal(bytes, clientResponse)
-				if err != nil {
-					s.RecoverOrders(resp)
-					ws.SendOrderErrorMessage(ws.GetOrderConnection(resp.Order.Hash), err.Error(), resp.Order.Hash)
-				}
-
-				if clientResponse.FillStatus == engine.PARTIAL {
-					resp.Order.OrderBook = &types.OrderSubDoc{Amount: clientResponse.RemainingOrder.Amount, Signature: clientResponse.RemainingOrder.Signature}
-					bytes, _ := json.Marshal(resp.Order)
+					log.Print(err)
 					s.engine.PublishMessage(&engine.Message{Type: "ADD_ORDER", Data: bytes})
 				}
 			}
 
-			t.Stop()
-			break
-		case <-t.C:
-			s.RecoverOrders(resp)
-			t.Stop()
-			break
+			log.Print("RECEIVING SUBMIT SIGNATURE MESSAGE: ", data)
 		}
+
+	case <-t.C:
+		s.RecoverOrders(resp)
+		t.Stop()
+		break
 	}
 }
 
@@ -300,7 +308,6 @@ func (s *OrderService) handleEngineUnknownMessage(resp *engine.Response) {
 // RecoverOrders recovers orders i.e puts back matched orders to orderbook
 // in case of failure of trade signing by the maker
 func (s *OrderService) RecoverOrders(resp *engine.Response) {
-	//WHY NOT SUBMIT MESSAGE VIA A QUEUE ?
 	if err := s.engine.RecoverOrders(resp.MatchingOrders); err != nil {
 		panic(err)
 	}
@@ -343,7 +350,7 @@ func (s *OrderService) cancelOrderUnlockAmount(o *types.Order) error {
 	// Unlock Amount
 	acc, err := s.accountDao.GetByAddress(o.UserAddress)
 	if err != nil {
-		log.Fatalf("\n%v\n", err)
+		log.Fatal(err)
 		return err
 	}
 
@@ -354,7 +361,7 @@ func (s *OrderService) cancelOrderUnlockAmount(o *types.Order) error {
 
 		err = s.accountDao.UpdateTokenBalance(o.UserAddress, o.QuoteToken, tokenBalance)
 		if err != nil {
-			log.Fatalf("\n%s\n", err)
+			log.Fatal(err)
 		}
 	}
 
@@ -365,7 +372,7 @@ func (s *OrderService) cancelOrderUnlockAmount(o *types.Order) error {
 
 		err = s.accountDao.UpdateTokenBalance(o.UserAddress, o.BaseToken, tokenBalance)
 		if err != nil {
-			log.Fatalf("\n%v\n", err)
+			log.Fatal(err)
 		}
 	}
 
@@ -378,7 +385,7 @@ func (s *OrderService) cancelOrderUnlockAmount(o *types.Order) error {
 func (s *OrderService) transferAmount(o *types.Order, filledAmount *big.Int) {
 	tokenBalances, err := s.accountDao.GetTokenBalances(o.UserAddress)
 	if err != nil {
-		log.Fatalf("\n%v\n", err)
+		log.Fatal(err)
 	}
 
 	if o.Side == "BUY" {
@@ -387,14 +394,14 @@ func (s *OrderService) transferAmount(o *types.Order, filledAmount *big.Int) {
 
 		err = s.accountDao.UpdateTokenBalance(o.UserAddress, o.QuoteToken, sellBalance)
 		if err != nil {
-			log.Fatalf("\n%v\n", err)
+			log.Fatal(err)
 		}
 
 		buyBalance := tokenBalances[o.BaseToken]
 		buyBalance.Balance = buyBalance.Balance.Add(buyBalance.Balance, filledAmount)
 		err = s.accountDao.UpdateTokenBalance(o.UserAddress, o.BaseToken, buyBalance)
 		if err != nil {
-			log.Fatalf("\n%v\n", err)
+			log.Fatal(err)
 		}
 	}
 
@@ -403,14 +410,14 @@ func (s *OrderService) transferAmount(o *types.Order, filledAmount *big.Int) {
 		buyBalance.LockedBalance = buyBalance.LockedBalance.Sub(buyBalance.LockedBalance, filledAmount)
 		err = s.accountDao.UpdateTokenBalance(o.UserAddress, o.BaseToken, buyBalance)
 		if err != nil {
-			log.Fatalf("\n%v\n", err)
+			log.Fatal(err)
 		}
 
 		sellBalance := tokenBalances[o.QuoteToken]
 		sellBalance.Balance = sellBalance.Balance.Add(sellBalance.Balance, filledAmount)
 		err = s.accountDao.UpdateTokenBalance(o.UserAddress, o.BaseToken, sellBalance)
 		if err != nil {
-			log.Fatalf("\n%v\n", err)
+			log.Fatal(err)
 		}
 	}
 
