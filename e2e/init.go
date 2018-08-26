@@ -8,8 +8,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/Sirupsen/logrus"
-
 	"github.com/Proofsuite/amp-matching-engine/app"
 	"github.com/Proofsuite/amp-matching-engine/crons"
 	"github.com/Proofsuite/amp-matching-engine/daos"
@@ -19,6 +17,7 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/rabbitmq"
 	"github.com/Proofsuite/amp-matching-engine/redis"
 	"github.com/Proofsuite/amp-matching-engine/services"
+	"github.com/Sirupsen/logrus"
 	routing "github.com/go-ozzo/ozzo-routing"
 	"github.com/go-ozzo/ozzo-routing/content"
 	"github.com/go-ozzo/ozzo-routing/cors"
@@ -38,9 +37,6 @@ type apiTestCase struct {
 
 // Init function initializes the e2e testing
 func Init(t *testing.T) {
-	// rabbitmq.InitConnection(app.Config.Rabbitmq)
-	// ethereum.InitConnection(app.Config.Ethereum)
-
 	if session, err := daos.InitSession(nil); err != nil {
 		panic(err)
 	} else {
@@ -55,39 +51,9 @@ func Init(t *testing.T) {
 	// testBalance(t, tokens, address)
 }
 
-// func InitServer(router *routing.Router) {
-// 	err := app.LoadConfig("../config")
-// 	if err != nil {
-// 		panic(err)
-// 	}
-
-// 	// rabbitmq.InitConnection(app.Config.Rabbitmq)
-// 	// ethereum.InitConnection(app.Config.Ethereum)
-
-// 	// if session, err := daos.InitSession(nil); err != nil {
-// 	// 	panic(err)
-// 	// } else {
-// 	// 	err = session.DB(app.Config.DBName).DropDatabase()
-// 	// }
-
-// 	// wg := sync.WaitGroup{}
-// 	// wg.Add(1)
-
-// 	// _, err = daos.InitSession(nil)
-// 	// if err != nil {
-// 	// 	t.Errorf("Could not load db session")
-// 	// }
-
-// 	// wallet := types.NewWallet()
-
-// 	//setup server
-// 	http.Handle("/", router)
-// 	http.HandleFunc("/socket", ws.ConnectionEndpoint)
-// 	address := fmt.Sprintf(":%v", app.Config.ServerPort)
-// 	panic(http.ListenAndServe(address, nil))
-// }
-
-func NewRouter(logger *logrus.Logger) *routing.Router {
+func NewRouter() *routing.Router {
+	logger := logrus.New()
+	logger.SetLevel(logrus.PanicLevel)
 	router := routing.New()
 
 	router.To("GET,HEAD", "/ping", func(c *routing.Context) error {
@@ -151,68 +117,6 @@ func NewRouter(logger *logrus.Logger) *routing.Router {
 	cronService.InitCrons()
 	return router
 }
-
-// func NewRouter() *routing.Router {
-// 	logger := logrus.New()
-// 	logger.SetLevel(logrus.PanicLevel)
-// 	router := routing.New()
-
-// 	router.To("GET,HEAD", "/ping", func(c *routing.Context) error {
-// 		c.Abort() // skip all other middlewares/handlers
-// 		return c.Write("OK " + app.Version)
-// 	})
-
-// 	router.Use(
-// 		app.Init(logger),
-// 		content.TypeNegotiator(content.JSON),
-// 		cors.Handler(cors.Options{
-// 			AllowOrigins: "*",
-// 			AllowHeaders: "*",
-// 			AllowMethods: "*",
-// 		}),
-// 	)
-
-// 	rg := router.Group("")
-
-// 	// setup daos
-// 	accountDao := daos.NewAccountDao()
-// 	orderDao := daos.NewOrderDao()
-// 	tokenDao := daos.NewTokenDao()
-// 	pairDao := daos.NewPairDao()
-// 	tradeDao := daos.NewTradeDao()
-
-// 	redisClient := redis.InitConnection(app.Config.Redis)
-// 	engineResource, err := engine.InitEngine(redisClient)
-// 	if err != nil {
-// 		panic(err)
-// 	}
-
-// 	// setup services
-// 	accountService := services.NewAccountService(accountDao, tokenDao)
-// 	ohlcvService := services.NewOHLCVService(tradeDao)
-// 	tokenService := services.NewTokenService(tokenDao)
-// 	tradeService := services.NewTradeService(tradeDao)
-// 	pairService := services.NewPairService(pairDao, tokenDao, engineResource, tradeService)
-// 	orderService := services.NewOrderService(orderDao, pairDao, accountDao, tradeDao, engineResource)
-// 	orderBookService := services.NewOrderBookService(pairDao, tokenDao, engineResource)
-// 	cronService := crons.NewCronService(ohlcvService)
-
-// 	// setup endpoints
-// 	endpoints.ServeAccountResource(rg, accountService)
-// 	endpoints.ServeTokenResource(rg, tokenService)
-// 	endpoints.ServePairResource(rg, pairService)
-// 	endpoints.ServeOrderBookResource(rg, orderBookService)
-// 	endpoints.ServeOHLCVResource(rg, ohlcvService)
-// 	endpoints.ServeTradeResource(rg, tradeService)
-// 	endpoints.ServeOrderResource(rg, orderService, engineResource)
-
-// 	//initialize rabbitmq subscriptions
-// 	orderService.SubscribeQueue(engineResource.HandleOrders)
-// 	engineResource.SubscribeResponseQueue(orderService.HandleEngineResponse)
-
-// 	cronService.InitCrons()
-// 	return router
-// }
 
 func testAPI(router *routing.Router, method, URL, body string) *httptest.ResponseRecorder {
 	req, _ := http.NewRequest(method, URL, bytes.NewBufferString(body))

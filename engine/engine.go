@@ -19,15 +19,6 @@ type Resource struct {
 	mutex     *sync.Mutex
 }
 
-// Message is the structure of message that matching engine expects
-// type Message struct {
-// 	Type string `json:"type"`
-// 	Data []byte `json:"data"`
-// }
-
-// var channels = make(map[string]*amqp.Channel)
-// var queues = make(map[string]*amqp.Queue)
-
 // Engine is singleton Resource instance
 var Engine *Resource
 
@@ -43,11 +34,11 @@ func InitEngine(redisConn redis.Conn) (engine *Resource, err error) {
 
 // publishEngineResponse is used by matching engine to publish or send response of matching engine to
 // system for further processing
-func (e *Resource) publishEngineResponse(resp *Response) error {
+func (e *Resource) publishEngineResponse(res *Response) error {
 	ch := rabbitmq.GetChannel("erPub")
 	q := rabbitmq.GetQueue(ch, "engineResponse")
 
-	bytes, err := json.Marshal(resp)
+	bytes, err := json.Marshal(res)
 	if err != nil {
 		log.Fatalf("Failed to marshal Engine Response: %s", err)
 		return errors.New("Failed to marshal Engine Response: " + err.Error())
@@ -97,13 +88,13 @@ func (e *Resource) SubscribeResponseQueue(fn func(*Response) error) error {
 
 		go func() {
 			for d := range msgs {
-				var resp *Response
-				err := json.Unmarshal(d.Body, &resp)
+				var res *Response
+				err := json.Unmarshal(d.Body, &res)
 				if err != nil {
 					log.Print(err)
 					continue
 				}
-				go fn(resp)
+				go fn(res)
 			}
 		}()
 

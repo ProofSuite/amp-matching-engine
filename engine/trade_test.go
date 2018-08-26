@@ -38,7 +38,6 @@ func TestExecute(t *testing.T) {
 		ExchangeAddress: common.HexToAddress("0xae55690d4b079460e6ac28aaa58c9ec7b73a7485"),
 		UserAddress:     common.HexToAddress("0x7a9f3cd060ab180f36c17fe6bdf9974f577d77aa"),
 		Hash:            common.HexToHash("0xa2d800b77828cb52c83106ca392e465bc0af0d7c319f6956328f739080c19621"),
-		PairID:          bson.ObjectIdHex("537f700b537461b70c5f0000"),
 		PairName:        "HPC/AUT",
 		OrderBook:       nil,
 		CreatedAt:       time.Unix(1405544146, 0),
@@ -66,7 +65,6 @@ func TestExecute(t *testing.T) {
 		MakeFee:         big.NewInt(0),
 		TakeFee:         big.NewInt(0),
 		Status:          "NEW",
-		PairID:          bson.ObjectIdHex("537f700b537461b70c5f0000"),
 		Signature: &types.Signature{
 			V: 28,
 			R: common.HexToHash("0x10b30eb0072a4f0a38b6fca0b731cba15eb2e1702845d97c1230b53a839bcb85"),

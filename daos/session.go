@@ -14,10 +14,6 @@ type Database struct {
 	Session *mgo.Session
 }
 
-type DatabaseInterface interface {
-	InitDatabase(*mgo.Session)
-}
-
 // Global instance of Database struct for singleton use
 var db *Database
 
