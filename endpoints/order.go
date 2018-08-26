@@ -66,21 +66,6 @@ func (e *orderEndpoint) ws(input interface{}, conn *websocket.Conn) {
 // handleSubmitSignatures handles NewTrade messages. New trade messages are transmitted to the corresponding order channel
 // and received in the handleClientResponse.
 func (e *orderEndpoint) handleSubmitSignatures(p *types.WebSocketPayload, conn *websocket.Conn) {
-	// hash := common.HexToHash(p.Hash)
-	// data := &types.SignaturePayload{}
-
-	// bytes, err := json.Marshal(p.Data)
-	// if err != nil {
-	// 	log.Print(err)
-	// }
-
-	// err = json.Unmarshal(bytes, data)
-	// if err != nil {
-	// 	log.Print(err)
-	// }
-
-	// e.orderService.HandleSubmitSignatures(data.Order, data.Trades)
-
 	hash := common.HexToHash(p.Hash)
 	ch := ws.GetOrderChannel(hash)
 
@@ -143,46 +128,3 @@ func (e *orderEndpoint) handleCancelOrder(p *types.WebSocketPayload, conn *webso
 		return
 	}
 }
-
-// func (e *orderEndpoint) handleNewOrder(msg *types.Message, conn *websocket.Conn) {
-// 	ch := make(chan *types.Message)
-// 	p := types.NewOrderPayload{}
-// 	bytes, err := json.Marshal(msg.Data)
-// 	if err != nil {
-// 		log.Printf("Error while marshalling msg data: ", err)
-// 		ws.SendOrderErrorMessage(conn, err.Error())
-// 		return
-// 	}
-// 	err = json.Unmarshal(bytes, &p)
-// 	if err != nil {
-// 		log.Printf("Error while unmarshalling msg data bytes: ", err)
-// 		ws.SendOrderErrorMessage(conn, err.Error())
-// 		return
-// 	}
-
-// 	p.Hash = p.ComputeHash()
-
-// 	if err != nil {
-// 		ws.OrderSendErrorMessage(conn, err.Error(), p.Hash)
-// 		return
-// 	}
-
-// 	// having a separate payload/request might not be needed
-// 	o, err := p.ToOrder()
-// 	if err != nil {
-// 		ws.OrderSendErrorMessage(conn, err.Error(), p.Hash)
-// 		return
-// 	}
-
-// 	err = e.orderService.NewOrder(o)
-// 	if err != nil {
-// 		ws.OrderSendErrorMessage(conn, err.Error(), p.Hash)
-// 		return
-// 	}
-
-// 	ws.RegisterOrderConnection(p.Hash, &ws.OrderConn{Conn: conn, ReadChannel: ch})
-// 	ws.RegisterConnectionUnsubscribeHandler(
-// 		conn,
-// 		ws.OrderSocketUnsubscribeHandler(p.Hash),
-// 	)
-// }

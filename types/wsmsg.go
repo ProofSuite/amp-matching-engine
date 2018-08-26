@@ -3,6 +3,7 @@ package types
 import (
 	"encoding/json"
 	"fmt"
+	"math/big"
 )
 
 // SubscriptionEvent is an enum signifies whether the incoming message is of type Subscribe or unsubscribe
@@ -56,6 +57,20 @@ func NewOrderWebsocketMessage(o *Order) *WebSocketMessage {
 		Channel: "orders",
 		Payload: WebSocketPayload{
 			Type: "NEW_ORDER",
+			Hash: o.Hash.Hex(),
+			Data: o,
+		},
+	}
+}
+
+func NewOrderAddedWebsocketMessage(o *Order, p *Pair, filled int64) *WebSocketMessage {
+	o.Process(p)
+	o.FilledAmount = big.NewInt(filled)
+	o.Status = "OPEN"
+	return &WebSocketMessage{
+		Channel: "orders",
+		Payload: WebSocketPayload{
+			Type: "ORDER_ADDED",
 			Hash: o.Hash.Hex(),
 			Data: o,
 		},
