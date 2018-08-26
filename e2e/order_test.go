@@ -14,6 +14,7 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/rabbitmq"
 	"github.com/Proofsuite/amp-matching-engine/redis"
 	"github.com/Proofsuite/amp-matching-engine/types"
+	"github.com/Proofsuite/amp-matching-engine/utils/testutils"
 	"github.com/Proofsuite/amp-matching-engine/ws"
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -47,6 +48,9 @@ func SetupTest() (*types.Wallet, *types.Wallet, *mocks.Client, *mocks.Client, *m
 	if err != nil {
 		panic(err)
 	}
+
+	orderDao := daos.NewOrderDao()
+	orderDao.Drop()
 
 	ZRX := pair.BaseTokenAddress
 	WETH := pair.QuoteTokenAddress
@@ -221,39 +225,39 @@ func TestMatchPartialOrder1(t *testing.T) {
 }
 
 func TestMatchPartialOrder2(t *testing.T) {
-	_, _, client1, client2, factory1, factory2, _, ZRX, WETH := SetupTest()
-	m1, _, _ := factory1.NewOrderMessage(WETH, 2e18, ZRX, 2e18)
+	_, _, client1, client2, factory1, factory2, pair, ZRX, WETH := SetupTest()
+	m1, o1, _ := factory1.NewOrderMessage(WETH, 2e18, ZRX, 2e18)
 	m2, _, _ := factory2.NewOrderMessage(ZRX, 1e18, WETH, 1e18)
 	m3, _, _ := factory2.NewOrderMessage(ZRX, 1e18, WETH, 1e18)
 
 	client1.Requests <- m1
-	time.Sleep(time.Millisecond)
+	time.Sleep(200 * time.Millisecond)
 	client2.Requests <- m2
-	time.Sleep(time.Millisecond)
+	time.Sleep(200 * time.Millisecond)
 	client2.Requests <- m3
 
 	wg := sync.WaitGroup{}
-	wg.Add(2)
+	wg.Add(3)
 
 	go func() {
 		for {
 			select {
-			case l := <-client1.Logs:
-				log.Print(l)
-				switch l.MessageType {
-				case "ORDER_ADDDED":
+			case l1 := <-client1.Logs:
+				log.Print(l1)
+				switch l1.MessageType {
+				case "ORDER_ADDED":
 					wg.Done()
-				case "ORDER_MATCHED":
+				case "REQUEST_SIGNATURE":
 					wg.Done()
 				case "ERROR":
 					t.Errorf("Received an error")
 				}
-			case l := <-client2.Logs:
-				log.Print(l)
-				switch l.MessageType {
+			case l2 := <-client2.Logs:
+				log.Print(l2)
+				switch l2.MessageType {
 				case "ORDER_ADDED":
 					wg.Done()
-				case "ORDER_MATCHED":
+				case "REQUEST_SIGNATURE":
 					wg.Done()
 				case "ERROR":
 					t.Errorf("Received an error")
@@ -263,6 +267,38 @@ func TestMatchPartialOrder2(t *testing.T) {
 	}()
 
 	wg.Wait()
+
+	exp1 := types.NewOrderAddedWebsocketMessage(o1, pair, 0)
+	expectedLogs := []*types.WebSocketMessage{exp1}
+
+	// expectedLogs := []types.WebSocketMessage{
+	// 	types.WebSocketMessage{
+	// 		types.WebSocket
+	// 		MessageType: "ORDER_ADDED",
+	// 		Hash: o1.Hash.Hex(),
+	// 		Data:
+	// 		Orders: []*types.
+	// 	}
+	// }
+
+	// expectedLogs := []types.WebSocketMessage{
+	// 	mocks.ClientLogMessage{
+	// 		MessageType: "ORDER_ADDED",
+	// 		Orders:      []*types.Order{o1},
+	// 	}}
+
+	testutils.Compare(t, expectedLogs[0], client1.ResponseLogs[0])
+
+	// if !reflect.DeepEqual(expectedLogs[0], client1.ResponseLogs[0]) {
+	// 	t.Error("\n\nExpected:\n\n", expectedLogs, "\n\nGot:\n\n", client1.Logs, "\n\n")
+	// }
+
+	// log1 := client1.ResponseLogs
+	// log1[0].Print()
+
+	// log2 := client2.ResponseLogs
+	// log2[0].Print()
+	// log2[1].Print()
 }
 
 // func TestBuyOrder(t *testing.T) {

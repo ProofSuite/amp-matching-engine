@@ -24,7 +24,6 @@ func CompareOrder(t *testing.T, a, b *types.Order) {
 	assert.Equal(t, a.FilledAmount, b.FilledAmount)
 	assert.Equal(t, a.Status, b.Status)
 	assert.Equal(t, a.Side, b.Side)
-	assert.Equal(t, a.PairID, b.PairID)
 	assert.Equal(t, a.PairName, b.PairName)
 	assert.Equal(t, a.Expires, b.Expires)
 	assert.Equal(t, a.MakeFee, b.MakeFee)
@@ -96,33 +95,6 @@ func CompareStructs(t *testing.T, expected interface{}, order interface{}) {
 		t.Errorf("\n%+v\nGot: \n%+v\n\n", expected, order)
 	}
 }
-
-// type DatabaseInterface interface {
-// 	InitDatabase(*mgo.Session)
-// }
-
-// func InitDBTestServer(db DatabaseInterface) func() {
-// 	server := NewDBTestServer()
-
-// 	temp, _ := ioutil.TempDir("", "test")
-// 	server.SetPath(temp)
-
-// 	session := server.Session()
-// 	db.InitDatabase(session)
-// 	// db = &daos.Database{Session: session}
-
-// 	return func() {
-// 		dbNames, _ := session.DatabaseNames()
-// 		log.Print(dbNames)
-
-// 		for _, dbName := range dbNames {
-// 			session.DB(dbName).DropDatabase()
-// 		}
-
-// 		session.Close()
-// 		server.Wipe()
-// 	}
-// }
 
 func NewDBTestServer() *dbtest.DBServer {
 	return &dbtest.DBServer{}
