@@ -188,7 +188,7 @@ func (s *OrderService) CancelOrder(oc *types.OrderCancel) error {
 			return err
 		}
 
-		s.orderDao.Update(res.Order.ID, res.Order)
+		s.orderDao.UpdateByHash(res.Order.Hash, res.Order)
 		if err := s.cancelOrderUnlockAmount(res.Order); err != nil {
 			log.Print(err)
 			return err
@@ -226,7 +226,7 @@ func (s *OrderService) HandleEngineResponse(res *engine.Response) error {
 // handleEngineError returns an websocket error message to the client and recovers orders on the
 // redis key/value store
 func (s *OrderService) handleEngineError(res *engine.Response) {
-	s.orderDao.Update(res.Order.ID, res.Order)
+	s.orderDao.UpdateByHash(res.Order.Hash, res.Order)
 	s.cancelOrderUnlockAmount(res.Order)
 	ws.SendOrderErrorMessage(ws.GetOrderConnection(res.Order.Hash), "Some error", res.Order.Hash)
 }
@@ -242,11 +242,18 @@ func (s *OrderService) handleEngineOrderAdded(res *engine.Response) {
 func (s *OrderService) handleEngineOrderMatched(res *engine.Response) {
 
 	// res.RemainingOrder.Print()
-	s.orderDao.Update(res.Order.ID, res.Order)
+	err := s.orderDao.UpdateByHash(res.Order.Hash, res.Order)
+	if err != nil {
+		log.Print(err)
+	}
 	s.transferAmount(res.Order, res.Order.FilledAmount)
 
 	for _, mo := range res.MatchingOrders {
-		s.orderDao.Update(mo.Order.ID, mo.Order)
+		err := s.orderDao.UpdateByHash(mo.Order.Hash, mo.Order)
+		if err != nil {
+			log.Print(err)
+		}
+
 		s.transferAmount(mo.Order, mo.Amount)
 	}
 
@@ -647,7 +654,7 @@ func (s *OrderService) PublishOrder(order *rabbitmq.Message) error {
 // 	} else if res.FillStatus == engine.FULL || res.FillStatus == engine.PARTIAL {
 // 		fmt.Printf("\nPartial Or filled: %d\n", res.FillStatus)
 
-// 		s.orderDao.Update(res.Order.ID, res.Order)
+// 		s.orderDao.Update(res.Order.Hash, res.Order)
 // 		// Unlock and transfer Amount
 // 		s.transferAmount(res.Order, res.Order.FilledAmount)
 
@@ -674,15 +681,15 @@ func (s *OrderService) PublishOrder(order *rabbitmq.Message) error {
 // func (s *OrderService) UpdateUsingEngineResponse(res *engine.Response) {
 // 	switch res.FillStatus {
 // 	case engine.ERROR:
-// 		s.orderDao.Update(res.Order.ID, res.Order)
+// 		s.orderDao.Update(res.Order.Hash, res.Order)
 // 		s.cancelOrderUnlockAmount(res.Order)
 
 // 	case engine.NOMATCH:
-// 		s.orderDao.Update(res.Order.ID, res.Order)
+// 		s.orderDao.Update(res.Order.Hash, res.Order)
 
 // 	case engine.FULL:
 // 	case engine.PARTIAL:
-// 		s.orderDao.Update(res.Order.ID, res.Order)
+// 		s.orderDao.Update(res.Order.Hash, res.Order)
 // 		s.transferAmount(res.Order, big.NewInt(res.Order.FilledAmount))
 
 // 		for _, mo := range res.MatchingOrders {

@@ -41,9 +41,7 @@ type Order struct {
 	MakeFee         *big.Int       `json:"makeFee" bson:"makeFee"`
 	TakeFee         *big.Int       `json:"takeFee" bson:"takeFee"`
 	OrderBook       *OrderSubDoc   `json:"orderBook" bson:"orderBook"`
-
-	PairID   bson.ObjectId `json:"pairID,omitempty" bson:"_pairId"`
-	PairName string        `json:"pairName" bson:"pairName"`
+	PairName        string         `json:"pairName" bson:"pairName"`
 
 	CreatedAt time.Time `json:"createdAt" bson:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt" bson:"updatedAt"`
@@ -145,7 +143,6 @@ func (o *Order) Process(p *Pair) error {
 	o.BaseToken = p.BaseTokenAddress
 	o.QuoteToken = p.QuoteTokenAddress
 	o.PairName = p.GetPairName()
-	o.PairID = p.ID
 	return nil
 }
 
@@ -194,7 +191,6 @@ func (o *Order) Process(p *Pair) error {
 // 	o.BaseToken = p.BaseTokenAddress
 // 	o.QuoteToken = p.QuoteTokenAddress
 // 	o.PairName = p.Name
-// 	o.PairID = p.ID
 
 // 	// utils.PrintJSON(o)
 
@@ -262,17 +258,17 @@ func (o *Order) MarshalJSON() ([]byte, error) {
 		"filledAmount":    o.FilledAmount.String(),
 		"amount":          o.Amount.String(),
 		"hash":            o.Hash.String(),
-		"createdAt":       o.CreatedAt.Format(time.RFC3339Nano),
-		"updatedAt":       o.UpdatedAt.Format(time.RFC3339Nano),
+		// NOTE: Currently removing this to simplify public API, might reinclude
+		// later. An alternative would be to create additional simplified type
+		// "createdAt":       o.CreatedAt.Format(time.RFC3339Nano),
+		// "updatedAt":       o.UpdatedAt.Format(time.RFC3339Nano),
 	}
 
-	if o.ID != bson.ObjectId("") {
-		order["id"] = o.ID
-	}
-
-	if o.PairID != bson.ObjectId("") {
-		order["pairID"] = o.PairID
-	}
+	// NOTE: Currently removing this to simplify public API, will reinclude
+	// if needed. An alternative would be to create additional simplified type
+	// if o.ID != bson.ObjectId("") {
+	// 	order["id"] = o.ID
+	// }
 
 	if o.Signature != nil {
 		order["signature"] = map[string]interface{}{
@@ -295,10 +291,6 @@ func (o *Order) UnmarshalJSON(b []byte) error {
 
 	if order["id"] != nil && bson.IsObjectIdHex(order["id"].(string)) {
 		o.ID = bson.ObjectIdHex(order["id"].(string))
-	}
-
-	if order["pairID"] != nil && bson.IsObjectIdHex(order["pairID"].(string)) {
-		o.PairID = bson.ObjectIdHex(order["pairID"].(string))
 	}
 
 	if order["pairName"] != nil {
@@ -477,10 +469,9 @@ type OrderRecord struct {
 	Signature       *SignatureRecord   `json:"signature,omitempty" bson:"signature"`
 	OrderBook       *OrderSubDocRecord `json:"orderBook" bson:"orderBook"`
 
-	PairID    bson.ObjectId `json:"pairID" bson:"_pairId"`
-	PairName  string        `json:"pairName" bson:"pairName"`
-	CreatedAt time.Time     `json:"createdAt" bson:"createdAt"`
-	UpdatedAt time.Time     `json:"updatedAt" bson:"updatedAt"`
+	PairName  string    `json:"pairName" bson:"pairName"`
+	CreatedAt time.Time `json:"createdAt" bson:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt" bson:"updatedAt"`
 }
 
 type OrderSubDocRecord struct {
@@ -491,7 +482,6 @@ type OrderSubDocRecord struct {
 func (o *Order) GetBSON() (interface{}, error) {
 	or := OrderRecord{
 		ID:              o.ID,
-		PairID:          o.PairID,
 		PairName:        o.PairName,
 		ExchangeAddress: o.ExchangeAddress.Hex(),
 		UserAddress:     o.UserAddress.Hex(),
@@ -541,7 +531,6 @@ func (o *Order) GetBSON() (interface{}, error) {
 func (o *Order) SetBSON(raw bson.Raw) error {
 	decoded := new(struct {
 		ID              bson.ObjectId      `json:"id,omitempty" bson:"_id"`
-		PairID          bson.ObjectId      `json:"pairId,omitempty" bson:"_pairId"`
 		PairName        string             `json:"pairName" bson:"pairName"`
 		ExchangeAddress string             `json:"exchangeAddress" bson:"exchangeAddress"`
 		UserAddress     string             `json:"userAddress" bson:"userAddress"`
@@ -575,7 +564,6 @@ func (o *Order) SetBSON(raw bson.Raw) error {
 	}
 
 	o.ID = decoded.ID
-	o.PairID = decoded.PairID
 	o.PairName = decoded.PairName
 	o.ExchangeAddress = common.HexToAddress(decoded.ExchangeAddress)
 	o.UserAddress = common.HexToAddress(decoded.UserAddress)

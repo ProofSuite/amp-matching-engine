@@ -30,7 +30,6 @@ func TestOrderMarshal(t *testing.T) {
 		FilledAmount:    big.NewInt(100),
 		Status:          "NEW",
 		Side:            "BUY",
-		PairID:          bson.ObjectIdHex("537f700b537461b70c5f0000"),
 		PairName:        "ZRX/WETH",
 		Expires:         big.NewInt(10000),
 		MakeFee:         big.NewInt(50),
@@ -61,7 +60,6 @@ func TestOrderMarshal(t *testing.T) {
 		"filledAmount":    "100",
 		"status":          "NEW",
 		"side":            "BUY",
-		"pairID":          "537f700b537461b70c5f0000",
 		"pairName":        "ZRX/WETH",
 		"expires":         "10000",
 		"makeFee":         "50",
@@ -119,7 +117,6 @@ func TestOrderUnmarshal(t *testing.T) {
 			S: common.HexToHash("0x6d9ad89548c9e3ce4c97825d027291477f2c44a8caef792095f2cabc978493ff"),
 		},
 		PairName: "ZRX/WETH",
-		PairID:   bson.ObjectIdHex("537f700b537461b70c5f0000"),
 		Hash:     common.HexToHash("0xb9070a2d333403c255ce71ddf6e795053599b2e885321de40353832b96d8880a"),
 	}
 
@@ -149,7 +146,6 @@ func TestOrderUnmarshal(t *testing.T) {
 				"S": "0x6d9ad89548c9e3ce4c97825d027291477f2c44a8caef792095f2cabc978493ff"
 			},
 			"pairName": "ZRX/WETH",
-			"pairID": "537f700b537461b70c5f0000",
 			"hash":"0xb9070a2d333403c255ce71ddf6e795053599b2e885321de40353832b96d8880a"
 		}`
 
@@ -180,7 +176,6 @@ func TestOrderBSON(t *testing.T) {
 		FilledAmount:    big.NewInt(100),
 		Status:          "NEW",
 		Side:            "BUY",
-		PairID:          bson.ObjectIdHex("537f700b537461b70c5f0000"),
 		PairName:        "ZRX/WETH",
 		Expires:         big.NewInt(10000),
 		MakeFee:         big.NewInt(50),

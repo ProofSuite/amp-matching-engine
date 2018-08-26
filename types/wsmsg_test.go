@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Proofsuite/amp-matching-engine/utils/testutils"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/go-test/deep"
 	"github.com/stretchr/testify/assert"
@@ -42,7 +43,6 @@ func TestWebSocketMessageJSON(t *testing.T) {
 		FilledAmount:    big.NewInt(100),
 		Status:          "NEW",
 		Side:            "BUY",
-		PairID:          bson.ObjectIdHex("537f700b537461b70c5f0000"),
 		PairName:        "ZRX/WETH",
 		Expires:         big.NewInt(10000),
 		MakeFee:         big.NewInt(50),
@@ -90,8 +90,8 @@ func TestWebSocketMessageJSON(t *testing.T) {
 		t.Errorf("Error decoding order; %v", err)
 	}
 
-	Compare(t, msg, decoded)
-	CompareStructs(t, order, decodedOrder)
+	testutils.Compare(t, msg, decoded)
+	testutils.CompareStructs(t, order, decodedOrder)
 }
 
 func TestOrderCancelWebSocketMessageJSON(t *testing.T) {
@@ -171,8 +171,8 @@ func TestNewOrderCancelWebSocketMessage(t *testing.T) {
 		},
 	}
 
-	Compare(t, expected, msg)
-	CompareStructs(t, expected, msg)
+	testutils.Compare(t, expected, msg)
+	testutils.CompareStructs(t, expected, msg)
 }
 
 func TestNewWebsocketMessage(t *testing.T) {
@@ -192,7 +192,6 @@ func TestNewWebsocketMessage(t *testing.T) {
 		FilledAmount:    big.NewInt(100),
 		Status:          "NEW",
 		Side:            "BUY",
-		PairID:          bson.ObjectIdHex("537f700b537461b70c5f0000"),
 		PairName:        "ZRX/WETH",
 		Expires:         big.NewInt(10000),
 		MakeFee:         big.NewInt(50),
@@ -219,6 +218,6 @@ func TestNewWebsocketMessage(t *testing.T) {
 		},
 	}
 
-	Compare(t, expected, msg)
-	CompareStructs(t, expected, msg)
+	testutils.Compare(t, expected, msg)
+	testutils.CompareStructs(t, expected, msg)
 }
