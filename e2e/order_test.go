@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"log"
+	"math/big"
 	"net/http"
 	"sync"
 	"testing"
@@ -35,7 +36,8 @@ func SetupTest() (*types.Wallet, *types.Wallet, *mocks.Client, *mocks.Client, *m
 
 	rabbitmq.InitConnection(app.Config.Rabbitmq)
 	ethereum.InitConnection(app.Config.Ethereum)
-	redis.InitConnection(app.Config.Redis)
+	redisConn := redis.NewRedisConnection(app.Config.Redis)
+	defer redisConn.FlushAll()
 
 	_, err = daos.InitSession(nil)
 	if err != nil {
@@ -227,8 +229,8 @@ func TestMatchPartialOrder1(t *testing.T) {
 func TestMatchPartialOrder2(t *testing.T) {
 	_, _, client1, client2, factory1, factory2, pair, ZRX, WETH := SetupTest()
 	m1, o1, _ := factory1.NewOrderMessage(WETH, 2e18, ZRX, 2e18)
-	m2, _, _ := factory2.NewOrderMessage(ZRX, 1e18, WETH, 1e18)
-	m3, _, _ := factory2.NewOrderMessage(ZRX, 1e18, WETH, 1e18)
+	m2, o2, _ := factory2.NewOrderMessage(ZRX, 1e18, WETH, 1e18)
+	m3, o3, _ := factory2.NewOrderMessage(ZRX, 5e17, WETH, 5e17)
 
 	client1.Requests <- m1
 	time.Sleep(200 * time.Millisecond)
@@ -243,7 +245,6 @@ func TestMatchPartialOrder2(t *testing.T) {
 		for {
 			select {
 			case l1 := <-client1.Logs:
-				log.Print(l1)
 				switch l1.MessageType {
 				case "ORDER_ADDED":
 					wg.Done()
@@ -253,7 +254,6 @@ func TestMatchPartialOrder2(t *testing.T) {
 					t.Errorf("Received an error")
 				}
 			case l2 := <-client2.Logs:
-				log.Print(l2)
 				switch l2.MessageType {
 				case "ORDER_ADDED":
 					wg.Done()
@@ -268,286 +268,400 @@ func TestMatchPartialOrder2(t *testing.T) {
 
 	wg.Wait()
 
-	exp1 := types.NewOrderAddedWebsocketMessage(o1, pair, 0)
-	expectedLogs := []*types.WebSocketMessage{exp1}
+	t1 := &types.Trade{
+		Amount:     big.NewInt(1e18),
+		BaseToken:  ZRX,
+		QuoteToken: WETH,
+		Price:      big.NewInt(1e8),
+		PricePoint: big.NewInt(1e8),
+		OrderHash:  o1.Hash,
+		Side:       "BUY",
+		PairName:   "ZRX/WETH",
+		Maker:      factory1.GetAddress(),
+		Taker:      factory2.GetAddress(),
+		TradeNonce: big.NewInt(0),
+	}
 
-	// expectedLogs := []types.WebSocketMessage{
-	// 	types.WebSocketMessage{
-	// 		types.WebSocket
-	// 		MessageType: "ORDER_ADDED",
-	// 		Hash: o1.Hash.Hex(),
-	// 		Data:
-	// 		Orders: []*types.
-	// 	}
-	// }
+	t2 := &types.Trade{
+		Amount:     big.NewInt(5e17),
+		BaseToken:  ZRX,
+		QuoteToken: WETH,
+		Price:      big.NewInt(1e8),
+		PricePoint: big.NewInt(1e8),
+		OrderHash:  o1.Hash,
+		Side:       "BUY",
+		PairName:   "ZRX/WETH",
+		Maker:      factory1.GetAddress(),
+		Taker:      factory2.GetAddress(),
+		TradeNonce: big.NewInt(0),
+	}
 
-	// expectedLogs := []types.WebSocketMessage{
-	// 	mocks.ClientLogMessage{
-	// 		MessageType: "ORDER_ADDED",
-	// 		Orders:      []*types.Order{o1},
-	// 	}}
+	t1.Hash = t1.ComputeHash()
+	t2.Hash = t2.ComputeHash()
 
-	testutils.Compare(t, expectedLogs[0], client1.ResponseLogs[0])
+	//Responses received by the first client
+	res1 := types.NewOrderAddedWebsocketMessage(o1, pair, 0)
+	// Responses received by the second client
+	res2 := types.NewRequestSignaturesWebsocketMessage(o2.Hash, []*types.Trade{t1}, nil)
+	res3 := types.NewRequestSignaturesWebsocketMessage(o3.Hash, []*types.Trade{t2}, nil)
 
-	// if !reflect.DeepEqual(expectedLogs[0], client1.ResponseLogs[0]) {
-	// 	t.Error("\n\nExpected:\n\n", expectedLogs, "\n\nGot:\n\n", client1.Logs, "\n\n")
-	// }
-
-	// log1 := client1.ResponseLogs
-	// log1[0].Print()
-
-	// log2 := client2.ResponseLogs
-	// log2[0].Print()
-	// log2[1].Print()
+	testutils.Compare(t, res1, client1.ResponseLogs[0])
+	testutils.Compare(t, res2, client2.ResponseLogs[0])
+	testutils.Compare(t, res3, client2.ResponseLogs[1])
 }
 
-// func TestBuyOrder(t *testing.T) {
-// 	m1, _, err := factory1.NewOrderMessage(ZRX, 1, WETH, 1)
-// 	if err != nil {
-// 		t.Errorf("Could not create new order message: %v", err)
-// 	}
+func TestMatchPartialOrder3(t *testing.T) {
+	_, _, client1, client2, factory1, factory2, pair, ZRX, WETH := SetupTest()
+	m1, o1, _ := factory1.NewOrderMessage(WETH, 1e18, ZRX, 1e18)
+	m2, o2, _ := factory2.NewOrderMessage(ZRX, 2e18, WETH, 2e18)
 
-// 	client1.Requests <- m1
+	client1.Requests <- m1
+	time.Sleep(200 * time.Millisecond)
+	client2.Requests <- m2
 
-// 	time.Sleep(time.Second)
-// 	wg := sync.WaitGroup{}
-// 	wg.Add(1)
+	wg := sync.WaitGroup{}
+	wg.Add(2)
 
-// 	go func() {
-// 		for {
-// 			select {
-// 			case l := <-client1.Logs:
-// 				switch l.MessageType {
-// 				case "ORDER_ADDED":
-// 					wg.Done()
-// 				case "ERROR":
-// 					t.Errorf("Received an error")
-// 				}
-// 			}
-// 		}
-// 	}()
+	go func() {
+		for {
+			select {
+			case l1 := <-client1.Logs:
+				switch l1.MessageType {
+				case "ORDER_ADDED":
+					wg.Done()
+				case "REQUEST_SIGNATURE":
+					wg.Done()
+				case "ERROR":
+					t.Errorf("Received an error")
+				}
+			case l2 := <-client2.Logs:
+				switch l2.MessageType {
+				case "ORDER_ADDED":
+					wg.Done()
+				case "REQUEST_SIGNATURE":
+					wg.Done()
+				case "ERROR":
+					t.Errorf("Received an error")
+				}
+			}
+		}
+	}()
 
-// 	wg.Wait()
-// }
+	wg.Wait()
 
-// func TestSocketBuyOrder(t *testing.T) {
-// 	err := app.LoadConfig("../config")
-// 	if err != nil {
-// 		t.Errorf("Could not load configuration: %v", err)
-// 	}
+	t1 := &types.Trade{
+		Amount:     big.NewInt(1e18),
+		BaseToken:  ZRX,
+		QuoteToken: WETH,
+		Price:      big.NewInt(1e8),
+		PricePoint: big.NewInt(1e8),
+		OrderHash:  o1.Hash,
+		Side:       "BUY",
+		PairName:   "ZRX/WETH",
+		Maker:      factory1.GetAddress(),
+		Taker:      factory2.GetAddress(),
+		TradeNonce: big.NewInt(0),
+	}
 
-// 	log.SetFlags(log.LstdFlags | log.Llongfile)
-// 	log.SetPrefix("\nLOG: ")
+	ro1 := &types.Order{
+		Amount:          big.NewInt(1e18),
+		BaseToken:       ZRX,
+		QuoteToken:      WETH,
+		BuyToken:        ZRX,
+		SellToken:       WETH,
+		BuyAmount:       big.NewInt(1e18),
+		SellAmount:      big.NewInt(1e18),
+		FilledAmount:    big.NewInt(0),
+		ExchangeAddress: factory2.GetExchangeAddress(),
+		UserAddress:     factory2.GetAddress(),
+		Price:           big.NewInt(1),
+		PricePoint:      big.NewInt(1e8),
+		Side:            "BUY",
+		PairName:        "ZRX/WETH",
+		Status:          "NEW",
+		TakeFee:         big.NewInt(0),
+		MakeFee:         big.NewInt(0),
+		Expires:         o1.Expires,
+	}
 
-// 	rabbitmq.InitConnection(app.Config.Rabbitmq)
-// 	ethereum.InitConnection(app.Config.Ethereum)
-// 	redis.InitConnection(app.Config.Redis)
+	t1.Hash = t1.ComputeHash()
 
-// 	_, err = daos.InitSession(nil)
-// 	if err != nil {
-// 		t.Errorf("Could not load db session")
-// 	}
+	//Responses received by the first client
+	res1 := types.NewOrderAddedWebsocketMessage(o1, pair, 0)
+	// Responses received by the second client
+	res2 := types.NewRequestSignaturesWebsocketMessage(o2.Hash, []*types.Trade{t1}, ro1)
 
-// 	wallet := types.NewWalletFromPrivateKey("7c78c6e2f65d0d84c44ac0f7b53d6e4dd7a82c35f51b251d387c2a69df712660")
+	testutils.Compare(t, res1, client1.ResponseLogs[0])
+	testutils.Compare(t, res2, client2.ResponseLogs[0])
+}
 
-// 	NewRouter()
-// 	//setup mock client
-// 	client := mocks.NewClient(wallet, http.HandlerFunc(ws.ConnectionEndpoint))
-// 	client.Start()
+func TestMatchPartialOrder4(t *testing.T) {
+	_, _, client1, client2, factory1, factory2, pair, ZRX, WETH := SetupTest()
+	m1, o1, _ := factory1.NewOrderMessage(WETH, 1e18, ZRX, 1e18)
+	m2, o2, _ := factory1.NewOrderMessage(WETH, 1e18, ZRX, 1e18)
+	m3, o3, _ := factory2.NewOrderMessage(ZRX, 3e18, WETH, 3e18)
 
-// 	pairDao := daos.NewPairDao()
-// 	exchangeAddress := common.HexToAddress("0x")
-// 	pair, err := pairDao.GetByTokenSymbols("ZRX", "WETH")
-// 	if err != nil {
-// 		t.Errorf("Could not retrieve token pair: %v", err)
-// 	}
+	client1.Requests <- m1
+	time.Sleep(200 * time.Millisecond)
+	client1.Requests <- m2
+	time.Sleep(200 * time.Millisecond)
+	client2.Requests <- m3
 
-// 	ZRX := pair.BaseTokenAddress
-// 	WETH := pair.QuoteTokenAddress
+	wg := sync.WaitGroup{}
+	wg.Add(3)
 
-// 	factory, err := mocks.NewOrderFactory(pair, wallet, exchangeAddress)
-// 	if err != nil {
-// 		t.Errorf("Could not create new factory: %v", err)
-// 	}
+	go func() {
+		for {
+			select {
+			case l1 := <-client1.Logs:
+				switch l1.MessageType {
+				case "ORDER_ADDED":
+					wg.Done()
+				case "REQUEST_SIGNATURE":
+					wg.Done()
+				case "ERROR":
+					t.Errorf("Received an error")
+				}
+			case l2 := <-client2.Logs:
+				switch l2.MessageType {
+				case "ORDER_ADDED":
+					wg.Done()
+				case "REQUEST_SIGNATURE":
+					wg.Done()
+				case "ERROR":
+					t.Errorf("Received an error")
+				}
+			}
+		}
+	}()
 
-// 	m1, _, err := factory.NewOrderMessage(ZRX, 1, WETH, 1)
-// 	if err != nil {
-// 		t.Errorf("Could not create new order message: %v", err)
-// 	}
+	wg.Wait()
 
-// 	client.Requests <- m1
+	t1 := &types.Trade{
+		Amount:     big.NewInt(1e18),
+		BaseToken:  ZRX,
+		QuoteToken: WETH,
+		Price:      big.NewInt(1e8),
+		PricePoint: big.NewInt(1e8),
+		OrderHash:  o1.Hash,
+		Side:       "BUY",
+		PairName:   "ZRX/WETH",
+		Maker:      factory1.GetAddress(),
+		Taker:      factory2.GetAddress(),
+		TradeNonce: big.NewInt(0),
+	}
 
-// 	time.Sleep(time.Second)
-// 	wg := sync.WaitGroup{}
-// 	wg.Add(1)
+	t2 := &types.Trade{
+		Amount:     big.NewInt(1e18),
+		BaseToken:  ZRX,
+		QuoteToken: WETH,
+		Price:      big.NewInt(1e8),
+		PricePoint: big.NewInt(1e8),
+		OrderHash:  o2.Hash,
+		Side:       "BUY",
+		PairName:   "ZRX/WETH",
+		Maker:      factory1.GetAddress(),
+		Taker:      factory2.GetAddress(),
+		TradeNonce: big.NewInt(0),
+	}
 
-// 	go func() {
-// 		for {
-// 			select {
-// 			case l := <-client.Logs:
-// 				switch l.MessageType {
-// 				case "ORDER_ADDED":
-// 					wg.Done()
-// 				case "ERROR":
-// 					t.Errorf("Received an error")
-// 				}
-// 			}
-// 		}
-// 	}()
+	//Remaining order
+	ro1 := &types.Order{
+		Amount:          big.NewInt(1e18),
+		BaseToken:       ZRX,
+		QuoteToken:      WETH,
+		BuyToken:        ZRX,
+		SellToken:       WETH,
+		BuyAmount:       big.NewInt(1e18),
+		SellAmount:      big.NewInt(1e18),
+		FilledAmount:    big.NewInt(0),
+		ExchangeAddress: factory2.GetExchangeAddress(),
+		UserAddress:     factory2.GetAddress(),
+		Price:           big.NewInt(1),
+		PricePoint:      big.NewInt(1e8),
+		Side:            "BUY",
+		PairName:        "ZRX/WETH",
+		Status:          "NEW",
+		TakeFee:         big.NewInt(0),
+		MakeFee:         big.NewInt(0),
+		Expires:         o1.Expires,
+	}
 
-// 	wg.Wait()
-// }
+	t1.Hash = t1.ComputeHash()
+	t2.Hash = t2.ComputeHash()
 
-// func TestSocketBuyAndCancelOrder(t *testing.T) {
-// 	err := app.LoadConfig("../config")
-// 	if err != nil {
-// 		t.Errorf("Could not load configuration: %v", err)
-// 	}
+	res1 := types.NewOrderAddedWebsocketMessage(o1, pair, 0)
+	res2 := types.NewOrderAddedWebsocketMessage(o2, pair, 0)
+	res3 := types.NewRequestSignaturesWebsocketMessage(o3.Hash, []*types.Trade{t1, t2}, ro1)
+	testutils.Compare(t, res1, client1.ResponseLogs[0])
+	testutils.Compare(t, res2, client1.ResponseLogs[1])
+	testutils.Compare(t, res3, client2.ResponseLogs[0])
+}
 
-// 	log.SetFlags(log.LstdFlags | log.Llongfile)
-// 	log.SetPrefix("\nLOG: ")
+func TestMatchPartialOrder5(t *testing.T) {
+	_, _, client1, client2, factory1, factory2, pair, ZRX, WETH := SetupTest()
+	m1, o1, _ := factory1.NewBuyOrderMessage(50, 1e18) // buy 1e18 ZRX at 1ZRX = 50WETH
+	m2, o2, _ := factory2.NewSellOrderMessage(50, 1e18)
 
-// 	rabbitmq.InitConnection(app.Config.Rabbitmq)
-// 	ethereum.InitConnection(app.Config.Ethereum)
-// 	redis.InitConnection(app.Config.Redis)
+	client1.Requests <- m1
+	time.Sleep(200 * time.Millisecond)
+	client2.Requests <- m2
+	time.Sleep(200 * time.Millisecond)
 
-// 	_, err = daos.InitSession(nil)
-// 	if err != nil {
-// 		t.Errorf("Could not load db session")
-// 	}
+	wg := sync.WaitGroup{}
+	wg.Add(2)
 
-// 	wallet := types.NewWalletFromPrivateKey("7c78c6e2f65d0d84c44ac0f7b53d6e4dd7a82c35f51b251d387c2a69df712660")
+	go func() {
+		for {
+			select {
+			case l1 := <-client1.Logs:
+				switch l1.MessageType {
+				case "ORDER_ADDED":
+					wg.Done()
+				case "REQUEST_SIGNATURE":
+					wg.Done()
+				case "ERROR":
+					t.Errorf("Received an error")
+				}
+			case l2 := <-client2.Logs:
+				switch l2.MessageType {
+				case "ORDER_ADDED":
+					wg.Done()
+				case "REQUEST_SIGNATURE":
+					wg.Done()
+				case "ERROR":
+					t.Errorf("Received an error")
+				}
+			}
+		}
+	}()
 
-// 	NewRouter()
-// 	//setup mock client
-// 	client := mocks.NewClient(wallet, http.HandlerFunc(ws.ConnectionEndpoint))
-// 	client.Start()
+	wg.Wait()
 
-// 	pairDao := daos.NewPairDao()
-// 	exchangeAddress := common.HexToAddress("0x")
-// 	pair, err := pairDao.GetByTokenSymbols("ZRX", "WETH")
-// 	if err != nil {
-// 		fmt.Printf("Could not retrieve token pair for test")
-// 	}
+	res1 := types.NewOrderAddedWebsocketMessage(o1, pair, 0)
 
-// 	ZRX := pair.BaseTokenAddress
-// 	WETH := pair.QuoteTokenAddress
+	t1 := &types.Trade{
+		Amount:     big.NewInt(1e18),
+		BaseToken:  ZRX,
+		QuoteToken: WETH,
+		Price:      big.NewInt(50e8),
+		PricePoint: big.NewInt(50e8),
+		OrderHash:  o1.Hash,
+		Side:       "SELL",
+		PairName:   "ZRX/WETH",
+		Maker:      factory1.GetAddress(),
+		Taker:      factory2.GetAddress(),
+		TradeNonce: big.NewInt(0),
+	}
 
-// 	factory, err := mocks.NewOrderFactory(pair, wallet, exchangeAddress)
-// 	if err != nil {
-// 		fmt.Printf("Could not create factory")
-// 	}
+	t1.Hash = t1.ComputeHash()
+	res2 := types.NewRequestSignaturesWebsocketMessage(o2.Hash, []*types.Trade{t1}, nil)
 
-// 	m1, o1, err := factory.NewOrderMessage(ZRX, 1, WETH, 1)
-// 	if err != nil {
-// 		t.Errorf("Error creating order message: %v", err)
-// 	}
+	testutils.Compare(t, res1, client1.ResponseLogs[0])
+	testutils.Compare(t, res2, client2.ResponseLogs[0])
 
-// 	m2, _, err := factory.NewCancelOrderMessage(o1)
-// 	if err != nil {
-// 		t.Errorf("Error creating cancel order message: %v", err)
-// 	}
+	// t1 := &types.Trade{
+	// 	Amount:     big.NewInt(1e18),
+	// 	BaseToken:  ZRX,
+	// 	QuoteToken: WETH,
+	// 	Price:      big.NewInt(1e8),
+	// 	PricePoint: big.NewInt(1e8),
+	// 	OrderHash:  o1.Hash,
+	// 	Side:       "BUY",
+	// 	PairName:   "ZRX/WETH",
+	// 	Maker:      factory1.GetAddress(),
+	// 	Taker:      factory2.GetAddress(),
+	// 	TradeNonce: big.NewInt(0),
+	// }
 
-// 	client.Requests <- m1
-// 	time.Sleep(time.Second)
-// 	client.Requests <- m2
-// 	time.Sleep(time.Millisecond)
+	// t2 := &types.Trade{
+	// 	Amount:     big.NewInt(1e18),
+	// 	BaseToken:  ZRX,
+	// 	QuoteToken: WETH,
+	// 	Price:      big.NewInt(1e8),
+	// 	PricePoint: big.NewInt(1e8),
+	// 	OrderHash:  o2.Hash,
+	// 	Side:       "BUY",
+	// 	PairName:   "ZRX/WETH",
+	// 	Maker:      factory1.GetAddress(),
+	// 	Taker:      factory2.GetAddress(),
+	// 	TradeNonce: big.NewInt(0),
+	// }
 
-// 	time.Sleep(time.Second)
-// 	wg := sync.WaitGroup{}
-// 	wg.Add(2)
+	// //Remaining order
+	// ro1 := &types.Order{
+	// 	Amount:          big.NewInt(1e18),
+	// 	BaseToken:       ZRX,
+	// 	QuoteToken:      WETH,
+	// 	BuyToken:        ZRX,
+	// 	SellToken:       WETH,
+	// 	BuyAmount:       big.NewInt(1e18),
+	// 	SellAmount:      big.NewInt(1e18),
+	// 	FilledAmount:    big.NewInt(0),
+	// 	ExchangeAddress: factory2.GetExchangeAddress(),
+	// 	UserAddress:     factory2.GetAddress(),
+	// 	Price:           big.NewInt(1),
+	// 	PricePoint:      big.NewInt(1e8),
+	// 	Side:            "BUY",
+	// 	PairName:        "ZRX/WETH",
+	// 	Status:          "NEW",
+	// 	TakeFee:         big.NewInt(0),
+	// 	MakeFee:         big.NewInt(0),
+	// 	Expires:         o1.Expires,
+	// }
 
-// 	go func() {
-// 		for {
-// 			select {
-// 			case l := <-client.Logs:
-// 				switch l.MessageType {
-// 				case "ORDER_ADDED":
-// 					wg.Done()
-// 				case "ORDER_CANCELLED":
-// 					wg.Done()
-// 				case "ERROR":
-// 					t.Errorf("Received an error")
-// 				}
-// 			}
-// 		}
-// 	}()
+	// t1.Hash = t1.ComputeHash()
+	// t2.Hash = t2.ComputeHash()
 
-// 	wg.Wait()
-// }
+	// res1 := types.NewOrderAddedWebsocketMessage(o1, pair, 0)
+	// res2 := types.NewOrderAddedWebsocketMessage(o2, pair, 0)
+	// testutils.Compare(t, res1, client1.ResponseLogs[0])
+	// testutils.Compare(t, res2, client1.ResponseLogs[1])
+	// testutils.Compare(t, res3, client2.ResponseLogs[0])
+}
 
-// func TestSocketOrderFill(t *testing.T) {
-// 	err := app.LoadConfig("../config")
-// 	if err != nil {
-// 		t.Errorf("Could not load configuration: %v", err)
-// 	}
+func TestMatchPartialOrder6(t *testing.T) {
+	_, _, client1, client2, factory1, factory2, pair, _, _ := SetupTest()
+	m1, o1, _ := factory1.NewBuyOrderMessage(49, 1e18)  // buy 1e18 ZRX at 1ZRX = 49WETH
+	m2, o2, _ := factory2.NewSellOrderMessage(51, 1e18) // sell 1e18 ZRX at 1ZRX = 51WETH
 
-// 	log.SetFlags(log.LstdFlags | log.Llongfile)
-// 	log.SetPrefix("\nLOG: ")
+	client1.Requests <- m1
+	time.Sleep(200 * time.Millisecond)
+	client2.Requests <- m2
+	time.Sleep(200 * time.Millisecond)
 
-// 	rabbitmq.InitConnection(app.Config.Rabbitmq)
-// 	ethereum.InitConnection(app.Config.Ethereum)
-// 	redis.InitConnection(app.Config.Redis)
+	wg := sync.WaitGroup{}
+	wg.Add(2)
 
-// 	_, err = daos.InitSession(nil)
-// 	if err != nil {
-// 		t.Errorf("Could not load db session")
-// 	}
+	go func() {
+		for {
+			select {
+			case l1 := <-client1.Logs:
+				switch l1.MessageType {
+				case "ORDER_ADDED":
+					wg.Done()
+				case "REQUEST_SIGNATURE":
+					wg.Done()
+				case "ERROR":
+					t.Errorf("Received an error")
+				}
+			case l2 := <-client2.Logs:
+				switch l2.MessageType {
+				case "ORDER_ADDED":
+					wg.Done()
+				case "REQUEST_SIGNATURE":
+					wg.Done()
+				case "ERROR":
+					t.Errorf("Received an error")
+				}
+			}
+		}
+	}()
 
-// 	pairDao := daos.NewPairDao()
-// 	exchangeAddress := common.HexToAddress("0x")
-// 	pair, err := pairDao.GetByTokenSymbols("ZRX", "WETH")
-// 	if err != nil {
-// 		t.Errorf("Could not retrieve token pair: %v", err)
-// 	}
+	wg.Wait()
 
-// 	ZRX := pair.BaseTokenAddress
-// 	WETH := pair.QuoteTokenAddress
-
-// 	wallet1 := types.NewWalletFromPrivateKey("7c78c6e2f65d0d84c44ac0f7b53d6e4dd7a82c35f51b251d387c2a69df712660")
-// 	wallet2 := types.NewWalletFromPrivateKey("7c78c6e2f65d0d84c44ac0f7b53d6e4dd7a82c35f51b251d387c2a69df712661")
-// 	NewRouter()
-// 	client1 := mocks.NewClient(wallet1, http.HandlerFunc(ws.ConnectionEndpoint))
-// 	client2 := mocks.NewClient(wallet2, http.HandlerFunc(ws.ConnectionEndpoint))
-// 	client1.Start()
-// 	client2.Start()
-
-// 	factory1, err := mocks.NewOrderFactory(pair, wallet1, exchangeAddress)
-// 	if err != nil {
-// 		fmt.Printf("Could not create order factory: %v", err)
-// 	}
-
-// 	factory2, err := mocks.NewOrderFactory(pair, wallet2, exchangeAddress)
-// 	if err != nil {
-// 		fmt.Printf("Could not create order factory: %v", err)
-// 	}
-
-// 	m1, _, _ := factory1.NewOrderMessage(ZRX, 1, WETH, 1)
-// 	m2, _, _ := factory2.NewOrderMessage(WETH, 1, ZRX, 1)
-
-// 	//We put a millisecond delay between both requests to ensure they are
-// 	//received in the same order for each test
-// 	client1.Requests <- m1
-// 	time.Sleep(time.Millisecond)
-// 	client2.Requests <- m2
-// 	time.Sleep(time.Millisecond)
-
-// 	wg := sync.WaitGroup{}
-// 	wg.Add(2)
-
-// 	go func() {
-// 		for {
-// 			select {
-// 			case l := <-client1.Logs:
-// 				switch l.MessageType {
-// 				case "ORDER_ADDED":
-// 					wg.Done()
-// 				case "ERROR":
-// 					t.Errorf("Received an error")
-// 				}
-// 			}
-// 		}
-// 	}()
-
-// 	wg.Wait()
-// }
+	res1 := types.NewOrderAddedWebsocketMessage(o1, pair, 0)
+	res2 := types.NewOrderAddedWebsocketMessage(o2, pair, 0)
+	testutils.Compare(t, res1, client1.ResponseLogs[0])
+	testutils.Compare(t, res2, client2.ResponseLogs[0])
+}

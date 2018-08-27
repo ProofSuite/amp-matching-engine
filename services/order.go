@@ -240,12 +240,11 @@ func (s *OrderService) handleEngineOrderAdded(res *engine.Response) {
 // handleEngineOrderMatched returns a websocket message informing the client that his order has been added.
 // The request signature message also signals the client to sign trades.
 func (s *OrderService) handleEngineOrderMatched(res *engine.Response) {
-
-	// res.RemainingOrder.Print()
 	err := s.orderDao.UpdateByHash(res.Order.Hash, res.Order)
 	if err != nil {
 		log.Print(err)
 	}
+
 	s.transferAmount(res.Order, res.Order.FilledAmount)
 
 	for _, mo := range res.MatchingOrders {
