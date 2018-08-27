@@ -9,7 +9,7 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/Proofsuite/amp-matching-engine/utils/math"
-	"github.com/Proofsuite/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/gomodule/redigo/redis"
 )
 
@@ -126,10 +126,15 @@ func (e *Resource) buyOrder(order *types.Order) (*Response, error) {
 
 	resp.Order.Status = "PARTIAL_FILLED"
 	resp.FillStatus = PARTIAL
+
+	//TODO refactor this in a different function (make above function more clear in general)
+	resp.RemainingOrder.Signature = nil
+	resp.RemainingOrder.Nonce = nil
+	resp.RemainingOrder.Hash = common.HexToHash("")
 	resp.RemainingOrder.BuyAmount = resp.RemainingOrder.Amount
 	resp.RemainingOrder.SellAmount = math.Div(
-		math.Mul(resp.RemainingOrder.Amount, resp.RemainingOrder.SellAmount),
-		resp.RemainingOrder.BuyAmount,
+		math.Mul(resp.RemainingOrder.Amount, resp.Order.SellAmount),
+		resp.Order.BuyAmount,
 	)
 
 	return resp, nil
@@ -211,13 +216,16 @@ func (e *Resource) sellOrder(order *types.Order) (*Response, error) {
 
 	resp.Order.Status = "PARTIAL_FILLED"
 	resp.FillStatus = PARTIAL
+
+	//TODO refactor this in a different function (make above function more clear in general)
+	resp.RemainingOrder.Signature = nil
+	resp.RemainingOrder.Nonce = nil
+	resp.RemainingOrder.Hash = common.HexToHash("")
 	resp.RemainingOrder.BuyAmount = resp.RemainingOrder.Amount
 	resp.RemainingOrder.SellAmount = math.Div(
 		math.Mul(resp.RemainingOrder.Amount, resp.Order.SellAmount),
 		resp.Order.BuyAmount,
 	)
-	resp.RemainingOrder.Signature = nil
-	resp.RemainingOrder.Hash = resp.RemainingOrder.ComputeHash()
 
 	return resp, nil
 }
