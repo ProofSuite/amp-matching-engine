@@ -78,7 +78,6 @@ func NewTrade(o *Order, amount *big.Int, price *big.Int, taker common.Address) *
 // MarshalJSON returns the json encoded byte array representing the trade struct
 func (t *Trade) MarshalJSON() ([]byte, error) {
 	trade := map[string]interface{}{
-		"id":         t.ID,
 		"taker":      t.Taker,
 		"maker":      t.Maker,
 		"baseToken":  t.BaseToken,
@@ -104,9 +103,11 @@ func (t *Trade) MarshalJSON() ([]byte, error) {
 		trade["quoteToken"] = t.QuoteToken.Hex()
 	}
 
-	if t.ID != bson.ObjectId("") {
-		trade["id"] = t.ID
-	}
+	// NOTE: Currently remove marshalling of IDs to simplify public API but will uncommnent
+	// if needed.
+	// if t.ID != bson.ObjectId("") {
+	// 	trade["id"] = t.ID
+	// }
 
 	if t.Signature != nil {
 		trade["signature"] = map[string]interface{}{

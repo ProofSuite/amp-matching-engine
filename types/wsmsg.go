@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+
+	"github.com/ethereum/go-ethereum/common"
 )
 
 // SubscriptionEvent is an enum signifies whether the incoming message is of type Subscribe or unsubscribe
@@ -88,12 +90,12 @@ func NewOrderCancelWebsocketMessage(oc *OrderCancel) *WebSocketMessage {
 	}
 }
 
-func NewRequestSignaturesWebsocketMEssage(t []*Trade, o *Order) *WebSocketMessage {
+func NewRequestSignaturesWebsocketMessage(hash common.Hash, t []*Trade, o *Order) *WebSocketMessage {
 	return &WebSocketMessage{
 		Channel: "orders",
 		Payload: WebSocketPayload{
 			Type: "REQUEST_SIGNATURE",
-			Hash: o.Hash.Hex(),
+			Hash: hash.Hex(),
 			Data: SignaturePayload{o, t},
 		},
 	}

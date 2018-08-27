@@ -5,9 +5,12 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math/big"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"sync"
+	"time"
 
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/ethereum/go-ethereum/common"
@@ -25,14 +28,15 @@ var addr = flag.String("addr", "localhost:8080", "http service address")
 // mutex is used to prevent concurrent writes on the websocket connection
 type Client struct {
 	// ethereumClient *ethclient.Client
-	connection   *websocket.Conn
-	Requests     chan *types.WebSocketMessage
-	Responses    chan *types.WebSocketMessage
-	Logs         chan *ClientLogMessage
-	Wallet       *types.Wallet
-	RequestLogs  []*types.WebSocketMessage
-	ResponseLogs []*types.WebSocketMessage
-	mutex        sync.Mutex
+	connection     *websocket.Conn
+	Requests       chan *types.WebSocketMessage
+	Responses      chan *types.WebSocketMessage
+	Logs           chan *ClientLogMessage
+	Wallet         *types.Wallet
+	RequestLogs    []types.WebSocketMessage
+	ResponseLogs   []types.WebSocketMessage
+	mutex          sync.Mutex
+	NonceGenerator *rand.Rand
 }
 
 // The client log is mostly used for testing. It optionally takes orders, trade,
@@ -65,17 +69,21 @@ func NewClient(w *types.Wallet, s Server) *Client {
 	reqs := make(chan *types.WebSocketMessage)
 	resps := make(chan *types.WebSocketMessage)
 	logs := make(chan *ClientLogMessage)
-	reqLogs := make([]*types.WebSocketMessage, 0)
-	respLogs := make([]*types.WebSocketMessage, 0)
+	reqLogs := make([]types.WebSocketMessage, 0)
+	respLogs := make([]types.WebSocketMessage, 0)
+
+	source := rand.NewSource(time.Now().UnixNano())
+	ng := rand.New(source)
 
 	return &Client{
-		connection:   c,
-		Wallet:       w,
-		Requests:     reqs,
-		Responses:    resps,
-		RequestLogs:  reqLogs,
-		ResponseLogs: respLogs,
-		Logs:         logs,
+		connection:     c,
+		Wallet:         w,
+		Requests:       reqs,
+		Responses:      resps,
+		RequestLogs:    reqLogs,
+		ResponseLogs:   respLogs,
+		Logs:           logs,
+		NonceGenerator: ng,
 		// ethereumClient: ethClient,
 	}
 }
@@ -102,12 +110,12 @@ func (c *Client) handleMessages() {
 		for {
 			select {
 			case msg := <-c.Requests:
-				c.RequestLogs = append(c.RequestLogs, msg)
+				c.RequestLogs = append(c.RequestLogs, *msg)
 				c.handleOrderChannelMessagesOut(*msg)
 
 			case msg := <-c.Responses:
-				msg.Print()
-				c.ResponseLogs = append(c.ResponseLogs, msg)
+				c.ResponseLogs = append(c.ResponseLogs, *msg)
+
 				switch msg.Channel {
 				case "orders":
 					go c.handleOrderChannelMessagesIn(msg.Payload)
@@ -260,6 +268,10 @@ func (c *Client) handleSignatureRequested(p types.WebSocketPayload) {
 		}
 	}
 
+	if data.Order != nil {
+		c.SetNonce(data.Order)
+	}
+
 	//sign and return the remaining part of the previous order.
 	if data.Order != nil {
 		err = c.Wallet.SignOrder(data.Order)
@@ -313,6 +325,10 @@ func (c *Client) handleOHLCVInit(p types.WebSocketPayload) {
 
 func (c *Client) handleOHLCVUpdate(p types.WebSocketPayload) {
 
+}
+
+func (c *Client) SetNonce(o *types.Order) {
+	o.Nonce = big.NewInt(int64(c.NonceGenerator.Intn(1e8)))
 }
 
 func (c *ClientLogMessage) Print() {

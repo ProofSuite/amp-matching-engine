@@ -68,6 +68,20 @@ func NewOrderFactory(p *types.Pair, w *types.Wallet, exchangeAddress common.Addr
 	}, nil
 }
 
+// GetWallet returns the order factory wallet
+func (f *OrderFactory) GetWallet() *types.Wallet {
+	return f.Wallet
+}
+
+// GetAddress returns the order factory address
+func (f *OrderFactory) GetAddress() common.Address {
+	return f.Wallet.Address
+}
+
+func (f *OrderFactory) GetExchangeAddress() common.Address {
+	return f.Params.ExchangeAddress
+}
+
 // SetExchangeAddress changes the default exchange address for orders created by this factory
 func (f *OrderFactory) SetExchangeAddress(addr common.Address) error {
 	f.Params.ExchangeAddress = addr
@@ -118,8 +132,49 @@ func (f *OrderFactory) NewOrder(buyToken common.Address, buyAmount int64, sellTo
 	return o, nil
 }
 
+func (f *OrderFactory) NewLargeOrder(buyToken common.Address, buyAmount *big.Int, sellToken common.Address, sellAmount *big.Int) (*types.Order, error) {
+	o := &types.Order{}
+
+	o.UserAddress = f.Wallet.Address
+	o.ExchangeAddress = f.Params.ExchangeAddress
+	o.BuyToken = buyToken
+	o.SellToken = sellToken
+	o.BuyAmount = buyAmount
+	o.SellAmount = sellAmount
+	o.Status = "NEW"
+	o.Expires = f.Params.Expires
+	o.MakeFee = f.Params.MakeFee
+	o.TakeFee = f.Params.TakeFee
+	o.Nonce = big.NewInt(int64(f.NonceGenerator.Intn(1e18)))
+	o.Sign(f.Wallet)
+
+	return o, nil
+}
+
+func (f *OrderFactory) NewBuyOrderMessage(price int64, amount int64) (*types.WebSocketMessage, *types.Order, error) {
+	o, err := f.NewBuyOrder(price, amount)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	m := types.NewOrderWebsocketMessage(o)
+
+	return m, o, nil
+}
+
+func (f *OrderFactory) NewSellOrderMessage(price int64, amount int64) (*types.WebSocketMessage, *types.Order, error) {
+	o, err := f.NewSellOrder(price, amount)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	m := types.NewOrderWebsocketMessage(o)
+
+	return m, o, nil
+}
+
 // NewBuyOrder creates a new buy order from the order factory
-func (f *OrderFactory) NewBuyOrder(price uint64, amount uint64) (*types.Order, error) {
+func (f *OrderFactory) NewBuyOrder(price int64, amount int64) (*types.Order, error) {
 	o := &types.Order{}
 
 	o.UserAddress = f.Wallet.Address
