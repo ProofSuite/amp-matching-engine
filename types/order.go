@@ -252,12 +252,10 @@ func (o *Order) MarshalJSON() ([]byte, error) {
 		"makeFee":         o.MakeFee.String(),
 		"takeFee":         o.TakeFee.String(),
 		"expires":         o.Expires.String(),
-		"nonce":           o.Nonce.String(),
 		"price":           o.Price.String(),
 		"pricepoint":      o.PricePoint.String(),
 		"filledAmount":    o.FilledAmount.String(),
 		"amount":          o.Amount.String(),
-		"hash":            o.Hash.String(),
 		// NOTE: Currently removing this to simplify public API, might reinclude
 		// later. An alternative would be to create additional simplified type
 		// "createdAt":       o.CreatedAt.Format(time.RFC3339Nano),
@@ -269,6 +267,14 @@ func (o *Order) MarshalJSON() ([]byte, error) {
 	// if o.ID != bson.ObjectId("") {
 	// 	order["id"] = o.ID
 	// }
+
+	if o.Hash.Hex() != "" {
+		order["hash"] = o.Hash.Hex()
+	}
+
+	if o.Nonce != nil {
+		order["nonce"] = o.Nonce.String()
+	}
 
 	if o.Signature != nil {
 		order["signature"] = map[string]interface{}{
