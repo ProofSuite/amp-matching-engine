@@ -17,6 +17,14 @@ type TokenDao struct {
 	dbName         string
 }
 
+type TokenDaoInterface interface {
+	Create(a *types.Token) error
+	GetAll() ([]types.Token, error)
+	GetByID(id bson.ObjectId) (*types.Token, error)
+	GetByAddress(owner common.Address) (*types.Token, error)
+	Drop() error
+}
+
 // NewTokenDao returns a new instance of TokenDao.
 func NewTokenDao() *TokenDao {
 	return &TokenDao{"tokens", app.Config.DBName}

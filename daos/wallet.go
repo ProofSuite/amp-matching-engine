@@ -16,9 +16,12 @@ type WalletDao struct {
 }
 
 type WalletDaoInterface interface {
+	GetCollectionName() string
+	GetDBName() string
+	Create(wallet *types.Wallet) error
 	GetAll() ([]types.Wallet, error)
-	GetByID(bson.ObjectId) (*types.Wallet, error)
-	GetByAddress(string) (*types.Wallet, error)
+	GetByID(id bson.ObjectId) (*types.Wallet, error)
+	GetByAddress(addr common.Address) (*types.Wallet, error)
 	GetDefaultAdminWallet() (*types.Wallet, error)
 }
 

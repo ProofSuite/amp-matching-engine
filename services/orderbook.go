@@ -18,13 +18,17 @@ import (
 // PairService struct with daos required, responsible for communicating with daos.
 // PairService functions are responsible for interacting with daos and implements business logics.
 type OrderBookService struct {
-	pairDao  *daos.PairDao
-	tokenDao *daos.TokenDao
+	pairDao  daos.PairDaoInterface
+	tokenDao daos.TokenDaoInterface
 	eng      *engine.Resource
 }
 
 // NewPairService returns a new instance of balance service
-func NewOrderBookService(pairDao *daos.PairDao, tokenDao *daos.TokenDao, eng *engine.Resource) *OrderBookService {
+func NewOrderBookService(
+	pairDao daos.PairDaoInterface,
+	tokenDao daos.TokenDaoInterface,
+	eng *engine.Resource,
+) *OrderBookService {
 	return &OrderBookService{pairDao, tokenDao, eng}
 }
 
