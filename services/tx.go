@@ -12,6 +12,14 @@ type TxService struct {
 	Wallet    *types.Wallet
 }
 
+type TxServiceInterface interface {
+	GetTxCallOptions() *bind.CallOpts
+	GetTxSendOptions() (*bind.TransactOpts, error)
+	GetTxDefaultSendOptions(*bind.TransactOpts, error)
+	SetTxSender(w *types.Wallet)
+	GetCustomTxSendOptions(w *types.Wallet) *bind.TransactOpts
+}
+
 func NewTxService(dao daos.WalletDaoInterface, w *types.Wallet) *TxService {
 	return &TxService{dao, w}
 }

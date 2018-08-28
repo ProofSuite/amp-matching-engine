@@ -22,7 +22,7 @@ type FillOrder struct {
 
 // newOrder calls buyOrder/sellOrder based on type of order recieved and
 // publishes the response back to rabbitmq
-func (e *Resource) newOrder(order *types.Order) (err error) {
+func (e *Engine) newOrder(order *types.Order) (err error) {
 	// Attain lock on engineResource, so that recovery or cancel order function doesn't interfere
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
@@ -57,7 +57,7 @@ func (e *Resource) newOrder(order *types.Order) (err error) {
 // from orderbook. First it checks ths price point list to check whether the order can be matched
 // or not, if there are pricepoints that can satisfy the order then corresponding list of orders
 // are fetched and trade is executed
-func (e *Resource) buyOrder(order *types.Order) (*Response, error) {
+func (e *Engine) buyOrder(order *types.Order) (*Response, error) {
 	resp := &Response{
 		Order:      order,
 		FillStatus: NOMATCH,
@@ -144,7 +144,7 @@ func (e *Resource) buyOrder(order *types.Order) (*Response, error) {
 // from orderbook. First it checks ths price point list to check whether the order can be matched
 // or not, if there are pricepoints that can satisfy the order then corresponding list of orders
 // are fetched and trade is executed
-func (e *Resource) sellOrder(order *types.Order) (*Response, error) {
+func (e *Engine) sellOrder(order *types.Order) (*Response, error) {
 	resp := &Response{
 		Order:      order,
 		FillStatus: NOMATCH,
@@ -231,7 +231,7 @@ func (e *Resource) sellOrder(order *types.Order) (*Response, error) {
 }
 
 // addOrder adds an order to redis
-func (e *Resource) addOrder(order *types.Order) error {
+func (e *Engine) addOrder(order *types.Order) error {
 	ssKey, listKey := order.GetOBKeys()
 	_, err := e.redisConn.Do("ZADD", ssKey, "NX", 0, utils.UintToPaddedString(order.PricePoint.Int64())) // Add price point to order book
 	if err != nil {
@@ -273,7 +273,7 @@ func (e *Resource) addOrder(order *types.Order) error {
 }
 
 // updateOrder updates the order in redis
-func (e *Resource) updateOrder(order *types.Order, tradeAmount *big.Int) error {
+func (e *Engine) updateOrder(order *types.Order, tradeAmount *big.Int) error {
 	stored := &types.Order{}
 
 	ssKey, listKey := order.GetOBKeys()
@@ -320,7 +320,7 @@ func (e *Resource) updateOrder(order *types.Order, tradeAmount *big.Int) error {
 // updateOrderAmount is a less general version of update order that updates the order filled amount after
 // a trade or recover orders
 // EXPERIMENTAL
-func (e *Resource) updateOrderAmount(hash common.Hash, amount *big.Int) error {
+func (e *Engine) updateOrderAmount(hash common.Hash, amount *big.Int) error {
 	stored := &types.Order{}
 	bytes, err := redis.Bytes(e.redisConn.Do("GET", hash.Hex()))
 	if err != nil {
@@ -368,7 +368,7 @@ func (e *Resource) updateOrderAmount(hash common.Hash, amount *big.Int) error {
 }
 
 // deleteOrder deletes the order in redis
-func (e *Resource) deleteOrder(order *types.Order, tradeAmount *big.Int) (err error) {
+func (e *Engine) deleteOrder(order *types.Order, tradeAmount *big.Int) (err error) {
 	ssKey, listKey := order.GetOBKeys()
 	remVolume, err := redis.String(e.redisConn.Do("GET", ssKey+"::book::"+utils.UintToPaddedString(order.PricePoint.Int64())))
 	if err != nil {
@@ -434,7 +434,7 @@ func (e *Resource) deleteOrder(order *types.Order, tradeAmount *big.Int) (err er
 
 // RecoverOrders is responsible for recovering the orders that failed to execute after matching
 // Orders are updated or added to orderbook based on whether that order exists in orderbook or not.
-func (e *Resource) RecoverOrders(orders []*FillOrder) error {
+func (e *Engine) RecoverOrders(orders []*FillOrder) error {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
 	for _, o := range orders {
@@ -463,22 +463,22 @@ func (e *Resource) RecoverOrders(orders []*FillOrder) error {
 	return nil
 }
 
-// RecoverOrders2 is an alternative suggestion for RecoverOrders2
-// It would requires an alternative key system for redis where we store only the hash with the listkey prefix
-func (e *Resource) RecoverOrders2(hashes []common.Hash, amounts []*big.Int) error {
-	for i, _ := range hashes {
-		err := e.updateOrderAmount(hashes[i], amounts[i])
-		if err != nil {
-			log.Print(err)
-			return err
-		}
-	}
+// // RecoverOrders2 is an alternative suggestion for RecoverOrders2
+// // It would requires an alternative key system for redis where we store only the hash with the listkey prefix
+// func (e *Resource) RecoverOrders2(hashes []common.Hash, amounts []*big.Int) error {
+// 	for i, _ := range hashes {
+// 		err := e.updateOrderAmount(hashes[i], amounts[i])
+// 		if err != nil {
+// 			log.Print(err)
+// 			return err
+// 		}
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
 
 // CancelOrder is used to cancel the order from orderbook
-func (e *Resource) CancelOrder(order *types.Order) (*Response, error) {
+func (e *Engine) CancelOrder(order *types.Order) (*Response, error) {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
 

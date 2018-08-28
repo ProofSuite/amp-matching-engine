@@ -11,10 +11,13 @@ import (
 )
 
 type accountEndpoint struct {
-	accountService *services.AccountService
+	accountService services.AccountServiceInterface
 }
 
-func ServeAccountResource(rg *routing.RouteGroup, accountService *services.AccountService) {
+func ServeAccountResource(
+	rg *routing.RouteGroup,
+	accountService services.AccountServiceInterface,
+) {
 	e := &accountEndpoint{accountService}
 	rg.Post("/account", e.create)
 	rg.Get("/account/<address>", e.get)

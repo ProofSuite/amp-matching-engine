@@ -35,7 +35,7 @@ const (
 // execute function is responsible for executing of matched orders
 // i.e it deletes/updates orders in case of order matching and responds
 // with trade instance and fillOrder
-func (e *Resource) execute(order *types.Order, bookEntry *types.Order) (*types.Trade, *FillOrder, error) {
+func (e *Engine) execute(order *types.Order, bookEntry *types.Order) (*types.Trade, *FillOrder, error) {
 	fillOrder := &FillOrder{}
 	trade := &types.Trade{}
 

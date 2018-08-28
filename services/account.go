@@ -16,6 +16,15 @@ type AccountService struct {
 	TokenDao   daos.TokenDaoInterface
 }
 
+type AccountServiceInterface interface {
+	Create(account *types.Account) error
+	GetByID(id bson.ObjectId) (*types.Account, error)
+	GetAll() ([]types.Account, error)
+	GetByAddress(a common.Address) (*types.Account, error)
+	GetTokenBalance(owner common.Address, token common.Address) (*types.TokenBalance, error)
+	GetTokenBalances(owner common.Address) (map[common.Address]*types.TokenBalance, error)
+}
+
 // NewAddressService returns a new instance of accountService
 func NewAccountService(
 	AccountDao daos.AccountDaoInterface,
