@@ -276,6 +276,9 @@ func (s *OrderService) handleSubmitSignatures(res *engine.Response) {
 	select {
 	case msg := <-ch:
 		if msg != nil && msg.Type == "SUBMIT_SIGNATURE" {
+
+			log.Print("SUBMITTING SIGNATURES")
+
 			bytes, err := json.Marshal(msg.Data)
 			if err != nil {
 				s.RecoverOrders(res)
@@ -294,11 +297,20 @@ func (s *OrderService) handleSubmitSignatures(res *engine.Response) {
 				bytes, err := json.Marshal(res.Order)
 				if err != nil {
 					log.Print(err)
-					s.PublishOrder(&rabbitmq.Message{Type: "ADD_ORDER", Data: bytes})
+					ws.SendOrderErrorMessage(ws.GetOrderConnection(res.Order.Hash), err.Error(), res.Order.Hash)
 				}
+
+				log.Print("ADDING NEW ORDER")
+				s.PublishOrder(&rabbitmq.Message{Type: "ADD_ORDER", Data: bytes})
 			}
 
-			log.Print("RECEIVING SUBMIT SIGNATURE MESSAGE: ", data)
+			if data.Trades != nil {
+				bytes, err := json.Marshal(res.Order)
+				if err != nil {
+					log.Print(err)
+					ws.SendOrderErrorMessage(ws.GetOrderConnection(res.Order.Hash), err.Error(), res.Order.Hash)
+				}
+			}
 		}
 
 	case <-t.C:
