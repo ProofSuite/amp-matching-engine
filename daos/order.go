@@ -19,6 +19,17 @@ type OrderDao struct {
 	dbName         string
 }
 
+type OrderDaoInterface interface {
+	Create(o *types.Order) error
+	Update(id bson.ObjectId, o *types.Order) error
+	UpdateAllByHash(hash common.Hash, o *types.Order) error
+	UpdateByHash(hash common.Hash, o *types.Order) error
+	GetByID(id bson.ObjectId) (*types.Order, error)
+	GetByHash(hash common.Hash) (*types.Order, error)
+	GetByUserAddress(addr common.Address) ([]*types.Order, error)
+	Drop() error
+}
+
 // NewOrderDao returns a new instance of OrderDao
 func NewOrderDao() *OrderDao {
 	dbName := app.Config.DBName

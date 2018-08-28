@@ -14,11 +14,11 @@ import (
 // TradeService struct with daos required, responsible for communicating with daos.
 // TradeService functions are responsible for interacting with daos and implements business logics.
 type TradeService struct {
-	tradeDao *daos.TradeDao
+	tradeDao daos.TradeDaoInterface
 }
 
 // NewTradeService returns a new instance of TradeService
-func NewTradeService(TradeDao *daos.TradeDao) *TradeService {
+func NewTradeService(TradeDao daos.TradeDaoInterface) *TradeService {
 	return &TradeService{TradeDao}
 }
 

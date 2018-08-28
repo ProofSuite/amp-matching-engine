@@ -11,6 +11,7 @@ ethereum: localhost:8545
 exchange: "0xfc074fd5702e6becb78d64acd4126a0079f42d85"
 decimal: 8
 weth: "0x2EB24432177e82907dE24b7c5a6E0a5c03226135"
+fee_account: "0xe8e84ee367bc63ddb38d3d01bccef106c194dc47"
 
 tick_duration:
     sec: [30]

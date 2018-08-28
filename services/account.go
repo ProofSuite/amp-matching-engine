@@ -12,12 +12,15 @@ import (
 )
 
 type AccountService struct {
-	AccountDao *daos.AccountDao
-	TokenDao   *daos.TokenDao
+	AccountDao daos.AccountDaoInterface
+	TokenDao   daos.TokenDaoInterface
 }
 
 // NewAddressService returns a new instance of accountService
-func NewAccountService(AccountDao *daos.AccountDao, TokenDao *daos.TokenDao) *AccountService {
+func NewAccountService(
+	AccountDao daos.AccountDaoInterface,
+	TokenDao daos.TokenDaoInterface,
+) *AccountService {
 	return &AccountService{AccountDao, TokenDao}
 }
 

@@ -18,6 +18,16 @@ type PairDao struct {
 	dbName         string
 }
 
+type PairDaoInterface interface {
+	Create(o *types.Pair) error
+	GetAll() ([]types.Pair, error)
+	GetByID(id bson.ObjectId) (*types.Pair, error)
+	GetByName(name string) (*types.Pair, error)
+	GetByTokenSymbols(baseTokenSymbol, quoteTokenSymbol string) (*types.Pair, error)
+	GetByTokenAddress(baseToken, quoteToken common.Address) (*types.Pair, error)
+	GetByBuySellTokenAddress(buyToken, sellToken common.Address) (*types.Pair, error)
+}
+
 // NewPairDao returns a new instance of AddressDao
 func NewPairDao() *PairDao {
 	return &PairDao{"pairs", app.Config.DBName}

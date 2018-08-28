@@ -32,6 +32,10 @@ func NewToken(w *services.WalletService, tx *services.TxService, contractAddress
 	}, nil
 }
 
+func (t *Token) SetTxSender(w *types.Wallet) {
+	t.TxService.SetTxSender(w)
+}
+
 func (t *Token) GetTxCallOptions() *bind.CallOpts {
 	return t.TxService.GetTxCallOptions()
 }

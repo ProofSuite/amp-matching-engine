@@ -11,7 +11,6 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/app"
 	"github.com/Proofsuite/amp-matching-engine/daos"
 	"github.com/Proofsuite/amp-matching-engine/ethereum"
-	"github.com/Proofsuite/amp-matching-engine/mocks"
 	"github.com/Proofsuite/amp-matching-engine/rabbitmq"
 	"github.com/Proofsuite/amp-matching-engine/redis"
 	"github.com/Proofsuite/amp-matching-engine/types"
@@ -22,10 +21,10 @@ import (
 
 type OrderTestSetup struct {
 	Wallet *types.Wallet
-	Client *mocks.Client
+	Client *testutils.Client
 }
 
-func SetupTest() (*types.Wallet, *types.Wallet, *mocks.Client, *mocks.Client, *mocks.OrderFactory, *mocks.OrderFactory, *types.Pair, common.Address, common.Address) {
+func SetupTest() (*types.Wallet, *types.Wallet, *testutils.Client, *testutils.Client, *testutils.OrderFactory, *testutils.OrderFactory, *types.Pair, common.Address, common.Address) {
 	err := app.LoadConfig("../config")
 	if err != nil {
 		panic(err)
@@ -61,17 +60,17 @@ func SetupTest() (*types.Wallet, *types.Wallet, *mocks.Client, *mocks.Client, *m
 	NewRouter()
 
 	//setup mock client
-	client1 := mocks.NewClient(wallet1, http.HandlerFunc(ws.ConnectionEndpoint))
-	client2 := mocks.NewClient(wallet2, http.HandlerFunc(ws.ConnectionEndpoint))
+	client1 := testutils.NewClient(wallet1, http.HandlerFunc(ws.ConnectionEndpoint))
+	client2 := testutils.NewClient(wallet2, http.HandlerFunc(ws.ConnectionEndpoint))
 	client1.Start()
 	client2.Start()
 
-	factory1, err := mocks.NewOrderFactory(pair, wallet1, exchangeAddress)
+	factory1, err := testutils.NewOrderFactory(pair, wallet1, exchangeAddress)
 	if err != nil {
 		panic(err)
 	}
 
-	factory2, err := mocks.NewOrderFactory(pair, wallet2, exchangeAddress)
+	factory2, err := testutils.NewOrderFactory(pair, wallet2, exchangeAddress)
 	if err != nil {
 		panic(err)
 	}
@@ -320,7 +319,7 @@ func TestMatchPartialOrder3(t *testing.T) {
 	client2.Requests <- m2
 
 	wg := sync.WaitGroup{}
-	wg.Add(2)
+	wg.Add(3)
 
 	go func() {
 		for {
@@ -386,6 +385,8 @@ func TestMatchPartialOrder3(t *testing.T) {
 
 	t1.Hash = t1.ComputeHash()
 
+	client2.ResponseLogs[1].Print()
+
 	//Responses received by the first client
 	res1 := types.NewOrderAddedWebsocketMessage(o1, pair, 0)
 	// Responses received by the second client
@@ -402,9 +403,9 @@ func TestMatchPartialOrder4(t *testing.T) {
 	m3, o3, _ := factory2.NewOrderMessage(ZRX, 3e18, WETH, 3e18)
 
 	client1.Requests <- m1
-	time.Sleep(200 * time.Millisecond)
+	time.Sleep(500 * time.Millisecond)
 	client1.Requests <- m2
-	time.Sleep(200 * time.Millisecond)
+	time.Sleep(500 * time.Millisecond)
 	client2.Requests <- m3
 
 	wg := sync.WaitGroup{}
@@ -560,64 +561,6 @@ func TestMatchPartialOrder5(t *testing.T) {
 	testutils.Compare(t, res1, client1.ResponseLogs[0])
 	testutils.Compare(t, res2, client2.ResponseLogs[0])
 
-	// t1 := &types.Trade{
-	// 	Amount:     big.NewInt(1e18),
-	// 	BaseToken:  ZRX,
-	// 	QuoteToken: WETH,
-	// 	Price:      big.NewInt(1e8),
-	// 	PricePoint: big.NewInt(1e8),
-	// 	OrderHash:  o1.Hash,
-	// 	Side:       "BUY",
-	// 	PairName:   "ZRX/WETH",
-	// 	Maker:      factory1.GetAddress(),
-	// 	Taker:      factory2.GetAddress(),
-	// 	TradeNonce: big.NewInt(0),
-	// }
-
-	// t2 := &types.Trade{
-	// 	Amount:     big.NewInt(1e18),
-	// 	BaseToken:  ZRX,
-	// 	QuoteToken: WETH,
-	// 	Price:      big.NewInt(1e8),
-	// 	PricePoint: big.NewInt(1e8),
-	// 	OrderHash:  o2.Hash,
-	// 	Side:       "BUY",
-	// 	PairName:   "ZRX/WETH",
-	// 	Maker:      factory1.GetAddress(),
-	// 	Taker:      factory2.GetAddress(),
-	// 	TradeNonce: big.NewInt(0),
-	// }
-
-	// //Remaining order
-	// ro1 := &types.Order{
-	// 	Amount:          big.NewInt(1e18),
-	// 	BaseToken:       ZRX,
-	// 	QuoteToken:      WETH,
-	// 	BuyToken:        ZRX,
-	// 	SellToken:       WETH,
-	// 	BuyAmount:       big.NewInt(1e18),
-	// 	SellAmount:      big.NewInt(1e18),
-	// 	FilledAmount:    big.NewInt(0),
-	// 	ExchangeAddress: factory2.GetExchangeAddress(),
-	// 	UserAddress:     factory2.GetAddress(),
-	// 	Price:           big.NewInt(1),
-	// 	PricePoint:      big.NewInt(1e8),
-	// 	Side:            "BUY",
-	// 	PairName:        "ZRX/WETH",
-	// 	Status:          "NEW",
-	// 	TakeFee:         big.NewInt(0),
-	// 	MakeFee:         big.NewInt(0),
-	// 	Expires:         o1.Expires,
-	// }
-
-	// t1.Hash = t1.ComputeHash()
-	// t2.Hash = t2.ComputeHash()
-
-	// res1 := types.NewOrderAddedWebsocketMessage(o1, pair, 0)
-	// res2 := types.NewOrderAddedWebsocketMessage(o2, pair, 0)
-	// testutils.Compare(t, res1, client1.ResponseLogs[0])
-	// testutils.Compare(t, res2, client1.ResponseLogs[1])
-	// testutils.Compare(t, res3, client2.ResponseLogs[0])
 }
 
 func TestMatchPartialOrder6(t *testing.T) {
