@@ -16,12 +16,16 @@ import (
 )
 
 type orderEndpoint struct {
-	orderService *services.OrderService
-	engine       *engine.Resource
+	orderService services.OrderServiceInterface
+	engine       engine.EngineInterface
 }
 
 // ServeOrderResource sets up the routing of order endpoints and the corresponding handlers.
-func ServeOrderResource(rg *routing.RouteGroup, orderService *services.OrderService, engine *engine.Resource) {
+func ServeOrderResource(
+	rg *routing.RouteGroup,
+	orderService services.OrderServiceInterface,
+	engine engine.EngineInterface,
+) {
 	e := &orderEndpoint{orderService, engine}
 	rg.Get("/orders/<address>", e.get)
 	ws.RegisterChannel(ws.OrderChannel, e.ws)

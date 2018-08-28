@@ -28,7 +28,20 @@ type OrderService struct {
 	pairDao    daos.PairDaoInterface
 	accountDao daos.AccountDaoInterface
 	tradeDao   daos.TradeDaoInterface
-	engine     *engine.Resource
+	engine     engine.EngineInterface
+}
+
+type OrderServiceInterface interface {
+	GetByID(id bson.ObjectId) (*types.Order, error)
+	GetByUserAddress(addr common.Address) ([]*types.Order, error)
+	NewOrder(o *types.Order) error
+	CancelOrder(oc *types.OrderCancel) error
+	HandleEngineResponse(res *engine.Response) error
+	RecoverOrders(res *engine.Response)
+	RelayUpdateOverSocket(res *engine.Response)
+	SendMessage(msgType string, hash common.Hash, data interface{})
+	SubscribeQueue(fn func(*rabbitmq.Message) error) error
+	PublishOrder(order *rabbitmq.Message) error
 }
 
 // NewOrderService returns a new instance of orderservice
@@ -37,7 +50,7 @@ func NewOrderService(
 	pairDao daos.PairDaoInterface,
 	accountDao daos.AccountDaoInterface,
 	tradeDao daos.TradeDaoInterface,
-	engine *engine.Resource,
+	engine engine.EngineInterface,
 ) *OrderService {
 	return &OrderService{orderDao, pairDao, accountDao, tradeDao, engine}
 }

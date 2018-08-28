@@ -20,14 +20,20 @@ import (
 type OrderBookService struct {
 	pairDao  daos.PairDaoInterface
 	tokenDao daos.TokenDaoInterface
-	eng      *engine.Resource
+	eng      engine.EngineInterface
+}
+
+type OrderBookServiceInterface interface {
+	GetOrderBook(bt, qt common.Address) (ob map[string]interface{}, err error)
+	Subscribe(conn *websocket.Conn, bt, qt common.Address)
+	Unsubscribe(conn *websocket.Conn, bt, qt common.Address)
 }
 
 // NewPairService returns a new instance of balance service
 func NewOrderBookService(
 	pairDao daos.PairDaoInterface,
 	tokenDao daos.TokenDaoInterface,
-	eng *engine.Resource,
+	eng engine.EngineInterface,
 ) *OrderBookService {
 	return &OrderBookService{pairDao, tokenDao, eng}
 }

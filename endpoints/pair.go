@@ -10,12 +10,15 @@ import (
 )
 
 type pairEndpoint struct {
-	pairService *services.PairService
+	pairService services.PairServiceInterface
 }
 
 // ServePairResource sets up the routing of pair endpoints and the corresponding handlers.
-func ServePairResource(rg *routing.RouteGroup, pairService *services.PairService) {
-	r := &pairEndpoint{pairService}
+func ServePairResource(
+	rg *routing.RouteGroup,
+	p services.PairServiceInterface,
+) {
+	r := &pairEndpoint{p}
 	rg.Get("/pairs/<baseToken>/<quoteToken>", r.get)
 	rg.Get("/pairs", r.query)
 	rg.Post("/pairs", r.create)

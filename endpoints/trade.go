@@ -14,11 +14,14 @@ import (
 )
 
 type tradeEndpoint struct {
-	tradeService *services.TradeService
+	tradeService services.TradeServiceInterface
 }
 
 // ServeTradeResource sets up the routing of trade endpoints and the corresponding handlers.
-func ServeTradeResource(rg *routing.RouteGroup, tradeService *services.TradeService) {
+func ServeTradeResource(
+	rg *routing.RouteGroup,
+	tradeService services.TradeServiceInterface,
+) {
 	e := &tradeEndpoint{tradeService}
 	rg.Get("/trades/history/<bt>/<qt>", e.history)
 	rg.Get("/trades/<addr>", e.get)
