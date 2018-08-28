@@ -19,6 +19,12 @@ type OHLCVService struct {
 	tradeDao daos.TradeDaoInterface
 }
 
+type OHLCVServiceInterface interface {
+	Unsubscribe(conn *websocket.Conn, bt, qt common.Address, p *types.Params)
+	Subscribe(conn *websocket.Conn, bt, qt common.Address, p *types.Params)
+	GetOHLCV(p []types.PairSubDoc, duration int64, unit string, timeInterval ...int64) ([]*types.Tick, error)
+}
+
 func NewOHLCVService(TradeDao daos.TradeDaoInterface) *OHLCVService {
 	return &OHLCVService{TradeDao}
 }

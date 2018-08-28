@@ -14,27 +14,34 @@ import (
 )
 
 // Resource contains daos and redis connection required for engine to work
-type Resource struct {
+type Engine struct {
 	redisConn redis.Conn
 	mutex     *sync.Mutex
 }
 
+type EngineInterface interface {
+	HandleOrders(msg *rabbitmq.Message) error
+	SubscribeResponseQueue(fn func(*Response) error) error
+	RecoverOrders(orders []*FillOrder) error
+	CancelOrder(order *types.Order) (*Response, error)
+	GetOrderBook(pair *types.Pair) (asks, bids []*map[string]float64)
+}
+
 // Engine is singleton Resource instance
-var Engine *Resource
+var engine *Engine
 
 // InitEngine initializes the engine singleton instance
-func InitEngine(redisConn redis.Conn) (engine *Resource, err error) {
-	if Engine == nil {
-		Engine = &Resource{redisConn, &sync.Mutex{}}
+func InitEngine(redisConn redis.Conn) (*Engine, error) {
+	if engine == nil {
+		engine = &Engine{redisConn, &sync.Mutex{}}
 	}
 
-	engine = Engine
-	return
+	return engine, nil
 }
 
 // publishEngineResponse is used by matching engine to publish or send response of matching engine to
 // system for further processing
-func (e *Resource) publishEngineResponse(res *Response) error {
+func (e *Engine) publishEngineResponse(res *Response) error {
 	ch := rabbitmq.GetChannel("erPub")
 	q := rabbitmq.GetQueue(ch, "engineResponse")
 
@@ -65,7 +72,7 @@ func (e *Resource) publishEngineResponse(res *Response) error {
 
 // SubscribeResponseQueue subscribes to engineResponse queue and triggers the function
 // passed as arguments for each message.
-func (e *Resource) SubscribeResponseQueue(fn func(*Response) error) error {
+func (e *Engine) SubscribeResponseQueue(fn func(*Response) error) error {
 	ch := rabbitmq.GetChannel("erSub")
 	q := rabbitmq.GetQueue(ch, "engineResponse")
 
@@ -105,7 +112,7 @@ func (e *Resource) SubscribeResponseQueue(fn func(*Response) error) error {
 
 // HandleOrders parses incoming rabbitmq order messages and redirects them to the appropriate
 // engine function
-func (e *Resource) HandleOrders(msg *rabbitmq.Message) error {
+func (e *Engine) HandleOrders(msg *rabbitmq.Message) error {
 	o := &types.Order{}
 	err := json.Unmarshal(msg.Data, o)
 	if err != nil {
@@ -116,7 +123,6 @@ func (e *Resource) HandleOrders(msg *rabbitmq.Message) error {
 	if msg.Type == "NEW_ORDER" {
 		e.newOrder(o)
 	} else if msg.Type == "ADD_ORDER" {
-		log.Print("IN ADD ORDER")
 		e.addOrder(o)
 	}
 

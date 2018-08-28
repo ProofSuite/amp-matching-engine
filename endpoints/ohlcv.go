@@ -14,10 +14,13 @@ import (
 )
 
 type OHLCVEndpoint struct {
-	ohlcvService *services.OHLCVService
+	ohlcvService services.OHLCVServiceInterface
 }
 
-func ServeOHLCVResource(rg *routing.RouteGroup, ohlcvService *services.OHLCVService) {
+func ServeOHLCVResource(
+	rg *routing.RouteGroup,
+	ohlcvService services.OHLCVServiceInterface,
+) {
 	e := &OHLCVEndpoint{ohlcvService}
 	rg.Post("/ohlcv", e.ohlcv)
 	ws.RegisterChannel(ws.OHLCVChannel, e.ohlcvWebSocket)

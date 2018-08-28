@@ -18,7 +18,7 @@ func init() {
 	}
 }
 
-func getResource() *Resource {
+func getResource() *Engine {
 	if redisServer == 0 {
 		c, err := redis.DialURL("redis://localhost:6379")
 		if err != nil {
@@ -26,7 +26,7 @@ func getResource() *Resource {
 		}
 		// Clear redis before starting tests
 		flushData(c)
-		return &Resource{c, &sync.Mutex{}}
+		return &Engine{c, &sync.Mutex{}}
 	}
 
 	s, err := miniredis.Run()
@@ -39,7 +39,7 @@ func getResource() *Resource {
 		panic(err)
 	}
 
-	return &Resource{c, &sync.Mutex{}}
+	return &Engine{c, &sync.Mutex{}}
 }
 
 func getSortedSet(c redis.Conn, key string) (map[string]float64, error) {
