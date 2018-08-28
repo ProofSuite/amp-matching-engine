@@ -320,7 +320,7 @@ func TestMatchPartialOrder3(t *testing.T) {
 	client2.Requests <- m2
 
 	wg := sync.WaitGroup{}
-	wg.Add(2)
+	wg.Add(3)
 
 	go func() {
 		for {
@@ -386,6 +386,8 @@ func TestMatchPartialOrder3(t *testing.T) {
 
 	t1.Hash = t1.ComputeHash()
 
+	client2.ResponseLogs[1].Print()
+
 	//Responses received by the first client
 	res1 := types.NewOrderAddedWebsocketMessage(o1, pair, 0)
 	// Responses received by the second client
@@ -402,9 +404,9 @@ func TestMatchPartialOrder4(t *testing.T) {
 	m3, o3, _ := factory2.NewOrderMessage(ZRX, 3e18, WETH, 3e18)
 
 	client1.Requests <- m1
-	time.Sleep(200 * time.Millisecond)
+	time.Sleep(500 * time.Millisecond)
 	client1.Requests <- m2
-	time.Sleep(200 * time.Millisecond)
+	time.Sleep(500 * time.Millisecond)
 	client2.Requests <- m3
 
 	wg := sync.WaitGroup{}
@@ -560,64 +562,6 @@ func TestMatchPartialOrder5(t *testing.T) {
 	testutils.Compare(t, res1, client1.ResponseLogs[0])
 	testutils.Compare(t, res2, client2.ResponseLogs[0])
 
-	// t1 := &types.Trade{
-	// 	Amount:     big.NewInt(1e18),
-	// 	BaseToken:  ZRX,
-	// 	QuoteToken: WETH,
-	// 	Price:      big.NewInt(1e8),
-	// 	PricePoint: big.NewInt(1e8),
-	// 	OrderHash:  o1.Hash,
-	// 	Side:       "BUY",
-	// 	PairName:   "ZRX/WETH",
-	// 	Maker:      factory1.GetAddress(),
-	// 	Taker:      factory2.GetAddress(),
-	// 	TradeNonce: big.NewInt(0),
-	// }
-
-	// t2 := &types.Trade{
-	// 	Amount:     big.NewInt(1e18),
-	// 	BaseToken:  ZRX,
-	// 	QuoteToken: WETH,
-	// 	Price:      big.NewInt(1e8),
-	// 	PricePoint: big.NewInt(1e8),
-	// 	OrderHash:  o2.Hash,
-	// 	Side:       "BUY",
-	// 	PairName:   "ZRX/WETH",
-	// 	Maker:      factory1.GetAddress(),
-	// 	Taker:      factory2.GetAddress(),
-	// 	TradeNonce: big.NewInt(0),
-	// }
-
-	// //Remaining order
-	// ro1 := &types.Order{
-	// 	Amount:          big.NewInt(1e18),
-	// 	BaseToken:       ZRX,
-	// 	QuoteToken:      WETH,
-	// 	BuyToken:        ZRX,
-	// 	SellToken:       WETH,
-	// 	BuyAmount:       big.NewInt(1e18),
-	// 	SellAmount:      big.NewInt(1e18),
-	// 	FilledAmount:    big.NewInt(0),
-	// 	ExchangeAddress: factory2.GetExchangeAddress(),
-	// 	UserAddress:     factory2.GetAddress(),
-	// 	Price:           big.NewInt(1),
-	// 	PricePoint:      big.NewInt(1e8),
-	// 	Side:            "BUY",
-	// 	PairName:        "ZRX/WETH",
-	// 	Status:          "NEW",
-	// 	TakeFee:         big.NewInt(0),
-	// 	MakeFee:         big.NewInt(0),
-	// 	Expires:         o1.Expires,
-	// }
-
-	// t1.Hash = t1.ComputeHash()
-	// t2.Hash = t2.ComputeHash()
-
-	// res1 := types.NewOrderAddedWebsocketMessage(o1, pair, 0)
-	// res2 := types.NewOrderAddedWebsocketMessage(o2, pair, 0)
-	// testutils.Compare(t, res1, client1.ResponseLogs[0])
-	// testutils.Compare(t, res2, client1.ResponseLogs[1])
-	// testutils.Compare(t, res3, client2.ResponseLogs[0])
 }
 
 func TestMatchPartialOrder6(t *testing.T) {
