@@ -1,10 +1,10 @@
 package engine
 
 import (
+	"log"
 	"math/big"
 	"strconv"
 	"testing"
-	"time"
 
 	"encoding/json"
 
@@ -13,47 +13,17 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/utils/math"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/mgo.v2/bson"
 )
 
 func TestAddOrder(t *testing.T) {
 	e := getResource()
 	defer flushData(e.redisConn)
 
-	o1 := &types.Order{
-		ID:              bson.ObjectIdHex("537f700b537461b70c5f0000"),
-		UserAddress:     common.HexToAddress("0x7a9f3cd060ab180f36c17fe6bdf9974f577d77aa"),
-		ExchangeAddress: common.HexToAddress("0xae55690d4b079460e6ac28aaa58c9ec7b73a7485"),
-		BuyToken:        common.HexToAddress("0xe41d2489571d322189246dafa5ebde1f4699f498"),
-		SellToken:       common.HexToAddress("0x12459c951127e0c374ff9105dda097662a027093"),
-		BaseToken:       common.HexToAddress("0xe41d2489571d322189246dafa5ebde1f4699f498"),
-		QuoteToken:      common.HexToAddress("0x12459c951127e0c374ff9105dda097662a027093"),
-		BuyAmount:       big.NewInt(6000000000),
-		SellAmount:      big.NewInt(13800000000),
-		Price:           big.NewInt(229999999),
-		PricePoint:      big.NewInt(229999999),
-		Amount:          big.NewInt(6000000000),
-		FilledAmount:    big.NewInt(0),
-		Status:          "NEW",
-		Side:            "SELL",
-		PairName:        "ZRX/WETH",
-		Expires:         big.NewInt(10000),
-		MakeFee:         big.NewInt(50),
-		Nonce:           big.NewInt(1000),
-		TakeFee:         big.NewInt(50),
-		Signature: &types.Signature{
-			V: 28,
-			R: common.HexToHash("0x10b30eb0072a4f0a38b6fca0b731cba15eb2e1702845d97c1230b53a839bcb85"),
-			S: common.HexToHash("0x6d9ad89548c9e3ce4c97825d027291477f2c44a8caef792095f2cabc978493ff"),
-		},
-		Hash:      common.HexToHash("0xb9070a2d333403c255ce71ddf6e795053599b2e885321de40353832b96d8880a"),
-		CreatedAt: time.Unix(1405544146, 0),
-		UpdatedAt: time.Unix(1405544146, 0),
-	}
+	o1 := getSellOrder()
 
 	bytes, _ := o1.MarshalJSON()
 
-	e.addOrder(o1)
+	e.addOrder(&o1)
 	ssKey, listKey := o1.GetOBKeys()
 
 	rs, err := getSortedSet(e.redisConn, ssKey)
@@ -88,41 +58,12 @@ func TestAddOrder(t *testing.T) {
 	}
 
 	// Currently converting amount to int64. In the future, we need to use strings instead of int64
-	assert.Equalf(t, strconv.FormatInt(o1.Amount.Int64(), 10), rse, "Expected value for key: %v, was: %v, but got: %v", ssKey, o1.Amount, rse)
+	assert.Equal(t, o1.Amount.Sub(o1.Amount, o1.FilledAmount).String(), rse)
 
-	o2 := &types.Order{
-		ID:              bson.ObjectIdHex("537f700b537461b70c5f0000"),
-		UserAddress:     common.HexToAddress("0x7a9f3cd060ab180f36c17fe6bdf9974f577d77aa"),
-		ExchangeAddress: common.HexToAddress("0xae55690d4b079460e6ac28aaa58c9ec7b73a7485"),
-		BuyToken:        common.HexToAddress("0xe41d2489571d322189246dafa5ebde1f4699f498"),
-		SellToken:       common.HexToAddress("0x12459c951127e0c374ff9105dda097662a027093"),
-		BaseToken:       common.HexToAddress("0xe41d2489571d322189246dafa5ebde1f4699f498"),
-		QuoteToken:      common.HexToAddress("0x12459c951127e0c374ff9105dda097662a027093"),
-		BuyAmount:       big.NewInt(1000),
-		SellAmount:      big.NewInt(100),
-		Price:           big.NewInt(6000000000),
-		PricePoint:      big.NewInt(6000000000),
-		Amount:          big.NewInt(229999999),
-		FilledAmount:    big.NewInt(1000000000),
-		Status:          "PARTIAL_FILLED",
-		Side:            "BUY",
-		PairName:        "ZRX/WETH",
-		Expires:         big.NewInt(10000),
-		MakeFee:         big.NewInt(50),
-		Nonce:           big.NewInt(1000),
-		TakeFee:         big.NewInt(50),
-		Signature: &types.Signature{
-			V: 28,
-			R: common.HexToHash("0x10b30eb0072a4f0a38b6fca0b731cba15eb2e1702845d97c1230b53a839bcb85"),
-			S: common.HexToHash("0x6d9ad89548c9e3ce4c97825d027291477f2c44a8caef792095f2cabc978493ff"),
-		},
-		Hash:      common.HexToHash("0xb9070a2d333403c255ce71ddf6e795053599b2e885321de40353832b96d8880a"),
-		CreatedAt: time.Unix(1405544146, 0),
-		UpdatedAt: time.Unix(1405544146, 0),
-	}
+	o2 := getBuyOrder()
 
 	bytes, _ = o2.MarshalJSON()
-	e.addOrder(o2)
+	e.addOrder(&o2)
 	ssKey, listKey = o2.GetOBKeys()
 
 	rs, err = getSortedSet(e.redisConn, ssKey)
@@ -159,97 +100,178 @@ func TestAddOrder(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
+	assert.JSONEqf(t, string(bytes), rse, "Expected value for key: %v, was: %s, but got: %v", ssKey, bytes, rse)
+	rse, err = getValue(e.redisConn, ssKey+"::book::"+utils.UintToPaddedString(o2.PricePoint.Int64()))
+	if err != nil {
+		t.Error(err)
+	}
+	rse, err = getValue(e.redisConn, ssKey+"::book::"+utils.UintToPaddedString(o1.PricePoint.Int64()))
+	if err != nil {
+		t.Error(err)
+	}
+	assert.Equal(t, o2.Amount.Sub(o2.Amount, o2.FilledAmount).String(), rse)
+
 }
 
-func TestCancelOrder(t *testing.T) {
+func TestUpdateOrder(t *testing.T) {
+	e := getResource()
+	defer flushData(e.redisConn)
+ 	sampleOrder := getSellOrder()
+	e.addOrder(&sampleOrder)
+
+	tAmount  := big.NewInt(1000000000)
+	e.updateOrder(&sampleOrder, tAmount)
+	ssKey, listKey := sampleOrder.GetOBKeys()
+	updatedSampleOrder := sampleOrder
+
+	updatedSampleOrder.Status = "PARTIAL_FILLED"
+	updatedSampleOrder.FilledAmount = big.NewInt(1000000000)
+	updatedSampleOrderBytes, _ := updatedSampleOrder.MarshalJSON()
+	rs, err := getSortedSet(e.redisConn,ssKey)
+	if err != nil {
+		t.Error(err)
+	} else {
+		for k, v := range rs {
+			assert.Equal(t, utils.UintToPaddedString(sampleOrder.Price.Int64()), k)
+			assert.Equal(t, 0.0, v)
+		}
+	}
+ 	rs, err = getSortedSet(e.redisConn,listKey)
+	if err != nil {
+		t.Error(err)
+	} else {
+		for k, v := range rs {
+			assert.Equal(t, sampleOrder.Hash.Hex(), k)
+			assert.Equal(t, sampleOrder.CreatedAt.Unix(), int64(v))
+		}
+	}
+ 	rse, err := getValue(e.redisConn,listKey + "::" + sampleOrder.Hash.Hex())
+	if err != nil {
+		t.Error(err)
+	}
+	assert.JSONEq(t, string(updatedSampleOrderBytes), rse)
+ 	rse, err = getValue(e.redisConn,ssKey + "::book::" + utils.UintToPaddedString(sampleOrder.PricePoint.Int64()))
+	if err != nil {
+		t.Error(err)
+	}
+	assert.Equal(t, math.Sub(sampleOrder.Amount,tAmount).String(), rse)
+ 	// Update the order again with negative amount(recover order)
+	e.updateOrder(&sampleOrder, math.Mul(tAmount,big.NewInt(-1)))
+ 	rs, err = getSortedSet(e.redisConn,ssKey)
+	if err != nil {
+		t.Error(err)
+	} else {
+		for k, v := range rs {
+			assert.Equal(t, utils.UintToPaddedString(sampleOrder.PricePoint.Int64()), k)
+			assert.Equalf(t, 0.0, v, "Expected sorted set value: %v got: %v", 0, v)
+		}
+	}
+ 	rs, err = getSortedSet(e.redisConn,listKey)
+	if err != nil {
+		t.Error(err)
+	} else {
+		for k, v := range rs {
+			assert.Equal(t, sampleOrder.Hash.Hex(), k)
+			assert.Equal(t, sampleOrder.CreatedAt.Unix(), int64(v))
+		}
+	}
+ 	rse, err = getValue(e.redisConn,listKey + "::" + sampleOrder.Hash.Hex())
+	if err != nil {
+		t.Error(err)
+	}
+	o:=getSellOrder()
+	o.Status="OPEN"
+	orderJSON,_:=o.MarshalJSON()
+	assert.JSONEq(t, string(orderJSON), rse)
+ 	rse, err = getValue(e.redisConn,ssKey + "::book::" + utils.UintToPaddedString(sampleOrder.PricePoint.Int64()))
+	if err != nil {
+		t.Error(err)
+	}
+	assert.Equal(t, sampleOrder.Amount.String(), rse)
+ }
+
+
+ func TestDeleteOrder(t *testing.T) {
+	e := getResource()
+	defer flushData(e.redisConn)
+ 	// Add 1st order
+	sampleOrder := getSellOrder()
+	e.addOrder(&sampleOrder)
+ 	// Add 2nd order
+	sampleOrder1 := getSellOrder()
+	sampleOrder1.Hash=common.HexToHash("0xa2d800b77828cb52c83106ca392e465bc0af0d7c319f6956328f739080c19621")
+	e.addOrder(&sampleOrder1)
+ 	// delete sampleOrder1
+	e.deleteOrder(&sampleOrder1, sampleOrder1.Amount)
+	ss1Key, list1Key := sampleOrder1.GetOBKeys()
+ 	rs, err := getSortedSet(e.redisConn, ss1Key)
+	if err != nil {
+		t.Error(err)
+	} else {
+		for k, v := range rs {
+			assert.Equal(t, utils.UintToPaddedString(sampleOrder1.PricePoint.Int64()), k)
+			assert.Equal(t, 0.0, v)
+		}
+	}
+ 	rs, err = getSortedSet(e.redisConn,list1Key)
+	if err != nil {
+		t.Error(err)
+	} else {
+		for k, v := range rs {
+			assert.NotEqual(t, sampleOrder1.Hash, k)
+			assert.Equal(t, sampleOrder1.CreatedAt.Unix(), int64(v))
+		}
+	}
+ 	if exists(e.redisConn, list1Key + "::" + sampleOrder1.Hash.Hex()) {
+		t.Errorf("Key : %v expected to be deleted but key exists", list1Key+"::"+sampleOrder1.Hash.Hex())
+	}
+ 	rse, err := getValue(e.redisConn,ss1Key + "::book::" + utils.UintToPaddedString(sampleOrder1.PricePoint.Int64()))
+	if err != nil {
+		t.Error(err)
+	}
+	assert.Equal(t, sampleOrder.Amount.String(), rse)
+ 	// delete sampleOrder
+	e.deleteOrder(&sampleOrder, sampleOrder.Amount)
+	ssKey, listKey := sampleOrder.GetOBKeys()
+ 	// All keys must have been deleted
+	if exists(e.redisConn,ssKey) {
+		t.Errorf("Key : %v expected to be deleted but key exists", ssKey)
+	}
+	if exists(e.redisConn,listKey) {
+		t.Errorf("Key : %v expected to be deleted but key exists", ssKey)
+	}
+	if exists(e.redisConn,listKey + "::" + sampleOrder.Hash.Hex()) {
+		t.Errorf("Key : %v expected to be deleted but key exists", ssKey)
+	}
+	if exists(e.redisConn,ssKey + "::book::" + utils.UintToPaddedString(sampleOrder.PricePoint.Int64())) {
+		t.Errorf("Key : %v expected to be deleted but key exists", ssKey)
+	}
+}
+
+ func TestCancelOrder(t *testing.T) {
 	e := getResource()
 	defer flushData(e.redisConn)
 
 	// Add 1st order (OPEN order)
-	o1 := &types.Order{
-		ID:              bson.ObjectIdHex("537f700b537461b70c5f0000"),
-		UserAddress:     common.HexToAddress("0x7a9f3cd060ab180f36c17fe6bdf9974f577d77aa"),
-		ExchangeAddress: common.HexToAddress("0xae55690d4b079460e6ac28aaa58c9ec7b73a7485"),
-		BuyToken:        common.HexToAddress("0xe41d2489571d322189246dafa5ebde1f4699f498"),
-		SellToken:       common.HexToAddress("0x12459c951127e0c374ff9105dda097662a027093"),
-		BaseToken:       common.HexToAddress("0xe41d2489571d322189246dafa5ebde1f4699f498"),
-		QuoteToken:      common.HexToAddress("0x12459c951127e0c374ff9105dda097662a027093"),
-		BuyAmount:       big.NewInt(6000000000),
-		SellAmount:      big.NewInt(13800000000),
-		Price:           big.NewInt(229999999),
-		PricePoint:      big.NewInt(229999999),
-		Amount:          big.NewInt(6000000000),
-		FilledAmount:    big.NewInt(0),
-		Status:          "NEW",
-		Side:            "SELL",
-		PairName:        "ZRX/WETH",
-		Expires:         big.NewInt(10000),
-		MakeFee:         big.NewInt(50),
-		Nonce:           big.NewInt(1000),
-		TakeFee:         big.NewInt(50),
-		Signature: &types.Signature{
-			V: 28,
-			R: common.HexToHash("0x10b30eb0072a4f0a38b6fca0b731cba15eb2e1702845d97c1230b53a839bcb85"),
-			S: common.HexToHash("0x6d9ad89548c9e3ce4c97825d027291477f2c44a8caef792095f2cabc978493ff"),
-		},
-		Hash:      common.HexToHash("0xb9070a2d333403c255ce71ddf6e795053599b2e885321de40353832b96d8880a"),
-		CreatedAt: time.Unix(1405544146, 0),
-		UpdatedAt: time.Unix(1405544146, 0),
-	}
+	o1 := getSellOrder()
 
-	e.addOrder(o1)
+	e.addOrder(&o1)
 
 	// Add 2nd order (Partial filled order)
-	o2 := &types.Order{
-		ID:              bson.ObjectIdHex("537f700b537461b70c5f0000"),
-		UserAddress:     common.HexToAddress("0x7a9f3cd060ab180f36c17fe6bdf9974f577d77aa"),
-		ExchangeAddress: common.HexToAddress("0xae55690d4b079460e6ac28aaa58c9ec7b73a7485"),
-		BuyToken:        common.HexToAddress("0xe41d2489571d322189246dafa5ebde1f4699f498"),
-		SellToken:       common.HexToAddress("0x12459c951127e0c374ff9105dda097662a027093"),
-		BaseToken:       common.HexToAddress("0xe41d2489571d322189246dafa5ebde1f4699f498"),
-		QuoteToken:      common.HexToAddress("0x12459c951127e0c374ff9105dda097662a027093"),
-		BuyAmount:       big.NewInt(6000000000),
-		SellAmount:      big.NewInt(13800000000),
-		Price:           big.NewInt(229999999),
-		PricePoint:      big.NewInt(229999999),
-		Amount:          big.NewInt(6000000000),
-		FilledAmount:    big.NewInt(0),
-		Status:          "PARTIAL_FILLED",
-		Side:            "SELL",
-		PairName:        "ZRX/WETH",
-		Expires:         big.NewInt(10000),
-		MakeFee:         big.NewInt(50),
-		Nonce:           big.NewInt(1000),
-		TakeFee:         big.NewInt(50),
-		Signature: &types.Signature{
-			V: 28,
-			R: common.HexToHash("0x10b30eb0072a4f0a38b6fca0b731cba15eb2e1702845d97c1230b53a839bcb85"),
-			S: common.HexToHash("0x6d9ad89548c9e3ce4c97825d027291477f2c44a8caef792095f2cabc978493ff"),
-		},
-		Hash:      common.HexToHash("0xb9070a2d333403c255ce71ddf6e795053599b2e885321de40353832b96d8880b"),
-		CreatedAt: time.Unix(1405544146, 0),
-		UpdatedAt: time.Unix(1405544146, 0),
-	}
+	o2 := getSellOrder()
+	o2.Hash = common.HexToHash("0x10b30eb0072a4f0a38b6fca0b731cba15eb2e1702845d97c1230b53a839bcb85")
+	e.addOrder(&o2)
 
-	e.addOrder(o2)
-
-	expectedResponse := &Response{
-		Order:          o2,
-		Trades:         make([]*types.Trade, 0),
-		RemainingOrder: &types.Order{},
-		FillStatus:     CANCELLED,
-		MatchingOrders: make([]*FillOrder, 0),
-	}
+	expectedResponse := getEResponse(&o2, make([]*types.Trade, 0), CANCELLED, make([]*FillOrder, 0), &types.Order{})
 	expectedResponse.Order.Status = "CANCELLED"
-
 	// cancel o2
-	response, err := e.CancelOrder(o2)
+	response, err := e.CancelOrder(&o2)
 
 	if err != nil {
-		t.Errorf("Error while cancelling SampleOrder1: %s", err)
+		log.Print("Error while cancelling SampleOrder1: ", err.Error())
 	}
 
-	assert.Equalf(t, expectedResponse, response, "Expected Response: %+v got: %+v", expectedResponse, response)
+	assert.Equal(t, expectedResponse, response)
 
 	ss1Key, list1Key := o2.GetOBKeys()
 	rs, err := getSortedSet(e.redisConn, ss1Key)
@@ -282,20 +304,21 @@ func TestCancelOrder(t *testing.T) {
 	}
 
 	// Currently converting amount to int64. In the future, we need to use strings instead of int64
-	assert.Equalf(t, strconv.FormatInt(o1.Amount.Int64(), 10), rse, "Expected value for key: %v, was: %v, but got: %v", ss1Key, o2.Amount.Int64()-o2.FilledAmount.Int64(), rse)
+	a := new(big.Int)
+	assert.Equal(t, a.Sub(o1.Amount, o1.FilledAmount).String(), rse)
 
-	expectedResponse.Order = o1
+	expectedResponse.Order = &o1
 	expectedResponse.Order.Status = "CANCELLED"
 
 	// cancel o1
-	response, err = e.CancelOrder(o1)
+	response, err = e.CancelOrder(&o1)
 	ssKey, listKey := o1.GetOBKeys()
 
 	if err != nil {
 		t.Errorf("Error while cancelling SampleOrder: %s", err)
 	}
 
-	assert.Equalf(t, expectedResponse, response, "Expected Response from cancelling sampleorder : %+v got: %+v", expectedResponse, response)
+	assert.Equal(t, expectedResponse, response)
 
 	// All keys must have been deleted
 	if exists(e.redisConn, ssKey) {
@@ -319,130 +342,51 @@ func TestRecoverOrders(t *testing.T) {
 	e := getResource()
 	defer flushData(e.redisConn)
 
-	o1 := &types.Order{
-		ID:              bson.ObjectIdHex("537f700b537461b70c5f0000"),
-		UserAddress:     common.HexToAddress("0x7a9f3cd060ab180f36c17fe6bdf9974f577d77aa"),
-		ExchangeAddress: common.HexToAddress("0xae55690d4b079460e6ac28aaa58c9ec7b73a7485"),
-		BuyToken:        common.HexToAddress("0x1888a8db0b7db59413ce07150b3373972bf818d3"),
-		SellToken:       common.HexToAddress("0x2034842261b82651885751fc293bba7ba5398156"),
-		BaseToken:       common.HexToAddress("0x2034842261b82651885751fc293bba7ba5398156"),
-		QuoteToken:      common.HexToAddress("0x1888a8db0b7db59413ce07150b3373972bf818d3"),
-		BuyAmount:       big.NewInt(6000000000),
-		SellAmount:      big.NewInt(13800000000),
-		Price:           big.NewInt(229999999),
-		PricePoint:      big.NewInt(229999999),
-		Amount:          big.NewInt(6000000000),
-		FilledAmount:    big.NewInt(1000000000),
-		Status:          "PARTIAL_FILLED",
-		Side:            "SELL",
-		PairName:        "ZRX/WETH",
-		Expires:         big.NewInt(10000),
-		MakeFee:         big.NewInt(50),
-		Nonce:           big.NewInt(1000),
-		TakeFee:         big.NewInt(50),
-		Signature: &types.Signature{
-			V: 28,
-			R: common.HexToHash("0x10b30eb0072a4f0a38b6fca0b731cba15eb2e1702845d97c1230b53a839bcb85"),
-			S: common.HexToHash("0x6d9ad89548c9e3ce4c97825d027291477f2c44a8caef792095f2cabc978493ff"),
-		},
-		Hash:      common.HexToHash("0xa2d800b77828cb52c83106ca392e465bc0af0d7c319f6956328f739080c19620"),
-		CreatedAt: time.Unix(1405544146, 0),
-		UpdatedAt: time.Unix(1405544146, 0),
-	}
+	o1 := getSellOrder()
+	o1.Status = "PARTIAL_FILLED"
+	o1.FilledAmount = big.NewInt(1000000000)
 
-	expectedOrder1 := *o1
+	expectedOrder1 := o1
 	expectedOrder1.Status = "OPEN"
 	expectedOrder1.FilledAmount = big.NewInt(0)
 	expectedOrder1Json, _ := expectedOrder1.MarshalJSON()
 
-	e.addOrder(o1)
+	e.addOrder(&o1)
 
-	o2 := &types.Order{
-		ID:              bson.ObjectIdHex("537f700b537461b70c5f0000"),
-		UserAddress:     common.HexToAddress("0x7a9f3cd060ab180f36c17fe6bdf9974f577d77aa"),
-		ExchangeAddress: common.HexToAddress("0xae55690d4b079460e6ac28aaa58c9ec7b73a7485"),
-		BuyToken:        common.HexToAddress("0x1888a8db0b7db59413ce07150b3373972bf818d3"),
-		SellToken:       common.HexToAddress("0x2034842261b82651885751fc293bba7ba5398156"),
-		BaseToken:       common.HexToAddress("0x2034842261b82651885751fc293bba7ba5398156"),
-		QuoteToken:      common.HexToAddress("0x1888a8db0b7db59413ce07150b3373972bf818d3"),
-		BuyAmount:       big.NewInt(6000000000),
-		SellAmount:      big.NewInt(13800000000),
-		Price:           big.NewInt(229999999),
-		PricePoint:      big.NewInt(229999999),
-		Amount:          big.NewInt(6000000000),
-		FilledAmount:    big.NewInt(6000000000),
-		Status:          "FILLED",
-		Side:            "SELL",
-		PairName:        "ZRX/WETH",
-		Expires:         big.NewInt(10000),
-		MakeFee:         big.NewInt(50),
-		Nonce:           big.NewInt(1000),
-		TakeFee:         big.NewInt(50),
-		Signature: &types.Signature{
-			V: 28,
-			R: common.HexToHash("0x10b30eb0072a4f0a38b6fca0b731cba15eb2e1702845d97c1230b53a839bcb85"),
-			S: common.HexToHash("0x6d9ad89548c9e3ce4c97825d027291477f2c44a8caef792095f2cabc978493ff"),
-		},
-		Hash:      common.HexToHash("0xa2d800b77828cb52c83106ca392e465bc0af0d7c319f6956328f739080c19621"),
-		CreatedAt: time.Unix(1405544146, 0),
-		UpdatedAt: time.Unix(1405544146, 0),
-	}
+	o2 := getSellOrder()
+	o2.Hash = common.HexToHash("0xa2d800b77828cb52c83106ca392e465bc0af0d7c319f6956328f739080d19621")
+	o2.FilledAmount = o2.Amount
+	o2.Status = "FILLED"
 
-	expectedOrder2 := *o2
+	expectedOrder2 := o2
 	expectedOrder2.Status = "OPEN"
 	expectedOrder2.FilledAmount = big.NewInt(0)
 	expectedOrder2Json, _ := expectedOrder2.MarshalJSON()
 
-	e.addOrder(o2)
+	e.addOrder(&o2)
 
-	o3 := &types.Order{
-		ID:              bson.ObjectIdHex("537f700b537461b70c5f0000"),
-		UserAddress:     common.HexToAddress("0x7a9f3cd060ab180f36c17fe6bdf9974f577d77aa"),
-		ExchangeAddress: common.HexToAddress("0xae55690d4b079460e6ac28aaa58c9ec7b73a7485"),
-		BuyToken:        common.HexToAddress("0x1888a8db0b7db59413ce07150b3373972bf818d3"),
-		SellToken:       common.HexToAddress("0x2034842261b82651885751fc293bba7ba5398156"),
-		BaseToken:       common.HexToAddress("0x2034842261b82651885751fc293bba7ba5398156"),
-		QuoteToken:      common.HexToAddress("0x1888a8db0b7db59413ce07150b3373972bf818d3"),
-		BuyAmount:       big.NewInt(6000000000),
-		SellAmount:      big.NewInt(13800000000),
-		Price:           big.NewInt(229999999),
-		PricePoint:      big.NewInt(229999999),
-		Amount:          big.NewInt(6000000000),
-		FilledAmount:    big.NewInt(6000000000),
-		Status:          "FILLED",
-		Side:            "SELL",
-		PairName:        "ZRX/WETH",
-		Expires:         big.NewInt(10000),
-		MakeFee:         big.NewInt(50),
-		Nonce:           big.NewInt(1000),
-		TakeFee:         big.NewInt(50),
-		Signature: &types.Signature{
-			V: 28,
-			R: common.HexToHash("0x10b30eb0072a4f0a38b6fca0b731cba15eb2e1702845d97c1230b53a839bcb85"),
-			S: common.HexToHash("0x6d9ad89548c9e3ce4c97825d027291477f2c44a8caef792095f2cabc978493ff"),
-		},
-		Hash:      common.HexToHash("0xa2d800b77828cb52c83106ca392e465bc0af0d7c319f6956328f739080c19622"),
-		CreatedAt: time.Unix(1405544146, 0),
-		UpdatedAt: time.Unix(1405544146, 0),
-	}
+	o3 := getSellOrder()
+	o3.Hash = common.HexToHash("0xa2d800b77828cb52c83106ca392e465bc0af0d7c319f6956328f739180d19621")
+	o3.FilledAmount = o2.Amount
+	o3.Status = "FILLED"
 
-	expectedOrder3 := *o3
+	expectedOrder3 := o3
 	expectedOrder3.Status = "PARTIAL_FILLED"
 	expectedOrder3.FilledAmount = big.NewInt(4000000000)
 	expectedOrder3Json, _ := expectedOrder3.MarshalJSON()
 
-	e.addOrder(o3)
+	e.addOrder(&o3)
 
 	recoverOrders := []*FillOrder{
 		&FillOrder{
 			Amount: big.NewInt(1000000000),
-			Order:  o1,
+			Order:  &o1,
 		}, &FillOrder{
 			Amount: big.NewInt(6000000000),
-			Order:  o2,
+			Order:  &o2,
 		}, &FillOrder{
 			Amount: big.NewInt(2000000000),
-			Order:  o3,
+			Order:  &o3,
 		},
 	}
 
@@ -514,47 +458,13 @@ func TestSellOrder(t *testing.T) {
 	e := getResource()
 	defer flushData(e.redisConn)
 
-	o1 := &types.Order{
-		ID:              bson.ObjectIdHex("537f700b537461b70c5f0000"),
-		UserAddress:     common.HexToAddress("0x7a9f3cd060ab180f36c17fe6bdf9974f577d77aa"),
-		ExchangeAddress: common.HexToAddress("0xae55690d4b079460e6ac28aaa58c9ec7b73a7485"),
-		BuyToken:        common.HexToAddress("0x1888a8db0b7db59413ce07150b3373972bf818d3"),
-		SellToken:       common.HexToAddress("0x2034842261b82651885751fc293bba7ba5398156"),
-		BaseToken:       common.HexToAddress("0x2034842261b82651885751fc293bba7ba5398156"),
-		QuoteToken:      common.HexToAddress("0x1888a8db0b7db59413ce07150b3373972bf818d3"),
-		BuyAmount:       big.NewInt(6000000000),
-		SellAmount:      big.NewInt(13800000000),
-		Price:           big.NewInt(229999999),
-		PricePoint:      big.NewInt(229999999),
-		Amount:          big.NewInt(6000000000),
-		FilledAmount:    big.NewInt(0),
-		Status:          "NEW",
-		Side:            "SELL",
-		PairName:        "ZRX/WETH",
-		Expires:         big.NewInt(10000),
-		MakeFee:         big.NewInt(50),
-		Nonce:           big.NewInt(1000),
-		TakeFee:         big.NewInt(50),
-		Signature: &types.Signature{
-			V: 28,
-			R: common.HexToHash("0x10b30eb0072a4f0a38b6fca0b731cba15eb2e1702845d97c1230b53a839bcb85"),
-			S: common.HexToHash("0x6d9ad89548c9e3ce4c97825d027291477f2c44a8caef792095f2cabc978493ff"),
-		},
-		Hash:      common.HexToHash("0xa2d800b77828cb52c83106ca392e465bc0af0d7c319f6956328f739080c19621"),
-		CreatedAt: time.Unix(1405544146, 0),
-		UpdatedAt: time.Unix(1405544146, 0),
-	}
+	o1 := getSellOrder()
 
-	expectedResponse := &Response{
-		Order:          o1,
-		Trades:         make([]*types.Trade, 0),
-		FillStatus:     NOMATCH,
-		MatchingOrders: make([]*FillOrder, 0),
-	}
+	expectedResponse := getEResponse(&o1, make([]*types.Trade, 0), NOMATCH, make([]*FillOrder, 0), nil)
 
 	expectedResponse.Order.Status = "OPEN"
 
-	response, err := e.sellOrder(o1)
+	response, err := e.sellOrder(&o1)
 	if err != nil {
 		t.Errorf("Error in sellOrder: %s", err)
 	}
@@ -565,47 +475,13 @@ func TestBuyOrder(t *testing.T) {
 	e := getResource()
 	defer flushData(e.redisConn)
 
-	o1 := &types.Order{
-		ID:              bson.ObjectIdHex("537f700b537461b70c5f0000"),
-		UserAddress:     common.HexToAddress("0x7a9f3cd060ab180f36c17fe6bdf9974f577d77aa"),
-		ExchangeAddress: common.HexToAddress("0xae55690d4b079460e6ac28aaa58c9ec7b73a7485"),
-		BuyToken:        common.HexToAddress("0x1888a8db0b7db59413ce07150b3373972bf818d3"),
-		SellToken:       common.HexToAddress("0x2034842261b82651885751fc293bba7ba5398156"),
-		BaseToken:       common.HexToAddress("0x2034842261b82651885751fc293bba7ba5398156"),
-		QuoteToken:      common.HexToAddress("0x1888a8db0b7db59413ce07150b3373972bf818d3"),
-		BuyAmount:       big.NewInt(6000000000),
-		SellAmount:      big.NewInt(13800000000),
-		Price:           big.NewInt(229999999),
-		PricePoint:      big.NewInt(229999999),
-		Amount:          big.NewInt(6000000000),
-		FilledAmount:    big.NewInt(0),
-		Status:          "NEW",
-		Side:            "BUY",
-		PairName:        "ZRX/WETH",
-		Expires:         big.NewInt(10000),
-		MakeFee:         big.NewInt(50),
-		Nonce:           big.NewInt(1000),
-		TakeFee:         big.NewInt(50),
-		Signature: &types.Signature{
-			V: 28,
-			R: common.HexToHash("0x10b30eb0072a4f0a38b6fca0b731cba15eb2e1702845d97c1230b53a839bcb85"),
-			S: common.HexToHash("0x6d9ad89548c9e3ce4c97825d027291477f2c44a8caef792095f2cabc978493ff"),
-		},
-		Hash:      common.HexToHash("0xa2d800b77828cb52c83106ca392e465bc0af0d7c319f6956328f739080c19621"),
-		CreatedAt: time.Unix(1405544146, 0),
-		UpdatedAt: time.Unix(1405544146, 0),
-	}
+	o1 := getBuyOrder()
 
-	expectedResponse := &Response{
-		Order:          o1,
-		Trades:         make([]*types.Trade, 0),
-		FillStatus:     NOMATCH,
-		MatchingOrders: make([]*FillOrder, 0),
-	}
+	expectedResponse := getEResponse(&o1, make([]*types.Trade, 0), NOMATCH, make([]*FillOrder, 0), nil)
 
 	expectedResponse.Order.Status = "OPEN"
 
-	response, err := e.buyOrder(o1)
+	response, err := e.buyOrder(&o1)
 	if err != nil {
 		t.Errorf("Error in sellOrder: %s", err)
 	}
@@ -618,80 +494,20 @@ func TestBuyOrder(t *testing.T) {
 func TestFillOrder1(t *testing.T) {
 	e := getResource()
 	defer flushData(e.redisConn)
-	sellOrder := &types.Order{
-		ID:              bson.ObjectIdHex("537f700b537461b70c5f0000"),
-		UserAddress:     common.HexToAddress("0x7a9f3cd060ab180f36c17fe6bdf9974f577d77aa"),
-		ExchangeAddress: common.HexToAddress("0xae55690d4b079460e6ac28aaa58c9ec7b73a7485"),
-		BaseToken:       common.HexToAddress("0x2034842261b82651885751fc293bba7ba5398156"),
-		QuoteToken:      common.HexToAddress("0x1888a8db0b7db59413ce07150b3373972bf818d3"),
-		BuyAmount:       big.NewInt(6000000000),
-		SellAmount:      big.NewInt(13800000000),
-		Price:           big.NewInt(229999999),
-		PricePoint:      big.NewInt(229999999),
-		Amount:          big.NewInt(6000000000),
-		FilledAmount:    big.NewInt(0),
-		Status:          "NEW",
-		Side:            "SELL",
-		PairName:        "ZRX/WETH",
-		Expires:         big.NewInt(0),
-		MakeFee:         big.NewInt(0),
-		Nonce:           big.NewInt(0),
-		TakeFee:         big.NewInt(0),
-		Signature: &types.Signature{
-			V: 28,
-			R: common.HexToHash("0x10b30eb0072a4f0a38b6fca0b731cba15eb2e1702845d97c1230b53a839bcb85"),
-			S: common.HexToHash("0x6d9ad89548c9e3ce4c97825d027291477f2c44a8caef792095f2cabc978493ff"),
-		},
-		Hash:      common.HexToHash("0xa2d800b77828cb52c83106ca392e465bc0af0d7c319f6956328f739080c19621"),
-		CreatedAt: time.Unix(1405544146, 0),
-		UpdatedAt: time.Unix(1405544146, 0),
-	}
+	sellOrder := getSellOrder()
 
-	buyOrder := &types.Order{
-		ID:              bson.ObjectIdHex("537f700b537461b70c5f0000"),
-		UserAddress:     common.HexToAddress("0x7a9f3cd060ab180f36c17fe6bdf9974f577d77aa"),
-		ExchangeAddress: common.HexToAddress("0xae55690d4b079460e6ac28aaa58c9ec7b73a7485"),
-		BaseToken:       common.HexToAddress("0x2034842261b82651885751fc293bba7ba5398156"),
-		QuoteToken:      common.HexToAddress("0x1888a8db0b7db59413ce07150b3373972bf818d3"),
-		BuyAmount:       big.NewInt(6000000000),
-		SellAmount:      big.NewInt(13800000000),
-		Price:           big.NewInt(229999999),
-		PricePoint:      big.NewInt(229999999),
-		Amount:          big.NewInt(6000000000),
-		FilledAmount:    big.NewInt(0),
-		Status:          "NEW",
-		Side:            "BUY",
-		PairName:        "ZRX/WETH",
-		Expires:         big.NewInt(0),
-		MakeFee:         big.NewInt(0),
-		Nonce:           big.NewInt(0),
-		TakeFee:         big.NewInt(0),
-		Signature: &types.Signature{
-			V: 28,
-			R: common.HexToHash("0x10b30eb0072a4f0a38b6fca0b731cba15eb2e1702845d97c1230b53a839bcb85"),
-			S: common.HexToHash("0x6d9ad89548c9e3ce4c97825d027291477f2c44a8caef792095f2cabc978493ff"),
-		},
-		Hash:      common.HexToHash("0xa2d800b77828cb52c83106ca392e465bc0af0d7c319f6956328f739080c19621"),
-		CreatedAt: time.Unix(1405544146, 0),
-		UpdatedAt: time.Unix(1405544146, 0),
-	}
-
+	buyOrder := getBuyOrder()
 	// Test Case1: Send sellOrder first
-	expectedResponseBuyOrder := *buyOrder
+	expectedResponseBuyOrder := buyOrder
 	expectedResponseBuyOrder.FilledAmount = expectedResponseBuyOrder.Amount
 	expectedResponseBuyOrder.Status = "FILLED"
-	expectedResponseSellOrder := *sellOrder
+	expectedResponseSellOrder := sellOrder
 	expectedResponseSellOrder.Status = "OPEN"
 
-	expectedResponse := &Response{
-		FillStatus:     NOMATCH,
-		Order:          &expectedResponseSellOrder,
-		Trades:         make([]*types.Trade, 0),
-		MatchingOrders: make([]*FillOrder, 0),
-	}
+	expectedResponse := getEResponse(&expectedResponseSellOrder, make([]*types.Trade, 0), NOMATCH, make([]*FillOrder, 0), nil)
 
 	expBytes, _ := json.Marshal(expectedResponse)
-	resp, err := e.sellOrder(sellOrder)
+	resp, err := e.sellOrder(&sellOrder)
 	if err != nil {
 		t.Errorf("Error in sellOrder: %s", err)
 	}
@@ -701,30 +517,13 @@ func TestFillOrder1(t *testing.T) {
 
 	expectedResponseSellOrder.FilledAmount = expectedResponseSellOrder.Amount
 	expectedResponseSellOrder.Status = "FILLED"
-	trade := &types.Trade{
-		Amount:     expectedResponseBuyOrder.Amount,
-		Price:      buyOrder.PricePoint,
-		PricePoint: buyOrder.PricePoint,
-		BaseToken:  buyOrder.BaseToken,
-		QuoteToken: buyOrder.QuoteToken,
-		OrderHash:  sellOrder.Hash,
-		Side:       buyOrder.Side,
-		Taker:      buyOrder.UserAddress,
-		PairName:   buyOrder.PairName,
-		Maker:      sellOrder.UserAddress,
-		TradeNonce: big.NewInt(0),
-	}
+	trade := getTrade(&buyOrder, &sellOrder, expectedResponseBuyOrder.Amount, big.NewInt(0))
 	trade.Hash = trade.ComputeHash()
 
-	expectedResponse = &Response{
-		Order:          &expectedResponseBuyOrder,
-		Trades:         []*types.Trade{trade},
-		FillStatus:     FULL,
-		MatchingOrders: []*FillOrder{{buyOrder.Amount, &expectedResponseSellOrder}},
-	}
+	expectedResponse = getEResponse(&expectedResponseBuyOrder, []*types.Trade{trade}, FULL, []*FillOrder{{buyOrder.Amount, &expectedResponseSellOrder}}, nil)
 
 	expBytes, _ = json.Marshal(expectedResponse)
-	resp, err = e.buyOrder(buyOrder)
+	resp, err = e.buyOrder(&buyOrder)
 	if err != nil {
 		t.Errorf("Error in sellOrder: %s", err)
 	}
@@ -736,76 +535,17 @@ func TestFillOrder1(t *testing.T) {
 func TestFillOrder2(t *testing.T) {
 	e := getResource()
 	defer flushData(e.redisConn)
-	sellOrder := &types.Order{
-		ID:              bson.ObjectIdHex("537f700b537461b70c5f0000"),
-		UserAddress:     common.HexToAddress("0x7a9f3cd060ab180f36c17fe6bdf9974f577d77aa"),
-		ExchangeAddress: common.HexToAddress("0xae55690d4b079460e6ac28aaa58c9ec7b73a7485"),
-		BaseToken:       common.HexToAddress("0x2034842261b82651885751fc293bba7ba5398156"),
-		QuoteToken:      common.HexToAddress("0x1888a8db0b7db59413ce07150b3373972bf818d3"),
-		BuyAmount:       big.NewInt(6000000000),
-		SellAmount:      big.NewInt(13800000000),
-		Price:           big.NewInt(229999999),
-		PricePoint:      big.NewInt(229999999),
-		Amount:          big.NewInt(6000000000),
-		FilledAmount:    big.NewInt(0),
-		Status:          "NEW",
-		Side:            "SELL",
-		PairName:        "ZRX/WETH",
-		Expires:         big.NewInt(0),
-		MakeFee:         big.NewInt(0),
-		Nonce:           big.NewInt(0),
-		TakeFee:         big.NewInt(0),
-		Signature: &types.Signature{
-			V: 28,
-			R: common.HexToHash("0x10b30eb0072a4f0a38b6fca0b731cba15eb2e1702845d97c1230b53a839bcb85"),
-			S: common.HexToHash("0x6d9ad89548c9e3ce4c97825d027291477f2c44a8caef792095f2cabc978493ff"),
-		},
-		Hash:      common.HexToHash("0xa2d800b77828cb52c83106ca392e465bc0af0d7c319f6956328f739080c19621"),
-		CreatedAt: time.Unix(1405544146, 0),
-		UpdatedAt: time.Unix(1405544146, 0),
-	}
+	sellOrder := getSellOrder()
 
-	buyOrder := &types.Order{
-		ID:              bson.ObjectIdHex("537f700b537461b70c5f0000"),
-		UserAddress:     common.HexToAddress("0x7a9f3cd060ab180f36c17fe6bdf9974f577d77aa"),
-		ExchangeAddress: common.HexToAddress("0xae55690d4b079460e6ac28aaa58c9ec7b73a7485"),
-		BaseToken:       common.HexToAddress("0x2034842261b82651885751fc293bba7ba5398156"),
-		QuoteToken:      common.HexToAddress("0x1888a8db0b7db59413ce07150b3373972bf818d3"),
-		BuyAmount:       big.NewInt(6000000000),
-		SellAmount:      big.NewInt(13800000000),
-		Price:           big.NewInt(229999999),
-		PricePoint:      big.NewInt(229999999),
-		Amount:          big.NewInt(6000000000),
-		FilledAmount:    big.NewInt(0),
-		Status:          "NEW",
-		Side:            "BUY",
-		PairName:        "ZRX/WETH",
-		Expires:         big.NewInt(0),
-		MakeFee:         big.NewInt(0),
-		Nonce:           big.NewInt(0),
-		TakeFee:         big.NewInt(0),
-		Signature: &types.Signature{
-			V: 28,
-			R: common.HexToHash("0x10b30eb0072a4f0a38b6fca0b731cba15eb2e1702845d97c1230b53a839bcb85"),
-			S: common.HexToHash("0x6d9ad89548c9e3ce4c97825d027291477f2c44a8caef792095f2cabc978493ff"),
-		},
-		Hash:      common.HexToHash("0xa2d800b77828cb52c83106ca392e465bc0af0d7c319f6956328f739080c19621"),
-		CreatedAt: time.Unix(1405544146, 0),
-		UpdatedAt: time.Unix(1405544146, 0),
-	}
+	buyOrder := getBuyOrder()
 
-	expectedResponseBuyOrder := *buyOrder
+	expectedResponseBuyOrder := buyOrder
 	expectedResponseBuyOrder.Status = "OPEN"
 
-	expectedResponse := &Response{
-		Order:          &expectedResponseBuyOrder,
-		Trades:         make([]*types.Trade, 0),
-		FillStatus:     NOMATCH,
-		MatchingOrders: make([]*FillOrder, 0),
-	}
+	expectedResponse := getEResponse(&expectedResponseBuyOrder, make([]*types.Trade, 0), NOMATCH, make([]*FillOrder, 0), nil)
 
 	erBytes, _ := json.Marshal(expectedResponse)
-	response, err := e.buyOrder(buyOrder)
+	response, err := e.buyOrder(&buyOrder)
 	if err != nil {
 		t.Errorf("Error in sellOrder: %s", err)
 	}
@@ -813,38 +553,21 @@ func TestFillOrder2(t *testing.T) {
 	resBytes, _ := json.Marshal(response)
 	assert.JSONEq(t, string(erBytes), string(resBytes))
 
-	expectedResponseSellOrder := *sellOrder
+	expectedResponseSellOrder := sellOrder
 	expectedResponseSellOrder.FilledAmount = expectedResponseSellOrder.Amount
 	expectedResponseSellOrder.Status = "FILLED"
 
 	expectedResponseBuyOrder.FilledAmount = expectedResponseBuyOrder.Amount
 	expectedResponseBuyOrder.Status = "FILLED"
 
-	trade := &types.Trade{
-		Amount:     expectedResponseSellOrder.Amount,
-		Price:      sellOrder.Price,
-		PricePoint: sellOrder.PricePoint,
-		BaseToken:  sellOrder.BaseToken,
-		QuoteToken: sellOrder.QuoteToken,
-		OrderHash:  buyOrder.Hash,
-		Side:       sellOrder.Side,
-		Taker:      sellOrder.UserAddress,
-		PairName:   sellOrder.PairName,
-		Maker:      buyOrder.UserAddress,
-		TradeNonce: big.NewInt(0),
-	}
+	trade := getTrade(&sellOrder, &buyOrder, expectedResponseSellOrder.Amount, big.NewInt(0))
 
 	trade.Hash = trade.ComputeHash()
 
-	expectedResponse = &Response{
-		Order:          &expectedResponseSellOrder,
-		Trades:         []*types.Trade{trade},
-		FillStatus:     FULL,
-		MatchingOrders: []*FillOrder{{buyOrder.Amount, &expectedResponseBuyOrder}},
-	}
+	expectedResponse = getEResponse(&expectedResponseSellOrder, []*types.Trade{trade}, FULL, []*FillOrder{{buyOrder.Amount, &expectedResponseBuyOrder}}, nil)
 
 	bytes, _ := json.Marshal(expectedResponse)
-	response, err = e.sellOrder(sellOrder)
+	response, err = e.sellOrder(&sellOrder)
 	if err != nil {
 		t.Errorf("Error in sellOrder: %s", err)
 	}
@@ -856,34 +579,8 @@ func TestFillOrder2(t *testing.T) {
 func TestMultiMatchOrder1(t *testing.T) {
 	e := getResource()
 	defer flushData(e.redisConn)
-	sellOrder := types.Order{
-		ID:              bson.ObjectIdHex("537f700b537461b70c5f0000"),
-		UserAddress:     common.HexToAddress("0x7a9f3cd060ab180f36c17fe6bdf9974f577d77aa"),
-		ExchangeAddress: common.HexToAddress("0xae55690d4b079460e6ac28aaa58c9ec7b73a7485"),
-		BaseToken:       common.HexToAddress("0x2034842261b82651885751fc293bba7ba5398156"),
-		QuoteToken:      common.HexToAddress("0x1888a8db0b7db59413ce07150b3373972bf818d3"),
-		BuyAmount:       big.NewInt(6000000000),
-		SellAmount:      big.NewInt(13800000000),
-		Price:           big.NewInt(229999999),
-		PricePoint:      big.NewInt(229999999),
-		Amount:          big.NewInt(6000000000),
-		FilledAmount:    big.NewInt(0),
-		Status:          "NEW",
-		Side:            "SELL",
-		PairName:        "ZRX/WETH",
-		Expires:         big.NewInt(0),
-		MakeFee:         big.NewInt(0),
-		Nonce:           big.NewInt(0),
-		TakeFee:         big.NewInt(0),
-		Signature: &types.Signature{
-			V: 28,
-			R: common.HexToHash("0x10b30eb0072a4f0a38b6fca0b731cba15eb2e1702845d97c1230b53a839bcb85"),
-			S: common.HexToHash("0x6d9ad89548c9e3ce4c97825d027291477f2c44a8caef792095f2cabc978493ff"),
-		},
-		Hash:      common.HexToHash("0xa2d800b77828cb52c83106ca392e465bc0af0d7c319f6956328f739080c19621"),
-		CreatedAt: time.Unix(1405544146, 0),
-		UpdatedAt: time.Unix(1405544146, 0),
-	}
+	sellOrder := getSellOrder()
+	sellOrder.FilledAmount = big.NewInt(0)
 
 	sellOrder1 := sellOrder
 	sellOrder1.PricePoint = math.Add(sellOrder.PricePoint, big.NewInt(10))
@@ -898,34 +595,7 @@ func TestMultiMatchOrder1(t *testing.T) {
 	e.sellOrder(&sellOrder1)
 	e.sellOrder(&sellOrder2)
 
-	buyOrder := types.Order{
-		ID:              bson.ObjectIdHex("537f700b537461b70c5f0000"),
-		UserAddress:     common.HexToAddress("0x7a9f3cd060ab180f36c17fe6bdf9974f577d77aa"),
-		ExchangeAddress: common.HexToAddress("0xae55690d4b079460e6ac28aaa58c9ec7b73a7485"),
-		BaseToken:       common.HexToAddress("0x2034842261b82651885751fc293bba7ba5398156"),
-		QuoteToken:      common.HexToAddress("0x1888a8db0b7db59413ce07150b3373972bf818d3"),
-		BuyAmount:       big.NewInt(6000000000),
-		SellAmount:      big.NewInt(13800000000),
-		Price:           big.NewInt(229999999),
-		PricePoint:      big.NewInt(229999999),
-		Amount:          big.NewInt(6000000000),
-		FilledAmount:    big.NewInt(0),
-		Status:          "NEW",
-		Side:            "BUY",
-		PairName:        "ZRX/WETH",
-		Expires:         big.NewInt(0),
-		MakeFee:         big.NewInt(0),
-		Nonce:           big.NewInt(0),
-		TakeFee:         big.NewInt(0),
-		Signature: &types.Signature{
-			V: 28,
-			R: common.HexToHash("0x10b30eb0072a4f0a38b6fca0b731cba15eb2e1702845d97c1230b53a839bcb85"),
-			S: common.HexToHash("0x6d9ad89548c9e3ce4c97825d027291477f2c44a8caef792095f2cabc978493ff"),
-		},
-		Hash:      common.HexToHash("0xa2d800b77828cb52c83106ca392e465bc0af0d7c319f6956328f739080c19621"),
-		CreatedAt: time.Unix(1405544146, 0),
-		UpdatedAt: time.Unix(1405544146, 0),
-	}
+	buyOrder := getBuyOrder()
 
 	buyOrder.PricePoint = math.Add(buyOrder.PricePoint, big.NewInt(10))
 	buyOrder.Amount = math.Mul(buyOrder.Amount, big.NewInt(3))
@@ -944,60 +614,19 @@ func TestMultiMatchOrder1(t *testing.T) {
 	responseSO2.FilledAmount = responseSO2.Amount
 	responseSO2.Status = "FILLED"
 
-	trade := &types.Trade{
-		Amount:     responseSO.Amount,
-		Price:      buyOrder.PricePoint,
-		PricePoint: buyOrder.PricePoint,
-		BaseToken:  buyOrder.BaseToken,
-		QuoteToken: buyOrder.QuoteToken,
-		OrderHash:  sellOrder.Hash,
-		Side:       buyOrder.Side,
-		Taker:      buyOrder.UserAddress,
-		PairName:   buyOrder.PairName,
-		Maker:      sellOrder.UserAddress,
-		TradeNonce: big.NewInt(0),
-	}
+	trade := getTrade(&buyOrder, &sellOrder, responseSO.Amount, big.NewInt(0))
+	trade1 := getTrade(&buyOrder, &sellOrder1, responseSO1.Amount, big.NewInt(0))
+	trade2 := getTrade(&buyOrder, &sellOrder2, responseSO2.Amount, big.NewInt(0))
 
 	trade.Hash = trade.ComputeHash()
-
-	trade1 := &types.Trade{
-		Amount:     responseSO1.Amount,
-		Price:      buyOrder.PricePoint,
-		PricePoint: buyOrder.PricePoint,
-		BaseToken:  buyOrder.BaseToken,
-		QuoteToken: buyOrder.QuoteToken,
-		OrderHash:  sellOrder1.Hash,
-		Side:       buyOrder.Side,
-		Taker:      buyOrder.UserAddress,
-		PairName:   buyOrder.PairName,
-		Maker:      sellOrder.UserAddress,
-		TradeNonce: big.NewInt(0),
-	}
-
 	trade1.Hash = trade1.ComputeHash()
-
-	trade2 := &types.Trade{
-		Amount:     responseSO2.Amount,
-		Price:      buyOrder.PricePoint,
-		PricePoint: buyOrder.PricePoint,
-		BaseToken:  buyOrder.BaseToken,
-		QuoteToken: buyOrder.QuoteToken,
-		OrderHash:  sellOrder2.Hash,
-		Side:       buyOrder.Side,
-		Taker:      buyOrder.UserAddress,
-		PairName:   buyOrder.PairName,
-		Maker:      sellOrder.UserAddress,
-		TradeNonce: big.NewInt(0),
-	}
-
 	trade2.Hash = trade2.ComputeHash()
 
-	expectedResponse := &Response{
-		Order:          &responseBO,
-		Trades:         []*types.Trade{trade, trade1, trade2},
-		FillStatus:     FULL,
-		MatchingOrders: []*FillOrder{{responseSO.FilledAmount, &responseSO}, {responseSO1.FilledAmount, &responseSO1}, {responseSO2.FilledAmount, &responseSO2}},
-	}
+	expectedResponse := getEResponse(&responseBO,
+		[]*types.Trade{trade, trade1, trade2},
+		FULL,
+		[]*FillOrder{{responseSO.FilledAmount, &responseSO}, {responseSO1.FilledAmount, &responseSO1}, {responseSO2.FilledAmount, &responseSO2}},
+		nil)
 
 	expBytes, _ := json.Marshal(expectedResponse)
 	response, err := e.buyOrder(&buyOrder)
@@ -1012,34 +641,7 @@ func TestMultiMatchOrder1(t *testing.T) {
 func TestMultiMatchOrder2(t *testing.T) {
 	e := getResource()
 	defer flushData(e.redisConn)
-	buyOrder := types.Order{
-		ID:              bson.ObjectIdHex("537f700b537461b70c5f0000"),
-		UserAddress:     common.HexToAddress("0x7a9f3cd060ab180f36c17fe6bdf9974f577d77aa"),
-		ExchangeAddress: common.HexToAddress("0xae55690d4b079460e6ac28aaa58c9ec7b73a7485"),
-		BaseToken:       common.HexToAddress("0x2034842261b82651885751fc293bba7ba5398156"),
-		QuoteToken:      common.HexToAddress("0x1888a8db0b7db59413ce07150b3373972bf818d3"),
-		BuyAmount:       big.NewInt(6000000000),
-		SellAmount:      big.NewInt(13800000000),
-		Price:           big.NewInt(229999999),
-		PricePoint:      big.NewInt(229999999),
-		Amount:          big.NewInt(6000000000),
-		FilledAmount:    big.NewInt(0),
-		Status:          "NEW",
-		Side:            "BUY",
-		PairName:        "ZRX/WETH",
-		Expires:         big.NewInt(0),
-		MakeFee:         big.NewInt(0),
-		Nonce:           big.NewInt(0),
-		TakeFee:         big.NewInt(0),
-		Signature: &types.Signature{
-			V: 28,
-			R: common.HexToHash("0x10b30eb0072a4f0a38b6fca0b731cba15eb2e1702845d97c1230b53a839bcb85"),
-			S: common.HexToHash("0x6d9ad89548c9e3ce4c97825d027291477f2c44a8caef792095f2cabc978493ff"),
-		},
-		Hash:      common.HexToHash("0xa2d800b77828cb52c83106ca392e465bc0af0d7c319f6956328f739080c19621"),
-		CreatedAt: time.Unix(1405544146, 0),
-		UpdatedAt: time.Unix(1405544146, 0),
-	}
+	buyOrder := getBuyOrder()
 
 	buyOrder1 := buyOrder
 	buyOrder1.PricePoint = math.Sub(buyOrder1.Price, big.NewInt(10))
@@ -1054,34 +656,7 @@ func TestMultiMatchOrder2(t *testing.T) {
 	e.buyOrder(&buyOrder1)
 	e.buyOrder(&buyOrder2)
 
-	sellOrder := types.Order{
-		ID:              bson.ObjectIdHex("537f700b537461b70c5f0000"),
-		UserAddress:     common.HexToAddress("0x7a9f3cd060ab180f36c17fe6bdf9974f577d77aa"),
-		ExchangeAddress: common.HexToAddress("0xae55690d4b079460e6ac28aaa58c9ec7b73a7485"),
-		BaseToken:       common.HexToAddress("0x2034842261b82651885751fc293bba7ba5398156"),
-		QuoteToken:      common.HexToAddress("0x1888a8db0b7db59413ce07150b3373972bf818d3"),
-		BuyAmount:       big.NewInt(6000000000),
-		SellAmount:      big.NewInt(13800000000),
-		Price:           big.NewInt(229999999),
-		PricePoint:      big.NewInt(229999999),
-		Amount:          big.NewInt(6000000000),
-		FilledAmount:    big.NewInt(0),
-		Status:          "NEW",
-		Side:            "SELL",
-		PairName:        "ZRX/WETH",
-		Expires:         big.NewInt(0),
-		MakeFee:         big.NewInt(0),
-		Nonce:           big.NewInt(0),
-		TakeFee:         big.NewInt(0),
-		Signature: &types.Signature{
-			V: 28,
-			R: common.HexToHash("0x10b30eb0072a4f0a38b6fca0b731cba15eb2e1702845d97c1230b53a839bcb85"),
-			S: common.HexToHash("0x6d9ad89548c9e3ce4c97825d027291477f2c44a8caef792095f2cabc978493ff"),
-		},
-		Hash:      common.HexToHash("0xa2d800b77828cb52c83106ca392e465bc0af0d7c319f6956328f739080c19621"),
-		CreatedAt: time.Unix(1405544146, 0),
-		UpdatedAt: time.Unix(1405544146, 0),
-	}
+	sellOrder := getSellOrder()
 
 	sellOrder.PricePoint = math.Sub(sellOrder.Price, big.NewInt(10))
 	sellOrder.Amount = math.Mul(sellOrder.Amount, big.NewInt(3))
@@ -1103,62 +678,22 @@ func TestMultiMatchOrder2(t *testing.T) {
 	responseBO2.FilledAmount = responseBO2.Amount
 	responseBO2.Status = "FILLED"
 
-	trade := &types.Trade{
-		Amount:     buyOrder.Amount,
-		Price:      sellOrder.PricePoint,
-		PricePoint: sellOrder.PricePoint,
-		BaseToken:  sellOrder.BaseToken,
-		QuoteToken: sellOrder.QuoteToken,
-		OrderHash:  buyOrder.Hash,
-		Side:       sellOrder.Side,
-		Taker:      sellOrder.UserAddress,
-		PairName:   sellOrder.PairName,
-		Maker:      buyOrder.UserAddress,
-		TradeNonce: big.NewInt(0),
-	}
+	trade := getTrade(&sellOrder, &buyOrder, buyOrder.Amount, big.NewInt(0))
+	trade1 := getTrade(&sellOrder, &buyOrder1, buyOrder1.Amount, big.NewInt(0))
+	trade2 := getTrade(&sellOrder, &buyOrder2, buyOrder2.Amount, big.NewInt(0))
 
 	trade.Hash = trade.ComputeHash()
-
-	trade1 := &types.Trade{
-		Amount:     buyOrder1.Amount,
-		Price:      sellOrder.PricePoint,
-		PricePoint: sellOrder.PricePoint,
-		BaseToken:  sellOrder.BaseToken,
-		QuoteToken: sellOrder.QuoteToken,
-		OrderHash:  buyOrder1.Hash,
-		Side:       sellOrder.Side,
-		Taker:      sellOrder.UserAddress,
-		PairName:   sellOrder.PairName,
-		Maker:      buyOrder.UserAddress,
-		TradeNonce: big.NewInt(0),
-	}
-
 	trade1.Hash = trade1.ComputeHash()
-
-	trade2 := &types.Trade{
-		Amount:     buyOrder2.Amount,
-		Price:      sellOrder.PricePoint,
-		PricePoint: sellOrder.PricePoint,
-		BaseToken:  sellOrder.BaseToken,
-		QuoteToken: sellOrder.QuoteToken,
-		OrderHash:  buyOrder2.Hash,
-		Side:       sellOrder.Side,
-		Taker:      sellOrder.UserAddress,
-		PairName:   sellOrder.PairName,
-		Maker:      buyOrder.UserAddress,
-		TradeNonce: big.NewInt(0),
-	}
 	trade2.Hash = trade2.ComputeHash()
 
-	expectedResponse := &Response{
-		Order:      &responseSO,
-		Trades:     []*types.Trade{trade, trade1, trade2},
-		FillStatus: FULL,
-		MatchingOrders: []*FillOrder{
+	expectedResponse := getEResponse(&responseSO,
+		[]*types.Trade{trade, trade1, trade2},
+		FULL,
+		[]*FillOrder{
 			{responseBO.FilledAmount, &responseBO},
 			{responseBO1.FilledAmount, &responseBO1},
 			{responseBO2.FilledAmount, &responseBO2}},
-	}
+		nil)
 
 	expBytes, _ := json.Marshal(expectedResponse)
 	response, err := e.sellOrder(&sellOrder)
@@ -1175,67 +710,9 @@ func TestPartialMatchOrder1(t *testing.T) {
 	e := getResource()
 	defer flushData(e.redisConn)
 
-	sampleSellOrder := types.Order{
-		ID:              bson.ObjectIdHex("537f700b537461b70c5f0000"),
-		UserAddress:     common.HexToAddress("0x7a9f3cd060ab180f36c17fe6bdf9974f577d77aa"),
-		ExchangeAddress: common.HexToAddress("0xae55690d4b079460e6ac28aaa58c9ec7b73a7485"),
-		BaseToken:       common.HexToAddress("0x2034842261b82651885751fc293bba7ba5398156"),
-		QuoteToken:      common.HexToAddress("0x1888a8db0b7db59413ce07150b3373972bf818d3"),
-		BuyAmount:       big.NewInt(6000000000),
-		SellAmount:      big.NewInt(13800000000),
-		Price:           big.NewInt(229999999),
-		PricePoint:      big.NewInt(229999999),
-		Amount:          big.NewInt(6000000000),
-		FilledAmount:    big.NewInt(0),
-		Status:          "NEW",
-		Side:            "SELL",
-		PairName:        "ZRX/WETH",
-		Expires:         big.NewInt(0),
-		MakeFee:         big.NewInt(0),
-		Nonce:           big.NewInt(0),
-		TakeFee:         big.NewInt(0),
-		Signature: &types.Signature{
-			V: 28,
-			R: common.HexToHash("0x10b30eb0072a4f0a38b6fca0b731cba15eb2e1702845d97c1230b53a839bcb85"),
-			S: common.HexToHash("0x6d9ad89548c9e3ce4c97825d027291477f2c44a8caef792095f2cabc978493ff"),
-		},
-		Hash:      common.HexToHash("0xa2d800b77828cb52c83106ca392e465bc0af0d7c319f6956328f739080c19621"),
-		CreatedAt: time.Unix(1405544146, 0),
-		UpdatedAt: time.Unix(1405544146, 0),
-	}
-
-	sampleBuyOrder := types.Order{
-		ID:              bson.ObjectIdHex("537f700b537461b70c5f0000"),
-		UserAddress:     common.HexToAddress("0x7a9f3cd060ab180f36c17fe6bdf9974f577d77aa"),
-		ExchangeAddress: common.HexToAddress("0xae55690d4b079460e6ac28aaa58c9ec7b73a7485"),
-		BaseToken:       common.HexToAddress("0x2034842261b82651885751fc293bba7ba5398156"),
-		QuoteToken:      common.HexToAddress("0x1888a8db0b7db59413ce07150b3373972bf818d3"),
-		BuyAmount:       big.NewInt(6000000000),
-		SellAmount:      big.NewInt(13800000000),
-		Price:           big.NewInt(229999999),
-		PricePoint:      big.NewInt(229999999),
-		Amount:          big.NewInt(6000000000),
-		FilledAmount:    big.NewInt(0),
-		Status:          "NEW",
-		Side:            "BUY",
-		PairName:        "ZRX/WETH",
-		Expires:         big.NewInt(0),
-		MakeFee:         big.NewInt(0),
-		Nonce:           big.NewInt(0),
-		TakeFee:         big.NewInt(0),
-		Signature: &types.Signature{
-			V: 28,
-			R: common.HexToHash("0x10b30eb0072a4f0a38b6fca0b731cba15eb2e1702845d97c1230b53a839bcb85"),
-			S: common.HexToHash("0x6d9ad89548c9e3ce4c97825d027291477f2c44a8caef792095f2cabc978493ff"),
-		},
-		Hash:      common.HexToHash("0xa2d800b77828cb52c83106ca392e465bc0af0d7c319f6956328f739080c19671"),
-		CreatedAt: time.Unix(1405544146, 0),
-		UpdatedAt: time.Unix(1405544146, 0),
-	}
-
-	sellOrder := sampleSellOrder
-	buyOrder := sampleBuyOrder
-	sellOrder1 := sampleSellOrder
+	sellOrder := getSellOrder()
+	buyOrder := getBuyOrder()
+	sellOrder1 := getSellOrder()
 
 	sellOrder1.PricePoint = math.Add(sellOrder1.PricePoint, big.NewInt(10))
 	sellOrder1.Nonce = math.Add(sellOrder1.Nonce, big.NewInt(1))
@@ -1277,68 +754,14 @@ func TestPartialMatchOrder1(t *testing.T) {
 	responseSO3.FilledAmount = math.Div(responseSO3.Amount, big.NewInt(2))
 	responseSO3.Status = "PARTIAL_FILLED"
 
-	trade := &types.Trade{
-		Amount:     responseSO.FilledAmount,
-		Price:      buyOrder.PricePoint,
-		PricePoint: buyOrder.PricePoint,
-		BaseToken:  buyOrder.BaseToken,
-		QuoteToken: buyOrder.QuoteToken,
-		OrderHash:  sellOrder.Hash,
-		Side:       buyOrder.Side,
-		Taker:      buyOrder.UserAddress,
-		PairName:   buyOrder.PairName,
-		Maker:      sellOrder.UserAddress,
-		TradeNonce: big.NewInt(0),
-	}
+	trade := getTrade(&buyOrder, &sellOrder, responseSO.FilledAmount, big.NewInt(0))
+	trade1 := getTrade(&buyOrder, &sellOrder1, responseSO1.FilledAmount, big.NewInt(0))
+	trade2 := getTrade(&buyOrder, &sellOrder2, responseSO2.FilledAmount, big.NewInt(0))
+	trade3 := getTrade(&buyOrder, &sellOrder3, responseSO3.FilledAmount, big.NewInt(0))
 
 	trade.Hash = trade.ComputeHash()
-
-	trade1 := &types.Trade{
-		Amount:     responseSO1.FilledAmount,
-		Price:      buyOrder.PricePoint,
-		PricePoint: buyOrder.PricePoint,
-		BaseToken:  buyOrder.BaseToken,
-		QuoteToken: buyOrder.QuoteToken,
-		OrderHash:  sellOrder1.Hash,
-		Side:       buyOrder.Side,
-		Taker:      buyOrder.UserAddress,
-		PairName:   buyOrder.PairName,
-		Maker:      sellOrder.UserAddress,
-		TradeNonce: big.NewInt(0),
-	}
-
 	trade1.Hash = trade1.ComputeHash()
-
-	trade2 := &types.Trade{
-		Amount:     responseSO2.FilledAmount,
-		Price:      buyOrder.PricePoint,
-		PricePoint: buyOrder.PricePoint,
-		BaseToken:  buyOrder.BaseToken,
-		QuoteToken: buyOrder.QuoteToken,
-		OrderHash:  sellOrder2.Hash,
-		Side:       buyOrder.Side,
-		Taker:      buyOrder.UserAddress,
-		PairName:   buyOrder.PairName,
-		Maker:      sellOrder.UserAddress,
-		TradeNonce: big.NewInt(0),
-	}
-
 	trade2.Hash = trade2.ComputeHash()
-
-	trade3 := &types.Trade{
-		Amount:     responseSO3.FilledAmount,
-		Price:      buyOrder.PricePoint,
-		PricePoint: buyOrder.PricePoint,
-		BaseToken:  buyOrder.BaseToken,
-		QuoteToken: buyOrder.QuoteToken,
-		OrderHash:  sellOrder3.Hash,
-		Side:       buyOrder.Side,
-		Taker:      buyOrder.UserAddress,
-		PairName:   buyOrder.PairName,
-		Maker:      sellOrder.UserAddress,
-		TradeNonce: big.NewInt(0),
-	}
-
 	trade3.Hash = trade3.ComputeHash()
 
 	expectedResponse := &Response{
@@ -1362,7 +785,7 @@ func TestPartialMatchOrder1(t *testing.T) {
 	assert.JSONEq(t, string(erBytes), string(resBytes))
 
 	// Try matching remaining sellOrder with bigger buyOrder amount (partial filled buy Order)
-	buyOrder = sampleBuyOrder
+	buyOrder = getBuyOrder()
 	buyOrder.PricePoint = math.Add(buyOrder.PricePoint, big.NewInt(20))
 	buyOrder.Amount = math.Mul(buyOrder.Amount, big.NewInt(2))
 
@@ -1370,9 +793,12 @@ func TestPartialMatchOrder1(t *testing.T) {
 	responseBO.Status = "PARTIAL_FILLED"
 	responseBO.FilledAmount = math.Div(buyOrder.Amount, big.NewInt(2))
 
-	remOrder := sampleBuyOrder
+	remOrder := getBuyOrder()
 	remOrder.PricePoint = math.Add(remOrder.PricePoint, big.NewInt(20))
-
+	remOrder.Hash = common.HexToHash("")
+	remOrder.Signature = nil
+	remOrder.Nonce=nil
+	
 	responseSO3.Status = "FILLED"
 	responseSO3.FilledAmount = responseSO3.Amount
 	trade4 := &types.Trade{
@@ -1411,68 +837,11 @@ func TestPartialMatchOrder1(t *testing.T) {
 func TestPartialMatchOrder2(t *testing.T) {
 	e := getResource()
 	defer flushData(e.redisConn)
-	sampleSellOrder := types.Order{
-		ID:              bson.ObjectIdHex("537f700b537461b70c5f0000"),
-		UserAddress:     common.HexToAddress("0x7a9f3cd060ab180f36c17fe6bdf9974f577d77aa"),
-		ExchangeAddress: common.HexToAddress("0xae55690d4b079460e6ac28aaa58c9ec7b73a7485"),
-		BaseToken:       common.HexToAddress("0x2034842261b82651885751fc293bba7ba5398156"),
-		QuoteToken:      common.HexToAddress("0x1888a8db0b7db59413ce07150b3373972bf818d3"),
-		BuyAmount:       big.NewInt(6000000000),
-		SellAmount:      big.NewInt(13800000000),
-		Price:           big.NewInt(229999999),
-		PricePoint:      big.NewInt(229999999),
-		Amount:          big.NewInt(6000000000),
-		FilledAmount:    big.NewInt(0),
-		Status:          "NEW",
-		Side:            "SELL",
-		PairName:        "ZRX/WETH",
-		Expires:         big.NewInt(0),
-		MakeFee:         big.NewInt(0),
-		Nonce:           big.NewInt(0),
-		TakeFee:         big.NewInt(0),
-		Signature: &types.Signature{
-			V: 28,
-			R: common.HexToHash("0x10b30eb0072a4f0a38b6fca0b731cba15eb2e1702845d97c1230b53a839bcb85"),
-			S: common.HexToHash("0x6d9ad89548c9e3ce4c97825d027291477f2c44a8caef792095f2cabc978493ff"),
-		},
-		Hash:      common.HexToHash("0xa2d800b77828cb52c83106ca392e465bc0af0d7c319f6956328f739080c19621"),
-		CreatedAt: time.Unix(1405544146, 0),
-		UpdatedAt: time.Unix(1405544146, 0),
-	}
 
-	sampleBuyOrder := types.Order{
-		ID:              bson.ObjectIdHex("537f700b537461b70c5f0000"),
-		UserAddress:     common.HexToAddress("0x7a9f3cd060ab180f36c17fe6bdf9974f577d77aa"),
-		ExchangeAddress: common.HexToAddress("0xae55690d4b079460e6ac28aaa58c9ec7b73a7485"),
-		BaseToken:       common.HexToAddress("0x2034842261b82651885751fc293bba7ba5398156"),
-		QuoteToken:      common.HexToAddress("0x1888a8db0b7db59413ce07150b3373972bf818d3"),
-		BuyAmount:       big.NewInt(6000000000),
-		SellAmount:      big.NewInt(13800000000),
-		PricePoint:      big.NewInt(229999999),
-		Price:           big.NewInt(229999999),
-		Amount:          big.NewInt(6000000000),
-		FilledAmount:    big.NewInt(0),
-		Status:          "NEW",
-		Side:            "BUY",
-		PairName:        "ZRX/WETH",
-		Expires:         big.NewInt(0),
-		MakeFee:         big.NewInt(0),
-		Nonce:           big.NewInt(0),
-		TakeFee:         big.NewInt(0),
-		Signature: &types.Signature{
-			V: 28,
-			R: common.HexToHash("0x10b30eb0072a4f0a38b6fca0b731cba15eb2e1702845d97c1230b53a839bcb85"),
-			S: common.HexToHash("0x6d9ad89548c9e3ce4c97825d027291477f2c44a8caef792095f2cabc978493ff"),
-		},
-		Hash:      common.HexToHash("0xa2d800b77828cb52c83106ca392e465bc0af0d7c319f6956328f739080c19671"),
-		CreatedAt: time.Unix(1405544146, 0),
-		UpdatedAt: time.Unix(1405544146, 0),
-	}
+	sellOrder := getSellOrder()
+	buyOrder := getBuyOrder()
 
-	sellOrder := sampleSellOrder
-	buyOrder := sampleBuyOrder
-
-	buyOrder1 := sampleBuyOrder
+	buyOrder1 := getBuyOrder()
 	buyOrder1.PricePoint = math.Sub(buyOrder1.PricePoint, big.NewInt(10))
 	buyOrder1.Nonce = math.Add(buyOrder1.Nonce, big.NewInt(1))
 	buyOrder1.Hash = buyOrder1.ComputeHash()
@@ -1512,68 +881,14 @@ func TestPartialMatchOrder2(t *testing.T) {
 	responseBO3.FilledAmount = math.Div(responseBO3.Amount, big.NewInt(2))
 	responseBO3.Status = "PARTIAL_FILLED"
 
-	trade := &types.Trade{
-		Amount:     responseBO.FilledAmount,
-		Price:      sellOrder.PricePoint,
-		PricePoint: sellOrder.PricePoint,
-		BaseToken:  sellOrder.BaseToken,
-		QuoteToken: sellOrder.QuoteToken,
-		OrderHash:  buyOrder.Hash,
-		Side:       sellOrder.Side,
-		Taker:      sellOrder.UserAddress,
-		PairName:   sellOrder.PairName,
-		Maker:      buyOrder.UserAddress,
-		TradeNonce: big.NewInt(0),
-	}
+	trade := getTrade(&sellOrder,&buyOrder,responseBO.FilledAmount,big.NewInt(0))
+	trade1 := getTrade(&sellOrder,&buyOrder1,responseBO1.FilledAmount,big.NewInt(0))
+	trade2 := getTrade(&sellOrder,&buyOrder2,responseBO2.FilledAmount,big.NewInt(0))
+	trade3 := getTrade(&sellOrder,&buyOrder3,responseBO3.FilledAmount,big.NewInt(0))
 
 	trade.Hash = trade.ComputeHash()
-
-	trade1 := &types.Trade{
-		Amount:     responseBO1.FilledAmount,
-		Price:      sellOrder.PricePoint,
-		PricePoint: sellOrder.PricePoint,
-		BaseToken:  sellOrder.BaseToken,
-		QuoteToken: sellOrder.QuoteToken,
-		OrderHash:  buyOrder1.Hash,
-		Side:       sellOrder.Side,
-		Taker:      sellOrder.UserAddress,
-		PairName:   sellOrder.PairName,
-		Maker:      buyOrder.UserAddress,
-		TradeNonce: big.NewInt(0),
-	}
-
 	trade1.Hash = trade1.ComputeHash()
-
-	trade2 := &types.Trade{
-		Amount:     responseBO2.FilledAmount,
-		Price:      sellOrder.PricePoint,
-		PricePoint: sellOrder.PricePoint,
-		BaseToken:  sellOrder.BaseToken,
-		QuoteToken: sellOrder.QuoteToken,
-		OrderHash:  buyOrder2.Hash,
-		Side:       sellOrder.Side,
-		Taker:      sellOrder.UserAddress,
-		PairName:   sellOrder.PairName,
-		Maker:      buyOrder.UserAddress,
-		TradeNonce: big.NewInt(0),
-	}
-
 	trade2.Hash = trade2.ComputeHash()
-
-	trade3 := &types.Trade{
-		Amount:     responseBO3.FilledAmount,
-		Price:      sellOrder.PricePoint,
-		PricePoint: sellOrder.PricePoint,
-		BaseToken:  sellOrder.BaseToken,
-		QuoteToken: sellOrder.QuoteToken,
-		OrderHash:  buyOrder3.Hash,
-		Side:       sellOrder.Side,
-		Taker:      sellOrder.UserAddress,
-		PairName:   sellOrder.PairName,
-		Maker:      buyOrder.UserAddress,
-		TradeNonce: big.NewInt(0),
-	}
-
 	trade3.Hash = trade3.ComputeHash()
 
 	expectedResponse := &Response{
@@ -1597,7 +912,7 @@ func TestPartialMatchOrder2(t *testing.T) {
 	assert.JSONEq(t, string(erBytes), string(resBytes))
 
 	// Try matching remaining buyOrder with bigger sellOrder amount (partial filled sell Order)
-	sellOrder = sampleSellOrder
+	sellOrder = getSellOrder()
 	sellOrder.PricePoint = math.Sub(sellOrder.PricePoint, big.NewInt(20))
 	sellOrder.Amount = math.Mul(sellOrder.Amount, big.NewInt(2))
 
@@ -1605,11 +920,11 @@ func TestPartialMatchOrder2(t *testing.T) {
 	responseSO.Status = "PARTIAL_FILLED"
 	responseSO.FilledAmount = math.Div(sellOrder.Amount, big.NewInt(2))
 
-	remOrder := sampleSellOrder
+	remOrder := getSellOrder()
 	remOrder.PricePoint = math.Sub(remOrder.PricePoint, big.NewInt(20))
-	remOrder.Hash = remOrder.ComputeHash()
+	remOrder.Hash = common.HexToHash("")
 	remOrder.Signature = nil
-
+	remOrder.Nonce=nil
 	responseBO3.Status = "FILLED"
 	responseBO3.FilledAmount = responseBO3.Amount
 
@@ -1645,4 +960,89 @@ func TestPartialMatchOrder2(t *testing.T) {
 
 	resBytes, _ = json.Marshal(response)
 	assert.JSONEq(t, string(erBytes), string(resBytes))
+}
+
+func getBuyOrder() types.Order {
+	return types.Order{
+		UserAddress:     common.HexToAddress("0x7a9f3cd060ab180f36c17fe6bdf9974f577d77aa"),
+		ExchangeAddress: common.HexToAddress("0xae55690d4b079460e6ac28aaa58c9ec7b73a7485"),
+		BuyToken:        common.HexToAddress("0xe41d2489571d322189246dafa5ebde1f4699f498"),
+		SellToken:       common.HexToAddress("0x12459c951127e0c374ff9105dda097662a027093"),
+		BaseToken:       common.HexToAddress("0xe41d2489571d322189246dafa5ebde1f4699f498"),
+		QuoteToken:      common.HexToAddress("0x12459c951127e0c374ff9105dda097662a027093"),
+		BuyAmount:       big.NewInt(6000000000),
+		SellAmount:      big.NewInt(13800000000),
+		Price:           big.NewInt(229999999),
+		PricePoint:      big.NewInt(229999999),
+		Amount:          big.NewInt(6000000000),
+		FilledAmount:    big.NewInt(0),
+		Status:          "NEW",
+		Side:            "BUY",
+		PairName:        "ZRX/WETH",
+		Expires:         big.NewInt(10000),
+		MakeFee:         big.NewInt(50),
+		Nonce:           big.NewInt(1000),
+		TakeFee:         big.NewInt(50),
+		Signature: &types.Signature{
+			V: 28,
+			R: common.HexToHash("0x10b30eb0072a4f0a38b6fca0b731cba15eb2e1702845d97c1230b53a839bcb85"),
+			S: common.HexToHash("0x6d9ad89548c9e3ce4c97825d027291477f2c44a8caef792095f2cabc978493ff"),
+		},
+		Hash: common.HexToHash("0xb9070a2d333403c255ce71ddf6e795053599b2e885321de40353832b96d8880a"),
+	}
+}
+func getSellOrder() types.Order {
+	return types.Order{
+		UserAddress:     common.HexToAddress("0x7a9f3cd060ab180f36c17fe6bdf9974f577d77aa"),
+		ExchangeAddress: common.HexToAddress("0xae55690d4b079460e6ac28aaa58c9ec7b73a7485"),
+		BuyToken:        common.HexToAddress("0xe41d2489571d322189246dafa5ebde1f4699f498"),
+		SellToken:       common.HexToAddress("0x12459c951127e0c374ff9105dda097662a027093"),
+		BaseToken:       common.HexToAddress("0xe41d2489571d322189246dafa5ebde1f4699f498"),
+		QuoteToken:      common.HexToAddress("0x12459c951127e0c374ff9105dda097662a027093"),
+		BuyAmount:       big.NewInt(6000000000),
+		SellAmount:      big.NewInt(13800000000),
+		Price:           big.NewInt(229999999),
+		PricePoint:      big.NewInt(229999999),
+		Amount:          big.NewInt(6000000000),
+		FilledAmount:    big.NewInt(0),
+		Status:          "NEW",
+		Side:            "SELL",
+		PairName:        "ZRX/WETH",
+		Expires:         big.NewInt(10000),
+		MakeFee:         big.NewInt(50),
+		Nonce:           big.NewInt(1000),
+		TakeFee:         big.NewInt(50),
+		Signature: &types.Signature{
+			V: 28,
+			R: common.HexToHash("0x10b30eb0072a4f0a38b6fca0b731cba15eb2e1702845d97c1230b53a839bcb85"),
+			S: common.HexToHash("0x6d9ad89548c9e3ce4c97825d027291477f2c44a8caef792095f2cabc978493ff"),
+		},
+		Hash: common.HexToHash("0xb9070a2d333403c255ce71ddf6e795053599b2e885321de40353832b96d8880a"),
+	}
+}
+
+func getEResponse(order *types.Order, trades []*types.Trade, status FillStatus, matchingOrders []*FillOrder, remOrder *types.Order) *Response {
+	return &Response{
+		Order:          order,
+		FillStatus:     status,
+		Trades:         trades,
+		MatchingOrders: matchingOrders,
+		RemainingOrder: remOrder,
+	}
+}
+
+func getTrade(takerOrder *types.Order, makerOrder *types.Order, amount, nonce *big.Int) *types.Trade {
+	return &types.Trade{
+		Amount:     amount,
+		Price:      takerOrder.PricePoint,
+		PricePoint: takerOrder.PricePoint,
+		BaseToken:  takerOrder.BaseToken,
+		QuoteToken: takerOrder.QuoteToken,
+		OrderHash:  makerOrder.Hash,
+		Side:       takerOrder.Side,
+		Taker:      takerOrder.UserAddress,
+		PairName:   takerOrder.PairName,
+		Maker:      makerOrder.UserAddress,
+		TradeNonce: nonce,
+	}
 }

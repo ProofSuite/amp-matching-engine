@@ -269,7 +269,6 @@ func (e *Resource) addOrder(order *types.Order) error {
 		log.Print(err)
 		return err
 	}
-
 	return nil
 }
 
