@@ -11,11 +11,11 @@ import (
 )
 
 type tokenEndpoint struct {
-	tokenService *services.TokenService
+	tokenService services.TokenServiceInterface
 }
 
 // ServeTokenResource sets up the routing of token endpoints and the corresponding handlers.
-func ServeTokenResource(rg *routing.RouteGroup, tokenService *services.TokenService) {
+func ServeTokenResource(rg *routing.RouteGroup, tokenService services.TokenServiceInterface) {
 	r := &tokenEndpoint{tokenService}
 	rg.Get("/tokens/<address>", r.get)
 	rg.Get("/tokens", r.query)

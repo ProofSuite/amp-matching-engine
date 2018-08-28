@@ -14,17 +14,21 @@ import (
 )
 
 type OrderBookEndpoint struct {
-	orderBookService *services.OrderBookService
+	orderBookService services.OrderBookServiceInterface
 }
 
 // ServePairResource sets up the routing of pair endpoints and the corresponding handlers.
-func ServeOrderBookResource(rg *routing.RouteGroup, orderBookService *services.OrderBookService) {
+func ServeOrderBookResource(
+	rg *routing.RouteGroup,
+	orderBookService services.OrderBookServiceInterface,
+) {
 	e := &OrderBookEndpoint{orderBookService}
 
 	rg.Get("/orderbook/<baseToken>/<quoteToken>", e.orderBookEndpoint)
 	ws.RegisterChannel(ws.OrderBookChannel, e.orderBookWebSocket)
 }
 
+// orderBookEndpoint
 func (e *OrderBookEndpoint) orderBookEndpoint(c *routing.Context) error {
 
 	bt := c.Param("baseToken")
@@ -47,6 +51,7 @@ func (e *OrderBookEndpoint) orderBookEndpoint(c *routing.Context) error {
 	return c.Write(ob)
 }
 
+// orderBookWebSocket
 func (e *OrderBookEndpoint) orderBookWebSocket(input interface{}, conn *websocket.Conn) {
 	mab, _ := json.Marshal(input)
 	var msg *types.WebSocketSubscription

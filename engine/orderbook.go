@@ -10,7 +10,7 @@ import (
 )
 
 // GetOrderBook fetches the complete orderbook from redis for the required pair
-func (e *Resource) GetOrderBook(pair *types.Pair) (sellBook, buyBook []*map[string]float64) {
+func (e *Engine) GetOrderBook(pair *types.Pair) (sellBook, buyBook []*map[string]float64) {
 	sKey, bKey := pair.GetOrderBookKeys()
 	res, err := redis.Int64s(e.redisConn.Do("SORT", sKey, "GET", sKey+"::book::*", "GET", "#")) // Add price point to order book
 	if err != nil {

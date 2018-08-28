@@ -11,6 +11,13 @@ type WalletService struct {
 	WalletDao daos.WalletDaoInterface
 }
 
+type WalletServiceInterface interface {
+	CreateAdminWallet(a common.Address) (*types.Wallet, error)
+	GetDefaultAdminWallet() (*types.Wallet, error)
+	GetAll() ([]types.Wallet, error)
+	GetByAddress(a common.Address) *types.Wallet
+}
+
 func NewWalletService(walletDao daos.WalletDaoInterface) *WalletService {
 	return &WalletService{walletDao}
 }

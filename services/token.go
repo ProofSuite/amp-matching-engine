@@ -15,6 +15,13 @@ type TokenService struct {
 	tokenDao daos.TokenDaoInterface
 }
 
+type TokenServiceInterface interface {
+	Create(token *types.Token) error
+	GetByID(id bson.ObjectId) (*types.Token, error)
+	GetByAddress(addr common.Address) (*types.Token, error)
+	GetAll() ([]types.Token, error)
+}
+
 // NewTokenService returns a new instance of TokenService
 func NewTokenService(tokenDao daos.TokenDaoInterface) *TokenService {
 	return &TokenService{tokenDao}

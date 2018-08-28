@@ -17,6 +17,18 @@ type TradeService struct {
 	tradeDao daos.TradeDaoInterface
 }
 
+type TradeServiceInterface interface {
+	GetByPairName(p string) ([]*types.Trade, error)
+	GetTrades(bt, qt common.Address) ([]types.Trade, error)
+	GetByPairAddress(bt, qt common.Address) ([]*types.Trade, error)
+	GetByUserAddress(addr common.Address) ([]*types.Trade, error)
+	GetByHash(hash common.Hash) (*types.Trade, error)
+	GetByOrderHash(hash common.Hash) ([]*types.Trade, error)
+	UpdateTradeTx(tr *types.Trade, tx *eth.Transaction) error
+	Subscribe(conn *websocket.Conn, bt, qt common.Address)
+	Unsubscribe(conn *websocket.Conn, bt, qt common.Address)
+}
+
 // NewTradeService returns a new instance of TradeService
 func NewTradeService(TradeDao daos.TradeDaoInterface) *TradeService {
 	return &TradeService{TradeDao}
