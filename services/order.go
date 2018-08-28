@@ -24,15 +24,21 @@ import (
 // OrderService struct with daos required, responsible for communicating with daos.
 // OrderService functions are responsible for interacting with daos and implements business logics.
 type OrderService struct {
-	orderDao   *daos.OrderDao
-	pairDao    *daos.PairDao
-	accountDao *daos.AccountDao
-	tradeDao   *daos.TradeDao
+	orderDao   daos.OrderDaoInterface
+	pairDao    daos.PairDaoInterface
+	accountDao daos.AccountDaoInterface
+	tradeDao   daos.TradeDaoInterface
 	engine     *engine.Resource
 }
 
 // NewOrderService returns a new instance of orderservice
-func NewOrderService(orderDao *daos.OrderDao, pairDao *daos.PairDao, accountDao *daos.AccountDao, tradeDao *daos.TradeDao, engine *engine.Resource) *OrderService {
+func NewOrderService(
+	orderDao daos.OrderDaoInterface,
+	pairDao daos.PairDaoInterface,
+	accountDao daos.AccountDaoInterface,
+	tradeDao daos.TradeDaoInterface,
+	engine *engine.Resource,
+) *OrderService {
 	return &OrderService{orderDao, pairDao, accountDao, tradeDao, engine}
 }
 
@@ -276,6 +282,9 @@ func (s *OrderService) handleSubmitSignatures(res *engine.Response) {
 	select {
 	case msg := <-ch:
 		if msg != nil && msg.Type == "SUBMIT_SIGNATURE" {
+
+			log.Print("SUBMITTING SIGNATURES")
+
 			bytes, err := json.Marshal(msg.Data)
 			if err != nil {
 				s.RecoverOrders(res)
@@ -294,11 +303,20 @@ func (s *OrderService) handleSubmitSignatures(res *engine.Response) {
 				bytes, err := json.Marshal(res.Order)
 				if err != nil {
 					log.Print(err)
-					s.PublishOrder(&rabbitmq.Message{Type: "ADD_ORDER", Data: bytes})
+					ws.SendOrderErrorMessage(ws.GetOrderConnection(res.Order.Hash), err.Error(), res.Order.Hash)
 				}
+
+				log.Print("ADDING NEW ORDER")
+				s.PublishOrder(&rabbitmq.Message{Type: "ADD_ORDER", Data: bytes})
 			}
 
-			log.Print("RECEIVING SUBMIT SIGNATURE MESSAGE: ", data)
+			if data.Trades != nil {
+				_, err := json.Marshal(res.Order)
+				if err != nil {
+					log.Print(err)
+					ws.SendOrderErrorMessage(ws.GetOrderConnection(res.Order.Hash), err.Error(), res.Order.Hash)
+				}
+			}
 		}
 
 	case <-t.C:

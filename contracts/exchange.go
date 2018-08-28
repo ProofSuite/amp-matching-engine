@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"log"
+	"math/big"
 
 	"github.com/Proofsuite/amp-matching-engine/contracts/interfaces"
 	"github.com/Proofsuite/amp-matching-engine/services"
@@ -40,6 +41,10 @@ func NewExchange(w *services.WalletService, tx *services.TxService, contractAddr
 		TxService:     tx,
 		Interface:     instance,
 	}, nil
+}
+
+func (e *Exchange) SetTxSender(w *types.Wallet) {
+	e.TxService.SetTxSender(w)
 }
 
 func (e *Exchange) GetTxCallOptions() *bind.CallOpts {
@@ -107,20 +112,19 @@ func (e *Exchange) Operator(a common.Address) (bool, error) {
 // by the Maker and the Taker of the trade. Only the operator account can send a Trade function to the
 // Exchange smart contract.
 func (e *Exchange) Trade(o *types.Order, t *types.Trade) (*eth.Transaction, error) {
-	// txSendOptions, _ := e.GetTxSendOptions()
+	txSendOptions, _ := e.GetTxSendOptions()
 
-	// orderValues := [8]*big.Int{o.AmountBuy, o.AmountSell, o.Expires, o.Nonce, o.FeeMake, o.FeeTake, t.Amount, t.TradeNonce}
-	// orderAddresses := [4]Address{o.TokenBuy, o.TokenSell, o.Maker, t.Taker}
-	// vValues := [2]uint8{o.Signature.V, t.Signature.V}
-	// rsValues := [4][32]byte{o.Signature.R, o.Signature.S, t.Signature.R, t.Signature.S}
+	orderValues := [8]*big.Int{o.BuyAmount, o.SellAmount, o.Expires, o.Nonce, o.MakeFee, o.TakeFee, t.Amount, t.TradeNonce}
+	orderAddresses := [4]common.Address{o.BuyToken, o.SellToken, o.UserAddress, t.Taker}
+	vValues := [2]uint8{o.Signature.V, t.Signature.V}
+	rsValues := [4][32]byte{o.Signature.R, o.Signature.S, t.Signature.R, t.Signature.S}
 
-	// tx, err := e.Interface.ExecuteTrade(txSendOptions, orderValues, orderAddresses, vValues, rsValues)
-	// if err != nil {
-	// 	return nil, err
-	// }
+	tx, err := e.Interface.ExecuteTrade(txSendOptions, orderValues, orderAddresses, vValues, rsValues)
+	if err != nil {
+		return nil, err
+	}
 
-	// return tx, nil
-	return nil, nil
+	return tx, nil
 }
 
 // ListenToErrorEvents returns a channel that receives errors logs (events) from the exchange smart contract.

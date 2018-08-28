@@ -297,8 +297,8 @@ func (t *Trade) ComputeHash() common.Hash {
 	sha := sha3.NewKeccak256()
 
 	sha.Write(t.OrderHash.Bytes())
-	sha.Write(common.BigToHash(t.Amount).Bytes())
 	sha.Write(t.Taker.Bytes())
+	sha.Write(common.BigToHash(t.Amount).Bytes())
 	sha.Write(common.BigToHash(t.TradeNonce).Bytes())
 	return common.BytesToHash(sha.Sum(nil))
 }
