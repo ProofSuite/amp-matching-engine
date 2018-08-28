@@ -11,7 +11,6 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/app"
 	"github.com/Proofsuite/amp-matching-engine/daos"
 	"github.com/Proofsuite/amp-matching-engine/ethereum"
-	"github.com/Proofsuite/amp-matching-engine/mocks"
 	"github.com/Proofsuite/amp-matching-engine/rabbitmq"
 	"github.com/Proofsuite/amp-matching-engine/redis"
 	"github.com/Proofsuite/amp-matching-engine/types"
@@ -22,10 +21,10 @@ import (
 
 type OrderTestSetup struct {
 	Wallet *types.Wallet
-	Client *mocks.Client
+	Client *testutils.Client
 }
 
-func SetupTest() (*types.Wallet, *types.Wallet, *mocks.Client, *mocks.Client, *mocks.OrderFactory, *mocks.OrderFactory, *types.Pair, common.Address, common.Address) {
+func SetupTest() (*types.Wallet, *types.Wallet, *testutils.Client, *testutils.Client, *testutils.OrderFactory, *testutils.OrderFactory, *types.Pair, common.Address, common.Address) {
 	err := app.LoadConfig("../config")
 	if err != nil {
 		panic(err)
@@ -61,17 +60,17 @@ func SetupTest() (*types.Wallet, *types.Wallet, *mocks.Client, *mocks.Client, *m
 	NewRouter()
 
 	//setup mock client
-	client1 := mocks.NewClient(wallet1, http.HandlerFunc(ws.ConnectionEndpoint))
-	client2 := mocks.NewClient(wallet2, http.HandlerFunc(ws.ConnectionEndpoint))
+	client1 := testutils.NewClient(wallet1, http.HandlerFunc(ws.ConnectionEndpoint))
+	client2 := testutils.NewClient(wallet2, http.HandlerFunc(ws.ConnectionEndpoint))
 	client1.Start()
 	client2.Start()
 
-	factory1, err := mocks.NewOrderFactory(pair, wallet1, exchangeAddress)
+	factory1, err := testutils.NewOrderFactory(pair, wallet1, exchangeAddress)
 	if err != nil {
 		panic(err)
 	}
 
-	factory2, err := mocks.NewOrderFactory(pair, wallet2, exchangeAddress)
+	factory2, err := testutils.NewOrderFactory(pair, wallet2, exchangeAddress)
 	if err != nil {
 		panic(err)
 	}

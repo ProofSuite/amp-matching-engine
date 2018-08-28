@@ -12,11 +12,11 @@ import (
 // TokenService struct with daos required, responsible for communicating with daos.
 // TokenService functions are responsible for interacting with daos and implements business logics.
 type TokenService struct {
-	tokenDao *daos.TokenDao
+	tokenDao daos.TokenDaoInterface
 }
 
 // NewTokenService returns a new instance of TokenService
-func NewTokenService(tokenDao *daos.TokenDao) *TokenService {
+func NewTokenService(tokenDao daos.TokenDaoInterface) *TokenService {
 	return &TokenService{tokenDao}
 }
 

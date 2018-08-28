@@ -24,15 +24,21 @@ import (
 // OrderService struct with daos required, responsible for communicating with daos.
 // OrderService functions are responsible for interacting with daos and implements business logics.
 type OrderService struct {
-	orderDao   *daos.OrderDao
-	pairDao    *daos.PairDao
-	accountDao *daos.AccountDao
-	tradeDao   *daos.TradeDao
+	orderDao   daos.OrderDaoInterface
+	pairDao    daos.PairDaoInterface
+	accountDao daos.AccountDaoInterface
+	tradeDao   daos.TradeDaoInterface
 	engine     *engine.Resource
 }
 
 // NewOrderService returns a new instance of orderservice
-func NewOrderService(orderDao *daos.OrderDao, pairDao *daos.PairDao, accountDao *daos.AccountDao, tradeDao *daos.TradeDao, engine *engine.Resource) *OrderService {
+func NewOrderService(
+	orderDao daos.OrderDaoInterface,
+	pairDao daos.PairDaoInterface,
+	accountDao daos.AccountDaoInterface,
+	tradeDao daos.TradeDaoInterface,
+	engine *engine.Resource,
+) *OrderService {
 	return &OrderService{orderDao, pairDao, accountDao, tradeDao, engine}
 }
 
@@ -305,7 +311,7 @@ func (s *OrderService) handleSubmitSignatures(res *engine.Response) {
 			}
 
 			if data.Trades != nil {
-				bytes, err := json.Marshal(res.Order)
+				_, err := json.Marshal(res.Order)
 				if err != nil {
 					log.Print(err)
 					ws.SendOrderErrorMessage(ws.GetOrderConnection(res.Order.Hash), err.Error(), res.Order.Hash)

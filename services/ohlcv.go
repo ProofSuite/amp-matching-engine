@@ -16,10 +16,10 @@ import (
 )
 
 type OHLCVService struct {
-	tradeDao *daos.TradeDao
+	tradeDao daos.TradeDaoInterface
 }
 
-func NewOHLCVService(TradeDao *daos.TradeDao) *OHLCVService {
+func NewOHLCVService(TradeDao daos.TradeDaoInterface) *OHLCVService {
 	return &OHLCVService{TradeDao}
 }
 
@@ -74,7 +74,7 @@ func (s *OHLCVService) GetOHLCV(pairs []types.PairSubDoc, duration int64, unit s
 		"pd": bson.M{"$toDecimal": "$price"},
 		"ad": bson.M{"$toDecimal": "$amount"},
 	}}
-	decimal1,_:=bson.ParseDecimal128("1")
+	decimal1, _ := bson.ParseDecimal128("1")
 	group := bson.M{
 		"count": bson.M{"$sum": decimal1},
 		"h":     bson.M{"$max": "$pd"},
@@ -163,7 +163,7 @@ func (s *OHLCVService) GetOHLCV(pairs []types.PairSubDoc, duration int64, unit s
 	match = bson.M{"$match": match}
 	group = bson.M{"$group": group}
 	query := []bson.M{match, sort, toDecimal, group, addFields, {"$sort": bson.M{"ts": 1}}}
-	resp,err := s.tradeDao.Aggregate(query)
+	resp, err := s.tradeDao.Aggregate(query)
 	if err != nil {
 		return nil, err
 	}

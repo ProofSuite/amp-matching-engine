@@ -80,12 +80,14 @@ func (o Order) Validate() error {
 // ComputeHash calculates the orderRequest hash
 func (o *Order) ComputeHash() common.Hash {
 	sha := sha3.NewKeccak256()
-	sha.Write(o.UserAddress.Bytes())
 	sha.Write(o.ExchangeAddress.Bytes())
-	sha.Write(o.BuyToken.Bytes())
+	sha.Write(o.UserAddress.Bytes())
 	sha.Write(o.SellToken.Bytes())
-	sha.Write(common.BigToHash(o.BuyAmount).Bytes())
+	sha.Write(o.BuyToken.Bytes())
 	sha.Write(common.BigToHash(o.SellAmount).Bytes())
+	sha.Write(common.BigToHash(o.BuyAmount).Bytes())
+	sha.Write(common.BigToHash(o.MakeFee).Bytes())
+	sha.Write(common.BigToHash(o.TakeFee).Bytes())
 	sha.Write(common.BigToHash(o.Expires).Bytes())
 	sha.Write(common.BigToHash(o.Nonce).Bytes())
 	return common.BytesToHash(sha.Sum(nil))
