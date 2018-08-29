@@ -7,6 +7,7 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/app"
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/ethereum/go-ethereum/common"
+	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -30,7 +31,18 @@ type PairDaoInterface interface {
 
 // NewPairDao returns a new instance of AddressDao
 func NewPairDao() *PairDao {
-	return &PairDao{"pairs", app.Config.DBName}
+	dbName := app.Config.DBName
+	collection := "pairs"
+	index := mgo.Index{
+		Key:    []string{"baseTokenAddress","quoteTokenAddress"},
+		Unique: true,
+	}
+
+	err := db.Session.DB(dbName).C(collection).EnsureIndex(index)
+	if err != nil {
+		panic(err)
+	}
+	return &PairDao{collection, dbName}
 }
 
 // Create function performs the DB insertion task for pair collection

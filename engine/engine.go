@@ -6,16 +6,16 @@ import (
 	"log"
 	"sync"
 
-	"github.com/gomodule/redigo/redis"
 	"github.com/streadway/amqp"
 
 	"github.com/Proofsuite/amp-matching-engine/rabbitmq"
+	"github.com/Proofsuite/amp-matching-engine/redis"
 	"github.com/Proofsuite/amp-matching-engine/types"
 )
 
-// Resource contains daos and redis connection required for engine to work
+// Engine contains daos and redis connection required for engine to work
 type Engine struct {
-	redisConn redis.Conn
+	redisConn *redis.RedisConnection
 	mutex     *sync.Mutex
 }
 
@@ -31,7 +31,7 @@ type EngineInterface interface {
 var engine *Engine
 
 // InitEngine initializes the engine singleton instance
-func InitEngine(redisConn redis.Conn) (*Engine, error) {
+func InitEngine(redisConn *redis.RedisConnection) (EngineInterface, error) {
 	if engine == nil {
 		engine = &Engine{redisConn, &sync.Mutex{}}
 	}
