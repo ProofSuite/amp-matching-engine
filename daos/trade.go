@@ -6,6 +6,7 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/app"
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/ethereum/go-ethereum/common"
+	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -33,7 +34,18 @@ type TradeDaoInterface interface {
 
 // NewTradeDao returns a new instance of TradeDao.
 func NewTradeDao() *TradeDao {
-	return &TradeDao{"trades", app.Config.DBName}
+	dbName := app.Config.DBName
+	collection := "trades"
+	index := mgo.Index{
+		Key:    []string{"hash"},
+		Unique: true,
+	}
+
+	err := db.Session.DB(dbName).C(collection).EnsureIndex(index)
+	if err != nil {
+		panic(err)
+	}
+	return &TradeDao{collection, dbName}
 }
 
 // Create function performs the DB insertion task for trade collection

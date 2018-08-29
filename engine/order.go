@@ -91,7 +91,7 @@ func (e *Engine) buyOrder(order *types.Order) (*Response, error) {
 	}
 
 	for _, pr := range priceRange {
-		bookEntries, err := redis.ByteSlices(e.redisConn.Do("SORT", oskv+"::"+utils.UintToPaddedString(pr), "GET", oskv+"::"+utils.UintToPaddedString(pr)+"::*", "ALPHA")) // "ZREVRANGEBYLEX" key max min
+		bookEntries, err := redis.ByteSlices(e.redisConn.Do("SORT", oskv+"::"+utils.UintToPaddedString(pr), "GET", "*", "ALPHA")) // "ZREVRANGEBYLEX" key max min
 		if err != nil {
 			log.Print(err)
 			return nil, err
@@ -178,7 +178,7 @@ func (e *Engine) sellOrder(order *types.Order) (*Response, error) {
 	}
 
 	for _, pr := range priceRange {
-		bookEntries, err := redis.ByteSlices(e.redisConn.Do("SORT", obkv+"::"+utils.UintToPaddedString(pr), "GET", obkv+"::"+utils.UintToPaddedString(pr)+"::*", "ALPHA")) // "ZREVRANGEBYLEX" key max min
+		bookEntries, err := redis.ByteSlices(e.redisConn.Do("SORT", obkv+"::"+utils.UintToPaddedString(pr), "GET", "*", "ALPHA")) // "ZREVRANGEBYLEX" key max min
 		if err != nil {
 			log.Print(err)
 			return nil, err
@@ -257,7 +257,7 @@ func (e *Engine) addOrder(order *types.Order) error {
 	decoded := &types.Order{}
 	json.Unmarshal(orderAsBytes, decoded)
 
-	_, err = e.redisConn.Do("SET", listKey+"::"+order.Hash.Hex(), string(orderAsBytes))
+	_, err = e.redisConn.Do("SET", order.Hash.Hex(), string(orderAsBytes))
 	if err != nil {
 		log.Print(err)
 		return err
@@ -269,6 +269,7 @@ func (e *Engine) addOrder(order *types.Order) error {
 		log.Print(err)
 		return err
 	}
+
 	return nil
 }
 
@@ -276,9 +277,10 @@ func (e *Engine) addOrder(order *types.Order) error {
 func (e *Engine) updateOrder(order *types.Order, tradeAmount *big.Int) error {
 	stored := &types.Order{}
 
-	ssKey, listKey := order.GetOBKeys()
-	bytes, err := redis.Bytes(e.redisConn.Do("GET", listKey+"::"+order.Hash.Hex()))
+	ssKey, _ := order.GetOBKeys()
+	bytes, err := redis.Bytes(e.redisConn.Do("GET", order.Hash.Hex()))
 	if err != nil {
+
 		log.Print(err)
 		return err
 	}
@@ -293,7 +295,6 @@ func (e *Engine) updateOrder(order *types.Order, tradeAmount *big.Int) error {
 	} else {
 		stored.Status = "FILLED"
 	}
-
 	// Add order to list
 	bytes, err = json.Marshal(stored)
 	if err != nil {
@@ -301,7 +302,7 @@ func (e *Engine) updateOrder(order *types.Order, tradeAmount *big.Int) error {
 		return err
 	}
 
-	_, err = e.redisConn.Do("SET", listKey+"::"+order.Hash.Hex(), string(bytes))
+	_, err = e.redisConn.Do("SET", order.Hash.Hex(), string(bytes))
 	if err != nil {
 		log.Print(err)
 		return err
@@ -390,7 +391,7 @@ func (e *Engine) deleteOrder(order *types.Order, tradeAmount *big.Int) (err erro
 		}
 		// fmt.Printf("DEL: %s\n", res)
 
-		_, err = e.redisConn.Do("DEL", listKey+"::"+order.Hash.Hex())
+		_, err = e.redisConn.Do("DEL", order.Hash.Hex())
 		if err != nil {
 			log.Print(err)
 			return err
@@ -416,7 +417,7 @@ func (e *Engine) deleteOrder(order *types.Order, tradeAmount *big.Int) (err erro
 			return err
 		}
 
-		_, err = e.redisConn.Do("DEL", listKey+"::"+order.Hash.Hex())
+		_, err = e.redisConn.Do("DEL", order.Hash.Hex())
 		if err != nil {
 			log.Print(err)
 			return err
@@ -428,7 +429,6 @@ func (e *Engine) deleteOrder(order *types.Order, tradeAmount *big.Int) (err erro
 			return err
 		}
 	}
-
 	return
 }
 
@@ -446,8 +446,7 @@ func (e *Engine) RecoverOrders(orders []*FillOrder) error {
 			o.Order.Status = "OPEN"
 		}
 
-		_, listKey := o.Order.GetOBKeys()
-		res, _ := redis.Bytes(e.redisConn.Do("GET", listKey+"::"+o.Order.Hash.Hex()))
+		res, _ := redis.Bytes(e.redisConn.Do("GET", o.Order.Hash.Hex()))
 		if res == nil {
 			if err := e.addOrder(o.Order); err != nil {
 				log.Print(err)
@@ -482,8 +481,7 @@ func (e *Engine) CancelOrder(order *types.Order) (*Response, error) {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
 
-	_, listKey := order.GetOBKeys()
-	res, err := redis.Bytes(e.redisConn.Do("GET", listKey+"::"+order.Hash.Hex()))
+	res, err := redis.Bytes(e.redisConn.Do("GET", order.Hash.Hex()))
 	if err != nil {
 		log.Print(err)
 		return nil, err

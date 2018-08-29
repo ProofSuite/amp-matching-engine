@@ -1,11 +1,10 @@
-package daos_test
+package daos
 
 import (
 	"io/ioutil"
 	"math/big"
 	"testing"
 
-	"github.com/Proofsuite/amp-matching-engine/daos"
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/Proofsuite/amp-matching-engine/utils/testutils"
 	"github.com/ethereum/go-ethereum/common"
@@ -19,11 +18,11 @@ func init() {
 	server.SetPath(temp)
 
 	session := server.Session()
-	db = &daos.Database{Session: session}
+	db = &Database{Session: session}
 }
 
 func TestTradeDao(t *testing.T) {
-	dao := daos.NewTradeDao()
+	dao := NewTradeDao()
 	dao.Drop()
 
 	ZRXAddress := common.HexToAddress("0xe41d2489571d322189246dafa5ebde1f4699f498")
@@ -132,7 +131,7 @@ func TestTradeDao(t *testing.T) {
 }
 
 func TestUpdateTrade(t *testing.T) {
-	dao := daos.NewTradeDao()
+	dao := NewTradeDao()
 	dao.Drop()
 
 	tr := &types.Trade{
