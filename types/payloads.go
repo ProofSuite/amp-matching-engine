@@ -131,7 +131,6 @@ func (p NewOrderPayload) Validate() error {
 		validation.Field(&p.BuyToken, validation.Required),
 		validation.Field(&p.SellToken, validation.Required),
 		// validation.Field(&m.Signature, validation.Required),
-		// validation.Field(&m.PairName, validation.Required),
 	)
 }
 

@@ -42,8 +42,8 @@ import (
 var serveCmd = &cobra.Command{
 	Use:   "serve",
 	Short: "Get application up and running",
-	Long: `Get application up and running`,
-	Run: run,
+	Long:  `Get application up and running`,
+	Run:   run,
 }
 
 func init() {
@@ -91,7 +91,7 @@ func NewRouter(logger *logrus.Logger) *routing.Router {
 
 	rabbitmq.InitConnection(app.Config.Rabbitmq)
 	ethereum.InitConnection(app.Config.Ethereum)
-	redisClient := redis.InitConnection(app.Config.Redis)
+	redisClient := redis.NewRedisConnection(app.Config.Redis)
 
 	// instantiate engine
 	eng, err := engine.InitEngine(redisClient)

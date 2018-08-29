@@ -69,11 +69,10 @@ func (o Order) Validate() error {
 		validation.Field(&o.MakeFee, validation.Required),
 		validation.Field(&o.TakeFee, validation.Required),
 		validation.Field(&o.Nonce, validation.Required),
-		//validation.Field(&o.Expires, validation.Required),
+		validation.Field(&o.Expires, validation.Required),
 		validation.Field(&o.SellAmount, validation.Required),
 		validation.Field(&o.UserAddress, validation.Required),
-		//validation.Field(&o.Signature, validation.Required),
-		// validation.Field(&m.PairName, validation.Required),
+		validation.Field(&o.Signature, validation.Required),
 	)
 }
 
