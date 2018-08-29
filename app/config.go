@@ -56,18 +56,19 @@ func (config appConfig) Validate() error {
 // LoadConfig loads configuration from the given list of paths and populates it into the Config variable.
 // The configuration file(s) should be named as app.yaml.
 // Environment variables with the prefix "RESTFUL_" in their names are also read automatically.
-func LoadConfig(configPaths ...string) error {
+func LoadConfig(configPath string, env string) error {
 	v := viper.New()
-	v.SetConfigName("app")
+	if env != "" {
+		v.SetConfigName("config." + env)
+	}
 	v.SetConfigType("yaml")
 	v.SetEnvPrefix("restful")
 	v.AutomaticEnv()
 	v.SetDefault("error_file", "config/errors.yaml")
 	v.SetDefault("server_port", 8081)
 	v.SetDefault("jwt_signing_method", "HS256")
-	for _, path := range configPaths {
-		v.AddConfigPath(path)
-	}
+	v.AddConfigPath(configPath)
+
 	if err := v.ReadInConfig(); err != nil {
 		return fmt.Errorf("Failed to read the configuration file: %s", err)
 	}
