@@ -11,7 +11,7 @@ import (
 
 func TestExecute(t *testing.T) {
 	e := getResource()
-	defer flushData(e.redisConn)
+	defer e.redisConn.FlushAll()
 	// Test Case1: bookEntry amount is less than order amount
 	// New Buy Order
 	bookEntry := getBuyOrder()
