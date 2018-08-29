@@ -1,0 +1,32 @@
+# The Data Source Name for the database
+# Make sure you override this in production with the environment variable: RESTFUL_DSN
+dsn: "127.0.0.1"
+
+db_name: proofdex
+
+rabbitmq: amqp://guest:guest@localhost:5672/
+redis: redis://localhost:6379
+ethereum: localhost:8545
+
+exchange: "0xfc074fd5702e6becb78d64acd4126a0079f42d85"
+decimal: 8
+weth: "0x2EB24432177e82907dE24b7c5a6E0a5c03226135"
+
+tick_duration:
+    sec: [30]
+    min: [1, 5, 15]
+    hour: [1]
+    day: [1]
+    week: [1]
+    month: [1, 3, 6, 9]
+    year: [1]
+
+# These are secret keys used for JWT signing and verification.
+# Make sure you override these keys in production by the following environment variables:
+#   RESTFUL_JWT_VERIFICATION_KEY
+#   RESTFUL_JWT_SIGNING_KEY
+jwt_verification_key: "QfCAH04Cob7b71QCqy738vw5XGSnFZ9d"
+jwt_signing_key: "QfCAH04Cob7b71QCqy738vw5XGSnFZ9d"
+# Uncomment the following line and set an appropriate JWT signing method, if needed
+# The default signing method is HS256.
+#jwt_signing_method: "HS256"
