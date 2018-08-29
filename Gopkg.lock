@@ -230,6 +230,14 @@
   revision = "ef8a98b0bbce4a65b5aa4c368430a80ddc533168"
 
 [[projects]]
+  digest = "1:870d441fe217b8e689d7949fef6e43efbc787e50f200cb1e70dbca9204a1d6be"
+  name = "github.com/inconshreveable/mousetrap"
+  packages = ["."]
+  pruneopts = "T"
+  revision = "76626ae9c91c4f2a10f34cad8ce83ea42c93bb75"
+  version = "v1.0"
+
+[[projects]]
   digest = "1:ca955a9cd5b50b0f43d2cc3aeb35c951473eeca41b34eb67507f1dbcc0542394"
   name = "github.com/kr/pretty"
   packages = ["."]
@@ -341,6 +349,14 @@
   pruneopts = "T"
   revision = "8965335b8c7107321228e3e3702cab9832751bac"
   version = "v1.2.0"
+
+[[projects]]
+  digest = "1:8be8b3743fc9795ec21bbd3e0fc28ff6234018e1a269b0a7064184be95ac13e0"
+  name = "github.com/spf13/cobra"
+  packages = ["."]
+  pruneopts = "T"
+  revision = "ef82de70bb3f60c65fb8eebacbb2d122ef517385"
+  version = "v0.0.3"
 
 [[projects]]
   branch = "master"
@@ -564,6 +580,7 @@
     "github.com/kr/pretty",
     "github.com/posener/wstest",
     "github.com/robfig/cron",
+    "github.com/spf13/cobra",
     "github.com/spf13/viper",
     "github.com/streadway/amqp",
     "github.com/stretchr/testify/assert",
