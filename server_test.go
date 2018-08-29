@@ -12,7 +12,7 @@ import (
 
 func TestApp(t *testing.T) {
 	// load application configurations
-	if err := app.LoadConfig("./config"); err != nil {
+	if err := app.LoadConfig("./config",""); err != nil {
 		panic(fmt.Errorf("Invalid application configuration: %s", err))
 	}
 	app.Config.DBName = "proofdextest"
