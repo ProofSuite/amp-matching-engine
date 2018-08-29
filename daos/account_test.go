@@ -1,11 +1,10 @@
-package daos_test
+package daos
 
 import (
 	"io/ioutil"
 	"math/big"
 	"testing"
 
-	"github.com/Proofsuite/amp-matching-engine/daos"
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/Proofsuite/amp-matching-engine/utils/testutils"
 	"github.com/ethereum/go-ethereum/common"
@@ -13,10 +12,10 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-var db *daos.Database
+var db *Database
 
 // func TestMain(m *testing.M) {
-// 	db := &daos.Database{}
+// 	db := &Database{}
 // 	dropTestServer := testutils.InitDBTestServer(db)
 // 	defer dropTestServer()
 // 	m.Run()
@@ -28,11 +27,11 @@ func init() {
 	server.SetPath(temp)
 
 	session := server.Session()
-	db = &daos.Database{Session: session}
+	db = &Database{Session: session}
 }
 
 func TestAccountDao(t *testing.T) {
-	dao := daos.NewAccountDao()
+	dao := NewAccountDao()
 	dao.Drop()
 
 	address := common.HexToAddress("0xe8e84ee367bc63ddb38d3d01bccef106c194dc47")
@@ -81,7 +80,7 @@ func TestAccountDao(t *testing.T) {
 }
 
 func TestAccountGetAllTokenBalances(t *testing.T) {
-	dao := daos.NewAccountDao()
+	dao := NewAccountDao()
 	dao.Drop()
 
 	address := common.HexToAddress("0xe8e84ee367bc63ddb38d3d01bccef106c194dc47")
@@ -131,7 +130,7 @@ func TestAccountGetAllTokenBalances(t *testing.T) {
 }
 
 func TestGetTokenBalance(t *testing.T) {
-	dao := daos.NewAccountDao()
+	dao := NewAccountDao()
 	dao.Drop()
 
 	address := common.HexToAddress("0xe8e84ee367bc63ddb38d3d01bccef106c194dc47")
@@ -180,7 +179,7 @@ func TestGetTokenBalance(t *testing.T) {
 }
 
 func TestUpdateAccountBalance(t *testing.T) {
-	dao := daos.NewAccountDao()
+	dao := NewAccountDao()
 	dao.Drop()
 
 	address := common.HexToAddress("0xe8e84ee367bc63ddb38d3d01bccef106c194dc47")

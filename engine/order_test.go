@@ -46,7 +46,7 @@ func TestAddOrder(t *testing.T) {
 		}
 	}
 
-	rse, err := getValue(e.redisConn, listKey+"::"+o1.Hash.Hex())
+	rse, err := getValue(e.redisConn, o1.Hash.Hex())
 	if err != nil {
 		t.Error(err)
 	}
@@ -96,7 +96,7 @@ func TestAddOrder(t *testing.T) {
 			t.Errorf("Expected sorted set value: %v ", o2.Hash)
 		}
 	}
-	rse, err = getValue(e.redisConn, listKey+"::"+o2.Hash.Hex())
+	rse, err = getValue(e.redisConn, o2.Hash.Hex())
 	if err != nil {
 		t.Error(err)
 	}
@@ -116,10 +116,10 @@ func TestAddOrder(t *testing.T) {
 func TestUpdateOrder(t *testing.T) {
 	e := getResource()
 	defer flushData(e.redisConn)
- 	sampleOrder := getSellOrder()
+	sampleOrder := getSellOrder()
 	e.addOrder(&sampleOrder)
 
-	tAmount  := big.NewInt(1000000000)
+	tAmount := big.NewInt(1000000000)
 	e.updateOrder(&sampleOrder, tAmount)
 	ssKey, listKey := sampleOrder.GetOBKeys()
 	updatedSampleOrder := sampleOrder
@@ -127,7 +127,7 @@ func TestUpdateOrder(t *testing.T) {
 	updatedSampleOrder.Status = "PARTIAL_FILLED"
 	updatedSampleOrder.FilledAmount = big.NewInt(1000000000)
 	updatedSampleOrderBytes, _ := updatedSampleOrder.MarshalJSON()
-	rs, err := getSortedSet(e.redisConn,ssKey)
+	rs, err := getSortedSet(e.redisConn, ssKey)
 	if err != nil {
 		t.Error(err)
 	} else {
@@ -136,7 +136,7 @@ func TestUpdateOrder(t *testing.T) {
 			assert.Equal(t, 0.0, v)
 		}
 	}
- 	rs, err = getSortedSet(e.redisConn,listKey)
+	rs, err = getSortedSet(e.redisConn, listKey)
 	if err != nil {
 		t.Error(err)
 	} else {
@@ -145,19 +145,19 @@ func TestUpdateOrder(t *testing.T) {
 			assert.Equal(t, sampleOrder.CreatedAt.Unix(), int64(v))
 		}
 	}
- 	rse, err := getValue(e.redisConn,listKey + "::" + sampleOrder.Hash.Hex())
+	rse, err := getValue(e.redisConn, sampleOrder.Hash.Hex())
 	if err != nil {
 		t.Error(err)
 	}
 	assert.JSONEq(t, string(updatedSampleOrderBytes), rse)
- 	rse, err = getValue(e.redisConn,ssKey + "::book::" + utils.UintToPaddedString(sampleOrder.PricePoint.Int64()))
+	rse, err = getValue(e.redisConn, ssKey+"::book::"+utils.UintToPaddedString(sampleOrder.PricePoint.Int64()))
 	if err != nil {
 		t.Error(err)
 	}
-	assert.Equal(t, math.Sub(sampleOrder.Amount,tAmount).String(), rse)
- 	// Update the order again with negative amount(recover order)
-	e.updateOrder(&sampleOrder, math.Mul(tAmount,big.NewInt(-1)))
- 	rs, err = getSortedSet(e.redisConn,ssKey)
+	assert.Equal(t, math.Sub(sampleOrder.Amount, tAmount).String(), rse)
+	// Update the order again with negative amount(recover order)
+	e.updateOrder(&sampleOrder, math.Mul(tAmount, big.NewInt(-1)))
+	rs, err = getSortedSet(e.redisConn, ssKey)
 	if err != nil {
 		t.Error(err)
 	} else {
@@ -166,7 +166,7 @@ func TestUpdateOrder(t *testing.T) {
 			assert.Equalf(t, 0.0, v, "Expected sorted set value: %v got: %v", 0, v)
 		}
 	}
- 	rs, err = getSortedSet(e.redisConn,listKey)
+	rs, err = getSortedSet(e.redisConn, listKey)
 	if err != nil {
 		t.Error(err)
 	} else {
@@ -175,36 +175,35 @@ func TestUpdateOrder(t *testing.T) {
 			assert.Equal(t, sampleOrder.CreatedAt.Unix(), int64(v))
 		}
 	}
- 	rse, err = getValue(e.redisConn,listKey + "::" + sampleOrder.Hash.Hex())
+	rse, err = getValue(e.redisConn, sampleOrder.Hash.Hex())
 	if err != nil {
 		t.Error(err)
 	}
-	o:=getSellOrder()
-	o.Status="OPEN"
-	orderJSON,_:=o.MarshalJSON()
+	o := getSellOrder()
+	o.Status = "OPEN"
+	orderJSON, _ := o.MarshalJSON()
 	assert.JSONEq(t, string(orderJSON), rse)
- 	rse, err = getValue(e.redisConn,ssKey + "::book::" + utils.UintToPaddedString(sampleOrder.PricePoint.Int64()))
+	rse, err = getValue(e.redisConn, ssKey+"::book::"+utils.UintToPaddedString(sampleOrder.PricePoint.Int64()))
 	if err != nil {
 		t.Error(err)
 	}
 	assert.Equal(t, sampleOrder.Amount.String(), rse)
- }
+}
 
-
- func TestDeleteOrder(t *testing.T) {
+func TestDeleteOrder(t *testing.T) {
 	e := getResource()
 	defer flushData(e.redisConn)
- 	// Add 1st order
+	// Add 1st order
 	sampleOrder := getSellOrder()
 	e.addOrder(&sampleOrder)
- 	// Add 2nd order
+	// Add 2nd order
 	sampleOrder1 := getSellOrder()
-	sampleOrder1.Hash=common.HexToHash("0xa2d800b77828cb52c83106ca392e465bc0af0d7c319f6956328f739080c19621")
+	sampleOrder1.Hash = common.HexToHash("0xa2d800b77828cb52c83106ca392e465bc0af0d7c319f6956328f739080c19621")
 	e.addOrder(&sampleOrder1)
- 	// delete sampleOrder1
+	// delete sampleOrder1
 	e.deleteOrder(&sampleOrder1, sampleOrder1.Amount)
 	ss1Key, list1Key := sampleOrder1.GetOBKeys()
- 	rs, err := getSortedSet(e.redisConn, ss1Key)
+	rs, err := getSortedSet(e.redisConn, ss1Key)
 	if err != nil {
 		t.Error(err)
 	} else {
@@ -213,7 +212,7 @@ func TestUpdateOrder(t *testing.T) {
 			assert.Equal(t, 0.0, v)
 		}
 	}
- 	rs, err = getSortedSet(e.redisConn,list1Key)
+	rs, err = getSortedSet(e.redisConn, list1Key)
 	if err != nil {
 		t.Error(err)
 	} else {
@@ -222,33 +221,33 @@ func TestUpdateOrder(t *testing.T) {
 			assert.Equal(t, sampleOrder1.CreatedAt.Unix(), int64(v))
 		}
 	}
- 	if exists(e.redisConn, list1Key + "::" + sampleOrder1.Hash.Hex()) {
+	if exists(e.redisConn, list1Key+"::"+sampleOrder1.Hash.Hex()) {
 		t.Errorf("Key : %v expected to be deleted but key exists", list1Key+"::"+sampleOrder1.Hash.Hex())
 	}
- 	rse, err := getValue(e.redisConn,ss1Key + "::book::" + utils.UintToPaddedString(sampleOrder1.PricePoint.Int64()))
+	rse, err := getValue(e.redisConn, ss1Key+"::book::"+utils.UintToPaddedString(sampleOrder1.PricePoint.Int64()))
 	if err != nil {
 		t.Error(err)
 	}
 	assert.Equal(t, sampleOrder.Amount.String(), rse)
- 	// delete sampleOrder
+	// delete sampleOrder
 	e.deleteOrder(&sampleOrder, sampleOrder.Amount)
 	ssKey, listKey := sampleOrder.GetOBKeys()
- 	// All keys must have been deleted
-	if exists(e.redisConn,ssKey) {
+	// All keys must have been deleted
+	if exists(e.redisConn, ssKey) {
 		t.Errorf("Key : %v expected to be deleted but key exists", ssKey)
 	}
-	if exists(e.redisConn,listKey) {
+	if exists(e.redisConn, listKey) {
 		t.Errorf("Key : %v expected to be deleted but key exists", ssKey)
 	}
-	if exists(e.redisConn,listKey + "::" + sampleOrder.Hash.Hex()) {
+	if exists(e.redisConn, listKey+"::"+sampleOrder.Hash.Hex()) {
 		t.Errorf("Key : %v expected to be deleted but key exists", ssKey)
 	}
-	if exists(e.redisConn,ssKey + "::book::" + utils.UintToPaddedString(sampleOrder.PricePoint.Int64())) {
+	if exists(e.redisConn, ssKey+"::book::"+utils.UintToPaddedString(sampleOrder.PricePoint.Int64())) {
 		t.Errorf("Key : %v expected to be deleted but key exists", ssKey)
 	}
 }
 
- func TestCancelOrder(t *testing.T) {
+func TestCancelOrder(t *testing.T) {
 	e := getResource()
 	defer flushData(e.redisConn)
 
@@ -329,7 +328,7 @@ func TestUpdateOrder(t *testing.T) {
 		t.Errorf("Key : %v expected to be deleted but key exists", ssKey)
 	}
 
-	if exists(e.redisConn, listKey+"::"+o1.Hash.Hex()) {
+	if exists(e.redisConn, o1.Hash.Hex()) {
 		t.Errorf("Key : %v expected to be deleted but key exists", ssKey)
 	}
 
@@ -398,8 +397,6 @@ func TestRecoverOrders(t *testing.T) {
 	}
 
 	ssKey, listKey := o1.GetOBKeys()
-	_, list1Key := o2.GetOBKeys()
-	_, list2Key := o3.GetOBKeys()
 
 	rs, err := getSortedSet(e.redisConn, ssKey)
 	if err != nil {
@@ -424,26 +421,26 @@ func TestRecoverOrders(t *testing.T) {
 
 	assert.Equal(t, expectedMap, rs)
 
-	rse, err := getValue(e.redisConn, listKey+"::"+o1.Hash.Hex())
+	rse, err := getValue(e.redisConn, o1.Hash.Hex())
 	if err != nil {
 		t.Error(err)
 	}
 
-	assert.JSONEqf(t, string(expectedOrder1Json), rse, "Expected value for key: %v, was: %s, but got: %v", listKey+"::"+o1.Hash.Hex(), expectedOrder1Json, rse)
+	assert.JSONEq(t, string(expectedOrder1Json), rse)
 
-	rse, err = getValue(e.redisConn, list1Key+"::"+o2.Hash.Hex())
+	rse, err = getValue(e.redisConn, o2.Hash.Hex())
 	if err != nil {
 		t.Error(err)
 	}
 
-	assert.JSONEqf(t, string(expectedOrder2Json), rse, "Expected value for key: %v, was: %s, but got: %v", list1Key+"::"+o2.Hash.Hex(), expectedOrder2Json, rse)
+	assert.JSONEq(t, string(expectedOrder2Json), rse)
 
-	rse, err = getValue(e.redisConn, list2Key+"::"+o3.Hash.Hex())
+	rse, err = getValue(e.redisConn, o3.Hash.Hex())
 	if err != nil {
 		t.Error(err)
 	}
 
-	assert.JSONEqf(t, string(expectedOrder3Json), rse, "Expected value for key: %v, was: %s, but got: %v", list2Key+"::"+o3.Hash.Hex(), expectedOrder3Json, rse)
+	assert.JSONEq(t, string(expectedOrder3Json), rse)
 
 	rse, err = getValue(e.redisConn, ssKey+"::book::"+utils.UintToPaddedString(o1.PricePoint.Int64()))
 	if err != nil {
@@ -525,7 +522,8 @@ func TestFillOrder1(t *testing.T) {
 	expBytes, _ = json.Marshal(expectedResponse)
 	resp, err = e.buyOrder(&buyOrder)
 	if err != nil {
-		t.Errorf("Error in sellOrder: %s", err)
+		t.Errorf("Error in buyOrder: %s", err)
+		return
 	}
 	resBytes, _ = json.Marshal(resp)
 	assert.JSONEq(t, string(expBytes), string(resBytes))
@@ -726,7 +724,7 @@ func TestPartialMatchOrder1(t *testing.T) {
 	sellOrder3.PricePoint = math.Add(sellOrder3.PricePoint, big.NewInt(10))
 	sellOrder3.Amount = math.Mul(sellOrder3.Amount, big.NewInt(2))
 
-	sellOrder3.Nonce = sellOrder3.Nonce.Add(sellOrder3.Nonce, big.NewInt(1))
+	sellOrder3.Nonce = sellOrder3.Nonce.Add(sellOrder2.Nonce, big.NewInt(1))
 	sellOrder3.Hash = sellOrder3.ComputeHash()
 
 	e.sellOrder(&sellOrder)
@@ -797,8 +795,8 @@ func TestPartialMatchOrder1(t *testing.T) {
 	remOrder.PricePoint = math.Add(remOrder.PricePoint, big.NewInt(20))
 	remOrder.Hash = common.HexToHash("")
 	remOrder.Signature = nil
-	remOrder.Nonce=nil
-	
+	remOrder.Nonce = nil
+
 	responseSO3.Status = "FILLED"
 	responseSO3.FilledAmount = responseSO3.Amount
 	trade4 := &types.Trade{
@@ -853,7 +851,7 @@ func TestPartialMatchOrder2(t *testing.T) {
 	buyOrder3 := buyOrder1
 	buyOrder3.PricePoint = math.Sub(buyOrder3.PricePoint, big.NewInt(10))
 	buyOrder3.Amount = math.Mul(buyOrder3.Amount, big.NewInt(2))
-	buyOrder3.Nonce = buyOrder3.Nonce.Add(buyOrder3.Nonce, big.NewInt(1))
+	buyOrder3.Nonce = buyOrder3.Nonce.Add(buyOrder2.Nonce, big.NewInt(1))
 	buyOrder3.Hash = buyOrder3.ComputeHash()
 
 	e.buyOrder(&buyOrder)
@@ -881,10 +879,10 @@ func TestPartialMatchOrder2(t *testing.T) {
 	responseBO3.FilledAmount = math.Div(responseBO3.Amount, big.NewInt(2))
 	responseBO3.Status = "PARTIAL_FILLED"
 
-	trade := getTrade(&sellOrder,&buyOrder,responseBO.FilledAmount,big.NewInt(0))
-	trade1 := getTrade(&sellOrder,&buyOrder1,responseBO1.FilledAmount,big.NewInt(0))
-	trade2 := getTrade(&sellOrder,&buyOrder2,responseBO2.FilledAmount,big.NewInt(0))
-	trade3 := getTrade(&sellOrder,&buyOrder3,responseBO3.FilledAmount,big.NewInt(0))
+	trade := getTrade(&sellOrder, &buyOrder, responseBO.FilledAmount, big.NewInt(0))
+	trade1 := getTrade(&sellOrder, &buyOrder1, responseBO1.FilledAmount, big.NewInt(0))
+	trade2 := getTrade(&sellOrder, &buyOrder2, responseBO2.FilledAmount, big.NewInt(0))
+	trade3 := getTrade(&sellOrder, &buyOrder3, responseBO3.FilledAmount, big.NewInt(0))
 
 	trade.Hash = trade.ComputeHash()
 	trade1.Hash = trade1.ComputeHash()
@@ -924,7 +922,7 @@ func TestPartialMatchOrder2(t *testing.T) {
 	remOrder.PricePoint = math.Sub(remOrder.PricePoint, big.NewInt(20))
 	remOrder.Hash = common.HexToHash("")
 	remOrder.Signature = nil
-	remOrder.Nonce=nil
+	remOrder.Nonce = nil
 	responseBO3.Status = "FILLED"
 	responseBO3.FilledAmount = responseBO3.Amount
 

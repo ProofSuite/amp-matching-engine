@@ -1,10 +1,9 @@
-package daos_test
+package daos
 
 import (
 	"io/ioutil"
 	"testing"
 
-	"github.com/Proofsuite/amp-matching-engine/daos"
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/Proofsuite/amp-matching-engine/utils/testutils"
 	"github.com/ethereum/go-ethereum/common"
@@ -16,11 +15,11 @@ func init() {
 	server.SetPath(temp)
 
 	session := server.Session()
-	db = &daos.Database{Session: session}
+	db = &Database{Session: session}
 }
 
 func TestTokenDao(t *testing.T) {
-	dao := daos.NewTokenDao()
+	dao := NewTokenDao()
 	dao.Drop()
 
 	token := &types.Token{

@@ -36,10 +36,8 @@ func CompareOrder(t *testing.T, a, b *types.Order) {
 func ComparePair(t *testing.T, a, b *types.Pair) {
 	assert.Equal(t, a.ID, b.ID)
 	assert.Equal(t, a.Name, b.Name)
-	assert.Equal(t, a.BaseTokenID, b.BaseTokenID)
 	assert.Equal(t, a.BaseTokenSymbol, b.BaseTokenSymbol)
 	assert.Equal(t, a.BaseTokenAddress, b.BaseTokenAddress)
-	assert.Equal(t, a.QuoteTokenID, b.QuoteTokenID)
 	assert.Equal(t, a.QuoteTokenSymbol, b.QuoteTokenSymbol)
 	assert.Equal(t, a.QuoteTokenAddress, b.QuoteTokenAddress)
 	assert.Equal(t, a.Active, b.Active)

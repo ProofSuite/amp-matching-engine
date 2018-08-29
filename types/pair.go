@@ -17,11 +17,11 @@ import (
 type Pair struct {
 	ID                bson.ObjectId  `json:"id" bson:"_id"`
 	Name              string         `json:"name" bson:"name"`
-	BaseTokenID       bson.ObjectId  `json:"baseTokenId" bson:"baseTokenId"`
+
 	BaseTokenSymbol   string         `json:"baseTokenSymbol" bson:"baseTokenSymbol"`
 	BaseTokenAddress  common.Address `json:"baseTokenAddress" bson:"baseTokenAddress"`
 	BaseTokenDecimal  int            `json:"baseTokenDecimal" bson:"baseTokenDecimal"`
-	QuoteTokenID      bson.ObjectId  `json:"quoteTokenId" bson:"quoteTokenId"`
+
 	QuoteTokenSymbol  string         `json:"quoteTokenSymbol" bson:"quoteTokenSymbol"`
 	QuoteTokenAddress common.Address `json:"quoteTokenAddress" bson:"quoteTokenAddress"`
 	QuoteTokenDecimal int            `json:"quoteTokenDecimal" bson:"quoteTokenDecimal"`
@@ -75,11 +75,9 @@ func (p *Pair) SetBSON(raw bson.Raw) error {
 
 	p.ID = decoded.ID
 	p.Name = decoded.Name
-	p.BaseTokenID = decoded.BaseTokenID
 	p.BaseTokenSymbol = decoded.BaseTokenSymbol
 	p.BaseTokenAddress = common.HexToAddress(decoded.BaseTokenAddress)
 	p.BaseTokenDecimal = decoded.BaseTokenDecimal
-	p.QuoteTokenID = decoded.QuoteTokenID
 	p.QuoteTokenSymbol = decoded.QuoteTokenSymbol
 	p.QuoteTokenAddress = common.HexToAddress(decoded.QuoteTokenAddress)
 	p.QuoteTokenDecimal = decoded.QuoteTokenDecimal
@@ -98,11 +96,9 @@ func (p *Pair) GetBSON() (interface{}, error) {
 	return &PairRecord{
 		ID:                p.ID,
 		Name:              p.Name,
-		BaseTokenID:       p.BaseTokenID,
 		BaseTokenSymbol:   p.BaseTokenSymbol,
 		BaseTokenAddress:  p.BaseTokenAddress.Hex(),
 		BaseTokenDecimal:  p.BaseTokenDecimal,
-		QuoteTokenID:      p.QuoteTokenID,
 		QuoteTokenSymbol:  p.QuoteTokenSymbol,
 		QuoteTokenAddress: p.QuoteTokenAddress.Hex(),
 		QuoteTokenDecimal: p.QuoteTokenDecimal,
