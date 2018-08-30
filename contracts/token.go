@@ -14,12 +14,17 @@ import (
 )
 
 type Token struct {
-	WalletService *services.WalletService
-	TxService     *services.TxService
+	WalletService services.WalletServiceInterface
+	TxService     services.TxServiceInterface
 	Interface     *interfaces.Token
 }
 
-func NewToken(w *services.WalletService, tx *services.TxService, contractAddress common.Address, backend bind.ContractBackend) (*Token, error) {
+func NewToken(
+	w services.WalletServiceInterface,
+	tx services.TxServiceInterface,
+	contractAddress common.Address,
+	backend bind.ContractBackend,
+) (*Token, error) {
 	instance, err := interfaces.NewToken(contractAddress, backend)
 	if err != nil {
 		return nil, err
