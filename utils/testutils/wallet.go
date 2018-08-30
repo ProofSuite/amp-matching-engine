@@ -17,3 +17,11 @@ func GetTestWallet2() *types.Wallet {
 func GetTestWallet3() *types.Wallet {
 	return types.NewWalletFromPrivateKey("7c78c6e2f65d0d84c44ac0f7b53d6e4dd7a82c35f51b251d387c2a69df712662")
 }
+
+func GetTestWallet4() *types.Wallet {
+	return types.NewWalletFromPrivateKey("7c78c6e2f65d0d84c44ac0f7b53d6e4dd7a82c35f51b251d387c2a69df712663")
+}
+
+func GetTestWallet5() *types.Wallet {
+	return types.NewWalletFromPrivateKey("7c78c6e2f65d0d84c44ac0f7b53d6e4dd7a82c35f51b251d387c2a69df712663")
+}

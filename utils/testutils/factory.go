@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/Proofsuite/amp-matching-engine/operator"
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -246,6 +247,22 @@ func (f *OrderFactory) NewTrade(o *types.Order, amount int64) (*types.Trade, err
 
 	t.Sign(f.Wallet)
 	return t, nil
+}
+
+func (f *OrderFactory) NewPendingTrade(o *types.Order, amount int64) *operator.PendingTradeMessage {
+	t := &types.Trade{}
+
+	t.Maker = o.UserAddress
+	t.Taker = f.Wallet.Address
+	t.BaseToken = o.BaseToken
+	t.QuoteToken = o.QuoteToken
+	t.TradeNonce = big.NewInt(int64(f.NonceGenerator.Intn(1e8)))
+	t.OrderHash = o.Hash
+	t.Amount = big.NewInt(amount)
+
+	t.Sign(f.Wallet)
+
+	return &operator.PendingTradeMessage{o, t}
 }
 
 // NewOrderCancel creates a new OrderCancel object from a given order

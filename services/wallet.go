@@ -14,6 +14,7 @@ type WalletService struct {
 type WalletServiceInterface interface {
 	CreateAdminWallet(a common.Address) (*types.Wallet, error)
 	GetDefaultAdminWallet() (*types.Wallet, error)
+	GetOperatorWallets() ([]*types.Wallet, error)
 	GetAll() ([]types.Wallet, error)
 	GetByAddress(a common.Address) *types.Wallet
 }
@@ -40,10 +41,14 @@ func (s *WalletService) GetDefaultAdminWallet() (*types.Wallet, error) {
 	return s.WalletDao.GetDefaultAdminWallet()
 }
 
+func (s *WalletService) GetOperatorWallets() ([]*types.Wallet, error) {
+	return []*types.Wallet{}, nil
+}
+
 func (s *WalletService) GetAll() ([]types.Wallet, error) {
 	return s.WalletDao.GetAll()
 }
 
-func (s *WalletService) GetbyAddress(a common.Address) (*types.Wallet, error) {
+func (s *WalletService) GetByAddress(a common.Address) (*types.Wallet, error) {
 	return s.WalletDao.GetByAddress(a)
 }

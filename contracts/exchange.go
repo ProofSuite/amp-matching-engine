@@ -22,15 +22,20 @@ import (
 // CallOptions are options for making read calls to the connected backend
 // TxOptions are options for making write txs to the connected backend
 type Exchange struct {
-	WalletService *services.WalletService
-	TxService     *services.TxService
+	WalletService services.WalletServiceInterface
+	TxService     services.TxServiceInterface
 	Interface     *interfaces.Exchange
 }
 
 // Returns a new exchange interface for a given wallet, contract address and connected backend.
 // The exchange contract need to be already deployed at the given address. The given wallet will
 // be used by default when sending transactions with this object.
-func NewExchange(w *services.WalletService, tx *services.TxService, contractAddress common.Address, backend bind.ContractBackend) (*Exchange, error) {
+func NewExchange(
+	w services.WalletServiceInterface,
+	tx services.TxServiceInterface,
+	contractAddress common.Address,
+	backend bind.ContractBackend,
+) (*Exchange, error) {
 	instance, err := interfaces.NewExchange(contractAddress, backend)
 	if err != nil {
 		return nil, err

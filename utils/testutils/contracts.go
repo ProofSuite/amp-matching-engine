@@ -18,12 +18,12 @@ import (
 )
 
 type Deployer struct {
-	WalletService *services.WalletService
-	TxService     *services.TxService
+	WalletService services.WalletServiceInterface
+	TxService     services.TxServiceInterface
 	Backend       bind.ContractBackend
 }
 
-func NewDefaultDeployer(w *services.WalletService, tx *services.TxService) (*Deployer, error) {
+func NewDefaultDeployer(w services.WalletServiceInterface, tx services.TxServiceInterface) (*Deployer, error) {
 	conn, err := rpc.DialHTTP("http://127.0.0.1:8545")
 	if err != nil {
 		return nil, err
@@ -38,7 +38,7 @@ func NewDefaultDeployer(w *services.WalletService, tx *services.TxService) (*Dep
 	}, nil
 }
 
-func NewWebSocketDeployer(w *services.WalletService, tx *services.TxService) (*Deployer, error) {
+func NewWebSocketDeployer(w services.WalletServiceInterface, tx services.TxServiceInterface) (*Deployer, error) {
 	conn, err := rpc.DialWebsocket(context.Background(), "ws://127.0.0.1:8546", "")
 	if err != nil {
 		return nil, err
@@ -56,7 +56,11 @@ func NewWebSocketDeployer(w *services.WalletService, tx *services.TxService) (*D
 // NewDefaultSimulator returns a simulated deployer useful for unit testing certain functions
 // This simulator functions different from a standard deployer. It does not call a blockchain
 // and uses a fake backend.
-func NewSimulator(w *services.WalletService, tx *services.TxService, accs []common.Address) (*Deployer, error) {
+func NewSimulator(
+	w services.WalletServiceInterface,
+	tx services.TxServiceInterface,
+	accs []common.Address,
+) (*Deployer, error) {
 	weiBalance := &big.Int{}
 	ether := big.NewInt(1e18)
 	etherBalance := big.NewInt(1000)
