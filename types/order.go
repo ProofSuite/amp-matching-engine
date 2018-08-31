@@ -56,8 +56,10 @@ type Order struct {
 // }
 
 type OrderSubDoc struct {
-	Amount    *big.Int   `json:"amount" bson:"amount"`
-	Signature *Signature `json:"signature,omitempty" bson:"signature" redis:"signature"`
+	BuyAmount  *big.Int   `json:"buyAmount" bson:"buyAmount"`
+	SellAmount *big.Int   `json:"sellAmount" bson:"sellAmount"`
+	Amount     *big.Int   `json:"amount" bson:"amount"`
+	Signature  *Signature `json:"signature,omitempty" bson:"signature" redis:"signature"`
 }
 
 func (o Order) Validate() error {

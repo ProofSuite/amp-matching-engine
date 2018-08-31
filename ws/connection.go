@@ -166,33 +166,3 @@ func SendMessage(conn *websocket.Conn, channel string, msgType string, data inte
 		conn.Close()
 	}
 }
-
-// message := types.Message{
-// 	Type: msgType,
-// 	Data: msg,
-// }
-
-// if len(hash) > 0 {
-// 	message.Hash = hash[0].Hex()
-// }
-
-// temp := channelMessage{
-// 	Channel: channel,
-// 	Message: message,
-// }
-
-// type channelMessage struct {
-// 	Channel string      `json:"channel"`
-// 	Message interface{} `json:"message"`
-// }
-
-// type Message struct {
-// 	Channel string `json:"channel"`
-// 	Payload Payload string `json:"payload"`
-// }
-
-// type Payload struct {
-// 	Type string `json:"type"`
-// 	Hash string `json:"hash,omitempty"`
-// 	Data interface{} `json:"data"`
-// }

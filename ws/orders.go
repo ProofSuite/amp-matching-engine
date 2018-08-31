@@ -87,13 +87,3 @@ func SendOrderMessage(conn *websocket.Conn, msgType string, data interface{}, ha
 func SendOrderErrorMessage(conn *websocket.Conn, data interface{}, hash ...common.Hash) {
 	SendOrderMessage(conn, "ERROR", data, hash...)
 }
-
-// // OrderSendMessage is responsible for sending message on order channel
-// func OrderSendMessage(conn *websocket.Conn, msgType string, msg interface{}, hash ...common.Hash) {
-// 	SendMessage(conn, OrderChannel, msgType, msg, hash...)
-// }
-
-// // OrderSendErrorMessage is responsible for sending error message on order channel
-// func OrderSendErrorMessage(conn *websocket.Conn, msg interface{}, hash ...common.Hash) {
-// 	OrderSendMessage(conn, "ERROR", msg, hash...)
-// }
