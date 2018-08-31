@@ -1,6 +1,7 @@
 package operator_test
 
 import (
+	"fmt"
 	"log"
 	"math/big"
 	"reflect"
@@ -18,7 +19,7 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/utils/testutils/mocks"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind/backends"
 	"github.com/ethereum/go-ethereum/common"
-	ethTypes "github.com/ethereum/go-ethereum/core/types"
+	eth "github.com/ethereum/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -26,13 +27,14 @@ import (
 func SetupTest(t *testing.T) (
 	*operator.Operator,
 	*contracts.Exchange,
-	common.Address,
 	[]*types.Wallet,
 	common.Address,
 	common.Address,
 	*testutils.OrderFactory,
 	*testutils.OrderFactory,
 	*backends.SimulatedBackend,
+	*mocks.TradeService,
+	*mocks.OrderService,
 ) {
 
 	err := app.LoadConfig("../config", "")
@@ -52,23 +54,27 @@ func SetupTest(t *testing.T) (
 	wallet5 := testutils.GetTestWallet5()
 
 	tradeService := new(mocks.TradeService)
-	ethereumService := new(mocks.EthereumService)
+	orderService := new(mocks.OrderService)
 
 	wallets := []*types.Wallet{wallet1, wallet2, wallet3, wallet4, wallet5}
 	admin := wallet1
 	maker := wallet4
 	taker := wallet5
 
+	//TODO refactor this
 	walletDao := new(mocks.WalletDao)
 	walletDao.On("GetDefaultAdminWallet").Return(wallet1, nil)
+	walletDao.On("GetOperatorWallets").Return([]*types.Wallet{wallet1, wallet2, wallet3}, nil)
 	txService := services.NewTxService(walletDao, admin)
 	walletService := services.NewWalletService(walletDao)
-
 	//setup mocks
 	deployer, err := testutils.NewSimulator(walletService, txService, []common.Address{wallet1.Address, wallet2.Address, wallet3.Address, wallet4.Address, wallet5.Address})
 	if err != nil {
 		panic(err)
 	}
+
+	simulator := deployer.Backend.(*backends.SimulatedBackend)
+	ethService := services.NewEthereumService(simulator)
 
 	//Initially Maker owns 1e18 units of sellToken and Taker owns 1e18 units buyToken
 	wethToken, weth, _, err := deployer.DeployToken(maker.Address, big.NewInt(1e18))
@@ -86,12 +92,21 @@ func SetupTest(t *testing.T) (
 		t.Errorf("Could not deploy exchange: %v", err)
 	}
 
-	_, err = exchange.SetOperator(admin.Address, true)
+	_, err = exchange.SetOperator(wallet1.Address, true)
 	if err != nil {
 		t.Errorf("Could not set operator: %v", err)
 	}
 
-	simulator := deployer.Backend.(*backends.SimulatedBackend)
+	_, err = exchange.SetOperator(wallet2.Address, true)
+	if err != nil {
+		t.Errorf("Could not set operator: %v", err)
+	}
+
+	_, err = exchange.SetOperator(wallet3.Address, true)
+	if err != nil {
+		t.Errorf("Could not set operator: %v", err)
+	}
+
 	simulator.Commit()
 
 	exchange.PrintErrors()
@@ -117,14 +132,6 @@ func SetupTest(t *testing.T) (
 		QuoteTokenAddress: weth,
 	}
 
-	op, err := operator.NewOperator(
-		walletService,
-		txService,
-		tradeService,
-		ethereumService,
-		exchange,
-	)
-
 	factory1, err := testutils.NewOrderFactory(pair, maker, exchangeAddr)
 	if err != nil {
 		panic(err)
@@ -139,48 +146,26 @@ func SetupTest(t *testing.T) (
 		panic(err)
 	}
 
-	return op, exchange, exchangeAddr, wallets, zrx, weth, factory1, factory2, simulator
-}
+	op, err := operator.NewOperator(
+		walletService,
+		tradeService,
+		orderService,
+		ethService,
+		exchange,
+	)
 
-func TestNewOperator(t *testing.T) {
-	op, _, _, _, _, _, _, _, _ := SetupTest(t)
+	if err != nil {
+		panic(err)
+	}
 
-	log.Print(op.TxQueues)
+	return op, exchange, wallets, zrx, weth, factory1, factory2, simulator, tradeService, orderService
 }
 
 func TestGetShortestQueue(t *testing.T) {
-	op, exchange, _, wallets, zrx, weth, factory, _, _ := SetupTest(t)
-
-	opWallet1 := wallets[0]
-	opWallet2 := wallets[1]
-	opWallet3 := wallets[2]
-
-	tradeService := new(mocks.TradeService)
-	ethService := new(mocks.EthereumService)
-
-	txq1 := &operator.TxQueue{
-		Name:            "queue1",
-		TradeService:    tradeService,
-		EthereumService: ethService,
-		Wallet:          opWallet1,
-		Exchange:        exchange,
-	}
-
-	txq2 := &operator.TxQueue{
-		Name:            "queue2",
-		TradeService:    tradeService,
-		EthereumService: ethService,
-		Wallet:          opWallet2,
-		Exchange:        exchange,
-	}
-
-	txq3 := &operator.TxQueue{
-		Name:            "queue3",
-		TradeService:    tradeService,
-		EthereumService: ethService,
-		Wallet:          opWallet3,
-		Exchange:        exchange,
-	}
+	op, _, _, zrx, weth, factory1, _, _, _, _ := SetupTest(t)
+	txq1 := op.TxQueues[0]
+	txq2 := op.TxQueues[1]
+	txq3 := op.TxQueues[2]
 
 	//Refactor this into better helper function or something shorter
 	err := txq1.PurgePendingTrades()
@@ -198,19 +183,17 @@ func TestGetShortestQueue(t *testing.T) {
 		t.Errorf("Could not purge pending trades")
 	}
 
-	op.TxQueues = []*operator.TxQueue{txq1, txq2, txq3}
+	o1, _ := factory1.NewOrder(zrx, 1, weth, 1)
+	o2, _ := factory1.NewOrder(zrx, 1, weth, 1)
+	o3, _ := factory1.NewOrder(zrx, 1, weth, 1)
+	o4, _ := factory1.NewOrder(zrx, 1, weth, 1)
+	o5, _ := factory1.NewOrder(zrx, 1, weth, 1)
 
-	o1, _ := factory.NewOrder(zrx, 1, weth, 1)
-	o2, _ := factory.NewOrder(zrx, 1, weth, 1)
-	o3, _ := factory.NewOrder(zrx, 1, weth, 1)
-	o4, _ := factory.NewOrder(zrx, 1, weth, 1)
-	o5, _ := factory.NewOrder(zrx, 1, weth, 1)
-
-	t1, _ := factory.NewTrade(o1, 1)
-	t2, _ := factory.NewTrade(o2, 1)
-	t3, _ := factory.NewTrade(o3, 1)
-	t4, _ := factory.NewTrade(o4, 1)
-	t5, _ := factory.NewTrade(o5, 1)
+	t1, _ := factory1.NewTrade(o1, 1)
+	t2, _ := factory1.NewTrade(o2, 1)
+	t3, _ := factory1.NewTrade(o3, 1)
+	t4, _ := factory1.NewTrade(o4, 1)
+	t5, _ := factory1.NewTrade(o5, 1)
 
 	txq1.PublishPendingTrade(o1, t1)
 	txq2.PublishPendingTrade(o2, t2)
@@ -233,18 +216,15 @@ func TestGetShortestQueue(t *testing.T) {
 }
 
 func TestPublishPendingTrade(t *testing.T) {
-	op, exchange, _, wallets, zrx, weth, factory, _, _ := SetupTest(t)
+	_, exchange, wallets, zrx, weth, factory1, _, simulator, tradeService, _ := SetupTest(t)
 
-	opWallet1 := wallets[0]
-
-	tradeService := new(mocks.TradeService)
-	ethService := new(mocks.EthereumService)
+	ethService := services.NewEthereumService(simulator)
 
 	txq := &operator.TxQueue{
 		Name:            "queue1",
 		TradeService:    tradeService,
 		EthereumService: ethService,
-		Wallet:          opWallet1,
+		Wallet:          wallets[0],
 		Exchange:        exchange,
 	}
 
@@ -253,15 +233,13 @@ func TestPublishPendingTrade(t *testing.T) {
 		t.Errorf("Could not purge pending trades")
 	}
 
-	op.TxQueues = []*operator.TxQueue{txq}
+	o1, _ := factory1.NewOrder(zrx, 1, weth, 1)
+	o2, _ := factory1.NewOrder(zrx, 1, weth, 1)
+	o3, _ := factory1.NewOrder(zrx, 1, weth, 1)
 
-	o1, _ := factory.NewOrder(zrx, 1, weth, 1)
-	o2, _ := factory.NewOrder(zrx, 1, weth, 1)
-	o3, _ := factory.NewOrder(zrx, 1, weth, 1)
-
-	t1, _ := factory.NewTrade(o1, 1)
-	t2, _ := factory.NewTrade(o2, 1)
-	t3, _ := factory.NewTrade(o3, 1)
+	t1, _ := factory1.NewTrade(o1, 1)
+	t2, _ := factory1.NewTrade(o2, 1)
+	t3, _ := factory1.NewTrade(o3, 1)
 
 	txq.PublishPendingTrade(o1, t1)
 	txq.PublishPendingTrade(o2, t2)
@@ -293,18 +271,15 @@ func TestPublishPendingTrade(t *testing.T) {
 }
 
 func TestPopPendingTrade(t *testing.T) {
-	op, exchange, _, wallets, zrx, weth, factory, _, _ := SetupTest(t)
+	_, exchange, wallets, zrx, weth, factory1, _, simulator, tradeService, _ := SetupTest(t)
 
-	opWallet1 := wallets[0]
-
-	tradeService := new(mocks.TradeService)
-	ethService := new(mocks.EthereumService)
+	ethService := services.NewEthereumService(simulator)
 
 	txq := &operator.TxQueue{
 		Name:            "queue1",
 		TradeService:    tradeService,
 		EthereumService: ethService,
-		Wallet:          opWallet1,
+		Wallet:          wallets[0],
 		Exchange:        exchange,
 	}
 
@@ -313,15 +288,13 @@ func TestPopPendingTrade(t *testing.T) {
 		t.Errorf("Could not purge pending trades")
 	}
 
-	op.TxQueues = []*operator.TxQueue{txq}
+	o1, _ := factory1.NewOrder(zrx, 1, weth, 1)
+	o2, _ := factory1.NewOrder(zrx, 1, weth, 1)
+	o3, _ := factory1.NewOrder(zrx, 1, weth, 1)
 
-	o1, _ := factory.NewOrder(zrx, 1, weth, 1)
-	o2, _ := factory.NewOrder(zrx, 1, weth, 1)
-	o3, _ := factory.NewOrder(zrx, 1, weth, 1)
-
-	t1, _ := factory.NewTrade(o1, 1)
-	t2, _ := factory.NewTrade(o2, 1)
-	t3, _ := factory.NewTrade(o3, 1)
+	t1, _ := factory1.NewTrade(o1, 1)
+	t2, _ := factory1.NewTrade(o2, 1)
+	t3, _ := factory1.NewTrade(o3, 1)
 
 	txq.PublishPendingTrade(o1, t1)
 	txq.PublishPendingTrade(o2, t2)
@@ -353,15 +326,15 @@ func TestPopPendingTrade(t *testing.T) {
 }
 
 func TestExecuteTrade(t *testing.T) {
-	_, _, _, wallets, zrx, weth, factory, _, _ := SetupTest(t)
+	_, _, wallets, zrx, weth, factory1, _, simulator, _, _ := SetupTest(t)
 
-	o1, _ := factory.NewOrder(zrx, 1, weth, 1)
-	t1, _ := factory.NewTrade(o1, 1)
+	o1, _ := factory1.NewOrder(zrx, 1, weth, 1)
+	t1, _ := factory1.NewTrade(o1, 1)
 
-	mockTx := &ethTypes.Transaction{}
+	mockTx := &eth.Transaction{}
 	tradeService := new(mocks.TradeService)
-	ethService := new(mocks.EthereumService)
 	exchange := new(mocks.Exchange)
+	ethService := services.NewEthereumService(simulator)
 	tradeService.On("UpdateTradeTx", t1, mockTx).Return(nil)
 	exchange.On("Trade", o1, t1).Return(mockTx, nil)
 
@@ -393,25 +366,23 @@ func TestExecuteTrade(t *testing.T) {
 }
 
 func TestQueueTrade(t *testing.T) {
-	_, _, _, wallets, zrx, weth, factory, _, _ := SetupTest(t)
+	_, _, wallets, zrx, weth, factory1, _, simulator, _, _ := SetupTest(t)
 
-	o1, _ := factory.NewOrder(zrx, 1, weth, 1)
-	t1, _ := factory.NewTrade(o1, 1)
+	o1, _ := factory1.NewOrder(zrx, 1, weth, 1)
+	t1, _ := factory1.NewTrade(o1, 1)
 
-	mockTx := &ethTypes.Transaction{}
+	mockTx := &eth.Transaction{}
 	tradeService := new(mocks.TradeService)
-	ethService := new(mocks.EthereumService)
 	exchange := new(mocks.Exchange)
 	tradeService.On("UpdateTradeTx", t1, mockTx).Return(nil)
-	exchange.On("Trade", o1, t1).Return(mockTx, nil)
-
-	opWallet1 := wallets[0]
+	exchange.On("Trade", o1, t1, mock.Anything).Return(mockTx, nil)
+	ethService := services.NewEthereumService(simulator)
 
 	txq := &operator.TxQueue{
 		Name:            "queue1",
 		TradeService:    tradeService,
 		EthereumService: ethService,
-		Wallet:          opWallet1,
+		Wallet:          wallets[0],
 		Exchange:        exchange,
 	}
 
@@ -426,11 +397,11 @@ func TestQueueTrade(t *testing.T) {
 	}
 
 	tradeService.AssertCalled(t, "UpdateTradeTx", t1, mockTx)
-	exchange.AssertCalled(t, "Trade", o1, t1)
+	exchange.AssertCalled(t, "Trade", o1, t1, mock.Anything)
 }
 
-func TestHandleEvents(t *testing.T) {
-	_, exchange, _, wallets, zrx, weth, factory1, factory2, simulator := SetupTest(t)
+func TestHandleEvents1(t *testing.T) {
+	_, exchange, wallets, zrx, weth, factory1, factory2, simulator, tradeService, orderService := SetupTest(t)
 
 	opMessages := make(chan *types.OperatorMessage)
 	rabbitmq.SubscribeOperator(func(msg *types.OperatorMessage) error {
@@ -441,15 +412,13 @@ func TestHandleEvents(t *testing.T) {
 	o1, _ := factory1.NewOrder(zrx, 1, weth, 1)
 	t1, _ := factory2.NewTrade(o1, 1)
 
-	admin := wallets[0]
-
-	tradeService := new(mocks.TradeService)
-	orderService := new(mocks.OrderService)
-	ethService := new(mocks.EthereumService)
-	tradeService.On("UpdateTradeTx", t1, mock.Anything).Return(nil)
+	ethService := services.NewEthereumService(simulator)
+	tradeService.On("UpdateTradeTx", mock.Anything, mock.Anything).Return(nil).Once().Run(func(args mock.Arguments) {
+		tx := args.Get(1).(*eth.Transaction)
+		t1.Tx = tx
+	})
 	orderService.On("GetByHash", t1.OrderHash).Return(o1, nil)
 	tradeService.On("GetByHash", t1.Hash).Return(t1, nil)
-	ethService.On("WaitMined", mock.Anything).Return(nil, nil)
 
 	txq := &operator.TxQueue{
 		Name:            "queue1",
@@ -465,10 +434,6 @@ func TestHandleEvents(t *testing.T) {
 		t.Errorf("Could not purge pending trades")
 	}
 
-	time.Sleep(500 * time.Millisecond)
-	go txq.HandleEvents()
-
-	exchange.SetTxSender(admin)
 	err = txq.QueueTrade(o1, t1)
 	if err != nil {
 		t.Errorf("Could not execute trade: %v", err)
@@ -500,33 +465,464 @@ func TestHandleEvents(t *testing.T) {
 	wg.Wait()
 }
 
-// func TestQueueTrade(t *testing.T) {
-// 	op := SetupTest(t)
+func TestHandleEvents2(t *testing.T) {
+	_, exchange, wallets, zrx, weth, factory1, factory2, simulator, tradeService, orderService := SetupTest(t)
 
-// 	order := &types.Order{
-// 		ExchangeAddress: exchangeAddr,
-// 		BuyAmount:       buyAmount,
-// 		SellAmount:      sellAmount,
-// 		Expires:         expires,
-// 		Nonce:           big.NewInt(0),
-// 		MakeFee:         big.NewInt(0),
-// 		TakeFee:         big.NewInt(0),
-// 		BuyToken:        buyTokenAddr,
-// 		SellToken:       sellTokenAddr,
-// 		UserAddress:     maker.Address,
-// 	}
+	opMessages := make(chan *types.OperatorMessage)
+	rabbitmq.SubscribeOperator(func(msg *types.OperatorMessage) error {
+		opMessages <- msg
+		return nil
+	})
 
-// 	order.Sign(maker)
+	o1, _ := factory1.NewOrder(zrx, 1, weth, 1)
+	t1, _ := factory2.NewTrade(o1, 1)
+	o2, _ := factory1.NewOrder(zrx, 1, weth, 1)
+	t2, _ := factory2.NewTrade(o2, 1)
 
-// 	trade := &types.Trade{
-// 		OrderHash:  order.Hash,
-// 		Amount:     amount,
-// 		Taker:      taker.Address,
-// 		TradeNonce: big.NewInt(0),
-// 	}
+	ethService := services.NewEthereumService(simulator)
 
-// 	trade.Sign(taker)
-// }
+	tradeService.On("UpdateTradeTx", mock.Anything, mock.Anything).Return(nil).Once().Run(func(args mock.Arguments) {
+		tx := args.Get(1).(*eth.Transaction)
+		t1.Tx = tx
+	})
+
+	tradeService.On("UpdateTradeTx", mock.Anything, mock.Anything).Return(nil).Once().Run(func(args mock.Arguments) {
+		tx := args.Get(1).(*eth.Transaction)
+		t2.Tx = tx
+	})
+
+	orderService.On("GetByHash", t1.OrderHash).Return(o1, nil)
+	orderService.On("GetByHash", t2.OrderHash).Return(o2, nil)
+	tradeService.On("GetByHash", t1.Hash).Return(t1, nil)
+	tradeService.On("GetByHash", t2.Hash).Return(t2, nil)
+
+	txq := &operator.TxQueue{
+		Name:            "queue1",
+		TradeService:    tradeService,
+		OrderService:    orderService,
+		EthereumService: ethService,
+		Wallet:          wallets[0],
+		Exchange:        exchange,
+	}
+
+	err := txq.PurgePendingTrades()
+	if err != nil {
+		t.Errorf("Could not purge pending trades")
+	}
+
+	err = txq.QueueTrade(o1, t1)
+	if err != nil {
+		t.Errorf("Could not execute trade: %v", err)
+	}
+
+	err = txq.QueueTrade(o2, t2)
+	if err != nil {
+		t.Errorf("Could not execute trade: %v", err)
+	}
+
+	simulator.Commit()
+
+	wg := sync.WaitGroup{}
+	wg.Add(4)
+
+	go func() {
+		for {
+			msg := <-opMessages
+			switch msg.MessageType {
+			case "TRADE_SENT_MESSAGE":
+				wg.Done()
+			case "TRADE_SUCCESS_MESSAGE":
+				wg.Done()
+			}
+		}
+	}()
+
+	wg.Wait()
+}
+
+func TestHandleEvents3(t *testing.T) {
+	_, exchange, wallets, zrx, weth, factory1, factory2, simulator, tradeService, orderService := SetupTest(t)
+
+	opMessages := make(chan *types.OperatorMessage)
+	rabbitmq.SubscribeOperator(func(msg *types.OperatorMessage) error {
+		opMessages <- msg
+		return nil
+	})
+
+	o1, _ := factory1.NewOrder(zrx, 1, weth, 1)
+	t1, _ := factory2.NewTrade(o1, 1)
+	o2, _ := factory1.NewOrder(zrx, 2, weth, 2)
+	t2, _ := factory2.NewTrade(o2, 2)
+	o3, _ := factory1.NewOrder(zrx, 3, weth, 3)
+	t3, _ := factory2.NewTrade(o3, 3)
+	o4, _ := factory1.NewOrder(zrx, 4, weth, 4)
+	t4, _ := factory2.NewTrade(o4, 4)
+	o5, _ := factory1.NewOrder(zrx, 5, weth, 5)
+	t5, _ := factory2.NewTrade(o5, 5)
+
+	ethService := services.NewEthereumService(simulator)
+
+	tradeService.On("UpdateTradeTx", mock.Anything, mock.Anything).Return(nil).Once().Run(func(args mock.Arguments) {
+		tx := args.Get(1).(*eth.Transaction)
+		t1.Tx = tx
+	})
+
+	tradeService.On("UpdateTradeTx", mock.Anything, mock.Anything).Return(nil).Once().Run(func(args mock.Arguments) {
+		tx := args.Get(1).(*eth.Transaction)
+		t2.Tx = tx
+	})
+
+	tradeService.On("UpdateTradeTx", mock.Anything, mock.Anything).Return(nil).Once().Run(func(args mock.Arguments) {
+		tx := args.Get(1).(*eth.Transaction)
+		t3.Tx = tx
+	})
+
+	tradeService.On("UpdateTradeTx", mock.Anything, mock.Anything).Return(nil).Once().Run(func(args mock.Arguments) {
+		tx := args.Get(1).(*eth.Transaction)
+		t4.Tx = tx
+	})
+
+	tradeService.On("UpdateTradeTx", mock.Anything, mock.Anything).Return(nil).Once().Run(func(args mock.Arguments) {
+		tx := args.Get(1).(*eth.Transaction)
+		t5.Tx = tx
+	})
+
+	orderService.On("GetByHash", t1.OrderHash).Return(o1, nil)
+	orderService.On("GetByHash", t2.OrderHash).Return(o2, nil)
+	orderService.On("GetByHash", t3.OrderHash).Return(o3, nil)
+	orderService.On("GetByHash", t4.OrderHash).Return(o4, nil)
+	orderService.On("GetByHash", t5.OrderHash).Return(o5, nil)
+	tradeService.On("GetByHash", t1.Hash).Return(t1, nil)
+	tradeService.On("GetByHash", t2.Hash).Return(t2, nil)
+	tradeService.On("GetByHash", t3.Hash).Return(t3, nil)
+	tradeService.On("GetByHash", t4.Hash).Return(t4, nil)
+	tradeService.On("GetByHash", t5.Hash).Return(t5, nil)
+
+	txq := &operator.TxQueue{
+		Name:            "queue1",
+		TradeService:    tradeService,
+		OrderService:    orderService,
+		EthereumService: ethService,
+		Wallet:          wallets[0],
+		Exchange:        exchange,
+	}
+
+	err := txq.PurgePendingTrades()
+	if err != nil {
+		t.Errorf("Could not purge pending trades")
+	}
+
+	txq.QueueTrade(o1, t1)
+	time.Sleep(10 * time.Millisecond)
+	txq.QueueTrade(o2, t2)
+	time.Sleep(10 * time.Millisecond)
+	txq.QueueTrade(o3, t3)
+	time.Sleep(10 * time.Millisecond)
+	txq.QueueTrade(o4, t4)
+	time.Sleep(10 * time.Millisecond)
+	txq.QueueTrade(o5, t5)
+
+	simulator.Commit()
+
+	wg := sync.WaitGroup{}
+	wg.Add(10)
+
+	go func() {
+		for {
+			msg := <-opMessages
+			switch msg.MessageType {
+			case "TRADE_SENT_MESSAGE":
+				simulator.Commit()
+				wg.Done()
+			case "TRADE_SUCCESS_MESSAGE":
+				wg.Done()
+			case "TRADE_ERROR_MESSAGE":
+				t.Errorf("Received trade error message")
+			}
+		}
+	}()
+
+	wg.Wait()
+}
+
+//This test verifies whether a transaction queue continues to process transactions after a failing
+//transaction. o3/t3 payload is signed with a wrong private key and will be rejected by the smart contracts
+//The rest of the transactions are valid and should be sent successfully.
+func TestHandleEvents4(t *testing.T) {
+	_, exchange, wallets, zrx, weth, factory1, factory2, simulator, tradeService, orderService := SetupTest(t)
+
+	opMessages := make(chan *types.OperatorMessage)
+	rabbitmq.SubscribeOperator(func(msg *types.OperatorMessage) error {
+		opMessages <- msg
+		return nil
+	})
+
+	o1, _ := factory1.NewOrder(zrx, 1, weth, 1)
+	t1, _ := factory2.NewTrade(o1, 1)
+	o2, _ := factory1.NewOrder(zrx, 2, weth, 2)
+	t2, _ := factory2.NewTrade(o2, 2)
+	o3, _ := factory1.NewOrder(zrx, 3, weth, 3)
+	t3, _ := factory2.NewTrade(o3, 3)
+	o4, _ := factory1.NewOrder(zrx, 4, weth, 4)
+	t4, _ := factory2.NewTrade(o4, 4)
+	o5, _ := factory1.NewOrder(zrx, 5, weth, 5)
+	t5, _ := factory2.NewTrade(o5, 5)
+
+	admin := wallets[0]
+
+	// we simulate a failing order with a wrong signature
+	t3.Sign(admin)
+
+	ethService := services.NewEthereumService(simulator)
+
+	tradeService.On("UpdateTradeTx", mock.Anything, mock.Anything).Return(nil).Once().Run(func(args mock.Arguments) {
+		tx := args.Get(1).(*eth.Transaction)
+		t1.Tx = tx
+	})
+
+	tradeService.On("UpdateTradeTx", mock.Anything, mock.Anything).Return(nil).Once().Run(func(args mock.Arguments) {
+		tx := args.Get(1).(*eth.Transaction)
+		t2.Tx = tx
+	})
+
+	tradeService.On("UpdateTradeTx", mock.Anything, mock.Anything).Return(nil).Once().Run(func(args mock.Arguments) {
+		tx := args.Get(1).(*eth.Transaction)
+		t3.Tx = tx
+	})
+
+	tradeService.On("UpdateTradeTx", mock.Anything, mock.Anything).Return(nil).Once().Run(func(args mock.Arguments) {
+		tx := args.Get(1).(*eth.Transaction)
+		t4.Tx = tx
+	})
+
+	tradeService.On("UpdateTradeTx", mock.Anything, mock.Anything).Return(nil).Once().Run(func(args mock.Arguments) {
+		tx := args.Get(1).(*eth.Transaction)
+		t5.Tx = tx
+	})
+
+	orderService.On("GetByHash", t1.OrderHash).Return(o1, nil)
+	orderService.On("GetByHash", t2.OrderHash).Return(o2, nil)
+	orderService.On("GetByHash", t3.OrderHash).Return(o3, nil)
+	orderService.On("GetByHash", t4.OrderHash).Return(o4, nil)
+	orderService.On("GetByHash", t5.OrderHash).Return(o5, nil)
+	tradeService.On("GetByHash", t1.Hash).Return(t1, nil)
+	tradeService.On("GetByHash", t2.Hash).Return(t2, nil)
+	tradeService.On("GetByHash", t3.Hash).Return(t3, nil)
+	tradeService.On("GetByHash", t4.Hash).Return(t4, nil)
+	tradeService.On("GetByHash", t5.Hash).Return(t5, nil)
+
+	txq := &operator.TxQueue{
+		Name:            "queue1",
+		TradeService:    tradeService,
+		OrderService:    orderService,
+		EthereumService: ethService,
+		Wallet:          wallets[0],
+		Exchange:        exchange,
+	}
+
+	err := txq.PurgePendingTrades()
+	if err != nil {
+		t.Errorf("Could not purge pending trades")
+	}
+
+	time.Sleep(2 * time.Millisecond)
+	txq.QueueTrade(o1, t1)
+	time.Sleep(2 * time.Millisecond)
+	txq.QueueTrade(o2, t2)
+	time.Sleep(2 * time.Millisecond)
+	txq.QueueTrade(o3, t3)
+	time.Sleep(2 * time.Millisecond)
+	txq.QueueTrade(o4, t4)
+	time.Sleep(2 * time.Millisecond)
+	txq.QueueTrade(o5, t5)
+
+	wg := sync.WaitGroup{}
+	wg.Add(10)
+
+	go func() {
+		for {
+			msg := <-opMessages
+			switch msg.MessageType {
+			case "TRADE_SENT_MESSAGE":
+				fmt.Println("TRADE_SENT")
+				// we simulate that transactions take 100 milliseconds
+				go func() {
+					time.Sleep(100 * time.Millisecond)
+					simulator.Commit()
+				}()
+				wg.Done()
+			case "TRADE_SUCCESS_MESSAGE":
+				fmt.Println("TRADE_SUCCESS")
+				wg.Done()
+			case "TRADE_ERROR_MESSAGE":
+				fmt.Println("TRADE_ERROR")
+				assert.Equal(t, msg.ErrID, 2)
+				assert.Equal(t, msg.Trade.Hash, t3.Hash)
+				wg.Done()
+			}
+		}
+	}()
+
+	wg.Wait()
+}
+
+func TestHandleEvents5(t *testing.T) {
+	op, _, wallets, zrx, weth, factory1, factory2, simulator, tradeService, orderService := SetupTest(t)
+
+	opMessages := make(chan *types.OperatorMessage)
+	rabbitmq.SubscribeOperator(func(msg *types.OperatorMessage) error {
+		opMessages <- msg
+		return nil
+	})
+
+	o1, _ := factory1.NewOrder(zrx, 1, weth, 1)
+	t1, _ := factory2.NewTrade(o1, 1)
+
+	//we sign the trade with a random private key
+	admin := wallets[0]
+	t1.Sign(admin)
+
+	tradeService.On("UpdateTradeTx", mock.Anything, mock.Anything).Return(nil).Once().Run(func(args mock.Arguments) {
+		tx := args.Get(1).(*eth.Transaction)
+		t1.Tx = tx
+	})
+	orderService.On("GetByHash", t1.OrderHash).Return(o1, nil)
+	tradeService.On("GetByHash", t1.Hash).Return(t1, nil)
+
+	err := op.PurgeQueues()
+	if err != nil {
+		t.Errorf("Could not purge pending trades")
+	}
+
+	txq := op.TxQueues[0]
+	err = txq.QueueTrade(o1, t1)
+	if err != nil {
+		t.Errorf("Could not execute trade: %v", err)
+	}
+
+	simulator.Commit()
+	wg := sync.WaitGroup{}
+	wg.Add(2)
+
+	go func() {
+		for {
+			msg := <-opMessages
+			switch msg.MessageType {
+			case "TRADE_SENT_MESSAGE":
+				assert.Equal(t, t1.Hash, msg.Trade.Hash)
+				wg.Done()
+			case "TRADE_SUCCESS_MESSAGE":
+				t.Errorf("Received trade success message")
+			case "TRADE_ERROR_MESSAGE":
+				assert.Equal(t, 2, msg.ErrID)
+				assert.Equal(t, t1.Hash, msg.Trade.Hash)
+				wg.Done()
+			}
+		}
+	}()
+
+	wg.Wait()
+}
+
+func TestOperator1(t *testing.T) {
+	op, _, _, zrx, weth, factory1, factory2, simulator, tradeService, orderService := SetupTest(t)
+
+	opMessages := make(chan *types.OperatorMessage)
+	rabbitmq.SubscribeOperator(func(msg *types.OperatorMessage) error {
+		opMessages <- msg
+		return nil
+	})
+
+	o1, _ := factory1.NewOrder(zrx, 1, weth, 1)
+	t1, _ := factory2.NewTrade(o1, 1)
+	o2, _ := factory1.NewOrder(zrx, 2, weth, 2)
+	t2, _ := factory2.NewTrade(o2, 2)
+	o3, _ := factory1.NewOrder(zrx, 3, weth, 3)
+	t3, _ := factory2.NewTrade(o3, 3)
+	o4, _ := factory1.NewOrder(zrx, 4, weth, 4)
+	t4, _ := factory2.NewTrade(o4, 4)
+	o5, _ := factory1.NewOrder(zrx, 5, weth, 5)
+	t5, _ := factory2.NewTrade(o5, 5)
+
+	tradeService.On("UpdateTradeTx", mock.Anything, mock.Anything).Return(nil).Once().Run(func(args mock.Arguments) {
+		tx := args.Get(1).(*eth.Transaction)
+		t1.Tx = tx
+	})
+
+	tradeService.On("UpdateTradeTx", mock.Anything, mock.Anything).Return(nil).Once().Run(func(args mock.Arguments) {
+		tx := args.Get(1).(*eth.Transaction)
+		t2.Tx = tx
+	})
+
+	tradeService.On("UpdateTradeTx", mock.Anything, mock.Anything).Return(nil).Once().Run(func(args mock.Arguments) {
+		tx := args.Get(1).(*eth.Transaction)
+		t3.Tx = tx
+	})
+
+	tradeService.On("UpdateTradeTx", mock.Anything, mock.Anything).Return(nil).Once().Run(func(args mock.Arguments) {
+		tx := args.Get(1).(*eth.Transaction)
+		t4.Tx = tx
+	})
+
+	tradeService.On("UpdateTradeTx", mock.Anything, mock.Anything).Return(nil).Once().Run(func(args mock.Arguments) {
+		tx := args.Get(1).(*eth.Transaction)
+		t5.Tx = tx
+	})
+
+	orderService.On("GetByHash", t1.OrderHash).Return(o1, nil)
+	orderService.On("GetByHash", t2.OrderHash).Return(o2, nil)
+	orderService.On("GetByHash", t3.OrderHash).Return(o3, nil)
+	orderService.On("GetByHash", t4.OrderHash).Return(o4, nil)
+	orderService.On("GetByHash", t5.OrderHash).Return(o5, nil)
+	tradeService.On("GetByHash", t1.Hash).Return(t1, nil)
+	tradeService.On("GetByHash", t2.Hash).Return(t2, nil)
+	tradeService.On("GetByHash", t3.Hash).Return(t3, nil)
+	tradeService.On("GetByHash", t4.Hash).Return(t4, nil)
+	tradeService.On("GetByHash", t5.Hash).Return(t5, nil)
+
+	err := op.PurgeQueues()
+	if err != nil {
+		t.Errorf("Could not purge previous trades")
+	}
+
+	time.Sleep(2 * time.Millisecond)
+	op.QueueTrade(o1, t1)
+	time.Sleep(2 * time.Millisecond)
+	op.QueueTrade(o2, t2)
+	time.Sleep(2 * time.Millisecond)
+	op.QueueTrade(o3, t3)
+	time.Sleep(2 * time.Millisecond)
+	op.QueueTrade(o4, t4)
+	time.Sleep(2 * time.Millisecond)
+	op.QueueTrade(o5, t5)
+
+	wg := sync.WaitGroup{}
+	wg.Add(10)
+
+	go func() {
+		for {
+			msg := <-opMessages
+			switch msg.MessageType {
+			case "TRADE_SENT_MESSAGE":
+				// we simulate that transactions take 100 milliseconds
+				go func() {
+					time.Sleep(20 * time.Millisecond)
+					simulator.Commit()
+				}()
+				log.Print(msg.MessageType)
+				wg.Done()
+			case "TRADE_SUCCESS_MESSAGE":
+				log.Print(msg.MessageType)
+				wg.Done()
+			case "TRADE_ERROR_MESSAGE":
+				log.Print(msg.MessageType)
+				t.Errorf("Received trade error message")
+			}
+		}
+	}()
+
+	wg.Wait()
+}
 
 // func TestNewOperator2(t *testing.T) {
 
