@@ -96,34 +96,6 @@ func (_m *WalletDao) GetByID(id bson.ObjectId) (*types.Wallet, error) {
 	return r0, r1
 }
 
-// GetCollectionName provides a mock function with given fields:
-func (_m *WalletDao) GetCollectionName() string {
-	ret := _m.Called()
-
-	var r0 string
-	if rf, ok := ret.Get(0).(func() string); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Get(0).(string)
-	}
-
-	return r0
-}
-
-// GetDBName provides a mock function with given fields:
-func (_m *WalletDao) GetDBName() string {
-	ret := _m.Called()
-
-	var r0 string
-	if rf, ok := ret.Get(0).(func() string); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Get(0).(string)
-	}
-
-	return r0
-}
-
 // GetDefaultAdminWallet provides a mock function with given fields:
 func (_m *WalletDao) GetDefaultAdminWallet() (*types.Wallet, error) {
 	ret := _m.Called()
@@ -134,6 +106,29 @@ func (_m *WalletDao) GetDefaultAdminWallet() (*types.Wallet, error) {
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*types.Wallet)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetOperatorWallets provides a mock function with given fields:
+func (_m *WalletDao) GetOperatorWallets() ([]*types.Wallet, error) {
+	ret := _m.Called()
+
+	var r0 []*types.Wallet
+	if rf, ok := ret.Get(0).(func() []*types.Wallet); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*types.Wallet)
 		}
 	}
 

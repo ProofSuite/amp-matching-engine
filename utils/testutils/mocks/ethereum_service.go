@@ -2,7 +2,6 @@
 
 package mocks
 
-import big "math/big"
 import common "github.com/ethereum/go-ethereum/common"
 import mock "github.com/stretchr/testify/mock"
 
@@ -13,16 +12,39 @@ type EthereumService struct {
 	mock.Mock
 }
 
+// // GetPendingBalanceAt provides a mock function with given fields: a
+// func (_m *EthereumService) GetPendingBalanceAt(a common.Address) (*big.Int, error) {
+// 	ret := _m.Called(a)
+
+// 	var r0 *big.Int
+// 	if rf, ok := ret.Get(0).(func(common.Address) *big.Int); ok {
+// 		r0 = rf(a)
+// 	} else {
+// 		if ret.Get(0) != nil {
+// 			r0 = ret.Get(0).(*big.Int)
+// 		}
+// 	}
+
+// 	var r1 error
+// 	if rf, ok := ret.Get(1).(func(common.Address) error); ok {
+// 		r1 = rf(a)
+// 	} else {
+// 		r1 = ret.Error(1)
+// 	}
+
+// 	return r0, r1
+// }
+
 // GetPendingBalanceAt provides a mock function with given fields: a
-func (_m *EthereumService) GetPendingBalanceAt(a common.Address) (*big.Int, error) {
+func (_m *EthereumService) GetPendingNonceAt(a common.Address) (uint64, error) {
 	ret := _m.Called(a)
 
-	var r0 *big.Int
-	if rf, ok := ret.Get(0).(func(common.Address) *big.Int); ok {
+	var r0 uint64
+	if rf, ok := ret.Get(0).(func(common.Address) uint64); ok {
 		r0 = rf(a)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*big.Int)
+			r0 = ret.Get(0).(uint64)
 		}
 	}
 
