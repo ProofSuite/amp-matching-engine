@@ -18,20 +18,6 @@ type TradeDao struct {
 	dbName         string
 }
 
-type TradeDaoInterface interface {
-	Create(o ...*types.Trade) error
-	Update(t *types.Trade) error
-	UpdateByHash(hash common.Hash, t *types.Trade) error
-	GetAll() ([]types.Trade, error)
-	Aggregate(q []bson.M) ([]*types.Tick, error)
-	GetByPairName(name string) ([]*types.Trade, error)
-	GetByHash(hash common.Hash) (*types.Trade, error)
-	GetByOrderHash(hash common.Hash) ([]*types.Trade, error)
-	GetByPairAddress(baseToken, quoteToken common.Address) ([]*types.Trade, error)
-	GetByUserAddress(addr common.Address) ([]*types.Trade, error)
-	Drop()
-}
-
 // NewTradeDao returns a new instance of TradeDao.
 func NewTradeDao() *TradeDao {
 	dbName := app.Config.DBName

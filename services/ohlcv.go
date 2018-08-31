@@ -5,7 +5,7 @@ import (
 	"math"
 	"time"
 
-	"github.com/Proofsuite/amp-matching-engine/daos"
+	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/Proofsuite/amp-matching-engine/ws"
@@ -16,16 +16,10 @@ import (
 )
 
 type OHLCVService struct {
-	tradeDao daos.TradeDaoInterface
+	tradeDao interfaces.TradeDao
 }
 
-type OHLCVServiceInterface interface {
-	Unsubscribe(conn *websocket.Conn, bt, qt common.Address, p *types.Params)
-	Subscribe(conn *websocket.Conn, bt, qt common.Address, p *types.Params)
-	GetOHLCV(p []types.PairSubDoc, duration int64, unit string, timeInterval ...int64) ([]*types.Tick, error)
-}
-
-func NewOHLCVService(TradeDao daos.TradeDaoInterface) *OHLCVService {
+func NewOHLCVService(TradeDao interfaces.TradeDao) *OHLCVService {
 	return &OHLCVService{TradeDao}
 }
 

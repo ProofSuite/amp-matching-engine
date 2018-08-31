@@ -5,7 +5,7 @@ import (
 	"log"
 
 	"github.com/Proofsuite/amp-matching-engine/errors"
-	"github.com/Proofsuite/amp-matching-engine/services"
+	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/Proofsuite/amp-matching-engine/ws"
 	"github.com/ethereum/go-ethereum/common"
@@ -14,13 +14,13 @@ import (
 )
 
 type OrderBookEndpoint struct {
-	orderBookService services.OrderBookServiceInterface
+	orderBookService interfaces.OrderBookService
 }
 
 // ServePairResource sets up the routing of pair endpoints and the corresponding handlers.
 func ServeOrderBookResource(
 	rg *routing.RouteGroup,
-	orderBookService services.OrderBookServiceInterface,
+	orderBookService interfaces.OrderBookService,
 ) {
 	e := &OrderBookEndpoint{orderBookService}
 

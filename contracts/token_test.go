@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/Proofsuite/amp-matching-engine/app"
-	"github.com/Proofsuite/amp-matching-engine/contracts/interfaces"
+	"github.com/Proofsuite/amp-matching-engine/contracts/contractsinterfaces"
 	"github.com/Proofsuite/amp-matching-engine/daos"
 	"github.com/Proofsuite/amp-matching-engine/services"
 	"github.com/Proofsuite/amp-matching-engine/types"
@@ -17,7 +17,7 @@ import (
 )
 
 func SetupTokenTest() (*testutils.Deployer, *types.Wallet) {
-	err := app.LoadConfig("../config")
+	err := app.LoadConfig("../config", "")
 	if err != nil {
 		panic(err)
 	}
@@ -162,7 +162,7 @@ func TestTransferEvent(t *testing.T) {
 	owner := wallet.Address
 	receiver := testutils.GetTestAddress2()
 
-	logs := []*interfaces.TokenTransfer{}
+	logs := []*contractsinterfaces.TokenTransfer{}
 	amount := big.NewInt(1e18)
 	done := make(chan bool)
 

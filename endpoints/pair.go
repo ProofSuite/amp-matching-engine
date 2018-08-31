@@ -4,19 +4,19 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/Proofsuite/amp-matching-engine/errors"
-	"github.com/Proofsuite/amp-matching-engine/services"
+	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/go-ozzo/ozzo-routing"
 )
 
 type pairEndpoint struct {
-	pairService services.PairServiceInterface
+	pairService interfaces.PairService
 }
 
 // ServePairResource sets up the routing of pair endpoints and the corresponding handlers.
 func ServePairResource(
 	rg *routing.RouteGroup,
-	p services.PairServiceInterface,
+	p interfaces.PairService,
 ) {
 	r := &pairEndpoint{p}
 	rg.Get("/pairs/<baseToken>/<quoteToken>", r.get)

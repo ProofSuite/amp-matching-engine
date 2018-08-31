@@ -6,8 +6,8 @@ import (
 	"math/big"
 
 	"github.com/Proofsuite/amp-matching-engine/contracts"
-	"github.com/Proofsuite/amp-matching-engine/contracts/interfaces"
-	"github.com/Proofsuite/amp-matching-engine/services"
+	"github.com/Proofsuite/amp-matching-engine/contracts/contractsinterfaces"
+	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind/backends"
 	"github.com/ethereum/go-ethereum/common"
@@ -18,12 +18,12 @@ import (
 )
 
 type Deployer struct {
-	WalletService services.WalletServiceInterface
-	TxService     services.TxServiceInterface
+	WalletService interfaces.WalletService
+	TxService     interfaces.TxService
 	Backend       bind.ContractBackend
 }
 
-func NewDefaultDeployer(w services.WalletServiceInterface, tx services.TxServiceInterface) (*Deployer, error) {
+func NewDefaultDeployer(w interfaces.WalletService, tx interfaces.TxService) (*Deployer, error) {
 	conn, err := rpc.DialHTTP("http://127.0.0.1:8545")
 	if err != nil {
 		return nil, err
@@ -38,7 +38,7 @@ func NewDefaultDeployer(w services.WalletServiceInterface, tx services.TxService
 	}, nil
 }
 
-func NewWebSocketDeployer(w services.WalletServiceInterface, tx services.TxServiceInterface) (*Deployer, error) {
+func NewWebSocketDeployer(w interfaces.WalletService, tx interfaces.TxService) (*Deployer, error) {
 	conn, err := rpc.DialWebsocket(context.Background(), "ws://127.0.0.1:8546", "")
 	if err != nil {
 		return nil, err
@@ -57,8 +57,8 @@ func NewWebSocketDeployer(w services.WalletServiceInterface, tx services.TxServi
 // This simulator functions different from a standard deployer. It does not call a blockchain
 // and uses a fake backend.
 func NewSimulator(
-	w services.WalletServiceInterface,
-	tx services.TxServiceInterface,
+	w interfaces.WalletService,
+	tx interfaces.TxService,
 	accs []common.Address,
 ) (*Deployer, error) {
 	weiBalance := &big.Int{}
@@ -86,10 +86,10 @@ func (d *Deployer) DeployToken(receiver common.Address, amount *big.Int) (*contr
 	// callOptions := d.TxService.GetTxCallOptions()
 	sendOptions, _ := d.TxService.GetTxSendOptions()
 
-	address, tx, tokenInterface, err := interfaces.DeployToken(sendOptions, d.Backend, receiver, amount)
+	address, tx, tokenInterface, err := contractsinterfaces.DeployToken(sendOptions, d.Backend, receiver, amount)
 	if err != nil && err.Error() == "replacement transaction underpriced" {
 		sendOptions.Nonce, _ = d.GetNonce()
-		address, tx, tokenInterface, err = interfaces.DeployToken(sendOptions, d.Backend, receiver, amount)
+		address, tx, tokenInterface, err = contractsinterfaces.DeployToken(sendOptions, d.Backend, receiver, amount)
 	} else if err != nil {
 		return nil, common.Address{}, nil, err
 	}
@@ -102,7 +102,7 @@ func (d *Deployer) DeployToken(receiver common.Address, amount *big.Int) (*contr
 }
 
 func (d *Deployer) NewToken(addr common.Address) (*contracts.Token, error) {
-	tokenInterface, err := interfaces.NewToken(addr, d.Backend)
+	tokenInterface, err := contractsinterfaces.NewToken(addr, d.Backend)
 	if err != nil {
 		return nil, err
 	}
@@ -118,10 +118,10 @@ func (d *Deployer) NewToken(addr common.Address) (*contracts.Token, error) {
 func (d *Deployer) DeployExchange(wethToken common.Address, feeAccount common.Address) (*contracts.Exchange, common.Address, *ethTypes.Transaction, error) {
 	sendOptions, _ := d.TxService.GetTxSendOptions()
 
-	address, tx, exchangeInterface, err := interfaces.DeployExchange(sendOptions, d.Backend, wethToken, feeAccount)
+	address, tx, exchangeInterface, err := contractsinterfaces.DeployExchange(sendOptions, d.Backend, wethToken, feeAccount)
 	if err != nil && err.Error() == "replacement transaction underpriced" {
 		sendOptions.Nonce, _ = d.GetNonce()
-		address, tx, exchangeInterface, err = interfaces.DeployExchange(sendOptions, d.Backend, wethToken, feeAccount)
+		address, tx, exchangeInterface, err = contractsinterfaces.DeployExchange(sendOptions, d.Backend, wethToken, feeAccount)
 		if err != nil {
 			return nil, common.Address{}, nil, err
 		}
@@ -138,7 +138,7 @@ func (d *Deployer) DeployExchange(wethToken common.Address, feeAccount common.Ad
 
 // NewExchange
 func (d *Deployer) NewExchange(addr common.Address) (*contracts.Exchange, error) {
-	exchangeInterface, err := interfaces.NewExchange(addr, d.Backend)
+	exchangeInterface, err := contractsinterfaces.NewExchange(addr, d.Backend)
 	if err != nil {
 		return nil, err
 	}

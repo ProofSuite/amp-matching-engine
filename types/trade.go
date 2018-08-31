@@ -33,11 +33,10 @@ type Trade struct {
 	Tx         *eth.Transaction `json:"tx" bson:"tx"`
 	CreatedAt  time.Time        `json:"createdAt" bson:"createdAt" redis:"createdAt"`
 	UpdatedAt  time.Time        `json:"updatedAt" bson:"updatedAt" redis:"updatedAt"`
-
-	Price      *big.Int `json:"price" bson:"price"`
-	PricePoint *big.Int `json:"pricepoint" bson:"pricepoint"`
-	Side       string   `json:"side" bson:"side"`
-	Amount     *big.Int `json:"amount" bson:"amount"`
+	Price      *big.Int         `json:"price" bson:"price"`
+	PricePoint *big.Int         `json:"pricepoint" bson:"pricepoint"`
+	Side       string           `json:"side" bson:"side"`
+	Amount     *big.Int         `json:"amount" bson:"amount"`
 }
 
 type TradeRecord struct {

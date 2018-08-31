@@ -44,9 +44,27 @@ func (_m *TxService) GetTxCallOptions() *bind.CallOpts {
 	return r0
 }
 
-// GetTxDefaultSendOptions provides a mock function with given fields: _a0, _a1
-func (_m *TxService) GetTxDefaultSendOptions(_a0 *bind.TransactOpts, _a1 error) {
-	_m.Called(_a0, _a1)
+// GetTxDefaultSendOptions provides a mock function with given fields:
+func (_m *TxService) GetTxDefaultSendOptions() (*bind.TransactOpts, error) {
+	ret := _m.Called()
+
+	var r0 *bind.TransactOpts
+	if rf, ok := ret.Get(0).(func() *bind.TransactOpts); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*bind.TransactOpts)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // GetTxSendOptions provides a mock function with given fields:

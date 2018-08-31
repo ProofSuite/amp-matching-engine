@@ -4,18 +4,18 @@ import (
 	"log"
 
 	"github.com/Proofsuite/amp-matching-engine/errors"
-	"github.com/Proofsuite/amp-matching-engine/services"
+	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/go-ozzo/ozzo-routing"
 )
 
 type tokenEndpoint struct {
-	tokenService services.TokenServiceInterface
+	tokenService interfaces.TokenService
 }
 
 // ServeTokenResource sets up the routing of token endpoints and the corresponding handlers.
-func ServeTokenResource(rg *routing.RouteGroup, tokenService services.TokenServiceInterface) {
+func ServeTokenResource(rg *routing.RouteGroup, tokenService interfaces.TokenService) {
 	r := &tokenEndpoint{tokenService}
 	rg.Get("/tokens/<address>", r.get)
 	rg.Get("/tokens", r.query)
