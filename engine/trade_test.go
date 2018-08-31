@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/Proofsuite/amp-matching-engine/utils/math"
 	"github.com/stretchr/testify/assert"
 )
@@ -32,7 +33,7 @@ func TestExecute(t *testing.T) {
 	expectedBookEntry.Status = "FILLED"
 	expectedBookEntry.FilledAmount = bookEntry.Amount
 
-	expectedFillOrder := &FillOrder{
+	expectedFillOrder := &types.FillOrder{
 		Amount: math.Sub(bookEntry.Amount, bookEntry.FilledAmount),
 		Order:  &expectedBookEntry,
 	}
@@ -62,7 +63,7 @@ func TestExecute(t *testing.T) {
 	expectedBookEntry.Status = "FILLED"
 	expectedBookEntry.FilledAmount = bookEntry.Amount
 
-	expectedFillOrder = &FillOrder{
+	expectedFillOrder = &types.FillOrder{
 		Amount: bookEntry.Amount,
 		Order:  &expectedBookEntry,
 	}
@@ -96,7 +97,7 @@ func TestExecute(t *testing.T) {
 	expectedBookEntry.Status = "PARTIAL_FILLED"
 	expectedBookEntry.FilledAmount = math.Add(expectedBookEntry.FilledAmount, order.Amount)
 
-	expectedFillOrder = &FillOrder{
+	expectedFillOrder = &types.FillOrder{
 		Amount: order.Amount,
 		Order:  &expectedBookEntry,
 	}

@@ -9,6 +9,9 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
+// MockServices is a that tolds different mock services to be passed
+// around easily for testing setup
+
 // UintToPaddedString converts an int to string of length 19 by padding with 0
 func UintToPaddedString(num int64) string {
 	return fmt.Sprintf("%019d", num)

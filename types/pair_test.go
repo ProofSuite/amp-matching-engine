@@ -12,10 +12,8 @@ import (
 func ComparePair(t *testing.T, a, b *Pair) {
 	assert.Equal(t, a.ID, b.ID)
 	assert.Equal(t, a.Name, b.Name)
-	assert.Equal(t, a.BaseTokenID, b.BaseTokenID)
 	assert.Equal(t, a.BaseTokenSymbol, b.BaseTokenSymbol)
 	assert.Equal(t, a.BaseTokenAddress, b.BaseTokenAddress)
-	assert.Equal(t, a.QuoteTokenID, b.QuoteTokenID)
 	assert.Equal(t, a.QuoteTokenSymbol, b.QuoteTokenSymbol)
 	assert.Equal(t, a.QuoteTokenAddress, b.QuoteTokenAddress)
 	assert.Equal(t, a.Active, b.Active)
@@ -27,10 +25,8 @@ func TestPairBSON(t *testing.T) {
 	pair := &Pair{
 		ID:                bson.NewObjectId(),
 		Name:              "REQ",
-		BaseTokenID:       bson.NewObjectId(),
 		BaseTokenSymbol:   "REQ",
 		BaseTokenAddress:  common.HexToAddress("0xcf7389dc6c63637598402907d5431160ec8972a5"),
-		QuoteTokenID:      bson.NewObjectId(),
 		QuoteTokenSymbol:  "WETH",
 		QuoteTokenAddress: common.HexToAddress("0x7a9f3cd060ab180f36c17fe6bdf9974f577d77aa"),
 		Active:            true,

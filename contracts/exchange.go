@@ -6,8 +6,8 @@ import (
 	"log"
 	"math/big"
 
-	"github.com/Proofsuite/amp-matching-engine/contracts/interfaces"
-	"github.com/Proofsuite/amp-matching-engine/services"
+	"github.com/Proofsuite/amp-matching-engine/contracts/contractsinterfaces"
+	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -22,16 +22,21 @@ import (
 // CallOptions are options for making read calls to the connected backend
 // TxOptions are options for making write txs to the connected backend
 type Exchange struct {
-	WalletService *services.WalletService
-	TxService     *services.TxService
-	Interface     *interfaces.Exchange
+	WalletService interfaces.WalletService
+	TxService     interfaces.TxService
+	Interface     *contractsinterfaces.Exchange
 }
 
 // Returns a new exchange interface for a given wallet, contract address and connected backend.
 // The exchange contract need to be already deployed at the given address. The given wallet will
 // be used by default when sending transactions with this object.
-func NewExchange(w *services.WalletService, tx *services.TxService, contractAddress common.Address, backend bind.ContractBackend) (*Exchange, error) {
-	instance, err := interfaces.NewExchange(contractAddress, backend)
+func NewExchange(
+	w interfaces.WalletService,
+	tx interfaces.TxService,
+	contractAddress common.Address,
+	backend bind.ContractBackend,
+) (*Exchange, error) {
+	instance, err := contractsinterfaces.NewExchange(contractAddress, backend)
 	if err != nil {
 		return nil, err
 	}
@@ -140,8 +145,8 @@ func (e *Exchange) Trade(o *types.Order, t *types.Trade) (*eth.Transaction, erro
 // 9. SIGNATURE_INVALID,
 // 10. MAKER_SIGNATURE_INVALID,
 // 11. TAKER_SIGNATURE_INVALID
-func (e *Exchange) ListenToErrors() (chan *interfaces.ExchangeLogError, error) {
-	events := make(chan *interfaces.ExchangeLogError)
+func (e *Exchange) ListenToErrors() (chan *contractsinterfaces.ExchangeLogError, error) {
+	events := make(chan *contractsinterfaces.ExchangeLogError)
 	opts := &bind.WatchOpts{nil, nil}
 
 	_, err := e.Interface.WatchLogError(opts, events)
@@ -153,8 +158,8 @@ func (e *Exchange) ListenToErrors() (chan *interfaces.ExchangeLogError, error) {
 }
 
 // ListenToTrades returns a channel that receivs trade logs (events) from the underlying exchange smart contract
-func (e *Exchange) ListenToTrades() (chan *interfaces.ExchangeLogTrade, error) {
-	events := make(chan *interfaces.ExchangeLogTrade)
+func (e *Exchange) ListenToTrades() (chan *contractsinterfaces.ExchangeLogTrade, error) {
+	events := make(chan *contractsinterfaces.ExchangeLogTrade)
 	opts := &bind.WatchOpts{nil, nil}
 
 	_, err := e.Interface.WatchLogTrade(opts, events, nil, nil, nil)
@@ -165,7 +170,7 @@ func (e *Exchange) ListenToTrades() (chan *interfaces.ExchangeLogTrade, error) {
 	return events, nil
 }
 
-func (e *Exchange) GetErrorEvents(logs chan *interfaces.ExchangeLogError) error {
+func (e *Exchange) GetErrorEvents(logs chan *contractsinterfaces.ExchangeLogError) error {
 	opts := &bind.WatchOpts{nil, nil}
 
 	_, err := e.Interface.WatchLogError(opts, logs)
@@ -176,7 +181,7 @@ func (e *Exchange) GetErrorEvents(logs chan *interfaces.ExchangeLogError) error 
 	return nil
 }
 
-func (e *Exchange) GetTrades(logs chan *interfaces.ExchangeLogTrade) error {
+func (e *Exchange) GetTrades(logs chan *contractsinterfaces.ExchangeLogTrade) error {
 	opts := &bind.WatchOpts{nil, nil}
 
 	_, err := e.Interface.WatchLogTrade(opts, logs, nil, nil, nil)
@@ -188,7 +193,7 @@ func (e *Exchange) GetTrades(logs chan *interfaces.ExchangeLogTrade) error {
 }
 
 func (e *Exchange) PrintTrades() error {
-	events := make(chan *interfaces.ExchangeLogTrade)
+	events := make(chan *contractsinterfaces.ExchangeLogTrade)
 	opts := &bind.WatchOpts{nil, nil}
 
 	_, err := e.Interface.WatchLogTrade(opts, events, nil, nil, nil)
@@ -207,7 +212,7 @@ func (e *Exchange) PrintTrades() error {
 }
 
 func (e *Exchange) PrintErrors() error {
-	events := make(chan *interfaces.ExchangeLogError)
+	events := make(chan *contractsinterfaces.ExchangeLogError)
 	opts := &bind.WatchOpts{nil, nil}
 
 	_, err := e.Interface.WatchLogError(opts, events)
@@ -225,19 +230,19 @@ func (e *Exchange) PrintErrors() error {
 	return nil
 }
 
-func PrintErrorLog(log *interfaces.ExchangeLogError) string {
+func PrintErrorLog(log *contractsinterfaces.ExchangeLogError) string {
 	return fmt.Sprintf("Error:\nErrorID: %v\nOrderHash: %v\n\n", log.ErrorId, log.OrderHash)
 }
 
-func PrintTradeLog(log *interfaces.ExchangeLogTrade) string {
+func PrintTradeLog(log *contractsinterfaces.ExchangeLogTrade) string {
 	return fmt.Sprintf("Error:\nMaker: %v\nTaker: %v\nTokenBuy: %v\nTokenSell: %v\nOrderHash: %v\nTradeHash: %v\n\n",
 		log.Maker, log.Taker, log.TokenBuy, log.TokenSell, log.OrderHash, log.TradeHash)
 }
 
-func PrintCancelOrderLog(log *interfaces.ExchangeLogCancelOrder) string {
+func PrintCancelOrderLog(log *contractsinterfaces.ExchangeLogCancelOrder) string {
 	return fmt.Sprintf("Error:\nSender: %v\nOrderHash: %v\n\n", log.Maker, log.OrderHash)
 }
 
-func PrintCancelTradeLog(log *interfaces.ExchangeLogCancelTrade) string {
+func PrintCancelTradeLog(log *contractsinterfaces.ExchangeLogCancelTrade) string {
 	return fmt.Sprintf("Error:\nSender: %v\nTradeHash: %v\n\n", log.Taker, log.OrderHash)
 }

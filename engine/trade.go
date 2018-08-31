@@ -15,11 +15,11 @@ type FillStatus int
 
 // Response is the structure of message response sent by engine
 type Response struct {
-	FillStatus     FillStatus     `json:"fillStatus,omitempty"`
-	Order          *types.Order   `json:"order,omitempty"`
-	RemainingOrder *types.Order   `json:"remainingOrder,omitempty"`
-	MatchingOrders []*FillOrder   `json:"matchingOrders,omitempty"`
-	Trades         []*types.Trade `json:"trades,omitempty"`
+	FillStatus     types.FillStatus   `json:"fillStatus,omitempty"`
+	Order          *types.Order       `json:"order,omitempty"`
+	RemainingOrder *types.Order       `json:"remainingOrder,omitempty"`
+	MatchingOrders []*types.FillOrder `json:"matchingOrders,omitempty"`
+	Trades         []*types.Trade     `json:"trades,omitempty"`
 }
 
 // this const block holds the possible valued of FillStatus
@@ -35,8 +35,8 @@ const (
 // execute function is responsible for executing of matched orders
 // i.e it deletes/updates orders in case of order matching and responds
 // with trade instance and fillOrder
-func (e *Engine) execute(order *types.Order, bookEntry *types.Order) (*types.Trade, *FillOrder, error) {
-	fillOrder := &FillOrder{}
+func (e *Engine) execute(order *types.Order, bookEntry *types.Order) (*types.Trade, *types.FillOrder, error) {
+	fillOrder := &types.FillOrder{}
 	trade := &types.Trade{}
 
 	bookEntryAvailableAmount := math.Sub(bookEntry.Amount, bookEntry.FilledAmount)

@@ -19,19 +19,11 @@ type Engine struct {
 	mutex     *sync.Mutex
 }
 
-type EngineInterface interface {
-	HandleOrders(msg *rabbitmq.Message) error
-	SubscribeResponseQueue(fn func(*Response) error) error
-	RecoverOrders(orders []*FillOrder) error
-	CancelOrder(order *types.Order) (*Response, error)
-	GetOrderBook(pair *types.Pair) (asks, bids []*map[string]float64)
-}
-
 // Engine is singleton Resource instance
 var engine *Engine
 
 // InitEngine initializes the engine singleton instance
-func InitEngine(redisConn *redis.RedisConnection) (EngineInterface, error) {
+func InitEngine(redisConn *redis.RedisConnection) (*Engine, error) {
 	if engine == nil {
 		engine = &Engine{redisConn, &sync.Mutex{}}
 	}
@@ -41,7 +33,7 @@ func InitEngine(redisConn *redis.RedisConnection) (EngineInterface, error) {
 
 // publishEngineResponse is used by matching engine to publish or send response of matching engine to
 // system for further processing
-func (e *Engine) publishEngineResponse(res *Response) error {
+func (e *Engine) publishEngineResponse(res *types.EngineResponse) error {
 	ch := rabbitmq.GetChannel("erPub")
 	q := rabbitmq.GetQueue(ch, "engineResponse")
 
@@ -72,7 +64,7 @@ func (e *Engine) publishEngineResponse(res *Response) error {
 
 // SubscribeResponseQueue subscribes to engineResponse queue and triggers the function
 // passed as arguments for each message.
-func (e *Engine) SubscribeResponseQueue(fn func(*Response) error) error {
+func (e *Engine) SubscribeResponseQueue(fn func(*types.EngineResponse) error) error {
 	ch := rabbitmq.GetChannel("erSub")
 	q := rabbitmq.GetQueue(ch, "engineResponse")
 
@@ -95,7 +87,7 @@ func (e *Engine) SubscribeResponseQueue(fn func(*Response) error) error {
 
 		go func() {
 			for d := range msgs {
-				var res *Response
+				var res *types.EngineResponse
 				err := json.Unmarshal(d.Body, &res)
 				if err != nil {
 					log.Print(err)

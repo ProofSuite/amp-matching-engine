@@ -4,36 +4,28 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/Proofsuite/amp-matching-engine/engine"
+	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/Proofsuite/amp-matching-engine/ws"
 
 	"github.com/gorilla/websocket"
-
-	"github.com/Proofsuite/amp-matching-engine/daos"
 )
 
 // PairService struct with daos required, responsible for communicating with daos.
 // PairService functions are responsible for interacting with daos and implements business logics.
 type OrderBookService struct {
-	pairDao  daos.PairDaoInterface
-	tokenDao daos.TokenDaoInterface
-	eng      engine.EngineInterface
-}
-
-type OrderBookServiceInterface interface {
-	GetOrderBook(bt, qt common.Address) (ob map[string]interface{}, err error)
-	Subscribe(conn *websocket.Conn, bt, qt common.Address)
-	Unsubscribe(conn *websocket.Conn, bt, qt common.Address)
+	pairDao  interfaces.PairDao
+	tokenDao interfaces.TokenDao
+	eng      interfaces.Engine
 }
 
 // NewPairService returns a new instance of balance service
 func NewOrderBookService(
-	pairDao daos.PairDaoInterface,
-	tokenDao daos.TokenDaoInterface,
-	eng engine.EngineInterface,
+	pairDao interfaces.PairDao,
+	tokenDao interfaces.TokenDao,
+	eng interfaces.Engine,
 ) *OrderBookService {
 	return &OrderBookService{pairDao, tokenDao, eng}
 }

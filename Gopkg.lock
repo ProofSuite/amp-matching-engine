@@ -2,6 +2,17 @@
 
 
 [[projects]]
+  branch = "develop"
+  digest = "1:29917ac9e45dec08cc8e534fddd6b14cd9d5a521ba1355e3821aac2be6cd1553"
+  name = "github.com/Proofsuite/matching-engine"
+  packages = [
+    "dex/interfaces",
+    "types",
+  ]
+  pruneopts = "T"
+  revision = "d6612ca7d396bc89c6ed7f10d74f37b9b734609d"
+
+[[projects]]
   digest = "1:e3bb58bcd5cf318d91ccdb290fd8e0e78d16add716b1ccf861fed19c1551fde0"
   name = "github.com/Sirupsen/logrus"
   packages = ["."]
@@ -236,22 +247,6 @@
   pruneopts = "T"
   revision = "76626ae9c91c4f2a10f34cad8ce83ea42c93bb75"
   version = "v1.0"
-
-[[projects]]
-  digest = "1:ca955a9cd5b50b0f43d2cc3aeb35c951473eeca41b34eb67507f1dbcc0542394"
-  name = "github.com/kr/pretty"
-  packages = ["."]
-  pruneopts = "T"
-  revision = "73f6ac0b30a98e433b289500d779f50c1a6f0712"
-  version = "v0.1.0"
-
-[[projects]]
-  digest = "1:d3cea7f1e6ac37e9598c31505121b26aaaccf4fffc58d19c701d3d3725d6553d"
-  name = "github.com/kr/text"
-  packages = ["."]
-  pruneopts = "T"
-  revision = "e2ffdb16a802fe2bb95e2e35ff34f0e53aeef34f"
-  version = "v0.1.0"
 
 [[projects]]
   digest = "1:53e8c5c79716437e601696140e8b1801aae4204f4ec54a504333702a49572c4f"
@@ -553,6 +548,8 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/Proofsuite/matching-engine/dex/interfaces",
+    "github.com/Proofsuite/matching-engine/types",
     "github.com/Sirupsen/logrus",
     "github.com/alicebob/miniredis",
     "github.com/ethereum/go-ethereum",
@@ -577,7 +574,6 @@
     "github.com/go-test/deep",
     "github.com/gomodule/redigo/redis",
     "github.com/gorilla/websocket",
-    "github.com/kr/pretty",
     "github.com/posener/wstest",
     "github.com/robfig/cron",
     "github.com/spf13/cobra",

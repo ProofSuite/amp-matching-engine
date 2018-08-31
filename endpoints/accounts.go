@@ -4,19 +4,19 @@ import (
 	"fmt"
 
 	"github.com/Proofsuite/amp-matching-engine/errors"
-	"github.com/Proofsuite/amp-matching-engine/services"
+	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/go-ozzo/ozzo-routing"
 )
 
 type accountEndpoint struct {
-	accountService services.AccountServiceInterface
+	accountService interfaces.AccountService
 }
 
 func ServeAccountResource(
 	rg *routing.RouteGroup,
-	accountService services.AccountServiceInterface,
+	accountService interfaces.AccountService,
 ) {
 	e := &accountEndpoint{accountService}
 	rg.Post("/account", e.create)

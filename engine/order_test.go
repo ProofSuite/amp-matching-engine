@@ -261,7 +261,7 @@ func TestCancelOrder(t *testing.T) {
 	o2.Hash = common.HexToHash("0x10b30eb0072a4f0a38b6fca0b731cba15eb2e1702845d97c1230b53a839bcb85")
 	e.addOrder(&o2)
 
-	expectedResponse := getEResponse(&o2, make([]*types.Trade, 0), CANCELLED, make([]*FillOrder, 0), &types.Order{})
+	expectedResponse := getEResponse(&o2, make([]*types.Trade, 0), "CANCELLED", make([]*types.FillOrder, 0), &types.Order{})
 	expectedResponse.Order.Status = "CANCELLED"
 	// cancel o2
 	response, err := e.CancelOrder(&o2)
@@ -376,14 +376,14 @@ func TestRecoverOrders(t *testing.T) {
 
 	e.addOrder(&o3)
 
-	recoverOrders := []*FillOrder{
-		&FillOrder{
+	recoverOrders := []*types.FillOrder{
+		&types.FillOrder{
 			Amount: big.NewInt(1000000000),
 			Order:  &o1,
-		}, &FillOrder{
+		}, &types.FillOrder{
 			Amount: big.NewInt(6000000000),
 			Order:  &o2,
-		}, &FillOrder{
+		}, &types.FillOrder{
 			Amount: big.NewInt(2000000000),
 			Order:  &o3,
 		},
@@ -457,7 +457,7 @@ func TestSellOrder(t *testing.T) {
 
 	o1 := getSellOrder()
 
-	expectedResponse := getEResponse(&o1, make([]*types.Trade, 0), NOMATCH, make([]*FillOrder, 0), nil)
+	expectedResponse := getEResponse(&o1, make([]*types.Trade, 0), "NOMATCH", make([]*types.FillOrder, 0), nil)
 
 	expectedResponse.Order.Status = "OPEN"
 
@@ -474,7 +474,7 @@ func TestBuyOrder(t *testing.T) {
 
 	o1 := getBuyOrder()
 
-	expectedResponse := getEResponse(&o1, make([]*types.Trade, 0), NOMATCH, make([]*FillOrder, 0), nil)
+	expectedResponse := getEResponse(&o1, make([]*types.Trade, 0), "NOMATCH", make([]*types.FillOrder, 0), nil)
 
 	expectedResponse.Order.Status = "OPEN"
 
@@ -501,8 +501,7 @@ func TestFillOrder1(t *testing.T) {
 	expectedResponseSellOrder := sellOrder
 	expectedResponseSellOrder.Status = "OPEN"
 
-	expectedResponse := getEResponse(&expectedResponseSellOrder, make([]*types.Trade, 0), NOMATCH, make([]*FillOrder, 0), nil)
-
+	expectedResponse := getEResponse(&expectedResponseSellOrder, make([]*types.Trade, 0), "NOMATCH", make([]*types.FillOrder, 0), nil)
 	expBytes, _ := json.Marshal(expectedResponse)
 	resp, err := e.sellOrder(&sellOrder)
 	if err != nil {
@@ -517,7 +516,7 @@ func TestFillOrder1(t *testing.T) {
 	trade := getTrade(&buyOrder, &sellOrder, expectedResponseBuyOrder.Amount, big.NewInt(0))
 	trade.Hash = trade.ComputeHash()
 
-	expectedResponse = getEResponse(&expectedResponseBuyOrder, []*types.Trade{trade}, FULL, []*FillOrder{{buyOrder.Amount, &expectedResponseSellOrder}}, nil)
+	expectedResponse = getEResponse(&expectedResponseBuyOrder, []*types.Trade{trade}, "FULL", []*types.FillOrder{{buyOrder.Amount, &expectedResponseSellOrder}}, nil)
 
 	expBytes, _ = json.Marshal(expectedResponse)
 	resp, err = e.buyOrder(&buyOrder)
@@ -540,7 +539,7 @@ func TestFillOrder2(t *testing.T) {
 	expectedResponseBuyOrder := buyOrder
 	expectedResponseBuyOrder.Status = "OPEN"
 
-	expectedResponse := getEResponse(&expectedResponseBuyOrder, make([]*types.Trade, 0), NOMATCH, make([]*FillOrder, 0), nil)
+	expectedResponse := getEResponse(&expectedResponseBuyOrder, make([]*types.Trade, 0), "NOMATCH", make([]*types.FillOrder, 0), nil)
 
 	erBytes, _ := json.Marshal(expectedResponse)
 	response, err := e.buyOrder(&buyOrder)
@@ -562,7 +561,7 @@ func TestFillOrder2(t *testing.T) {
 
 	trade.Hash = trade.ComputeHash()
 
-	expectedResponse = getEResponse(&expectedResponseSellOrder, []*types.Trade{trade}, FULL, []*FillOrder{{buyOrder.Amount, &expectedResponseBuyOrder}}, nil)
+	expectedResponse = getEResponse(&expectedResponseSellOrder, []*types.Trade{trade}, "FULL", []*types.FillOrder{{buyOrder.Amount, &expectedResponseBuyOrder}}, nil)
 
 	bytes, _ := json.Marshal(expectedResponse)
 	response, err = e.sellOrder(&sellOrder)
@@ -622,8 +621,8 @@ func TestMultiMatchOrder1(t *testing.T) {
 
 	expectedResponse := getEResponse(&responseBO,
 		[]*types.Trade{trade, trade1, trade2},
-		FULL,
-		[]*FillOrder{{responseSO.FilledAmount, &responseSO}, {responseSO1.FilledAmount, &responseSO1}, {responseSO2.FilledAmount, &responseSO2}},
+		"FULL",
+		[]*types.FillOrder{{responseSO.FilledAmount, &responseSO}, {responseSO1.FilledAmount, &responseSO1}, {responseSO2.FilledAmount, &responseSO2}},
 		nil)
 
 	expBytes, _ := json.Marshal(expectedResponse)
@@ -686,8 +685,8 @@ func TestMultiMatchOrder2(t *testing.T) {
 
 	expectedResponse := getEResponse(&responseSO,
 		[]*types.Trade{trade, trade1, trade2},
-		FULL,
-		[]*FillOrder{
+		"FULL",
+		[]*types.FillOrder{
 			{responseBO.FilledAmount, &responseBO},
 			{responseBO1.FilledAmount, &responseBO1},
 			{responseBO2.FilledAmount, &responseBO2}},
@@ -762,11 +761,11 @@ func TestPartialMatchOrder1(t *testing.T) {
 	trade2.Hash = trade2.ComputeHash()
 	trade3.Hash = trade3.ComputeHash()
 
-	expectedResponse := &Response{
+	expectedResponse := &types.EngineResponse{
 		Order:      &responseBO,
 		Trades:     []*types.Trade{trade, trade1, trade2, trade3},
-		FillStatus: FULL,
-		MatchingOrders: []*FillOrder{
+		FillStatus: "FULL",
+		MatchingOrders: []*types.FillOrder{
 			{responseSO.FilledAmount, &responseSO},
 			{responseSO1.FilledAmount, &responseSO1},
 			{responseSO2.FilledAmount, &responseSO2},
@@ -814,12 +813,12 @@ func TestPartialMatchOrder1(t *testing.T) {
 	}
 
 	trade4.Hash = trade4.ComputeHash()
-	expectedResponse = &Response{
+	expectedResponse = &types.EngineResponse{
 		Order:          &responseBO,
 		RemainingOrder: &remOrder,
 		Trades:         []*types.Trade{trade4},
-		FillStatus:     PARTIAL,
-		MatchingOrders: []*FillOrder{
+		FillStatus:     "PARTIAL",
+		MatchingOrders: []*types.FillOrder{
 			{responseBO.FilledAmount, &responseSO3}},
 	}
 	erBytes, _ = json.Marshal(expectedResponse)
@@ -889,11 +888,11 @@ func TestPartialMatchOrder2(t *testing.T) {
 	trade2.Hash = trade2.ComputeHash()
 	trade3.Hash = trade3.ComputeHash()
 
-	expectedResponse := &Response{
+	expectedResponse := &types.EngineResponse{
 		Order:      &responseSO,
 		Trades:     []*types.Trade{trade, trade1, trade2, trade3},
-		FillStatus: FULL,
-		MatchingOrders: []*FillOrder{
+		FillStatus: "FULL",
+		MatchingOrders: []*types.FillOrder{
 			{responseBO.FilledAmount, &responseBO},
 			{responseBO1.FilledAmount, &responseBO1},
 			{responseBO2.FilledAmount, &responseBO2},
@@ -941,12 +940,12 @@ func TestPartialMatchOrder2(t *testing.T) {
 	}
 
 	trade4.Hash = trade4.ComputeHash()
-	expectedResponse = &Response{
+	expectedResponse = &types.EngineResponse{
 		Order:          &responseSO,
 		RemainingOrder: &remOrder,
 		Trades:         []*types.Trade{trade4},
-		FillStatus:     PARTIAL,
-		MatchingOrders: []*FillOrder{
+		FillStatus:     "PARTIAL",
+		MatchingOrders: []*types.FillOrder{
 			{responseSO.FilledAmount, &responseBO3}},
 	}
 
@@ -1019,8 +1018,8 @@ func getSellOrder() types.Order {
 	}
 }
 
-func getEResponse(order *types.Order, trades []*types.Trade, status FillStatus, matchingOrders []*FillOrder, remOrder *types.Order) *Response {
-	return &Response{
+func getEResponse(order *types.Order, trades []*types.Trade, status string, matchingOrders []*types.FillOrder, remOrder *types.Order) *types.EngineResponse {
+	return &types.EngineResponse{
 		Order:          order,
 		FillStatus:     status,
 		Trades:         trades,
