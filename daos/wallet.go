@@ -66,3 +66,15 @@ func (dao *WalletDao) GetDefaultAdminWallet() (response *types.Wallet, err error
 
 	return &resp[0], nil
 }
+
+func (dao *WalletDao) GetOperatorWallets() ([]*types.Wallet, error) {
+	q := bson.M{"operator": true}
+	res := []*types.Wallet{}
+
+	err := db.Get(dao.dbName, dao.collectionName, q, 0, 1, &res)
+	if err != nil || len(res) == 0 {
+		return nil, err
+	}
+
+	return res, nil
+}

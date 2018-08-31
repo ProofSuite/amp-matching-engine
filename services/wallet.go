@@ -34,7 +34,7 @@ func (s *WalletService) GetDefaultAdminWallet() (*types.Wallet, error) {
 }
 
 func (s *WalletService) GetOperatorWallets() ([]*types.Wallet, error) {
-	return []*types.Wallet{}, nil
+	return s.WalletDao.GetOperatorWallets()
 }
 
 func (s *WalletService) GetAll() ([]types.Wallet, error) {
