@@ -12,13 +12,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-// FillOrder is structure holds the matching order and
-// the amount that has been filled by taker order
-type FillOrder struct {
-	Amount *big.Int
-	Order  *types.Order
-}
-
 // newOrder calls buyOrder/sellOrder based on type of order recieved and
 // publishes the response back to rabbitmq
 func (e *Engine) newOrder(order *types.Order) (err error) {
@@ -26,7 +19,7 @@ func (e *Engine) newOrder(order *types.Order) (err error) {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
 
-	resp := &Response{}
+	resp := &types.EngineResponse{}
 	if order.Side == "SELL" {
 		resp, err = e.sellOrder(order)
 		if err != nil {
@@ -56,16 +49,16 @@ func (e *Engine) newOrder(order *types.Order) (err error) {
 // from orderbook. First it checks ths price point list to check whether the order can be matched
 // or not, if there are pricepoints that can satisfy the order then corresponding list of orders
 // are fetched and trade is executed
-func (e *Engine) buyOrder(order *types.Order) (*Response, error) {
-	resp := &Response{
+func (e *Engine) buyOrder(order *types.Order) (*types.EngineResponse, error) {
+	resp := &types.EngineResponse{
 		Order:      order,
-		FillStatus: NOMATCH,
+		FillStatus: "NOMATCH",
 	}
 
 	remainingOrder := *order
 	resp.RemainingOrder = &remainingOrder
 	resp.Trades = make([]*types.Trade, 0)
-	resp.MatchingOrders = make([]*FillOrder, 0)
+	resp.MatchingOrders = make([]*types.FillOrder, 0)
 	oskv := order.GetOBMatchKey()
 
 	// GET Range of sellOrder between minimum Sell order and order.Price
@@ -76,7 +69,7 @@ func (e *Engine) buyOrder(order *types.Order) (*Response, error) {
 	}
 
 	if len(priceRange) == 0 {
-		resp.FillStatus = NOMATCH
+		resp.FillStatus = "NOMATCH"
 		resp.RemainingOrder = nil
 		order.Status = "OPEN"
 		e.addOrder(order)
@@ -109,7 +102,7 @@ func (e *Engine) buyOrder(order *types.Order) (*Response, error) {
 			resp.RemainingOrder.Amount = math.Sub(resp.RemainingOrder.Amount, fillOrder.Amount)
 
 			if math.IsZero(resp.RemainingOrder.Amount) {
-				resp.FillStatus = FULL
+				resp.FillStatus = "FULL"
 				resp.Order.Status = "FILLED"
 				resp.RemainingOrder = nil
 				return resp, nil
@@ -118,7 +111,7 @@ func (e *Engine) buyOrder(order *types.Order) (*Response, error) {
 	}
 
 	resp.Order.Status = "PARTIAL_FILLED"
-	resp.FillStatus = PARTIAL
+	resp.FillStatus = "PARTIAL"
 
 	//TODO refactor this in a different function (make above function more clear in general)
 	resp.RemainingOrder.Signature = nil
@@ -137,16 +130,16 @@ func (e *Engine) buyOrder(order *types.Order) (*Response, error) {
 // from orderbook. First it checks ths price point list to check whether the order can be matched
 // or not, if there are pricepoints that can satisfy the order then corresponding list of orders
 // are fetched and trade is executed
-func (e *Engine) sellOrder(order *types.Order) (*Response, error) {
-	resp := &Response{
+func (e *Engine) sellOrder(order *types.Order) (*types.EngineResponse, error) {
+	resp := &types.EngineResponse{
 		Order:      order,
-		FillStatus: NOMATCH,
+		FillStatus: "NOMATCH",
 	}
 
 	remOrder := *order
 	resp.Trades = make([]*types.Trade, 0)
 	resp.RemainingOrder = &remOrder
-	resp.MatchingOrders = make([]*FillOrder, 0)
+	resp.MatchingOrders = make([]*types.FillOrder, 0)
 	obkv := order.GetOBMatchKey()
 
 	// GET Range of sellOrder between minimum Sell order and order.Price
@@ -157,7 +150,7 @@ func (e *Engine) sellOrder(order *types.Order) (*Response, error) {
 	}
 
 	if len(priceRange) == 0 {
-		resp.FillStatus = NOMATCH
+		resp.FillStatus = "NOMATCH"
 		resp.RemainingOrder = nil
 		e.addOrder(order)
 		order.Status = "OPEN"
@@ -187,13 +180,13 @@ func (e *Engine) sellOrder(order *types.Order) (*Response, error) {
 			}
 
 			order.Status = "PARTIAL_FILLED"
-			resp.FillStatus = PARTIAL
+			resp.FillStatus = "PARTIAL"
 			resp.Trades = append(resp.Trades, trade)
 			resp.MatchingOrders = append(resp.MatchingOrders, fillOrder)
 			resp.RemainingOrder.Amount = math.Sub(resp.RemainingOrder.Amount, fillOrder.Amount)
 
 			if math.IsZero(resp.RemainingOrder.Amount) {
-				resp.FillStatus = FULL
+				resp.FillStatus = "FULL"
 				resp.Order.Status = "FILLED"
 				resp.RemainingOrder = nil
 				return resp, nil
@@ -202,7 +195,7 @@ func (e *Engine) sellOrder(order *types.Order) (*Response, error) {
 	}
 
 	resp.Order.Status = "PARTIAL_FILLED"
-	resp.FillStatus = PARTIAL
+	resp.FillStatus = "PARTIAL"
 
 	//TODO refactor this in a different function (make above function more clear in general)
 	resp.RemainingOrder.Signature = nil
@@ -404,7 +397,7 @@ func (e *Engine) deleteOrder(order *types.Order, tradeAmount *big.Int) (err erro
 
 // RecoverOrders is responsible for recovering the orders that failed to execute after matching
 // Orders are updated or added to orderbook based on whether that order exists in orderbook or not.
-func (e *Engine) RecoverOrders(orders []*FillOrder) error {
+func (e *Engine) RecoverOrders(orders []*types.FillOrder) error {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
 	for _, o := range orders {
@@ -446,7 +439,7 @@ func (e *Engine) RecoverOrders(orders []*FillOrder) error {
 // }
 
 // CancelOrder is used to cancel the order from orderbook
-func (e *Engine) CancelOrder(order *types.Order) (*Response, error) {
+func (e *Engine) CancelOrder(order *types.Order) (*types.EngineResponse, error) {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
 
@@ -474,12 +467,12 @@ func (e *Engine) CancelOrder(order *types.Order) (*Response, error) {
 
 	stored.Status = "CANCELLED"
 
-	engineResponse := &Response{
+	engineResponse := &types.EngineResponse{
 		Order:          stored,
 		Trades:         make([]*types.Trade, 0),
 		RemainingOrder: &types.Order{},
-		FillStatus:     CANCELLED,
-		MatchingOrders: make([]*FillOrder, 0),
+		FillStatus:     "CANCELLED",
+		MatchingOrders: make([]*types.FillOrder, 0),
 	}
 	return engineResponse, nil
 }

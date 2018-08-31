@@ -10,13 +10,13 @@ import (
 )
 
 func TestNewOrderFromFactory(t *testing.T) {
-	err := app.LoadConfig("../config")
+	err := app.LoadConfig("../config", "")
 	if err != nil {
 		t.Errorf("Could not load configuration: %v", err)
 	}
 
 	exchangeAddress := common.HexToAddress(app.Config.ExchangeAddress)
-	pair := getZRXWETHPairMock()
+	pair := GetZRXWETHTestPair()
 	wallet := GetTestWallet1()
 	ZRX := pair.BaseTokenAddress
 	WETH := pair.QuoteTokenAddress
@@ -51,13 +51,13 @@ func TestNewOrderFromFactory(t *testing.T) {
 }
 
 func TestNewFactoryBuyOrder(t *testing.T) {
-	err := app.LoadConfig("../config")
+	err := app.LoadConfig("../config", "")
 	if err != nil {
 		t.Errorf("Could not load configuration: %v", err)
 	}
 
 	exchangeAddress := common.HexToAddress(app.Config.ExchangeAddress)
-	pair := getZRXWETHPairMock()
+	pair := GetZRXWETHTestPair()
 	wallet := GetTestWallet1()
 	ZRX := pair.BaseTokenAddress
 	WETH := pair.QuoteTokenAddress
@@ -103,13 +103,13 @@ func TestNewFactoryBuyOrder(t *testing.T) {
 }
 
 func TestNewFactorySellOrder(t *testing.T) {
-	err := app.LoadConfig("../config")
+	err := app.LoadConfig("../config", "")
 	if err != nil {
 		t.Errorf("Could not load configuration: %v", err)
 	}
 
 	exchange := common.HexToAddress(app.Config.ExchangeAddress)
-	pair := getZRXWETHPairMock()
+	pair := GetZRXWETHTestPair()
 	wallet := GetTestWallet1()
 	ZRX := pair.BaseTokenAddress
 	WETH := pair.QuoteTokenAddress
@@ -155,13 +155,13 @@ func TestNewFactorySellOrder(t *testing.T) {
 }
 
 func TestNewFactorySellOrder2(t *testing.T) {
-	err := app.LoadConfig("../config")
+	err := app.LoadConfig("../config", "")
 	if err != nil {
 		t.Errorf("Could not load configuration: %v", err)
 	}
 
 	exchange := common.HexToAddress(app.Config.ExchangeAddress)
-	pair := getZRXWETHPairMock()
+	pair := GetZRXWETHTestPair()
 	wallet := GetTestWallet1()
 	ZRX := pair.BaseTokenAddress
 	WETH := pair.QuoteTokenAddress
@@ -207,13 +207,13 @@ func TestNewFactorySellOrder2(t *testing.T) {
 }
 
 func TestNewWebSocketMessage(t *testing.T) {
-	err := app.LoadConfig("../config")
+	err := app.LoadConfig("../config", "")
 	if err != nil {
 		t.Errorf("Could not load configuration: %v", err)
 	}
 
 	exchange := common.HexToAddress(app.Config.ExchangeAddress)
-	pair := getZRXWETHPairMock()
+	pair := GetZRXWETHTestPair()
 	wallet := GetTestWallet1()
 	ZRX := pair.BaseTokenAddress
 	WETH := pair.QuoteTokenAddress

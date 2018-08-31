@@ -4,31 +4,21 @@ import (
 	"errors"
 	"math/big"
 
-	"gopkg.in/mgo.v2/bson"
-
-	"github.com/Proofsuite/amp-matching-engine/daos"
+	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/ethereum/go-ethereum/common"
+	"gopkg.in/mgo.v2/bson"
 )
 
 type AccountService struct {
-	AccountDao daos.AccountDaoInterface
-	TokenDao   daos.TokenDaoInterface
-}
-
-type AccountServiceInterface interface {
-	Create(account *types.Account) error
-	GetByID(id bson.ObjectId) (*types.Account, error)
-	GetAll() ([]types.Account, error)
-	GetByAddress(a common.Address) (*types.Account, error)
-	GetTokenBalance(owner common.Address, token common.Address) (*types.TokenBalance, error)
-	GetTokenBalances(owner common.Address) (map[common.Address]*types.TokenBalance, error)
+	AccountDao interfaces.AccountDao
+	TokenDao   interfaces.TokenDao
 }
 
 // NewAddressService returns a new instance of accountService
 func NewAccountService(
-	AccountDao daos.AccountDaoInterface,
-	TokenDao daos.TokenDaoInterface,
+	AccountDao interfaces.AccountDao,
+	TokenDao interfaces.TokenDao,
 ) *AccountService {
 	return &AccountService{AccountDao, TokenDao}
 }

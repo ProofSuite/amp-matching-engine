@@ -15,7 +15,7 @@ import (
 )
 
 func SetupTest() (*testutils.Deployer, *types.Wallet, common.Address, common.Address, *types.Wallet, *types.Wallet) {
-	err := app.LoadConfig("../config")
+	err := app.LoadConfig("../config", "")
 	if err != nil {
 		panic(err)
 	}

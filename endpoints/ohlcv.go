@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/Proofsuite/amp-matching-engine/services"
+	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/Proofsuite/amp-matching-engine/ws"
 	"github.com/ethereum/go-ethereum/common"
@@ -14,12 +14,12 @@ import (
 )
 
 type OHLCVEndpoint struct {
-	ohlcvService services.OHLCVServiceInterface
+	ohlcvService interfaces.OHLCVService
 }
 
 func ServeOHLCVResource(
 	rg *routing.RouteGroup,
-	ohlcvService services.OHLCVServiceInterface,
+	ohlcvService interfaces.OHLCVService,
 ) {
 	e := &OHLCVEndpoint{ohlcvService}
 	rg.Post("/ohlcv", e.ohlcv)

@@ -1,24 +1,17 @@
 package services
 
 import (
-	"github.com/Proofsuite/amp-matching-engine/daos"
+	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/ethereum/go-ethereum/common"
 )
 
 // WalletService struct with daos required, responsible for communicating with daos
 type WalletService struct {
-	WalletDao daos.WalletDaoInterface
+	WalletDao interfaces.WalletDao
 }
 
-type WalletServiceInterface interface {
-	CreateAdminWallet(a common.Address) (*types.Wallet, error)
-	GetDefaultAdminWallet() (*types.Wallet, error)
-	GetAll() ([]types.Wallet, error)
-	GetByAddress(a common.Address) *types.Wallet
-}
-
-func NewWalletService(walletDao daos.WalletDaoInterface) *WalletService {
+func NewWalletService(walletDao interfaces.WalletDao) *WalletService {
 	return &WalletService{walletDao}
 }
 
@@ -40,10 +33,14 @@ func (s *WalletService) GetDefaultAdminWallet() (*types.Wallet, error) {
 	return s.WalletDao.GetDefaultAdminWallet()
 }
 
+func (s *WalletService) GetOperatorWallets() ([]*types.Wallet, error) {
+	return []*types.Wallet{}, nil
+}
+
 func (s *WalletService) GetAll() ([]types.Wallet, error) {
 	return s.WalletDao.GetAll()
 }
 
-func (s *WalletService) GetbyAddress(a common.Address) (*types.Wallet, error) {
+func (s *WalletService) GetByAddress(a common.Address) (*types.Wallet, error) {
 	return s.WalletDao.GetByAddress(a)
 }

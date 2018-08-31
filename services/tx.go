@@ -1,26 +1,18 @@
 package services
 
 import (
-	"github.com/Proofsuite/amp-matching-engine/daos"
+	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 )
 
 // WalletService struct with daos required, responsible for communicating with daos
 type TxService struct {
-	WalletDao daos.WalletDaoInterface
+	WalletDao interfaces.WalletDao
 	Wallet    *types.Wallet
 }
 
-type TxServiceInterface interface {
-	GetTxCallOptions() *bind.CallOpts
-	GetTxSendOptions() (*bind.TransactOpts, error)
-	GetTxDefaultSendOptions(*bind.TransactOpts, error)
-	SetTxSender(w *types.Wallet)
-	GetCustomTxSendOptions(w *types.Wallet) *bind.TransactOpts
-}
-
-func NewTxService(dao daos.WalletDaoInterface, w *types.Wallet) *TxService {
+func NewTxService(dao interfaces.WalletDao, w *types.Wallet) *TxService {
 	return &TxService{dao, w}
 }
 

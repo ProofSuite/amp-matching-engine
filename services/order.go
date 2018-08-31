@@ -10,13 +10,12 @@ import (
 
 	"github.com/streadway/amqp"
 
+	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/Proofsuite/amp-matching-engine/ws"
 	"github.com/ethereum/go-ethereum/common"
 
 	"gopkg.in/mgo.v2/bson"
 
-	"github.com/Proofsuite/amp-matching-engine/daos"
-	"github.com/Proofsuite/amp-matching-engine/engine"
 	"github.com/Proofsuite/amp-matching-engine/rabbitmq"
 	"github.com/Proofsuite/amp-matching-engine/types"
 )
@@ -24,33 +23,20 @@ import (
 // OrderService struct with daos required, responsible for communicating with daos.
 // OrderService functions are responsible for interacting with daos and implements business logics.
 type OrderService struct {
-	orderDao   daos.OrderDaoInterface
-	pairDao    daos.PairDaoInterface
-	accountDao daos.AccountDaoInterface
-	tradeDao   daos.TradeDaoInterface
-	engine     engine.EngineInterface
-}
-
-type OrderServiceInterface interface {
-	GetByID(id bson.ObjectId) (*types.Order, error)
-	GetByUserAddress(addr common.Address) ([]*types.Order, error)
-	NewOrder(o *types.Order) error
-	CancelOrder(oc *types.OrderCancel) error
-	HandleEngineResponse(res *engine.Response) error
-	RecoverOrders(res *engine.Response)
-	RelayUpdateOverSocket(res *engine.Response)
-	SendMessage(msgType string, hash common.Hash, data interface{})
-	SubscribeQueue(fn func(*rabbitmq.Message) error) error
-	PublishOrder(order *rabbitmq.Message) error
+	orderDao   interfaces.OrderDao
+	pairDao    interfaces.PairDao
+	accountDao interfaces.AccountDao
+	tradeDao   interfaces.TradeDao
+	engine     interfaces.Engine
 }
 
 // NewOrderService returns a new instance of orderservice
 func NewOrderService(
-	orderDao daos.OrderDaoInterface,
-	pairDao daos.PairDaoInterface,
-	accountDao daos.AccountDaoInterface,
-	tradeDao daos.TradeDaoInterface,
-	engine engine.EngineInterface,
+	orderDao interfaces.OrderDao,
+	pairDao interfaces.PairDao,
+	accountDao interfaces.AccountDao,
+	tradeDao interfaces.TradeDao,
+	engine interfaces.Engine,
 ) *OrderService {
 	return &OrderService{orderDao, pairDao, accountDao, tradeDao, engine}
 }
@@ -63,6 +49,11 @@ func (s *OrderService) GetByID(id bson.ObjectId) (*types.Order, error) {
 // GetByUserAddress fetches all the orders placed by passed user address
 func (s *OrderService) GetByUserAddress(addr common.Address) ([]*types.Order, error) {
 	return s.orderDao.GetByUserAddress(addr)
+}
+
+// GetByHash fetches all trades corresponding to a trade hash
+func (s *OrderService) GetByHash(hash common.Hash) (*types.Order, error) {
+	return s.orderDao.GetByHash(hash)
 }
 
 // Create validates if the passed order is valid or not based on user's available
@@ -223,15 +214,15 @@ func (s *OrderService) CancelOrder(oc *types.OrderCancel) error {
 
 // HandleEngineResponse listens to messages incoming from the engine and handles websocket
 // responses and database updates accordingly
-func (s *OrderService) HandleEngineResponse(res *engine.Response) error {
+func (s *OrderService) HandleEngineResponse(res *types.EngineResponse) error {
 	switch res.FillStatus {
-	case engine.ERROR:
+	case "ERROR":
 		s.handleEngineError(res)
-	case engine.NOMATCH:
+	case "NOMATCH":
 		s.handleEngineOrderAdded(res)
-	case engine.FULL:
+	case "FULL":
 		s.handleEngineOrderMatched(res)
-	case engine.PARTIAL:
+	case "PARTIAL":
 		s.handleEngineOrderMatched(res)
 	default:
 		s.handleEngineUnknownMessage(res)
@@ -244,7 +235,7 @@ func (s *OrderService) HandleEngineResponse(res *engine.Response) error {
 
 // handleEngineError returns an websocket error message to the client and recovers orders on the
 // redis key/value store
-func (s *OrderService) handleEngineError(res *engine.Response) {
+func (s *OrderService) handleEngineError(res *types.EngineResponse) {
 	s.orderDao.UpdateByHash(res.Order.Hash, res.Order)
 	s.cancelOrderUnlockAmount(res.Order)
 	ws.SendOrderErrorMessage(ws.GetOrderConnection(res.Order.Hash), "Some error", res.Order.Hash)
@@ -252,13 +243,13 @@ func (s *OrderService) handleEngineError(res *engine.Response) {
 
 // handleEngineOrderAdded returns a websocket message informing the client that his order has been added
 // to the orderbook (but currently not matched)
-func (s *OrderService) handleEngineOrderAdded(res *engine.Response) {
+func (s *OrderService) handleEngineOrderAdded(res *types.EngineResponse) {
 	s.SendMessage("ORDER_ADDED", res.Order.Hash, res.Order)
 }
 
 // handleEngineOrderMatched returns a websocket message informing the client that his order has been added.
 // The request signature message also signals the client to sign trades.
-func (s *OrderService) handleEngineOrderMatched(res *engine.Response) {
+func (s *OrderService) handleEngineOrderMatched(res *types.EngineResponse) {
 	err := s.orderDao.UpdateByHash(res.Order.Hash, res.Order)
 	if err != nil {
 		log.Print(err)
@@ -288,7 +279,7 @@ func (s *OrderService) handleEngineOrderMatched(res *engine.Response) {
 
 // handleSubmitSignatures wait for a submit signature message that provides the matching engine with orders
 // that can be broadcast to the exchange smart contrct
-func (s *OrderService) handleSubmitSignatures(res *engine.Response) {
+func (s *OrderService) handleSubmitSignatures(res *types.EngineResponse) {
 	ch := ws.GetOrderChannel(res.Order.Hash)
 	t := time.NewTimer(30 * time.Second)
 
@@ -340,19 +331,19 @@ func (s *OrderService) handleSubmitSignatures(res *engine.Response) {
 }
 
 // handleEngineUnknownMessage returns a websocket messsage in case the engine resonse is not recognized
-func (s *OrderService) handleEngineUnknownMessage(res *engine.Response) {
+func (s *OrderService) handleEngineUnknownMessage(res *types.EngineResponse) {
 	s.RecoverOrders(res)
 	ws.SendOrderErrorMessage(ws.GetOrderConnection(res.Order.Hash), "UNKNOWN_MESSAGE", res.Order.Hash)
 }
 
 // RecoverOrders recovers orders i.e puts back matched orders to orderbook
 // in case of failure of trade signing by the maker
-func (s *OrderService) RecoverOrders(res *engine.Response) {
+func (s *OrderService) RecoverOrders(res *types.EngineResponse) {
 	if err := s.engine.RecoverOrders(res.MatchingOrders); err != nil {
 		panic(err)
 	}
 
-	res.FillStatus = engine.ERROR
+	res.FillStatus = "ERROR"
 	res.Order.Status = "ERROR"
 	res.Trades = nil
 	res.RemainingOrder = nil
@@ -360,7 +351,7 @@ func (s *OrderService) RecoverOrders(res *engine.Response) {
 }
 
 // RelayUpdateOverSocket is resonsible for notifying listening clients about new order/trade addition/deletion
-func (s *OrderService) RelayUpdateOverSocket(res *engine.Response) {
+func (s *OrderService) RelayUpdateOverSocket(res *types.EngineResponse) {
 
 	// if
 	// if len(res.Trades) > 0 {
@@ -529,14 +520,14 @@ func (s *OrderService) PublishOrder(order *rabbitmq.Message) error {
 	return nil
 }
 
-// func (s *OrderService) handleNewTrade(msg *types.Message, res *engine.Response) {
+// func (s *OrderService) handleNewTrade(msg *types.Message, res *types.EngineResponse) {
 // 	bytes, err := json.Marshal(msg.Data)
 // 	if err != nil {
 // 		s.RecoverOrders(res)
 // 		ws.OrderSendErrorMessage(ws.GetOrderConn(res.Order.Hash), err.Error(), res.Order.Hash)
 // 	}
 
-// 	res := &engine.Response{}
+// 	res := &types.EngineResponse{}
 // 	err = json.Unmarshal(bytes, &resp)
 // 	if err != nil {
 // 		s.RecoverOrders(res)
@@ -610,7 +601,7 @@ func (s *OrderService) PublishOrder(order *rabbitmq.Message) error {
 // 					ws.OrderSendErrorMessage(ws.GetOrderConn(res.Order.Hash), res.Order.Hash, err.Error())
 // 				}
 
-// 				var ersb *engine.Response
+// 				var ersb *types.EngineResponse
 // 				err = json.Unmarshal(bytes, &ersb)
 // 				if err != nil {
 // 					fmt.Printf("=== Error while unmarshaling EngineResponse ===")
@@ -708,7 +699,7 @@ func (s *OrderService) PublishOrder(order *rabbitmq.Message) error {
 // // UpdateUsingEngineResponse is responsible for updating order status of maker
 // // and taker orders and transfer/unlock amount based on the response sent by the
 // // matching engine
-// func (s *OrderService) UpdateUsingEngineResponse(res *engine.Response) {
+// func (s *OrderService) UpdateUsingEngineResponse(res *types.EngineResponse) {
 // 	switch res.FillStatus {
 // 	case engine.ERROR:
 // 		s.orderDao.Update(res.Order.Hash, res.Order)

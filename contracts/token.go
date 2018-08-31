@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/Proofsuite/amp-matching-engine/contracts/interfaces"
-	"github.com/Proofsuite/amp-matching-engine/services"
+	"github.com/Proofsuite/amp-matching-engine/contracts/contractsinterfaces"
+	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -14,13 +14,18 @@ import (
 )
 
 type Token struct {
-	WalletService *services.WalletService
-	TxService     *services.TxService
-	Interface     *interfaces.Token
+	WalletService interfaces.WalletService
+	TxService     interfaces.TxService
+	Interface     *contractsinterfaces.Token
 }
 
-func NewToken(w *services.WalletService, tx *services.TxService, contractAddress common.Address, backend bind.ContractBackend) (*Token, error) {
-	instance, err := interfaces.NewToken(contractAddress, backend)
+func NewToken(
+	w interfaces.WalletService,
+	tx interfaces.TxService,
+	contractAddress common.Address,
+	backend bind.ContractBackend,
+) (*Token, error) {
+	instance, err := contractsinterfaces.NewToken(contractAddress, backend)
 	if err != nil {
 		return nil, err
 	}
@@ -137,8 +142,8 @@ func (t *Token) ApproveFrom(w *types.Wallet, spender common.Address, amount *big
 	return tx, nil
 }
 
-func (t *Token) ListenToTransferEvents() (chan *interfaces.TokenTransfer, error) {
-	events := make(chan *interfaces.TokenTransfer)
+func (t *Token) ListenToTransferEvents() (chan *contractsinterfaces.TokenTransfer, error) {
+	events := make(chan *contractsinterfaces.TokenTransfer)
 	options := &bind.WatchOpts{nil, nil}
 	toList := []common.Address{}
 	fromList := []common.Address{}
@@ -152,7 +157,7 @@ func (t *Token) ListenToTransferEvents() (chan *interfaces.TokenTransfer, error)
 }
 
 func (t *Token) PrintTransferEvents() error {
-	events := make(chan *interfaces.TokenTransfer)
+	events := make(chan *contractsinterfaces.TokenTransfer)
 	options := &bind.WatchOpts{nil, nil}
 
 	toList := []common.Address{}

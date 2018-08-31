@@ -4,14 +4,13 @@ import (
 	"encoding/json"
 	"errors"
 	"log"
+	"strconv"
 
-	"github.com/Proofsuite/amp-matching-engine/contracts"
+	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/Proofsuite/amp-matching-engine/rabbitmq"
-	"github.com/Proofsuite/amp-matching-engine/services"
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/ethereum/go-ethereum/common"
 	eth "github.com/ethereum/go-ethereum/core/types"
-	"github.com/streadway/amqp"
 )
 
 // Operator manages the transaction queue that will eventually be
@@ -19,85 +18,76 @@ import (
 // account that initially deployed the exchange contract or an address with operator rights
 // on the contract
 type Operator struct {
-	WalletService   *services.WalletService
-	TxService       *services.TxService
-	TradeService    *services.TradeService
-	EthereumService *services.EthereumService
-	Exchange        *contracts.Exchange
-	TxQueues
+	WalletService     interfaces.WalletService
+	TxService         interfaces.TxService
+	TradeService      interfaces.TradeService
+	EthereumService   interfaces.EthereumService
+	Exchange          interfaces.Exchange
+	TxQueues          []*TxQueue
+	QueueAddressIndex map[common.Address]*TxQueue
 }
 
-type OperatorMessage struct {
-	MessageType string
-	Order       *types.Order
-	Trade       *types.Trade
-	ErrID       int
+type OperatorInterface interface {
+	SubscribeOperatorMessages(fn func(*types.OperatorMessage) error) error
+	QueueTrade(o *types.Order, t *types.Trade) error
+	GetShortestQueue() (*TxQueue, int, error)
+	SetFeeAccount(account common.Address) (*eth.Transaction, error)
+	SetOperator(account common.Address, isOperator bool) (*eth.Transaction, error)
+	FeeAccount() (common.Address, error)
+	Operator(addr common.Address) (bool, error)
 }
-
-type PendingTradeMessage struct {
-	Order *types.Order
-	Trade *types.Trade
-}
-
-var channels = make(map[string]*amqp.Channel)
-var queues = make(map[string]*amqp.Queue)
 
 // NewOperator creates a new operator struct. It creates an exchange contract instance from the
 // provided address. The error and trade events are received in the ErrorChannel and TradeChannel.
 // Upon receiving errors and trades in their respective channels, event payloads are sent to the
 // associated order maker and taker sockets through the through the event channel on the Order and Trade struct.
 // In addition, an error event cancels the trade in the trading engine and makes the order available again.
-func InitOperator(
-	walletService *services.WalletService,
-	txService *services.TxService,
-	tradeService *services.TradeService,
-	ethereumService *services.EthereumService,
-	exchange *contracts.Exchange,
+func NewOperator(
+	walletService interfaces.WalletService,
+	txService interfaces.TxService,
+	tradeService interfaces.TradeService,
+	ethereumService interfaces.EthereumService,
+	exchange interfaces.Exchange,
 ) (*Operator, error) {
 
+	txqueues := []*TxQueue{}
+	addressIndex := make(map[common.Address]*TxQueue)
 
-	txqueues := map[string]TxQueue{}
-
-	wallets := walletService.GetOperatorWallets()
+	wallets, err := walletService.GetOperatorWallets()
 	if err != nil {
 		panic(err)
 	}
 
 	for i, w := range wallets {
 		name := strconv.Itoa(i) + w.Address.Hex()
-		txq := TxQueue{
-			Name: name,
-			Wallet: w,
-			Exchange: exchamge,
+		txq := &TxQueue{
+			Name:            name,
+			Wallet:          w,
+			TradeService:    tradeService,
+			EthereumService: ethereumService,
+			Exchange:        exchange,
 		}
 
-		txqueues[name] = txq
+		txqueues = append(txqueues, txq)
 	}
-
-	// terrible name
-	queueAddressIndex := map[common.Address]TxQueue
 
 	op := &Operator{
-		WalletService: walletService,
-		TxService: txService,
-		TradeService: tradeService,
-		EthereumService: ethereumService,
-		Exchange: exchange,
-		TxQueues: txqueues,
-		QueueAddressIndex: queueAddressIndex,
-	}
-
-	err = op.Validate()
-	if err != nil {
-		return nil, err
+		WalletService:     walletService,
+		TxService:         txService,
+		TradeService:      tradeService,
+		EthereumService:   ethereumService,
+		Exchange:          exchange,
+		TxQueues:          txqueues,
+		QueueAddressIndex: addressIndex,
 	}
 
 	return op, nil
 }
 
-func (op *Operator) SubscribeOperatorMessages(fn func(*OperatorMessage) error) error {
-	ch := getChannel("OPERATOR_SUB")
-	q := getQueue(ch, "TX_MESSAGES")
+// SubscribeOperatorMessages
+func (op *Operator) SubscribeOperatorMessages(fn func(*types.OperatorMessage) error) error {
+	ch := rabbitmq.GetChannel("OPERATOR_SUB")
+	q := rabbitmq.GetQueue(ch, "TX_MESSAGES")
 
 	go func() {
 		msgs, err := ch.Consume(
@@ -118,7 +108,7 @@ func (op *Operator) SubscribeOperatorMessages(fn func(*OperatorMessage) error) e
 
 		go func() {
 			for m := range msgs {
-				var om *OperatorMessage
+				om := &types.OperatorMessage{}
 				err := json.Unmarshal(m.Body, &om)
 				if err != nil {
 					log.Printf("Error: %v", err)
@@ -133,11 +123,10 @@ func (op *Operator) SubscribeOperatorMessages(fn func(*OperatorMessage) error) e
 	return nil
 }
 
-
+// QueueTrade
 func (op *Operator) QueueTrade(o *types.Order, t *types.Trade) error {
-	txqueues := op.TxQueues
-	addressindex := op.QueueAddressINdex
-	maker := o.UserAddress,
+	addressindex := op.QueueAddressIndex
+	maker := o.UserAddress
 	taker := t.Taker
 
 	txq, ok := addressindex[maker]
@@ -154,7 +143,7 @@ func (op *Operator) QueueTrade(o *types.Order, t *types.Trade) error {
 		}
 	}
 
-	txq, ok := addressindex[taker]
+	txq, ok = addressindex[taker]
 	if ok {
 		if txq.Length() < 10 {
 			err := txq.QueueTrade(o, t)
@@ -168,42 +157,46 @@ func (op *Operator) QueueTrade(o *types.Order, t *types.Trade) error {
 		}
 	}
 
-	txq, err := op.GetShortestQueue()
+	txq, len, err := op.GetShortestQueue()
 	if err != nil {
 		log.Print(err)
 		return err
 	}
 
-	if txq.Length() < 10 {
-		err := txq.QueueTrade(o, t)
-		if err != nil {
-			log.Print(err)
-			return err
-		}
+	if len > 10 {
+		log.Print("Transaction queue is full")
+		return errors.New("Transaction queue is full")
+	}
+
+	err = txq.QueueTrade(o, t)
+	if err != nil {
+		log.Print(err)
+		return err
 	}
 
 	return nil
 }
 
-func (op *Operator) GetShortestQueue() *TxQueue, int, error {
+// GetShortestQueue
+func (op *Operator) GetShortestQueue() (*TxQueue, int, error) {
 	shortest := &TxQueue{}
-	min := op.TxQueues.Length()
+	min := op.TxQueues[0].Length()
 
-	for i, txq := range op.TxQueues {
+	for _, txq := range op.TxQueues {
 		if shortest == nil {
 			shortest = txq
 			min = txq.Length()
 		}
 
-		len = txq.Length()
-		if len < min {
-			min := len
+		ln := txq.Length()
+		if ln < min {
+			shortest = txq
+			min = ln
 		}
 	}
 
-	return txq, len, nil
+	return shortest, min, nil
 }
-
 
 // SetFeeAccount sets the fee account of the exchange contract. The fee account receives
 // the trading fees whenever a trade is settled.
@@ -252,9 +245,6 @@ func (op *Operator) Operator(addr common.Address) (bool, error) {
 // 	// 	return err
 // 	// }
 
-
-
-
 // 	ch := getChannel("tradeTxs")
 // 	q := getQueue(ch, "tradeTxs")
 
@@ -284,97 +274,6 @@ func (op *Operator) Operator(addr common.Address) (bool, error) {
 
 // 	return nil
 // }
-
-
-
-
-
-
-func (op *Operator) PublishTxErrorMessage(tr *types.Trade, errID int) error {
-	msg := &OperatorMessage{
-		MessageType: "TX_ERROR_MESSAGE",
-		Trade:       tr,
-		ErrID:       errID,
-	}
-
-	err := op.Publish(msg)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (op *Operator) PublishTradeCancelMessage(tr *types.Trade) error {
-	msg := &OperatorMessage{
-		MessageType: "TRADE_CANCEL_MESSAGE",
-		Trade:       tr,
-	}
-
-	err := op.Publish(msg)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (op *Operator) PublishTradeExecutedMessage(tr *types.Trade) error {
-	msg := &OperatorMessage{
-		MessageType: "TRADE_EXECUTED_MESSAGE",
-		Trade:       tr,
-	}
-
-	err := op.Publish(msg)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (op *Operator) PublishTradeSuccessMessage(tr *types.Trade) error {
-	msg := &OperatorMessage{
-		MessageType: "TRADE_SUCCESS_MESSAGE",
-		Trade:       tr,
-	}
-
-	err := op.Publish(msg)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (op *Operator) Publish(msg *OperatorMessage) error {
-	ch := getChannel("OPERATOR_PUB")
-	q := getQueue(ch, "TX_MESSAGES")
-
-	bytes, err := json.Marshal(msg)
-	if err != nil {
-		log.Printf("Failed to marshal %s: %s", msg.MessageType, err)
-	}
-
-	err = ch.Publish(
-		"",
-		q.Name,
-		false,
-		false,
-		amqp.Publishing{
-			ContentType: "text/json",
-			Body:        bytes,
-		},
-	)
-
-	if err != nil {
-		log.Printf("Failed to publish message %s: %s", msg.MessageType, err)
-		return err
-	}
-
-	return nil
-}
-
 
 // Trade executes a settlements transaction. The order and trade payloads need to be signed respectively
 // // by the Maker and the Taker of the trade. Only the operator account can send a Trade function to the
@@ -428,7 +327,6 @@ func (op *Operator) Publish(msg *OperatorMessage) error {
 // 	op.Exchange.TxOptions = bind.NewKeyedTransactor(w.PrivateKey)
 // }
 
-
 // func getQueue(ch *amqp.Channel, queue string) *amqp.Queue {
 // 	if queues[queue] == nil {
 // 		q, err := ch.QueueDeclare(queue, false, false, false, false, nil)
@@ -451,9 +349,6 @@ func (op *Operator) Publish(msg *OperatorMessage) error {
 // 	}
 // 	return channels[id]
 // }
-
-
-
 
 // go func() {
 // 	for {
