@@ -75,7 +75,7 @@ func NewRouter() *routing.Router {
 
 	rabbitmq.InitConnection(app.Config.Rabbitmq)
 	ethereum.InitConnection(app.Config.Ethereum)
-	redisClient := redis.InitConnection(app.Config.Redis)
+	redisClient := redis.NewRedisConnection(app.Config.Redis)
 
 	// instantiate engine
 	engineResource, err := engine.InitEngine(redisClient)
