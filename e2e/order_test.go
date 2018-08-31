@@ -25,7 +25,7 @@ type OrderTestSetup struct {
 }
 
 func SetupTest() (*types.Wallet, *types.Wallet, *testutils.Client, *testutils.Client, *testutils.OrderFactory, *testutils.OrderFactory, *types.Pair, common.Address, common.Address) {
-	err := app.LoadConfig("../config")
+	err := app.LoadConfig("../config", "")
 	if err != nil {
 		panic(err)
 	}
