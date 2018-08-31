@@ -3,12 +3,11 @@ package services
 import (
 	"strings"
 
-	"github.com/Proofsuite/amp-matching-engine/engine"
+	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/ethereum/go-ethereum/common"
 
 	"gopkg.in/mgo.v2/bson"
 
-	"github.com/Proofsuite/amp-matching-engine/daos"
 	aerrors "github.com/Proofsuite/amp-matching-engine/errors"
 	"github.com/Proofsuite/amp-matching-engine/types"
 )
@@ -16,24 +15,17 @@ import (
 // PairService struct with daos required, responsible for communicating with daos.
 // PairService functions are responsible for interacting with daos and implements business logics.
 type PairService struct {
-	pairDao      daos.PairDaoInterface
-	tokenDao     daos.TokenDaoInterface
-	eng          engine.EngineInterface
+	pairDao      interfaces.PairDao
+	tokenDao     interfaces.TokenDao
+	eng          interfaces.Engine
 	tradeService *TradeService
-}
-
-type PairServiceInterface interface {
-	Create(pair *types.Pair) error
-	GetByID(id bson.ObjectId) (*types.Pair, error)
-	GetByTokenAddress(bt, qt common.Address) (*types.Pair, error)
-	GetAll() ([]types.Pair, error)
 }
 
 // NewPairService returns a new instance of balance service
 func NewPairService(
-	pairDao daos.PairDaoInterface,
-	tokenDao daos.TokenDaoInterface,
-	eng engine.EngineInterface,
+	pairDao interfaces.PairDao,
+	tokenDao interfaces.TokenDao,
+	eng interfaces.Engine,
 	tradeService *TradeService,
 ) *PairService {
 

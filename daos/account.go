@@ -21,20 +21,6 @@ type AccountDao struct {
 	dbName         string
 }
 
-type AccountDaoInterface interface {
-	Create(a *types.Account) error
-	GetAll() ([]types.Account, error)
-	GetByID(id bson.ObjectId) (*types.Account, error)
-	GetByAddress(owner common.Address) (*types.Account, error)
-	GetTokenBalances(owner common.Address) (map[common.Address]*types.TokenBalance, error)
-	GetWethTokenBalance(owner common.Address) (*types.TokenBalance, error)
-	GetTokenBalance(owner common.Address, token common.Address) (*types.TokenBalance, error)
-	UpdateTokenBalance(owner common.Address, token common.Address, tokenBalance *types.TokenBalance) error
-	UpdateBalance(owner common.Address, token common.Address, balance *big.Int) error
-	UpdateAllowance(owner common.Address, token common.Address, allowance *big.Int) error
-	Drop()
-}
-
 // NewBalanceDao returns a new instance of AddressDao
 func NewAccountDao() *AccountDao {
 	dbName := app.Config.DBName

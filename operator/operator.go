@@ -6,9 +6,8 @@ import (
 	"log"
 	"strconv"
 
-	"github.com/Proofsuite/amp-matching-engine/contracts"
+	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/Proofsuite/amp-matching-engine/rabbitmq"
-	"github.com/Proofsuite/amp-matching-engine/services"
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/ethereum/go-ethereum/common"
 	eth "github.com/ethereum/go-ethereum/core/types"
@@ -19,17 +18,17 @@ import (
 // account that initially deployed the exchange contract or an address with operator rights
 // on the contract
 type Operator struct {
-	WalletService     services.WalletServiceInterface
-	TxService         services.TxServiceInterface
-	TradeService      services.TradeServiceInterface
-	EthereumService   services.EthereumServiceInterface
-	Exchange          *contracts.Exchange
+	WalletService     interfaces.WalletService
+	TxService         interfaces.TxService
+	TradeService      interfaces.TradeService
+	EthereumService   interfaces.EthereumService
+	Exchange          interfaces.Exchange
 	TxQueues          []*TxQueue
 	QueueAddressIndex map[common.Address]*TxQueue
 }
 
 type OperatorInterface interface {
-	SubscribeOperatorMessages(fn func(*OperatorMessage) error) error
+	SubscribeOperatorMessages(fn func(*types.OperatorMessage) error) error
 	QueueTrade(o *types.Order, t *types.Trade) error
 	GetShortestQueue() (*TxQueue, int, error)
 	SetFeeAccount(account common.Address) (*eth.Transaction, error)
@@ -38,29 +37,17 @@ type OperatorInterface interface {
 	Operator(addr common.Address) (bool, error)
 }
 
-type OperatorMessage struct {
-	MessageType string
-	Order       *types.Order
-	Trade       *types.Trade
-	ErrID       int
-}
-
-type PendingTradeMessage struct {
-	Order *types.Order
-	Trade *types.Trade
-}
-
 // NewOperator creates a new operator struct. It creates an exchange contract instance from the
 // provided address. The error and trade events are received in the ErrorChannel and TradeChannel.
 // Upon receiving errors and trades in their respective channels, event payloads are sent to the
 // associated order maker and taker sockets through the through the event channel on the Order and Trade struct.
 // In addition, an error event cancels the trade in the trading engine and makes the order available again.
 func NewOperator(
-	walletService services.WalletServiceInterface,
-	txService services.TxServiceInterface,
-	tradeService services.TradeServiceInterface,
-	ethereumService services.EthereumServiceInterface,
-	exchange *contracts.Exchange,
+	walletService interfaces.WalletService,
+	txService interfaces.TxService,
+	tradeService interfaces.TradeService,
+	ethereumService interfaces.EthereumService,
+	exchange interfaces.Exchange,
 ) (*Operator, error) {
 
 	txqueues := []*TxQueue{}
@@ -98,7 +85,7 @@ func NewOperator(
 }
 
 // SubscribeOperatorMessages
-func (op *Operator) SubscribeOperatorMessages(fn func(*OperatorMessage) error) error {
+func (op *Operator) SubscribeOperatorMessages(fn func(*types.OperatorMessage) error) error {
 	ch := rabbitmq.GetChannel("OPERATOR_SUB")
 	q := rabbitmq.GetQueue(ch, "TX_MESSAGES")
 
@@ -121,7 +108,7 @@ func (op *Operator) SubscribeOperatorMessages(fn func(*OperatorMessage) error) e
 
 		go func() {
 			for m := range msgs {
-				var om *OperatorMessage
+				om := &types.OperatorMessage{}
 				err := json.Unmarshal(m.Body, &om)
 				if err != nil {
 					log.Printf("Error: %v", err)
@@ -203,6 +190,7 @@ func (op *Operator) GetShortestQueue() (*TxQueue, int, error) {
 
 		ln := txq.Length()
 		if ln < min {
+			shortest = txq
 			min = ln
 		}
 	}

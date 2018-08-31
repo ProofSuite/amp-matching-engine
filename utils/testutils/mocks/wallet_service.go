@@ -59,7 +59,7 @@ func (_m *WalletService) GetAll() ([]types.Wallet, error) {
 }
 
 // GetByAddress provides a mock function with given fields: a
-func (_m *WalletService) GetByAddress(a common.Address) *types.Wallet {
+func (_m *WalletService) GetByAddress(a common.Address) (*types.Wallet, error) {
 	ret := _m.Called(a)
 
 	var r0 *types.Wallet
@@ -71,7 +71,14 @@ func (_m *WalletService) GetByAddress(a common.Address) *types.Wallet {
 		}
 	}
 
-	return r0
+	var r1 error
+	if rf, ok := ret.Get(1).(func(common.Address) error); ok {
+		r1 = rf(a)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // GetDefaultAdminWallet provides a mock function with given fields:

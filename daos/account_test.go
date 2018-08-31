@@ -12,7 +12,7 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-var db *Database
+// var db *Database
 
 // func TestMain(m *testing.M) {
 // 	db := &Database{}

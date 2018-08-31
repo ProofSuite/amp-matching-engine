@@ -14,11 +14,6 @@ type EthereumService struct {
 	EthereumClient *ethclient.Client
 }
 
-type EthereumServiceInterface interface {
-	WaitMined(tx *ethTypes.Transaction) (*ethTypes.Receipt, error)
-	GetPendingBalanceAt(a common.Address) (*big.Int, error)
-}
-
 func NewEthereumService(e *ethclient.Client) *EthereumService {
 	return &EthereumService{e}
 }

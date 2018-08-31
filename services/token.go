@@ -2,28 +2,21 @@ package services
 
 import (
 	"github.com/Proofsuite/amp-matching-engine/errors"
+	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/ethereum/go-ethereum/common"
 	"gopkg.in/mgo.v2/bson"
 
-	"github.com/Proofsuite/amp-matching-engine/daos"
 	"github.com/Proofsuite/amp-matching-engine/types"
 )
 
 // TokenService struct with daos required, responsible for communicating with daos.
 // TokenService functions are responsible for interacting with daos and implements business logics.
 type TokenService struct {
-	tokenDao daos.TokenDaoInterface
-}
-
-type TokenServiceInterface interface {
-	Create(token *types.Token) error
-	GetByID(id bson.ObjectId) (*types.Token, error)
-	GetByAddress(addr common.Address) (*types.Token, error)
-	GetAll() ([]types.Token, error)
+	tokenDao interfaces.TokenDao
 }
 
 // NewTokenService returns a new instance of TokenService
-func NewTokenService(tokenDao daos.TokenDaoInterface) *TokenService {
+func NewTokenService(tokenDao interfaces.TokenDao) *TokenService {
 	return &TokenService{tokenDao}
 }
 

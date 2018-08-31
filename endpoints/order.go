@@ -5,10 +5,9 @@ import (
 	"log"
 
 	"github.com/Proofsuite/amp-matching-engine/errors"
+	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/ethereum/go-ethereum/common"
 
-	"github.com/Proofsuite/amp-matching-engine/engine"
-	"github.com/Proofsuite/amp-matching-engine/services"
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/Proofsuite/amp-matching-engine/ws"
 	"github.com/go-ozzo/ozzo-routing"
@@ -16,15 +15,15 @@ import (
 )
 
 type orderEndpoint struct {
-	orderService services.OrderServiceInterface
-	engine       engine.EngineInterface
+	orderService interfaces.OrderService
+	engine       interfaces.Engine
 }
 
 // ServeOrderResource sets up the routing of order endpoints and the corresponding handlers.
 func ServeOrderResource(
 	rg *routing.RouteGroup,
-	orderService services.OrderServiceInterface,
-	engine engine.EngineInterface,
+	orderService interfaces.OrderService,
+	engine interfaces.Engine,
 ) {
 	e := &orderEndpoint{orderService, engine}
 	rg.Get("/orders/<address>", e.get)
