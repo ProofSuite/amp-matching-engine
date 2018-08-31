@@ -49,7 +49,7 @@ func testToken(t *testing.T) []types.Token {
 		fmt.Println("FAIL  't1 - create token'")
 	}
 
-	listTokens = append(listTokens, expectedToken2)
+	listTokens = append(listTokens, expectedToken1)
 	dbTokensList = append(dbTokensList, resp)
 
 	// Duplicate token test

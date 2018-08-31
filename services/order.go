@@ -11,6 +11,8 @@ import (
 	"github.com/streadway/amqp"
 
 	"github.com/Proofsuite/amp-matching-engine/interfaces"
+	"github.com/Proofsuite/amp-matching-engine/utils"
+	"github.com/Proofsuite/amp-matching-engine/utils/math"
 	"github.com/Proofsuite/amp-matching-engine/ws"
 	"github.com/ethereum/go-ethereum/common"
 
@@ -221,14 +223,13 @@ func (s *OrderService) HandleEngineResponse(res *types.EngineResponse) error {
 	case "NOMATCH":
 		s.handleEngineOrderAdded(res)
 	case "FULL":
-		s.handleEngineOrderMatched(res)
 	case "PARTIAL":
 		s.handleEngineOrderMatched(res)
 	default:
 		s.handleEngineUnknownMessage(res)
 	}
 
-	// s.RelayUpdateOverSocket(res)
+	s.RelayUpdateOverSocket(res)
 	// ws.CloseOrderReadChannel(res.Order.Hash)
 	return nil
 }
@@ -353,21 +354,23 @@ func (s *OrderService) RecoverOrders(res *types.EngineResponse) {
 // RelayUpdateOverSocket is resonsible for notifying listening clients about new order/trade addition/deletion
 func (s *OrderService) RelayUpdateOverSocket(res *types.EngineResponse) {
 
-	// if
-	// if len(res.Trades) > 0 {
-	// 	fmt.Println("Trade relay over socket")
-	// 	ws.GetPairSockets().WriteMessage(res.Order.BaseToken, res.Order.QuoteToken, "TRADES_ADDED", res.Trades)
-	// }
+	// send latest order
+	cid := utils.GetOrderBookChannelID(res.Order.BaseToken, res.Order.QuoteToken)
+	ws.GetOrderBookSocket().BroadcastMessage(cid, res.Order)
 
-	// if res.RemainingOrder != nil {
-	// 	fmt.Println("Order added Relay over socket")
-	// 	ws.GetPairSockets().WriteMessage(res.Order.BaseToken, res.Order.QuoteToken, "ORDER_ADDED", res.RemainingOrder)
-	// }
+	// broadcast trades, if any
+	if len(res.Trades) > 0 {
+		fmt.Println("Trade relay over socket")
+		cid := utils.GetTradeChannelID(res.Order.BaseToken, res.Order.QuoteToken)
+		ws.GetTradeSocket().BroadcastMessage(cid, res.Trades)
+	}
 
-	// if res.FillStatus == engine.CANCELLED {
-	// 	fmt.Println("Order cancelled Relay over socket")
-	// 	ws.GetPairSockets().WriteMessage(res.Order.BaseToken, res.Order.QuoteToken, "ORDER_CANCELED", res.Order)
-	// }
+	// broadcast remaining order, if any
+	if res.RemainingOrder != nil && math.IsGreaterThan(res.RemainingOrder.Amount, big.NewInt(0)) {
+		fmt.Println("Order added Relay over socket")
+		cid := utils.GetOrderBookChannelID(res.Order.BaseToken, res.Order.QuoteToken)
+		ws.GetOrderBookSocket().BroadcastMessage(cid, res.RemainingOrder)
+	}
 }
 
 // SendMessage is resonsible for sending message to socket linked to a particular order

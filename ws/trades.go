@@ -1,7 +1,6 @@
 package ws
 
 import (
-	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/gorilla/websocket"
 )
 
@@ -22,41 +21,42 @@ func GetTradeSocket() *TradeSocket {
 }
 
 // Subscribe registers a new websocket connections to the trade channel updates
-func (s *TradeSocket) Subscribe(channelId string, conn *websocket.Conn) error {
-	if s.subscriptions[channelId] == nil {
-		s.subscriptions[channelId] = make(map[*websocket.Conn]bool)
+func (s *TradeSocket) Subscribe(channelID string, conn *websocket.Conn) error {
+	if s.subscriptions[channelID] == nil {
+		s.subscriptions[channelID] = make(map[*websocket.Conn]bool)
 	}
 
-	s.subscriptions[channelId][conn] = true
+	s.subscriptions[channelID][conn] = true
 	return nil
 }
 
 // Unsubscribe removes a websocket connection from the trade channel updates
-func (s *TradeSocket) Unsubscribe(channelId string, conn *websocket.Conn) {
-	if s.subscriptions[channelId][conn] {
-		s.subscriptions[channelId][conn] = false
-		delete(s.subscriptions[channelId], conn)
+func (s *TradeSocket) Unsubscribe(channelID string, conn *websocket.Conn) {
+	if s.subscriptions[channelID][conn] {
+		s.subscriptions[channelID][conn] = false
+		delete(s.subscriptions[channelID], conn)
 	}
 }
 
-// TradeUnSubscribeHandler unsubscribes a connection from a certain trade channel id
-func (s *TradeSocket) UnsubscribeHandler(channelId string) func(conn *websocket.Conn) {
+// UnsubscribeHandler unsubscribes a connection from a certain trade channel id
+func (s *TradeSocket) UnsubscribeHandler(channelID string) func(conn *websocket.Conn) {
 	return func(conn *websocket.Conn) {
-		s.Unsubscribe(channelId, conn)
+		s.Unsubscribe(channelID, conn)
 	}
 }
 
-func (s *TradeSocket) BroadcastMessage(channelId string, msgType string, p *types.WebSocketPayload) {
+// BroadcastMessage broadcasts trade message to all subscribed sockets
+func (s *TradeSocket) BroadcastMessage(channelID string, p interface{}) {
 	go func() {
-		for conn, active := range tradeSocket.subscriptions[channelId] {
+		for conn, active := range tradeSocket.subscriptions[channelID] {
 			if active {
-				SendTradeMessage(conn, msgType, p)
+				SendTradeUpdateMessage(conn, p)
 			}
 		}
 	}()
 }
 
-// SendTradeMesage sends a websocket message on the trade channel
+// SendTradeMessage sends a websocket message on the trade channel
 func SendTradeMessage(conn *websocket.Conn, msgType string, p interface{}) {
 	SendMessage(conn, TradeChannel, msgType, p)
 }
@@ -66,40 +66,40 @@ func SendTradeErrorMessage(conn *websocket.Conn, p interface{}) {
 	SendTradeMessage(conn, "ERROR", p)
 }
 
-// SendTradeTradessMessage is responsible for sending message on trade ohlcv channel at subscription
+// SendTradeInitMessage is responsible for sending message on trade ohlcv channel at subscription
 func SendTradeInitMessage(conn *websocket.Conn, p interface{}) {
 	SendMessage(conn, TradeChannel, "INIT", p)
 }
 
-// TradeSendTradesMessage is responsible for sending message on trade ohlcv channel at subscription
+// SendTradeUpdateMessage is responsible for sending message on trade ohlcv channel at subscription
 func SendTradeUpdateMessage(conn *websocket.Conn, p interface{}) {
 	SendMessage(conn, TradeChannel, "UPDATE", p)
 }
 
 // // UnsubscribeTrades unsubscribes a websocket connection from trades streaming
-// func (sadf) UnsubscribeTrades(channelId string, conn *websocket.Conn) {
+// func (sadf) UnsubscribeTrades(channelID string, conn *websocket.Conn) {
 // 	if tradeSocket == nil {
 // 		tradeSocket = &TradeSocket{
 // 			subscriptions: make(map[string]map[*websocket.Conn]bool)
 // 		}
 // 	}
 
-// 	if tradeSocket[channelId][conn] {
-// 		tradeSocket[channelId][conn] = false
-// 		delete(tradeSocket[channelId], conn)
+// 	if tradeSocket[channelID][conn] {
+// 		tradeSocket[channelID][conn] = false
+// 		delete(tradeSocket[channelID], conn)
 // 	}
 // }
 
 // // TradesCloseHandler handles the unsubscription from ohlcv data streaming in case of connection close
-// func TradeUnsubscribeHandler(channelId string) func(conn *websocket.Conn) {
+// func TradeUnsubscribeHandler(channelID string) func(conn *websocket.Conn) {
 // 	return func(conn *websocket.Conn) {
 // 		if tradeSocket == nil {
 // 			tradeSocket = make(map[string]map[*websocket.Conn]bool)
 // 		}
 
-// 		if tradeSocket[channelId][conn] {
-// 			tradeSocket[channelId][conn] = false
-// 			delete(tradeSocket[channelId], conn)
+// 		if tradeSocket[channelID][conn] {
+// 			tradeSocket[channelID][conn] = false
+// 			delete(tradeSocket[channelID], conn)
 // 		}
 // 	}
 // }

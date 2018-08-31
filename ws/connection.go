@@ -12,10 +12,13 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-const TradeChannel = "trades"
-const OrderBookChannel = "order_book"
-const OrderChannel = "orders"
-const OHLCVChannel = "ohlcv"
+// websocket channel's string
+const (
+	TradeChannel = "trades"
+	OrderBookChannel = "order_book"
+	OrderChannel = "orders"
+	OHLCVChannel = "ohlcv"
+)
 
 // gorilla websocket upgrader instance with configuration
 var upgrader = websocket.Upgrader{
