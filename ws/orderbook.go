@@ -3,7 +3,6 @@ package ws
 import (
 	"errors"
 
-	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/gorilla/websocket"
 )
 
@@ -15,7 +14,7 @@ type OrderBookSocket struct {
 	subscriptions map[string]map[*websocket.Conn]bool
 }
 
-// GetPairSockets return singleton instance of PairSockets type struct
+// GetOrderBookSocket return singleton instance of PairSockets type struct
 func GetOrderBookSocket() *OrderBookSocket {
 	if orderBookSocket == nil {
 		orderBookSocket = &OrderBookSocket{make(map[string]map[*websocket.Conn]bool)}
@@ -24,65 +23,67 @@ func GetOrderBookSocket() *OrderBookSocket {
 	return orderBookSocket
 }
 
-// Register handles the registration of connection to get
+// Subscribe handles the subscription of connection to get
 // streaming data over the socker for any pair.
 // pair := utils.GetPairKey(bt, qt)
-func (s *OrderBookSocket) Subscribe(channelId string, conn *websocket.Conn) error {
+func (s *OrderBookSocket) Subscribe(channelID string, conn *websocket.Conn) error {
 	if conn == nil {
 		return errors.New("Empty connection object")
 	}
 
-	if s.subscriptions[channelId] == nil {
-		s.subscriptions[channelId] = make(map[*websocket.Conn]bool)
+	if s.subscriptions[channelID] == nil {
+		s.subscriptions[channelID] = make(map[*websocket.Conn]bool)
 	}
 
-	s.subscriptions[channelId][conn] = true
+	s.subscriptions[channelID][conn] = true
 	return nil
 }
 
 // UnsubscribeHandler returns function of type unsubscribe handler,
 // it handles the unsubscription of pair in case of connection closing.
-func (s *OrderBookSocket) UnsubscribeHandler(channelId string) func(conn *websocket.Conn) {
+func (s *OrderBookSocket) UnsubscribeHandler(channelID string) func(conn *websocket.Conn) {
 	return func(conn *websocket.Conn) {
-		s.Unsubscribe(channelId, conn)
+		s.Unsubscribe(channelID, conn)
 	}
 }
 
-// UnregisterConnection is used to unsubscribe the connection from listening to the key
+// Unsubscribe is used to unsubscribe the connection from listening to the key
 // subscribed to. It can be called on unsubscription message from user or due to some other reason by
 // system
-func (s *OrderBookSocket) Unsubscribe(channelId string, conn *websocket.Conn) {
-	if s.subscriptions[channelId][conn] {
-		s.subscriptions[channelId][conn] = false
-		delete(s.subscriptions[channelId], conn)
+func (s *OrderBookSocket) Unsubscribe(channelID string, conn *websocket.Conn) {
+	if s.subscriptions[channelID][conn] {
+		s.subscriptions[channelID][conn] = false
+		delete(s.subscriptions[channelID], conn)
 	}
 }
 
-// Broadcast Message streams message to all the subscribtions subscribed to the pair
-func (s *OrderBookSocket) BroadcastMessage(channelId string, msgType string, p *types.WebSocketPayload) error {
-	for conn, status := range s.subscriptions[channelId] {
+// BroadcastMessage streams message to all the subscribtions subscribed to the pair
+func (s *OrderBookSocket) BroadcastMessage(channelID string, p interface{}) error {
+	for conn, status := range s.subscriptions[channelID] {
 		if status {
-			SendOrderBookMessage(conn, msgType, p)
+			SendOrderBookUpdateMessage(conn, p)
 		}
 	}
 
 	return nil
 }
 
-// SendMessage sends a message on the orderbook channel
+// SendOrderBookMessage sends a message on the orderbook channel
 func SendOrderBookMessage(conn *websocket.Conn, msgType string, data interface{}) {
 	SendMessage(conn, OrderBookChannel, msgType, data)
 }
 
-// SendErrorMessage sends
+// SendOrderBookErrorMessage sends error message on orderbookchannel
 func SendOrderBookErrorMessage(conn *websocket.Conn, data interface{}) {
 	SendOrderBookMessage(conn, "ERROR", data)
 }
 
+// SendOrderBookInitMessage sends INIT message on orderbookchannel on subscription event
 func SendOrderBookInitMessage(conn *websocket.Conn, data interface{}) {
 	SendOrderBookMessage(conn, "INIT", data)
 }
 
+// SendOrderBookUpdateMessage sends UPDATE message on orderbookchannel as new data is created
 func SendOrderBookUpdateMessage(conn *websocket.Conn, data interface{}) {
 	SendOrderBookMessage(conn, "UPDATE", data)
 }

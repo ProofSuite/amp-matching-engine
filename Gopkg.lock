@@ -2,17 +2,6 @@
 
 
 [[projects]]
-  branch = "develop"
-  digest = "1:29917ac9e45dec08cc8e534fddd6b14cd9d5a521ba1355e3821aac2be6cd1553"
-  name = "github.com/Proofsuite/matching-engine"
-  packages = [
-    "dex/interfaces",
-    "types",
-  ]
-  pruneopts = "T"
-  revision = "d6612ca7d396bc89c6ed7f10d74f37b9b734609d"
-
-[[projects]]
   digest = "1:e3bb58bcd5cf318d91ccdb290fd8e0e78d16add716b1ccf861fed19c1551fde0"
   name = "github.com/Sirupsen/logrus"
   packages = ["."]
@@ -548,8 +537,6 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
-    "github.com/Proofsuite/matching-engine/dex/interfaces",
-    "github.com/Proofsuite/matching-engine/types",
     "github.com/Sirupsen/logrus",
     "github.com/alicebob/miniredis",
     "github.com/ethereum/go-ethereum",

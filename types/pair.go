@@ -43,11 +43,11 @@ type PairSubDoc struct {
 type PairRecord struct {
 	ID                bson.ObjectId `json:"id" bson:"_id"`
 	Name              string        `json:"name" bson:"name"`
-	BaseTokenID       bson.ObjectId `json:"baseTokenId" bson:"baseTokenId"`
+
 	BaseTokenSymbol   string        `json:"baseTokenSymbol" bson:"baseTokenSymbol"`
 	BaseTokenAddress  string        `json:"baseTokenAddress" bson:"baseTokenAddress"`
 	BaseTokenDecimal  int           `json:"baseTokenDecimal" bson:"baseTokenDecimal"`
-	QuoteTokenID      bson.ObjectId `json:"quoteTokenId" bson:"quoteTokenId"`
+
 	QuoteTokenSymbol  string        `json:"quoteTokenSymbol" bson:"quoteTokenSymbol"`
 	QuoteTokenAddress string        `json:"quoteTokenAddress" bson:"quoteTokenAddress"`
 	QuoteTokenDecimal int           `json:"quoteTokenDecimal" bson:"quoteTokenDecimal"`
@@ -68,16 +68,18 @@ func (p *Pair) SetBSON(raw bson.Raw) error {
 		return err
 	}
 
-	makeFee := new(big.Int)
+	makeFee := big.NewInt(0)
 	makeFee, _ = makeFee.SetString(decoded.MakeFee, 10)
-	takeFee := new(big.Int)
+	takeFee := big.NewInt(0)
 	takeFee, _ = takeFee.SetString(decoded.TakeFee, 10)
 
 	p.ID = decoded.ID
 	p.Name = decoded.Name
+	
 	p.BaseTokenSymbol = decoded.BaseTokenSymbol
 	p.BaseTokenAddress = common.HexToAddress(decoded.BaseTokenAddress)
 	p.BaseTokenDecimal = decoded.BaseTokenDecimal
+	
 	p.QuoteTokenSymbol = decoded.QuoteTokenSymbol
 	p.QuoteTokenAddress = common.HexToAddress(decoded.QuoteTokenAddress)
 	p.QuoteTokenDecimal = decoded.QuoteTokenDecimal
@@ -96,12 +98,15 @@ func (p *Pair) GetBSON() (interface{}, error) {
 	return &PairRecord{
 		ID:                p.ID,
 		Name:              p.Name,
+		
 		BaseTokenSymbol:   p.BaseTokenSymbol,
 		BaseTokenAddress:  p.BaseTokenAddress.Hex(),
 		BaseTokenDecimal:  p.BaseTokenDecimal,
+		
 		QuoteTokenSymbol:  p.QuoteTokenSymbol,
 		QuoteTokenAddress: p.QuoteTokenAddress.Hex(),
 		QuoteTokenDecimal: p.QuoteTokenDecimal,
+		
 		Active:            p.Active,
 		MakeFee:           p.MakeFee.String(),
 		TakeFee:           p.TakeFee.String(),

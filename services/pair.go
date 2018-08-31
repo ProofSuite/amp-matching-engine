@@ -71,7 +71,6 @@ func (s *PairService) Create(pair *types.Pair) error {
 	pair.BaseTokenAddress = bt.ContractAddress
 	pair.BaseTokenDecimal = bt.Decimal
 	pair.Name = strings.ToUpper(st.Symbol + "/" + bt.Symbol)
-
 	err = s.pairDao.Create(pair)
 	return err
 
