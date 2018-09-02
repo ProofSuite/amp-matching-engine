@@ -1,0 +1,62 @@
+version: '2'
+services:
+  matching-engine:
+    container_name: "matching-engine"
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - '8081:8081'
+    links:
+      - redis
+      - rabbitmq
+      - mongodb
+    depends_on:
+      - redis
+      - rabbitmq
+      - mongodb
+
+  rabbitmq:
+    container_name: "rabbitmq"
+    image: rabbitmq
+    ports:
+      - '5672:5672'
+
+  redis:
+    container_name: "redis"
+    image: redis
+    ports:
+      - '6379:6379'
+
+  mongodb:
+    image: mongo:latest
+    container_name: "mongodb"
+    ports:
+      - '27017:27017'
+
+
+  mongodb-seed:
+    image: mongo:latest
+    container_name: "mongodb-seed"
+    links:
+      - mongodb
+    volumes:
+      - ./utils/seed-data:/utils/seed-data
+    depends_on:
+      - mongodb
+    command:
+      - /bin/sh
+      - -c
+      - |
+        mongo proofdex --eval "db.dropDatabase()"
+        mongoimport --host mongodb --db proofdex --type json --file utils/seed-data/tokens.json
+        mongoimport --host mongodb --db proofdex --type json --file utils/seed-data/pairs.json
+        mongoimport --host mongodb --db proofdex --type json --file utils/seed-data/accounts.json
+
+# USEFUL COMMANDS TO BE REINCLUDED LATER
+
+# environment:
+    #   - MONGO_DATA_DIR=/data/db
+    #   - MONGO_LOG_DIR=/dev/null
+
+# command: mongod --smallfiles /--logpath=/dev/null
