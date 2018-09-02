@@ -912,10 +912,8 @@ func TestOperator1(t *testing.T) {
 				log.Print(msg.MessageType)
 				wg.Done()
 			case "TRADE_SUCCESS_MESSAGE":
-				log.Print(msg.MessageType)
 				wg.Done()
 			case "TRADE_ERROR_MESSAGE":
-				log.Print(msg.MessageType)
 				t.Errorf("Received trade error message")
 			}
 		}
@@ -923,6 +921,15 @@ func TestOperator1(t *testing.T) {
 
 	wg.Wait()
 }
+
+
+
+
+
+
+
+
+
 
 // func TestNewOperator2(t *testing.T) {
 
