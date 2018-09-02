@@ -133,7 +133,7 @@ func (d *Deployer) DeployExchange(wethToken common.Address, feeAccount common.Ad
 		WalletService: d.WalletService,
 		TxService:     d.TxService,
 		Interface:     exchangeInterface,
-		Client: d.Backend,
+		Client:        d.Backend,
 	}, address, tx, err
 }
 
