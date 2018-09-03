@@ -72,7 +72,7 @@ func NewSimulator(
 		(genesisAlloc)[a] = core.GenesisAccount{Balance: weiBalance}
 	}
 
-	simulator := backends.NewSimulatedBackend(genesisAlloc)
+	simulator := backends.NewSimulatedBackend(genesisAlloc, 5e6)
 
 	return &Deployer{
 		WalletService: w,
