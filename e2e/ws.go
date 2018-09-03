@@ -48,7 +48,7 @@ func testWS(t *testing.T, pairs []types.Pair, accounts map[*ecdsa.PrivateKey]typ
 
 	go func(test *testing.T) {
 		ohlcvClient := newOHLCVClient(t, baseToken, quoteToken, nil)
-		time.Sleep(5 * time.Second)
+		time.Sleep(6 * time.Second)
 		log := getLatestRLog(ohlcvClient.ResponseLogs)
 		assert.Equal(test, "UPDATE", log.Payload.Type)
 		wg.Done()

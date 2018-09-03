@@ -54,7 +54,7 @@ func (s *OHLCVService) Subscribe(conn *websocket.Conn, bt, qt common.Address, pa
 		ws.SendTradeErrorMessage(conn, message)
 	}
 
-	ws.RegisterConnectionUnsubscribeHandler(conn, ws.GetTradeSocket().UnsubscribeHandler(id))
+	ws.RegisterConnectionUnsubscribeHandler(conn, ws.GetOHLCVSocket().UnsubscribeHandler(id))
 	ws.SendOHLCVInitMesssage(conn, ohlcv)
 }
 

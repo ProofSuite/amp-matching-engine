@@ -33,7 +33,13 @@ func testToken(t *testing.T) []types.Token {
 		ContractAddress: common.HexToAddress("0x2034842261b82651885751fc293bba7ba5398156"),
 		Active:          true,
 	}
-
+	wethToken := types.Token{
+		Name:            "Weth",
+		Symbol:          "Weth",
+		Decimal:         18,
+		ContractAddress: common.HexToAddress("0x2EB24432177e82907dE24b7c5a6E0a5c03226135"),
+		Active:          true,
+	}
 	// create token test
 	res := testAPI(router, "POST", "/tokens", `{  "name":"HotPotCoin", "symbol":"HPC", "decimal":18, "contractAddress":"0x1888a8db0b7db59413ce07150b3373972bf818d3","active":true,"quote":true}`)
 	assert.Equal(t, http.StatusOK, res.Code, "t1 - create token")
@@ -111,6 +117,20 @@ func testToken(t *testing.T) []types.Token {
 	} else {
 		fmt.Println("FAIL  't5 - fetch token list'")
 	}
+
+	// add weth token(for order fees validation)
+	res = testAPI(router, "POST", "/tokens", `{  "name":"Weth", "symbol":"Weth", "decimal":18, "contractAddress":"0x2EB24432177e82907dE24b7c5a6E0a5c03226135","active":true }`)
+	assert.Equal(t, http.StatusOK, res.Code, "t6 - create weth token")
+	if err := json.Unmarshal(res.Body.Bytes(), &resp); err != nil {
+		fmt.Printf("%v", err)
+	}
+
+	if compareToken(t, resp, wethToken) {
+		fmt.Println("PASS  't6 - create weth token'")
+	} else {
+		fmt.Println("FAIL  't6 - create weth token'")
+	}
+	dbTokensList = append(dbTokensList, resp)
 
 	return dbTokensList
 }
