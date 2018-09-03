@@ -15,10 +15,135 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// func SetupTest() *engine.Engine {
+
+// 	log.SetFlags(log.LstdFlags | log.Llongfile)
+// 	log.SetPrefix("\nLOG: ")
+
+// 	e := setupEngine()
+
+// 	ex := testutils.GetTestAddress1()
+// 	maker := testutils.GetTestWallet1()
+// 	taker := testutils.GetTestWallet2()
+// 	pair := testutils.GetZRXWETHTestPair()
+// 	zrx := pair.BaseTokenAddress
+// 	weth := pair.QuoteTokenAddress
+
+// 	factory1, err := testutils.NewOrderFactory(pair, maker, ex)
+// 	if err != nil {
+// 		panic(err)
+// 	}
+
+// 	factory2, err := testutils.NewOrderFactory(pair, taker, ex)
+// 	if err != nil {
+// 		panic(err)
+// 	}
+
+// 	return e, ex, maker, taker, pair, zrx, weth, factory1, factory2
+// }
+
+// func TestAddOrder(t *testing.T) {
+// 	e := setupTest()
+// 	defer e.redisConn.FlushAll()
+
+// 	o1 := factory1.NewSellOrder(1)
+// 	o2 := factory2.NewBuyOrder(1)
+
+// 	pricePointSetKey, orderHashListKey := o1.GetOBKeys()
+
+// 	res, err := e.redisConn.GetSortedSet(pricePointSetKey)
+// 	if err != nil {
+// 		t.Error("Error getting sorted set", err)
+// 	}
+
+// 	for k, v := range res {
+// 		assert.Equalf(t, utils.UintToPaddedString(o1.PricePoint.Int64()), k, "Expected sorted set value: %v got: %v", utils.UintToPaddedString(o1.PricePoint.Int64()), k)
+// 		assert.Equalf(t, 0.0, v, "Expected sorted set value: %v got: %v", 0, v)
+// 	}
+
+// 	res, err = e.redisConn.GetSortedSet(orderHashListKey)
+// 	if err != nil {
+// 		t.Error("Error getting order hash set", err)
+// 	}
+
+// 	for k, v := range res {
+// 		assert.Equalf(t, o1.Hash.Hex(), k, "Expected sorted set value: %v got: %v", o1.Hash.Hex(), k)
+// 		assert.Equalf(t, o1.CreatedAt.Unix(), int64(v), "Expected sorted set value: %v got: %v", o1.CreatedAt.Unix(), v)
+// 	}
+
+// 	res, err := e.redisConn.GetValue(o1.Hash.Hex())
+// 	if err != nil {
+// 		t.Error("Error getting order from order hash set")
+// 	}
+
+// 	assert.JSONEqf(t, string(bytes), rse, "Expected value for key: %v, was: %s, but got: %v", pricePointSetKey, bytes, res)
+// 	res, err = e.redisConn.GetValue(pricePointSetKey + "::book::" + utils.UintToPaddedString(o1.PricePoint.Int64()))
+// 	if err != nil {
+// 		t.Error(err)
+// 	}
+
+// 	assert.Equal(t, o1.Amount.Sub(o1.Amount, o1.FilledAmount).String(), res)
+
+// 	bytes, _ = o2.MarshalJSON()
+// 	e.addOrder(&o2)
+
+// 	pricePointSetKey, orderHashListKey = o2.GetOBKeys()
+
+// 	o2 := getBuyOrder()
+
+// 	bytes, _ = o2.MarshalJSON()
+// 	e.addOrder(&o2)
+// 	pricePointSetKey, orderHashListKey = o2.GetOBKeys()
+
+// 	rs, err = e.redisConn.GetSortedSet(pricePointSetKey)
+// 	if err != nil {
+// 		t.Error(err)
+// 	} else {
+// 		var matched = false
+// 		for k, v := range rs {
+// 			if utils.UintToPaddedString(o2.PricePoint.Int64()) == k && v == 0.0 {
+// 				matched = true
+// 			}
+// 		}
+// 		if !matched {
+// 			t.Errorf("Expected sorted set value: %v", utils.UintToPaddedString(o2.PricePoint.Int64()))
+// 		}
+// 	}
+
+// 	rs, err = e.redisConn.GetSortedSet(orderHashListKey)
+// 	if err != nil {
+// 		t.Error(err)
+// 	} else {
+// 		var matched = false
+// 		for k, v := range rs {
+// 			if o2.Hash.Hex() == k && o2.CreatedAt.Unix() == int64(v) {
+// 				matched = true
+// 			}
+// 		}
+
+// 		if !matched {
+// 			t.Errorf("Expected sorted set value: %v ", o2.Hash)
+// 		}
+// 	}
+// 	rse, err = e.redisConn.GetValue(o2.Hash.Hex())
+// 	if err != nil {
+// 		t.Error(err)
+// 	}
+// 	assert.JSONEqf(t, string(bytes), rse, "Expected value for key: %v, was: %s, but got: %v", pricePointSetKey, bytes, rse)
+// 	rse, err = e.redisConn.GetValue(pricePointSetKey + "::book::" + utils.UintToPaddedString(o2.PricePoint.Int64()))
+// 	if err != nil {
+// 		t.Error(err)
+// 	}
+// 	rse, err = e.redisConn.GetValue(pricePointSetKey + "::book::" + utils.UintToPaddedString(o1.PricePoint.Int64()))
+// 	if err != nil {
+// 		t.Error(err)
+// 	}
+// 	assert.Equal(t, o2.Amount.Sub(o2.Amount, o2.FilledAmount).String(), rse)
+// }
+
 func TestAddOrder(t *testing.T) {
 	e := getResource()
 	defer e.redisConn.FlushAll()
-
 	o1 := getSellOrder()
 
 	bytes, _ := o1.MarshalJSON()
