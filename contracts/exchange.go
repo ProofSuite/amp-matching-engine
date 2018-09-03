@@ -1,6 +1,7 @@
 package contracts
 
 import (
+	"context"
 	"encoding/hex"
 	"fmt"
 	"log"
@@ -9,10 +10,23 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/contracts/contractsinterfaces"
 	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/Proofsuite/amp-matching-engine/types"
+	ethereum "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	eth "github.com/ethereum/go-ethereum/core/types"
 )
+
+type ethereumClientInterface interface {
+	CodeAt(ctx context.Context, contract common.Address, blockNumber *big.Int) ([]byte, error)
+	CallContract(ctx context.Context, call ethereum.CallMsg, blockNumber *big.Int) ([]byte, error)
+	PendingCodeAt(ctx context.Context, account common.Address) ([]byte, error)
+	PendingNonceAt(ctx context.Context, account common.Address) (uint64, error)
+	SuggestGasPrice(ctx context.Context) (*big.Int, error)
+	EstimateGas(ctx context.Context, call ethereum.CallMsg) (gas uint64, err error)
+	SendTransaction(ctx context.Context, tx *eth.Transaction) error
+	FilterLogs(ctx context.Context, query ethereum.FilterQuery) ([]eth.Log, error)
+	SubscribeFilterLogs(ctx context.Context, query ethereum.FilterQuery, ch chan<- eth.Log) (ethereum.Subscription, error)
+}
 
 // Exchange is an augmented interface to the Exchange.sol smart-contract. It uses the
 // smart-contract bindings generated with abigen and adds additional functionality and
@@ -25,6 +39,7 @@ type Exchange struct {
 	WalletService interfaces.WalletService
 	TxService     interfaces.TxService
 	Interface     *contractsinterfaces.Exchange
+	Client        ethereumClientInterface
 }
 
 // Returns a new exchange interface for a given wallet, contract address and connected backend.
@@ -34,7 +49,7 @@ func NewExchange(
 	w interfaces.WalletService,
 	tx interfaces.TxService,
 	contractAddress common.Address,
-	backend bind.ContractBackend,
+	backend ethereumClientInterface,
 ) (*Exchange, error) {
 	instance, err := contractsinterfaces.NewExchange(contractAddress, backend)
 	if err != nil {
@@ -45,6 +60,7 @@ func NewExchange(
 		WalletService: w,
 		TxService:     tx,
 		Interface:     instance,
+		Client:        backend,
 	}, nil
 }
 
@@ -116,15 +132,13 @@ func (e *Exchange) Operator(a common.Address) (bool, error) {
 // Trade executes a settlements transaction. The order and trade payloads need to be signed respectively
 // by the Maker and the Taker of the trade. Only the operator account can send a Trade function to the
 // Exchange smart contract.
-func (e *Exchange) Trade(o *types.Order, t *types.Trade) (*eth.Transaction, error) {
-	txSendOptions, _ := e.GetTxSendOptions()
-
+func (e *Exchange) Trade(o *types.Order, t *types.Trade, txOpts *bind.TransactOpts) (*eth.Transaction, error) {
 	orderValues := [8]*big.Int{o.BuyAmount, o.SellAmount, o.Expires, o.Nonce, o.MakeFee, o.TakeFee, t.Amount, t.TradeNonce}
 	orderAddresses := [4]common.Address{o.BuyToken, o.SellToken, o.UserAddress, t.Taker}
 	vValues := [2]uint8{o.Signature.V, t.Signature.V}
 	rsValues := [4][32]byte{o.Signature.R, o.Signature.S, t.Signature.R, t.Signature.S}
 
-	tx, err := e.Interface.ExecuteTrade(txSendOptions, orderValues, orderAddresses, vValues, rsValues)
+	tx, err := e.Interface.ExecuteTrade(txOpts, orderValues, orderAddresses, vValues, rsValues)
 	if err != nil {
 		return nil, err
 	}
@@ -223,7 +237,7 @@ func (e *Exchange) PrintErrors() error {
 	go func() {
 		for {
 			event := <-events
-			log.Printf("New Error Event. Id: %v, Hash: %v\n\n", event.ErrorId, hex.EncodeToString(event.OrderHash[:]))
+			log.Printf("New Error Event. Id: %v, Hash: %v\n\n", event.ErrorId, hex.EncodeToString(event.TradeHash[:]))
 		}
 	}()
 

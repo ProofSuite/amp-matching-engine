@@ -18,6 +18,7 @@ type Wallet struct {
 	Address    common.Address
 	PrivateKey *ecdsa.PrivateKey
 	Admin      bool
+	Operator   bool
 }
 
 // NewWallet returns a new wallet object corresponding to a random private key
@@ -64,6 +65,7 @@ type WalletRecord struct {
 	Address    string        `json:"address" bson:"address"`
 	PrivateKey string        `json:"privateKey" bson:"privateKey"`
 	Admin      bool          `json:"admin" bson:"admin"`
+	Operator   bool          `json:"operator" bson:"operator"`
 }
 
 func (w *Wallet) GetBSON() (interface{}, error) {
@@ -86,6 +88,7 @@ func (w *Wallet) SetBSON(raw bson.Raw) error {
 	w.Address = common.HexToAddress(decoded.Address)
 	w.PrivateKey, _ = crypto.HexToECDSA(decoded.PrivateKey)
 	w.Admin = decoded.Admin
+	w.Operator = decoded.Operator
 	return nil
 }
 

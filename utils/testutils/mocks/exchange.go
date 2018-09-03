@@ -4,9 +4,9 @@ package mocks
 
 import bind "github.com/ethereum/go-ethereum/accounts/abi/bind"
 import common "github.com/ethereum/go-ethereum/common"
-
+import contractsinterfaces "github.com/Proofsuite/amp-matching-engine/contracts/contractsinterfaces"
 import coretypes "github.com/ethereum/go-ethereum/core/types"
-import interfaces "github.com/Proofsuite/amp-matching-engine/contracts/contractsinterfaces"
+
 import mock "github.com/stretchr/testify/mock"
 import types "github.com/Proofsuite/amp-matching-engine/types"
 
@@ -55,11 +55,11 @@ func (_m *Exchange) GetCustomTxSendOptions(w *types.Wallet) *bind.TransactOpts {
 }
 
 // GetErrorEvents provides a mock function with given fields: logs
-func (_m *Exchange) GetErrorEvents(logs chan *interfaces.ExchangeLogError) error {
+func (_m *Exchange) GetErrorEvents(logs chan *contractsinterfaces.ExchangeLogError) error {
 	ret := _m.Called(logs)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(chan *interfaces.ExchangeLogError) error); ok {
+	if rf, ok := ret.Get(0).(func(chan *contractsinterfaces.ExchangeLogError) error); ok {
 		r0 = rf(logs)
 	} else {
 		r0 = ret.Error(0)
@@ -69,11 +69,11 @@ func (_m *Exchange) GetErrorEvents(logs chan *interfaces.ExchangeLogError) error
 }
 
 // GetTrades provides a mock function with given fields: logs
-func (_m *Exchange) GetTrades(logs chan *interfaces.ExchangeLogTrade) error {
+func (_m *Exchange) GetTrades(logs chan *contractsinterfaces.ExchangeLogTrade) error {
 	ret := _m.Called(logs)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(chan *interfaces.ExchangeLogTrade) error); ok {
+	if rf, ok := ret.Get(0).(func(chan *contractsinterfaces.ExchangeLogTrade) error); ok {
 		r0 = rf(logs)
 	} else {
 		r0 = ret.Error(0)
@@ -122,15 +122,15 @@ func (_m *Exchange) GetTxSendOptions() (*bind.TransactOpts, error) {
 }
 
 // ListenToErrors provides a mock function with given fields:
-func (_m *Exchange) ListenToErrors() (chan *interfaces.ExchangeLogError, error) {
+func (_m *Exchange) ListenToErrors() (chan *contractsinterfaces.ExchangeLogError, error) {
 	ret := _m.Called()
 
-	var r0 chan *interfaces.ExchangeLogError
-	if rf, ok := ret.Get(0).(func() chan *interfaces.ExchangeLogError); ok {
+	var r0 chan *contractsinterfaces.ExchangeLogError
+	if rf, ok := ret.Get(0).(func() chan *contractsinterfaces.ExchangeLogError); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(chan *interfaces.ExchangeLogError)
+			r0 = ret.Get(0).(chan *contractsinterfaces.ExchangeLogError)
 		}
 	}
 
@@ -145,15 +145,15 @@ func (_m *Exchange) ListenToErrors() (chan *interfaces.ExchangeLogError, error) 
 }
 
 // ListenToTrades provides a mock function with given fields:
-func (_m *Exchange) ListenToTrades() (chan *interfaces.ExchangeLogTrade, error) {
+func (_m *Exchange) ListenToTrades() (chan *contractsinterfaces.ExchangeLogTrade, error) {
 	ret := _m.Called()
 
-	var r0 chan *interfaces.ExchangeLogTrade
-	if rf, ok := ret.Get(0).(func() chan *interfaces.ExchangeLogTrade); ok {
+	var r0 chan *contractsinterfaces.ExchangeLogTrade
+	if rf, ok := ret.Get(0).(func() chan *contractsinterfaces.ExchangeLogTrade); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(chan *interfaces.ExchangeLogTrade)
+			r0 = ret.Get(0).(chan *contractsinterfaces.ExchangeLogTrade)
 		}
 	}
 
@@ -267,13 +267,13 @@ func (_m *Exchange) SetTxSender(w *types.Wallet) {
 	_m.Called(w)
 }
 
-// Trade provides a mock function with given fields: o, t
-func (_m *Exchange) Trade(o *types.Order, t *types.Trade) (*coretypes.Transaction, error) {
-	ret := _m.Called(o, t)
+// Trade provides a mock function with given fields: o, t, txOpts
+func (_m *Exchange) Trade(o *types.Order, t *types.Trade, txOpts *bind.TransactOpts) (*coretypes.Transaction, error) {
+	ret := _m.Called(o, t, txOpts)
 
 	var r0 *coretypes.Transaction
-	if rf, ok := ret.Get(0).(func(*types.Order, *types.Trade) *coretypes.Transaction); ok {
-		r0 = rf(o, t)
+	if rf, ok := ret.Get(0).(func(*types.Order, *types.Trade, *bind.TransactOpts) *coretypes.Transaction); ok {
+		r0 = rf(o, t, txOpts)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*coretypes.Transaction)
@@ -281,8 +281,8 @@ func (_m *Exchange) Trade(o *types.Order, t *types.Trade) (*coretypes.Transactio
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(*types.Order, *types.Trade) error); ok {
-		r1 = rf(o, t)
+	if rf, ok := ret.Get(1).(func(*types.Order, *types.Trade, *bind.TransactOpts) error); ok {
+		r1 = rf(o, t, txOpts)
 	} else {
 		r1 = ret.Error(1)
 	}

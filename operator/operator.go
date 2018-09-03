@@ -3,6 +3,7 @@ package operator
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"strconv"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/ethereum/go-ethereum/common"
 	eth "github.com/ethereum/go-ethereum/core/types"
+	"github.com/streadway/amqp"
 )
 
 // Operator manages the transaction queue that will eventually be
@@ -19,8 +21,8 @@ import (
 // on the contract
 type Operator struct {
 	WalletService     interfaces.WalletService
-	TxService         interfaces.TxService
 	TradeService      interfaces.TradeService
+	OrderService      interfaces.OrderService
 	EthereumService   interfaces.EthereumService
 	Exchange          interfaces.Exchange
 	TxQueues          []*TxQueue
@@ -44,8 +46,8 @@ type OperatorInterface interface {
 // In addition, an error event cancels the trade in the trading engine and makes the order available again.
 func NewOperator(
 	walletService interfaces.WalletService,
-	txService interfaces.TxService,
 	tradeService interfaces.TradeService,
+	orderService interfaces.OrderService,
 	ethereumService interfaces.EthereumService,
 	exchange interfaces.Exchange,
 ) (*Operator, error) {
@@ -73,13 +75,15 @@ func NewOperator(
 
 	op := &Operator{
 		WalletService:     walletService,
-		TxService:         txService,
 		TradeService:      tradeService,
+		OrderService:      orderService,
 		EthereumService:   ethereumService,
 		Exchange:          exchange,
 		TxQueues:          txqueues,
 		QueueAddressIndex: addressIndex,
 	}
+
+	go op.HandleEvents()
 
 	return op, nil
 }
@@ -123,39 +127,206 @@ func (op *Operator) SubscribeOperatorMessages(fn func(*types.OperatorMessage) er
 	return nil
 }
 
+// Bug: In certain cases, the trade channel seems to be receiving additional unexpected trades.
+// In the case TestSocketExecuteOrder (in file socket_test.go) is run on its own, everything is working correctly.
+// However, in the case TestSocketExecuteOrder is run among other tests, some tradeLogs do not correspond to an
+// order hash in the ordertrade mapping. I suspect this is because the event listener catches events from previous
+// tests. It might be helpful to see how to listen to events from up to a certain block.
+func (op *Operator) HandleEvents() error {
+	tradeEvents, err := op.Exchange.ListenToTrades()
+	if err != nil {
+		log.Print(err)
+		return err
+	}
+
+	errorEvents, err := op.Exchange.ListenToErrors()
+	if err != nil {
+		log.Print(err)
+		return err
+	}
+
+	for {
+		select {
+		case event := <-errorEvents:
+			fmt.Println("TRADE_ERROR_EVENT")
+			tradeHash := event.TradeHash
+			errID := int(event.ErrorId)
+
+			tr, err := op.TradeService.GetByHash(tradeHash)
+			if err != nil {
+				log.Print(err)
+			}
+
+			or, err := op.OrderService.GetByHash(tr.OrderHash)
+			if err != nil {
+				log.Print(err)
+			}
+
+			go func() {
+				err = op.PublishTxErrorMessage(tr, errID)
+				if err != nil {
+					log.Print(err)
+				}
+
+				err = op.PublishTradeCancelMessage(or, tr)
+				if err != nil {
+					log.Print(err)
+				}
+			}()
+
+		case event := <-tradeEvents:
+			fmt.Println("TRADE_SUCCESS_EVENT")
+			tr, err := op.TradeService.GetByHash(event.TradeHash)
+			if err != nil {
+				log.Print(err)
+			}
+
+			or, err := op.OrderService.GetByHash(tr.OrderHash)
+			if err != nil {
+				log.Print(err)
+			}
+
+			go func() {
+				_, err := op.EthereumService.WaitMined(tr.Tx)
+				if err != nil {
+					log.Print(err)
+				}
+
+				err = op.PublishTradeSuccessMessage(or, tr)
+				if err != nil {
+					log.Print(err)
+				}
+			}()
+		}
+	}
+}
+
+// PublishTxErrorMessage publishes a messages when a trade execution fails
+func (op *Operator) PublishTxErrorMessage(tr *types.Trade, errID int) error {
+	ch := rabbitmq.GetChannel("OPERATOR_PUB")
+	q := rabbitmq.GetQueue(ch, "TX_MESSAGES")
+	msg := &types.OperatorMessage{
+		MessageType: "TRADE_ERROR_MESSAGE",
+		Trade:       tr,
+		ErrID:       errID,
+	}
+
+	bytes, err := json.Marshal(msg)
+	if err != nil {
+		log.Printf("Failed to marshal %s: %s", msg.MessageType, err)
+	}
+
+	err = rabbitmq.Publish(ch, q, bytes)
+	if err != nil {
+		log.Print(err)
+		return err
+	}
+
+	return nil
+}
+
+// PublishTradeCancelMessage publishes a message when a trade is canceled
+func (op *Operator) PublishTradeCancelMessage(o *types.Order, tr *types.Trade) error {
+	ch := rabbitmq.GetChannel("OPERATOR_PUB")
+	q := rabbitmq.GetQueue(ch, "TX_MESSAGES")
+	msg := &types.OperatorMessage{
+		MessageType: "TRADE_CANCEL_MESSAGE",
+		Trade:       tr,
+	}
+
+	bytes, err := json.Marshal(msg)
+	if err != nil {
+		log.Printf("Failed to marshal %s: %s", msg.MessageType, err)
+	}
+
+	err = rabbitmq.Publish(ch, q, bytes)
+	if err != nil {
+		log.Print(err)
+		return err
+	}
+
+	return nil
+}
+
+// PublishTradeSuccessMessage publishes a message when a trade transaction is successful
+func (op *Operator) PublishTradeSuccessMessage(o *types.Order, tr *types.Trade) error {
+	ch := rabbitmq.GetChannel("OPERATOR_PUB")
+	q := rabbitmq.GetQueue(ch, "TX_MESSAGES")
+	msg := &types.OperatorMessage{
+		MessageType: "TRADE_SUCCESS_MESSAGE",
+		Order:       o,
+		Trade:       tr,
+	}
+
+	bytes, err := json.Marshal(msg)
+	if err != nil {
+		log.Printf("Failed to marshal %s: %s", msg.MessageType, err)
+	}
+
+	err = rabbitmq.Publish(ch, q, bytes)
+	if err != nil {
+		log.Print(err)
+		return err
+	}
+
+	return nil
+}
+
+// Publish
+func (op *Operator) Publish(ch *amqp.Channel, q *amqp.Queue, bytes []byte) error {
+	err := ch.Publish(
+		"",
+		q.Name,
+		false,
+		false,
+		amqp.Publishing{
+			ContentType: "text/json",
+			Body:        bytes,
+		},
+	)
+
+	if err != nil {
+		log.Print(err)
+		return err
+	}
+
+	return nil
+}
+
 // QueueTrade
 func (op *Operator) QueueTrade(o *types.Order, t *types.Trade) error {
-	addressindex := op.QueueAddressIndex
-	maker := o.UserAddress
-	taker := t.Taker
+	// addressindex := op.QueueAddressIndex
+	// maker := o.UserAddress
+	// taker := t.Taker
 
-	txq, ok := addressindex[maker]
-	if ok {
-		if txq.Length() < 10 {
-			err := txq.QueueTrade(o, t)
-			if err != nil {
-				log.Print(err)
-				return err
-			}
-			return nil
-		} else {
-			return errors.New("User transaction queue full")
-		}
-	}
+	// txq, ok := addressindex[maker]
+	// if ok {
+	// 	if txq.Length() < 10 {
+	// 		err := txq.QueueTrade(o, t)
+	// 		if err != nil {
+	// 			log.Print(err)
+	// 			return err
+	// 		}
+	// 		return nil
+	// 	} else {
+	// 		return errors.New("User transaction queue full")
+	// 	}
+	// }
 
-	txq, ok = addressindex[taker]
-	if ok {
-		if txq.Length() < 10 {
-			err := txq.QueueTrade(o, t)
-			if err != nil {
-				log.Print(err)
-				return err
-			}
-			return nil
-		} else {
-			return errors.New("User transaction queue full")
-		}
-	}
+	// txq, ok = addressindex[taker]
+	// if ok {
+	// 	if txq.Length() < 10 {
+	// 		err := txq.QueueTrade(o, t)
+	// 		if err != nil {
+	// 			log.Print(err)
+	// 			return err
+	// 		}
+	// 		return nil
+	// 	} else {
+	// 		log.Print("Transaction queue is full")
+	// 		return errors.New("User transaction queue full")
+	// 	}
+	// }
 
 	txq, len, err := op.GetShortestQueue()
 	if err != nil {
@@ -168,6 +339,7 @@ func (op *Operator) QueueTrade(o *types.Order, t *types.Trade) error {
 		return errors.New("Transaction queue is full")
 	}
 
+	log.Print("QUEING TRADE", len)
 	err = txq.QueueTrade(o, t)
 	if err != nil {
 		log.Print(err)
@@ -180,7 +352,9 @@ func (op *Operator) QueueTrade(o *types.Order, t *types.Trade) error {
 // GetShortestQueue
 func (op *Operator) GetShortestQueue() (*TxQueue, int, error) {
 	shortest := &TxQueue{}
-	min := op.TxQueues[0].Length()
+	min := 1000
+
+	// log.Print(min)
 
 	for _, txq := range op.TxQueues {
 		if shortest == nil {
@@ -238,6 +412,17 @@ func (op *Operator) Operator(addr common.Address) (bool, error) {
 	}
 
 	return isOperator, nil
+}
+
+func (op *Operator) PurgeQueues() error {
+	for _, txq := range op.TxQueues {
+		err := txq.PurgePendingTrades()
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // 	// err := t.Validate()

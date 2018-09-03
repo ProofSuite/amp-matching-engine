@@ -44,6 +44,7 @@ type WalletDao interface {
 	GetByID(id bson.ObjectId) (*types.Wallet, error)
 	GetByAddress(addr common.Address) (*types.Wallet, error)
 	GetDefaultAdminWallet() (*types.Wallet, error)
+	GetOperatorWallets() ([]*types.Wallet, error)
 }
 
 type PairDao interface {
@@ -87,7 +88,7 @@ type Exchange interface {
 	SetOperator(a common.Address, isOperator bool) (*eth.Transaction, error)
 	FeeAccount() (common.Address, error)
 	Operator(a common.Address) (bool, error)
-	Trade(o *types.Order, t *types.Trade) (*eth.Transaction, error)
+	Trade(o *types.Order, t *types.Trade, txOpts *bind.TransactOpts) (*eth.Transaction, error)
 	ListenToErrors() (chan *contractsinterfaces.ExchangeLogError, error)
 	ListenToTrades() (chan *contractsinterfaces.ExchangeLogTrade, error)
 	GetErrorEvents(logs chan *contractsinterfaces.ExchangeLogError) error
@@ -120,7 +121,8 @@ type OHLCVService interface {
 
 type EthereumService interface {
 	WaitMined(tx *eth.Transaction) (*eth.Receipt, error)
-	GetPendingBalanceAt(a common.Address) (*big.Int, error)
+	GetPendingNonceAt(a common.Address) (uint64, error)
+	// GetPendingBalanceAt(a common.Address) (*big.Int, error)
 }
 
 type OrderService interface {
