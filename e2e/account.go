@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"crypto/ecdsa"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -9,22 +10,41 @@ import (
 
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
 )
 
-func testAccount(t *testing.T, tokens []types.Token) types.Account {
+func testAccount(t *testing.T, tokens []types.Token) map[*ecdsa.PrivateKey]types.Account {
 	fmt.Printf("\n=== Starting Account test ===\n")
 	router := NewRouter()
+	response := make(map[*ecdsa.PrivateKey]types.Account)
 
-	expectedAccount := types.Account{
-		Address:       common.HexToAddress("0xefD7eB287CeeFCE8256Dd46e25F398acEA7C4b63"),
+	pk1, _ := crypto.GenerateKey()
+	pk2, _ := crypto.GenerateKey()
+
+	account1 := types.Account{
+		Address:       crypto.PubkeyToAddress(pk1.PublicKey),
 		IsBlocked:     false,
 		TokenBalances: make(map[common.Address]*types.TokenBalance),
 	}
+
+	account2 := types.Account{
+		Address:       crypto.PubkeyToAddress(pk2.PublicKey),
+		IsBlocked:     false,
+		TokenBalances: make(map[common.Address]*types.TokenBalance),
+	}
+
 	initBalance := big.NewInt(10000000000000000)
 
 	for _, token := range tokens {
-		expectedAccount.TokenBalances[token.ContractAddress] = &types.TokenBalance{
+		account1.TokenBalances[token.ContractAddress] = &types.TokenBalance{
+			Address:       token.ContractAddress,
+			Symbol:        token.Symbol,
+			Balance:       initBalance,
+			Allowance:     initBalance,
+			LockedBalance: big.NewInt(0),
+		}
+		account2.TokenBalances[token.ContractAddress] = &types.TokenBalance{
 			Address:       token.ContractAddress,
 			Symbol:        token.Symbol,
 			Balance:       initBalance,
@@ -33,45 +53,60 @@ func testAccount(t *testing.T, tokens []types.Token) types.Account {
 		}
 	}
 	// create account test
-	res := testAPI(router, "POST", "/account", `{"address":"0xefD7eB287CeeFCE8256Dd46e25F398acEA7C4b63"}`)
+	res := testAPI(router, "POST", "/account", "{\"address\":\""+account1.Address.Hex()+"\"}")
 	assert.Equal(t, http.StatusOK, res.Code, "t1 - create account")
+
 	var resp types.Account
 	if err := json.Unmarshal(res.Body.Bytes(), &resp); err != nil {
 		fmt.Printf("%v", err)
 	}
-	if compareAccount(t, resp, expectedAccount) {
+	if compareAccount(t, resp, account1) {
 		fmt.Println("PASS  't1 - create account'")
+		account1 = resp
+		response[pk1] = account1
 	} else {
 		fmt.Println("FAIL  't1 - create account'")
 	}
-
-	expectedAccount = resp
 	// Duplicate account test
-	res1 := testAPI(router, "POST", "/account", `{"address":"0xefD7eB287CeeFCE8256Dd46e25F398acEA7C4b63"}`)
+	res1 := testAPI(router, "POST", "/account", "{\"address\":\""+account1.Address.Hex()+"\"}")
 
 	if err := json.Unmarshal(res1.Body.Bytes(), &resp); err != nil {
 		fmt.Printf("%v", err)
 	}
 
-	if assert.Equal(t, expectedAccount.ID.Hex(), resp.ID.Hex(), "t2 - create duplicate account") {
+	if assert.Equal(t, account1.ID.Hex(), resp.ID.Hex(), "t2 - create duplicate account") {
 		fmt.Println("PASS  't2 - create duplicate account'")
 	} else {
 		fmt.Println("FAIL  't2 - create duplicate account'")
 	}
 
-	// Get Account
-	res2 := testAPI(router, "GET", "/account/0xefD7eB287CeeFCE8256Dd46e25F398acEA7C4b63", "")
+	// create 2nd account test
+	res = testAPI(router, "POST", "/account", "{\"address\":\""+account2.Address.Hex()+"\"}")
+	assert.Equal(t, http.StatusOK, res.Code, "t3 - create 2nd account")
 
-	assert.Equal(t, http.StatusOK, res2.Code, "t3 - fetch account")
+	if err := json.Unmarshal(res.Body.Bytes(), &resp); err != nil {
+		fmt.Printf("%v", err)
+	}
+	if compareAccount(t, resp, account2) {
+		fmt.Println("PASS  't3 - create 2nd account'")
+		response[pk2] = account2
+	} else {
+		fmt.Println("FAIL  't3 - create 2nd account'")
+	}
+
+	// Get Account
+	res2 := testAPI(router, "GET", "/account/"+account1.Address.Hex(), "")
+
+	assert.Equal(t, http.StatusOK, res2.Code, "t4 - fetch account")
 	if err := json.Unmarshal(res2.Body.Bytes(), &resp); err != nil {
 		fmt.Printf("%v", err)
 	}
-	if compareAccount(t, resp, expectedAccount) {
-		fmt.Println("PASS  't3 - create account'")
+	if compareAccount(t, resp, account1) {
+		fmt.Println("PASS  't4 - create account'")
 	} else {
-		fmt.Println("FAIL  't3 - create account'")
+		fmt.Println("FAIL  't4 - create account'")
 	}
-	return expectedAccount
+	return response
 }
 
 func compareAccount(t *testing.T, actual, expected types.Account, msgs ...string) bool {

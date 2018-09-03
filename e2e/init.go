@@ -55,8 +55,9 @@ func Init(t *testing.T) {
 	// === drop database on test end ===
 	defer session.DB(app.Config.DBName).DropDatabase()
 	tokens := testToken(t)
-	testPair(t, tokens)
-	testAccount(t, tokens)
+	pair := testPair(t, tokens)
+	accounts := testAccount(t, tokens)
+	testWS(t, pair, accounts)
 	// address := testAddress(t, tokens)
 	// testBalance(t, tokens, address)
 }
@@ -86,7 +87,7 @@ func NewRouter() *routing.Router {
 	rabbitmq.InitConnection(app.Config.Rabbitmq)
 	ethereum.InitConnection(app.Config.Ethereum)
 	redisClient := redis.NewRedisConnection(app.Config.Redis)
-
+	redisClient.FlushAll()
 	// instantiate engine
 	engineResource, err := engine.InitEngine(redisClient)
 	if err != nil {

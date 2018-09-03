@@ -223,6 +223,7 @@ func (s *OrderService) HandleEngineResponse(res *types.EngineResponse) error {
 	case "NOMATCH":
 		s.handleEngineOrderAdded(res)
 	case "FULL":
+		s.handleEngineOrderMatched(res)
 	case "PARTIAL":
 		s.handleEngineOrderMatched(res)
 	default:
@@ -354,7 +355,7 @@ func (s *OrderService) RecoverOrders(res *types.EngineResponse) {
 // RelayUpdateOverSocket is resonsible for notifying listening clients about new order/trade addition/deletion
 func (s *OrderService) RelayUpdateOverSocket(res *types.EngineResponse) {
 
-	// send latest order
+	// broadcast order's latest state
 	cid := utils.GetOrderBookChannelID(res.Order.BaseToken, res.Order.QuoteToken)
 	ws.GetOrderBookSocket().BroadcastMessage(cid, res.Order)
 
@@ -366,7 +367,7 @@ func (s *OrderService) RelayUpdateOverSocket(res *types.EngineResponse) {
 	}
 
 	// broadcast remaining order, if any
-	if res.RemainingOrder != nil && math.IsGreaterThan(res.RemainingOrder.Amount, big.NewInt(0)) {
+	if res.RemainingOrder != nil && res.RemainingOrder.Amount != nil && math.IsGreaterThan(res.RemainingOrder.Amount, big.NewInt(0)) {
 		fmt.Println("Order added Relay over socket")
 		cid := utils.GetOrderBookChannelID(res.Order.BaseToken, res.Order.QuoteToken)
 		ws.GetOrderBookSocket().BroadcastMessage(cid, res.RemainingOrder)
