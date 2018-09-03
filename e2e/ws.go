@@ -19,7 +19,7 @@ import (
 )
 
 func testWS(t *testing.T, pairs []types.Pair, accounts map[*ecdsa.PrivateKey]types.Account) {
-	fmt.Printf("\n=== Starting WS test ===\n")
+	fmt.Printf("\n=== Starting WS tests ===\n")
 	exchangeAddress := common.HexToAddress("0x")
 	pair := &pairs[0]
 	baseToken := pair.BaseTokenAddress

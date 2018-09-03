@@ -11,7 +11,6 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/Proofsuite/amp-matching-engine/ws"
 	"github.com/go-ozzo/ozzo-routing"
-	"github.com/gorilla/websocket"
 )
 
 type orderEndpoint struct {
@@ -46,7 +45,7 @@ func (e *orderEndpoint) get(c *routing.Context) error {
 }
 
 // ws function handles incoming websocket messages on the order channel
-func (e *orderEndpoint) ws(input interface{}, conn *websocket.Conn) {
+func (e *orderEndpoint) ws(input interface{}, conn *ws.Conn) {
 	msg := &types.WebSocketPayload{}
 
 	bytes, _ := json.Marshal(input)
@@ -68,7 +67,7 @@ func (e *orderEndpoint) ws(input interface{}, conn *websocket.Conn) {
 
 // handleSubmitSignatures handles NewTrade messages. New trade messages are transmitted to the corresponding order channel
 // and received in the handleClientResponse.
-func (e *orderEndpoint) handleSubmitSignatures(p *types.WebSocketPayload, conn *websocket.Conn) {
+func (e *orderEndpoint) handleSubmitSignatures(p *types.WebSocketPayload, conn *ws.Conn) {
 	hash := common.HexToHash(p.Hash)
 	ch := ws.GetOrderChannel(hash)
 
@@ -78,7 +77,7 @@ func (e *orderEndpoint) handleSubmitSignatures(p *types.WebSocketPayload, conn *
 }
 
 // handleNewOrder handles NewOrder message. New order messages are transmitted to the order service after being unmarshalled
-func (e *orderEndpoint) handleNewOrder(msg *types.WebSocketPayload, conn *websocket.Conn) {
+func (e *orderEndpoint) handleNewOrder(msg *types.WebSocketPayload, conn *ws.Conn) {
 	ch := make(chan *types.WebSocketPayload)
 	o := &types.Order{}
 
@@ -108,7 +107,7 @@ func (e *orderEndpoint) handleNewOrder(msg *types.WebSocketPayload, conn *websoc
 }
 
 // handleCancelOrder handles CancelOrder message.
-func (e *orderEndpoint) handleCancelOrder(p *types.WebSocketPayload, conn *websocket.Conn) {
+func (e *orderEndpoint) handleCancelOrder(p *types.WebSocketPayload, conn *ws.Conn) {
 	bytes, err := json.Marshal(p.Data)
 	oc := &types.OrderCancel{}
 

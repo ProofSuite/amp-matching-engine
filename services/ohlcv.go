@@ -9,7 +9,6 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/Proofsuite/amp-matching-engine/ws"
-	"github.com/gorilla/websocket"
 	"gopkg.in/mgo.v2/bson"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -24,14 +23,14 @@ func NewOHLCVService(TradeDao interfaces.TradeDao) *OHLCVService {
 }
 
 // Unsubscribe handles all the unsubscription messages for ticks corresponding to a pair
-func (s *OHLCVService) Unsubscribe(conn *websocket.Conn, bt, qt common.Address, params *types.Params) {
+func (s *OHLCVService) Unsubscribe(conn *ws.Conn, bt, qt common.Address, params *types.Params) {
 	id := utils.GetOHLCVChannelID(bt, qt, params.Units, params.Duration)
 	ws.GetTradeSocket().Unsubscribe(id, conn)
 }
 
 // Subscribe handles all the subscription messages for ticks corresponding to a pair
 // It calls the corresponding channel's subscription method and sends trade history back on the connection
-func (s *OHLCVService) Subscribe(conn *websocket.Conn, bt, qt common.Address, params *types.Params) {
+func (s *OHLCVService) Subscribe(conn *ws.Conn, bt, qt common.Address, params *types.Params) {
 	ohlcv, err := s.GetOHLCV([]types.PairSubDoc{types.PairSubDoc{BaseToken: bt, QuoteToken: qt}},
 		params.Duration,
 		params.Units,

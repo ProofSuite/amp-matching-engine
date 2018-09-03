@@ -10,7 +10,6 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/ws"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/go-ozzo/ozzo-routing"
-	"github.com/gorilla/websocket"
 )
 
 type OHLCVEndpoint struct {
@@ -57,7 +56,7 @@ func (e *OHLCVEndpoint) ohlcv(c *routing.Context) error {
 	return c.Write(res)
 }
 
-func (e *OHLCVEndpoint) ohlcvWebSocket(input interface{}, conn *websocket.Conn) {
+func (e *OHLCVEndpoint) ohlcvWebSocket(input interface{}, conn *ws.Conn) {
 	startTs := time.Date(1970, time.January, 1, 0, 0, 0, 0, time.UTC)
 
 	mab, _ := json.Marshal(input)

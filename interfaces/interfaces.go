@@ -6,10 +6,10 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/contracts/contractsinterfaces"
 	"github.com/Proofsuite/amp-matching-engine/rabbitmq"
 	"github.com/Proofsuite/amp-matching-engine/types"
+	"github.com/Proofsuite/amp-matching-engine/ws"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	eth "github.com/ethereum/go-ethereum/core/types"
-	"github.com/gorilla/websocket"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -114,8 +114,8 @@ type WalletService interface {
 }
 
 type OHLCVService interface {
-	Unsubscribe(conn *websocket.Conn, bt, qt common.Address, p *types.Params)
-	Subscribe(conn *websocket.Conn, bt, qt common.Address, p *types.Params)
+	Unsubscribe(conn *ws.Conn, bt, qt common.Address, p *types.Params)
+	Subscribe(conn *ws.Conn, bt, qt common.Address, p *types.Params)
 	GetOHLCV(p []types.PairSubDoc, duration int64, unit string, timeInterval ...int64) ([]*types.Tick, error)
 }
 
@@ -141,8 +141,8 @@ type OrderService interface {
 
 type OrderBookService interface {
 	GetOrderBook(bt, qt common.Address) (ob map[string]interface{}, err error)
-	Subscribe(conn *websocket.Conn, bt, qt common.Address)
-	Unsubscribe(conn *websocket.Conn, bt, qt common.Address)
+	Subscribe(conn *ws.Conn, bt, qt common.Address)
+	Unsubscribe(conn *ws.Conn, bt, qt common.Address)
 }
 
 type PairService interface {
@@ -167,8 +167,8 @@ type TradeService interface {
 	GetByHash(hash common.Hash) (*types.Trade, error)
 	GetByOrderHash(hash common.Hash) ([]*types.Trade, error)
 	UpdateTradeTx(tr *types.Trade, tx *eth.Transaction) error
-	Subscribe(conn *websocket.Conn, bt, qt common.Address)
-	Unsubscribe(conn *websocket.Conn, bt, qt common.Address)
+	Subscribe(conn *ws.Conn, bt, qt common.Address)
+	Unsubscribe(conn *ws.Conn, bt, qt common.Address)
 }
 
 type TxService interface {

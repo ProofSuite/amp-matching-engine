@@ -10,7 +10,6 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/ws"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/go-ozzo/ozzo-routing"
-	"github.com/gorilla/websocket"
 )
 
 type tradeEndpoint struct {
@@ -67,7 +66,7 @@ func (r *tradeEndpoint) get(c *routing.Context) error {
 	return c.Write(response)
 }
 
-func (e *tradeEndpoint) tradeWebSocket(input interface{}, conn *websocket.Conn) {
+func (e *tradeEndpoint) tradeWebSocket(input interface{}, conn *ws.Conn) {
 
 	mab, _ := json.Marshal(input)
 	var payload *types.WebSocketPayload

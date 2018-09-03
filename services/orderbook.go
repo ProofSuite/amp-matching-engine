@@ -9,8 +9,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/Proofsuite/amp-matching-engine/ws"
-
-	"github.com/gorilla/websocket"
 )
 
 // PairService struct with daos required, responsible for communicating with daos.
@@ -54,7 +52,7 @@ func (s *OrderBookService) GetOrderBook(bt, qt common.Address) (ob map[string]in
 
 // RegisterForOrderBook is responsible for handling incoming orderbook subscription messages
 // It makes an entry of connection in pairSocket corresponding to pair,unit and duration
-func (s *OrderBookService) Subscribe(conn *websocket.Conn, bt, qt common.Address) {
+func (s *OrderBookService) Subscribe(conn *ws.Conn, bt, qt common.Address) {
 	socket := ws.GetOrderBookSocket()
 
 	ob, err := s.GetOrderBook(bt, qt)
@@ -80,7 +78,7 @@ func (s *OrderBookService) Subscribe(conn *websocket.Conn, bt, qt common.Address
 }
 
 // UnRegisterForOrderBook is responsible for handling incoming orderbook unsubscription messages
-func (s *OrderBookService) Unsubscribe(conn *websocket.Conn, bt, qt common.Address) {
+func (s *OrderBookService) Unsubscribe(conn *ws.Conn, bt, qt common.Address) {
 	socket := ws.GetOrderBookSocket()
 
 	id := utils.GetOrderBookChannelID(bt, qt)
