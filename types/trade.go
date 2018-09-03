@@ -339,3 +339,48 @@ func (t *Trade) Print() {
 
 	fmt.Print(string(b))
 }
+
+// NewTrade returns a new trade with the given params. The trade is signed by the factory wallet.
+// Currently the nonce is chosen randomly which will be changed in the future
+func NewUnsignedTrade(o *Order, taker common.Address, amount *big.Int) (Trade, error) {
+	t := Trade{}
+	t.Maker = o.UserAddress
+	t.BaseToken = o.BaseToken
+	t.QuoteToken = o.QuoteToken
+	t.Price = o.Price
+	t.PricePoint = o.PricePoint
+	t.OrderHash = o.Hash
+	t.Taker = taker
+	t.Amount = amount
+
+	if o.Side == "BUY" {
+		t.Side = "SELL"
+	} else if o.Side == "SELL" {
+		t.Side = "BUY"
+	}
+
+	return t, nil
+}
+
+//Replacement for function above
+func NewUnsignedTrade1(maker *Order, taker *Order, amount *big.Int) (Trade, error) {
+	t := Trade{}
+	t.Maker = maker.UserAddress
+	t.Taker = taker.UserAddress
+	t.BaseToken = maker.BaseToken
+	t.QuoteToken = maker.QuoteToken
+	t.Price = taker.Price
+	t.PricePoint = taker.PricePoint
+	t.OrderHash = maker.Hash
+
+	//TODO compute from taker amount and maker amount
+	t.Amount = amount
+
+	if maker.Side == "BUY" {
+		t.Side = "SELL"
+	} else if maker.Side == "SELL" {
+		t.Side = "BUY"
+	}
+
+	return t, nil
+}
