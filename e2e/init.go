@@ -56,6 +56,7 @@ func Init(t *testing.T) {
 	defer session.DB(app.Config.DBName).DropDatabase()
 	tokens := testToken(t)
 	testPair(t, tokens)
+	testAccount(t, tokens)
 	// address := testAddress(t, tokens)
 	// testBalance(t, tokens, address)
 }

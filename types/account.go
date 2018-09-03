@@ -25,7 +25,6 @@ type Account struct {
 // TokenBalance holds the Balance, Allowance and the Locked balance values for a single Ethereum token
 // Balance, Allowance and Locked Balance are stored as big.Int as they represent uint256 values
 type TokenBalance struct {
-	ID            bson.ObjectId  `json:"id" bson:"id"`
 	Address       common.Address `json:"address" bson:"address"`
 	Symbol        string         `json:"symbol" bson:"symbol"`
 	Balance       *big.Int       `json:"balance" bson:"balance"`
@@ -45,12 +44,11 @@ type AccountRecord struct {
 
 // TokenBalanceRecord corresponds to a TokenBalance struct that is stored in the DB. big.Ints are encoded as strings
 type TokenBalanceRecord struct {
-	ID            bson.ObjectId `json:"id" bson:"id"`
-	Address       string        `json:"address" bson:"address"`
-	Symbol        string        `json:"symbol" bson:"symbol"`
-	Balance       string        `json:"balance" bson:"balance"`
-	Allowance     string        `json:"allowance" bson:"allowance"`
-	LockedBalance string        `json:"lockedBalance" bson:"lockedBalance"`
+	Address       string `json:"address" bson:"address"`
+	Symbol        string `json:"symbol" bson:"symbol"`
+	Balance       string `json:"balance" bson:"balance"`
+	Allowance     string `json:"allowance" bson:"allowance"`
+	LockedBalance string `json:"lockedBalance" bson:"lockedBalance"`
 }
 
 // GetBSON implements bson.Getter
@@ -59,7 +57,6 @@ func (a *Account) GetBSON() (interface{}, error) {
 
 	for key, value := range a.TokenBalances {
 		tokenBalances[key.Hex()] = TokenBalanceRecord{
-			ID:            value.ID,
 			Address:       value.Address.Hex(),
 			Symbol:        value.Symbol,
 			Balance:       value.Balance.String(),
@@ -95,7 +92,6 @@ func (a *Account) SetBSON(raw bson.Raw) error {
 		lockedBalance, _ = lockedBalance.SetString(value.LockedBalance, 10)
 
 		a.TokenBalances[common.HexToAddress(key)] = &TokenBalance{
-			ID:            value.ID,
 			Address:       common.HexToAddress(value.Address),
 			Symbol:        value.Symbol,
 			Balance:       balance,
@@ -104,7 +100,6 @@ func (a *Account) SetBSON(raw bson.Raw) error {
 		}
 	}
 
-	a.ID = decoded.ID
 	a.Address = common.HexToAddress(decoded.Address)
 	a.IsBlocked = decoded.IsBlocked
 	a.CreatedAt = decoded.CreatedAt
@@ -127,7 +122,6 @@ func (a *Account) MarshalJSON() ([]byte, error) {
 	tokenBalance := make(map[string]interface{})
 	for address, balance := range a.TokenBalances {
 		tokenBalance[address.Hex()] = map[string]interface{}{
-			"id":            balance.ID.Hex(),
 			"address":       balance.Address.Hex(),
 			"symbol":        balance.Symbol,
 			"balance":       balance.Balance.String(),
@@ -145,7 +139,7 @@ func (a *Account) UnmarshalJSON(b []byte) error {
 	if err != nil {
 		return err
 	}
-	if account["id"] != nil {
+	if account["id"] != nil && bson.IsObjectIdHex(account["id"].(string)) {
 		a.ID = bson.ObjectIdHex(account["id"].(string))
 	}
 	if account["address"] != nil {
@@ -160,9 +154,6 @@ func (a *Account) UnmarshalJSON(b []byte) error {
 			}
 			tokenBalance := balance.(map[string]interface{})
 			tb := &TokenBalance{}
-			if tokenBalance["id"] != nil && bson.IsObjectIdHex(tokenBalance["id"].(string)) {
-				tb.ID = bson.ObjectIdHex(tokenBalance["id"].(string))
-			}
 			if tokenBalance["address"] != nil && common.IsHexAddress(tokenBalance["address"].(string)) {
 				tb.Address = common.HexToAddress(tokenBalance["address"].(string))
 			}
