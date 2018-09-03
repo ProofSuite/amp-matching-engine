@@ -58,7 +58,7 @@ func (s *OrderService) GetByHash(hash common.Hash) (*types.Order, error) {
 	return s.orderDao.GetByHash(hash)
 }
 
-// Create validates if the passed order is valid or not based on user's available
+// NewOrder validates if the passed order is valid or not based on user's available
 // funds and order data.
 // If valid: Order is inserted in DB with order status as new and order is publiched
 // on rabbitmq queue for matching engine to process the order
@@ -103,9 +103,10 @@ func (s *OrderService) NewOrder(o *types.Order) error {
 	}
 
 	// fee balance validation
+	wethAddress := common.HexToAddress("0x2EB24432177e82907dE24b7c5a6E0a5c03226135")
 	wethTokenBalance, err := s.accountDao.GetTokenBalance(
 		o.UserAddress,
-		common.HexToAddress("0x2EB24432177e82907dE24b7c5a6E0a5c03226135"),
+		wethAddress,
 	)
 
 	if err != nil {
@@ -133,7 +134,7 @@ func (s *OrderService) NewOrder(o *types.Order) error {
 
 	wethTokenBalance.LockedBalance.Add(wethTokenBalance.LockedBalance, o.TakeFee)
 
-	err = s.accountDao.UpdateTokenBalance(o.UserAddress, o.QuoteToken, wethTokenBalance)
+	err = s.accountDao.UpdateTokenBalance(o.UserAddress, wethAddress, wethTokenBalance)
 	if err != nil {
 		log.Print(err)
 		return err

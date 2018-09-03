@@ -14,10 +14,10 @@ import (
 
 // websocket channel's string
 const (
-	TradeChannel = "trades"
+	TradeChannel     = "trades"
 	OrderBookChannel = "order_book"
-	OrderChannel = "orders"
-	OHLCVChannel = "ohlcv"
+	OrderChannel     = "orders"
+	OHLCVChannel     = "ohlcv"
 )
 
 // gorilla websocket upgrader instance with configuration
@@ -159,7 +159,6 @@ func SendMessage(conn *websocket.Conn, channel string, msgType string, data inte
 		Channel: channel,
 		Payload: payload,
 	}
-
 	err := conn.WriteJSON(message)
 	if err != nil {
 		conn.Close()
