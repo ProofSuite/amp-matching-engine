@@ -2,7 +2,6 @@ package engine
 
 import (
 	"log"
-	"math"
 
 	"github.com/gomodule/redigo/redis"
 
@@ -19,8 +18,8 @@ func (e *Engine) GetOrderBook(pair *types.Pair) (sellBook, buyBook []*map[string
 
 	for i := 0; i < len(res); i = i + 2 {
 		temp := &map[string]float64{
-			"volume": float64(res[i]) / math.Pow10(8),
-			"price":  float64(res[i+1]) / math.Pow10(8),
+			"volume": float64(res[i]),
+			"price":  float64(res[i+1]),
 		}
 		sellBook = append(sellBook, temp)
 	}
@@ -32,8 +31,8 @@ func (e *Engine) GetOrderBook(pair *types.Pair) (sellBook, buyBook []*map[string
 
 	for i := 0; i < len(res); i = i + 2 {
 		temp := &map[string]float64{
-			"volume": float64(res[i]) / math.Pow10(8),
-			"price":  float64(res[i+1]) / math.Pow10(8),
+			"volume": float64(res[i]),
+			"price":  float64(res[i+1]),
 		}
 		buyBook = append(buyBook, temp)
 	}

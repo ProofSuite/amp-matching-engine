@@ -74,7 +74,6 @@ func ConnectionEndpoint(w http.ResponseWriter, r *http.Request) {
 			}
 
 			conn.SetCloseHandler(wsCloseHandler(conn))
-
 			if socketChannels[msg.Channel] != nil {
 				go socketChannels[msg.Channel](msg.Payload, conn)
 			} else {

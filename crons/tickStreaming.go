@@ -37,7 +37,6 @@ func (s *CronService) tickStream(unit string, duration int64) func() {
 		for _, tick := range ticks {
 			baseTokenAddress := tick.ID.BaseToken
 			quoteTokenAddress := tick.ID.QuoteToken
-
 			id := utils.GetTickChannelID(baseTokenAddress, quoteTokenAddress, unit, duration)
 			ws.GetOHLCVSocket().BroadcastOHLCV(id, tick)
 		}

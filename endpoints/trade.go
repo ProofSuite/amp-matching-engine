@@ -68,12 +68,22 @@ func (r *tradeEndpoint) get(c *routing.Context) error {
 }
 
 func (e *tradeEndpoint) tradeWebSocket(input interface{}, conn *websocket.Conn) {
+
 	mab, _ := json.Marshal(input)
-	var msg *types.WebSocketSubscription
-	if err := json.Unmarshal(mab, &msg); err != nil {
+	var payload *types.WebSocketPayload
+	if err := json.Unmarshal(mab, &payload); err != nil {
 		log.Println("unmarshal to wsmsg <==>" + err.Error())
 	}
-
+	if payload.Type != "subscription" {
+		log.Println("Payload is not of subscription type")
+		ws.SendOrderBookErrorMessage(conn, "Payload is not of subscription type")
+		return
+	}
+	dab, _ := json.Marshal(payload.Data)
+	var msg *types.WebSocketSubscription
+	if err := json.Unmarshal(dab, &msg); err != nil {
+		log.Println("unmarshal to wsmsg <==>" + err.Error())
+	}
 	if (msg.Pair.BaseToken == common.Address{}) {
 		message := map[string]string{
 			"Code":    "Invalid_Pair_BaseToken",
