@@ -5,7 +5,6 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/Proofsuite/amp-matching-engine/ws"
-	"github.com/gorilla/websocket"
 
 	"github.com/ethereum/go-ethereum/common"
 	eth "github.com/ethereum/go-ethereum/core/types"
@@ -64,7 +63,7 @@ func (t *TradeService) UpdateTradeTx(tr *types.Trade, tx *eth.Transaction) error
 }
 
 // Subscribe
-func (t *TradeService) Subscribe(conn *websocket.Conn, bt, qt common.Address) {
+func (t *TradeService) Subscribe(conn *ws.Conn, bt, qt common.Address) {
 	socket := ws.GetTradeSocket()
 
 	trades, err := t.GetTrades(bt, qt)
@@ -90,7 +89,7 @@ func (t *TradeService) Subscribe(conn *websocket.Conn, bt, qt common.Address) {
 }
 
 // Unsubscribe
-func (t *TradeService) Unsubscribe(conn *websocket.Conn, bt, qt common.Address) {
+func (t *TradeService) Unsubscribe(conn *ws.Conn, bt, qt common.Address) {
 	socket := ws.GetTradeSocket()
 
 	id := utils.GetTradeChannelID(bt, qt)

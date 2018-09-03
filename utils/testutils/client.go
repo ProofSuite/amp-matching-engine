@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/Proofsuite/amp-matching-engine/types"
+	"github.com/Proofsuite/amp-matching-engine/ws"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/websocket"
 	"github.com/posener/wstest"
@@ -28,7 +29,7 @@ var addr = flag.String("addr", "localhost:8080", "http service address")
 // mutex is used to prevent concurrent writes on the websocket connection
 type Client struct {
 	// ethereumClient *ethclient.Client
-	connection     *websocket.Conn
+	connection     *ws.Conn
 	Requests       chan *types.WebSocketMessage
 	Responses      chan *types.WebSocketMessage
 	Logs           chan *ClientLogMessage
@@ -76,7 +77,7 @@ func NewClient(w *types.Wallet, s Server) *Client {
 	ng := rand.New(source)
 
 	return &Client{
-		connection:     c,
+		connection:     ws.ToWsConn(c),
 		Wallet:         w,
 		Requests:       reqs,
 		Responses:      resps,

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sync"
 
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/ethereum/go-ethereum/common"
@@ -29,19 +30,24 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-var connectionUnsubscribtions map[*websocket.Conn][]func(*websocket.Conn)
-var socketChannels map[string]func(interface{}, *websocket.Conn)
+type Conn struct {
+	*websocket.Conn
+	mu sync.Mutex
+}
+
+var connectionUnsubscribtions map[*Conn][]func(*Conn)
+var socketChannels map[string]func(interface{}, *Conn)
 
 // ConnectionEndpoint is the the handleFunc function for websocket connections
 // It handles incoming websocket messages and routes the message according to
 // channel parameter in channelMessage
 func ConnectionEndpoint(w http.ResponseWriter, r *http.Request) {
-	conn, err := upgrader.Upgrade(w, r, nil)
+	c, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println("==>" + err.Error())
 		return
 	}
-
+	conn := &Conn{c, sync.Mutex{}}
 	initConnection(conn)
 	go func() {
 		// Recover in case of any panic in websocket. So that the app doesn't crash ===
@@ -83,14 +89,18 @@ func ConnectionEndpoint(w http.ResponseWriter, r *http.Request) {
 	}()
 }
 
+func ToWsConn(conn *websocket.Conn) *Conn {
+	return &Conn{conn, sync.Mutex{}}
+}
+
 // initConnection initializes connection in connectionUnsubscribtions map
-func initConnection(conn *websocket.Conn) {
+func initConnection(conn *Conn) {
 	if connectionUnsubscribtions == nil {
-		connectionUnsubscribtions = make(map[*websocket.Conn][]func(*websocket.Conn))
+		connectionUnsubscribtions = make(map[*Conn][]func(*Conn))
 	}
 
 	if connectionUnsubscribtions[conn] == nil {
-		connectionUnsubscribtions[conn] = make([]func(*websocket.Conn), 0)
+		connectionUnsubscribtions[conn] = make([]func(*Conn), 0)
 	}
 }
 
@@ -98,7 +108,7 @@ func initConnection(conn *websocket.Conn) {
 // a new channel. A channel needs function which will handle the incoming messages for that channel.
 //
 // channelMessage handler function receives message from channelMessage and pointer to connection
-func RegisterChannel(channel string, fn func(interface{}, *websocket.Conn)) error {
+func RegisterChannel(channel string, fn func(interface{}, *Conn)) error {
 	if channel == "" {
 		return errors.New("Channel can not be empty string")
 	}
@@ -117,9 +127,9 @@ func RegisterChannel(channel string, fn func(interface{}, *websocket.Conn)) erro
 }
 
 // getChannelMap returns singleton map of channels with there handler functions
-func getChannelMap() map[string]func(interface{}, *websocket.Conn) {
+func getChannelMap() map[string]func(interface{}, *Conn) {
 	if socketChannels == nil {
-		socketChannels = make(map[string]func(interface{}, *websocket.Conn))
+		socketChannels = make(map[string]func(interface{}, *Conn))
 	}
 	return socketChannels
 }
@@ -128,14 +138,14 @@ func getChannelMap() map[string]func(interface{}, *websocket.Conn) {
 // a new channel.
 // At the time of connection closing the ConnectionUnsubscribeHandler handlers associated with
 // that connection are triggered.
-func RegisterConnectionUnsubscribeHandler(conn *websocket.Conn, fn func(*websocket.Conn)) {
+func RegisterConnectionUnsubscribeHandler(conn *Conn, fn func(*Conn)) {
 	connectionUnsubscribtions[conn] = append(connectionUnsubscribtions[conn], fn)
 }
 
 // wsCloseHandler handles the closing of connection.
 // it triggers all the UnsubscribeHandler associated with the closing
 // connection in a separate go routine
-func wsCloseHandler(conn *websocket.Conn) func(code int, text string) error {
+func wsCloseHandler(conn *Conn) func(code int, text string) error {
 	return func(code int, text string) error {
 		for _, unsub := range connectionUnsubscribtions[conn] {
 			go unsub(conn)
@@ -145,7 +155,7 @@ func wsCloseHandler(conn *websocket.Conn) func(code int, text string) error {
 }
 
 // SendMessage constructs the message with proper structure to be sent over websocket
-func SendMessage(conn *websocket.Conn, channel string, msgType string, data interface{}, hash ...common.Hash) {
+func SendMessage(conn *Conn, channel string, msgType string, data interface{}, hash ...common.Hash) {
 	payload := types.WebSocketPayload{
 		Type: msgType,
 		Data: data,
@@ -159,6 +169,8 @@ func SendMessage(conn *websocket.Conn, channel string, msgType string, data inte
 		Channel: channel,
 		Payload: payload,
 	}
+	conn.mu.Lock()
+	defer conn.mu.Unlock()
 	err := conn.WriteJSON(message)
 	if err != nil {
 		conn.Close()

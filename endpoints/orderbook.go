@@ -10,7 +10,6 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/ws"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/go-ozzo/ozzo-routing"
-	"github.com/gorilla/websocket"
 )
 
 type OrderBookEndpoint struct {
@@ -52,7 +51,7 @@ func (e *OrderBookEndpoint) orderBookEndpoint(c *routing.Context) error {
 }
 
 // orderBookWebSocket
-func (e *OrderBookEndpoint) orderBookWebSocket(input interface{}, conn *websocket.Conn) {
+func (e *OrderBookEndpoint) orderBookWebSocket(input interface{}, conn *ws.Conn) {
 	mab, _ := json.Marshal(input)
 	var payload *types.WebSocketPayload
 	if err := json.Unmarshal(mab, &payload); err != nil {
