@@ -111,14 +111,41 @@ func (dao *OrderDao) GetByID(id bson.ObjectId) (response *types.Order, err error
 
 // GetByHash function fetches a single document from order collection based on mongoDB ID.
 // Returns Order type struct
-func (dao *OrderDao) GetByHash(hash common.Hash) (response *types.Order, err error) {
+func (dao *OrderDao) GetByHash(hash common.Hash) (*types.Order, error) {
 	q := bson.M{"hash": hash.Hex()}
-	var resp []types.Order
-	err = db.Get(dao.dbName, dao.collectionName, q, 0, 1, &resp)
-	if err != nil || len(resp) == 0 {
-		return
+	res := []types.Order{}
+
+	err := db.Get(dao.dbName, dao.collectionName, q, 0, 1, &res)
+	if err != nil {
+		log.Print(err)
+		return nil, err
 	}
-	return &resp[0], nil
+
+	if len(res) == 0 {
+		log.Print(err)
+		return &res[0], nil
+	}
+
+	return &res[0], nil
+}
+
+// GetByHashes
+func (dao *OrderDao) GetByHashes(hashes ...common.Hash) ([]*types.Order, error) {
+	hexes := []string{}
+	for _, h := range hashes {
+		hexes = append(hexes, h.Hex())
+	}
+
+	q := bson.M{"hash": bson.M{"$in": hashes}}
+	res := []*types.Order{}
+
+	err := db.Get(dao.dbName, dao.collectionName, q, 0, 0, &res)
+	if err != nil {
+		log.Print(err)
+		return nil, err
+	}
+
+	return res, nil
 }
 
 // GetByUserAddress function fetches list of orders from order collection based on user address.

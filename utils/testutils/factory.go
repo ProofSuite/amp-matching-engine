@@ -157,9 +157,9 @@ func (f *OrderFactory) NewBuyOrderMessage(price int64, amount int64) (*types.Web
 		return nil, nil, err
 	}
 
-	m := types.NewOrderWebsocketMessage(o)
+	m := types.NewOrderWebsocketMessage(&o)
 
-	return m, o, nil
+	return m, &o, nil
 }
 
 func (f *OrderFactory) NewSellOrderMessage(price int64, amount int64) (*types.WebSocketMessage, *types.Order, error) {
@@ -168,32 +168,9 @@ func (f *OrderFactory) NewSellOrderMessage(price int64, amount int64) (*types.We
 		return nil, nil, err
 	}
 
-	m := types.NewOrderWebsocketMessage(o)
+	m := types.NewOrderWebsocketMessage(&o)
 
-	return m, o, nil
-}
-
-// NewBuyOrder creates a new buy order from the order factory
-func (f *OrderFactory) NewBuyOrder(price int64, amount int64) (*types.Order, error) {
-	o := &types.Order{}
-
-	o.UserAddress = f.Wallet.Address
-	o.ExchangeAddress = f.Params.ExchangeAddress
-	o.BuyToken = f.Pair.BaseTokenAddress
-	o.SellToken = f.Pair.QuoteTokenAddress
-	o.Expires = f.Params.Expires
-	o.MakeFee = f.Params.MakeFee
-	o.TakeFee = f.Params.TakeFee
-	o.Nonce = big.NewInt(int64(f.NonceGenerator.Intn(1e8)))
-	o.Status = "NEW"
-
-	amountSell := &big.Int{}
-	amountSell.Mul(big.NewInt(int64(amount)), big.NewInt(int64(price)))
-	o.SellAmount = amountSell
-	o.BuyAmount = big.NewInt(int64(amount))
-
-	o.Sign(f.Wallet)
-	return o, nil
+	return m, &o, nil
 }
 
 func (f *OrderFactory) NewCancelOrder(o *types.Order) (*types.OrderCancel, error) {
@@ -204,28 +181,85 @@ func (f *OrderFactory) NewCancelOrder(o *types.Order) (*types.OrderCancel, error
 	return oc, nil
 }
 
+// NewBuyOrder creates a new buy order from the order factory
+func (f *OrderFactory) NewBuyOrder(pricepoint int64, amount int64, filled ...int64) (types.Order, error) {
+	o := types.Order{}
+
+	o.UserAddress = f.Wallet.Address
+	o.ExchangeAddress = f.Params.ExchangeAddress
+	o.BuyToken = f.Pair.BaseTokenAddress
+	o.SellToken = f.Pair.QuoteTokenAddress
+	o.BaseToken = f.Pair.BaseTokenAddress
+	o.QuoteToken = f.Pair.QuoteTokenAddress
+	o.Expires = f.Params.Expires
+	o.MakeFee = f.Params.MakeFee
+	o.TakeFee = f.Params.TakeFee
+	o.Nonce = big.NewInt(int64(f.NonceGenerator.Intn(1e8)))
+	amountSell := &big.Int{}
+	o.Amount = big.NewInt(amount)
+	o.Side = "BUY"
+	amountSell.Mul(big.NewInt(int64(amount)), big.NewInt(pricepoint))
+
+	if filled == nil {
+		o.FilledAmount = big.NewInt(0)
+		o.Status = "NEW"
+	} else if amount == filled[0] {
+		o.FilledAmount = big.NewInt(filled[0])
+		o.Status = "FILLED"
+	} else {
+		o.FilledAmount = big.NewInt(filled[0])
+		o.Status = "PARTIAL_FILLED"
+	}
+
+	o.SellAmount = amountSell
+	o.BuyAmount = big.NewInt(int64(amount))
+	o.PricePoint = big.NewInt(pricepoint)
+	o.Price = big.NewInt(pricepoint)
+	o.FilledAmount = big.NewInt(0)
+
+	o.Sign(f.Wallet)
+	return o, nil
+}
+
 // NewBuyOrder returns a new order with the given params. The order is signed by the factory wallet
 // NewBuyOrder computes the AmountBuy and AmountSell parameters from the given amount and price.
 // Currently, the amount, price and order type are also kept. This could be amended in the future
 // (meaning we would let the engine compute OrderBuy, Amount and Price. Ultimately this does not really
 // matter except maybe for convenience/readability purposes)
-func (f *OrderFactory) NewSellOrder(price int64, amount int64) (*types.Order, error) {
-	o := &types.Order{}
+func (f *OrderFactory) NewSellOrder(pricepoint int64, amount int64, filled ...int64) (types.Order, error) {
+	o := types.Order{}
 
 	o.UserAddress = f.Wallet.Address
 	o.ExchangeAddress = f.Params.ExchangeAddress
 	o.BuyToken = f.Pair.QuoteTokenAddress
 	o.SellToken = f.Pair.BaseTokenAddress
+	o.BaseToken = f.Pair.BaseTokenAddress
+	o.QuoteToken = f.Pair.QuoteTokenAddress
 	o.Expires = f.Params.Expires
 	o.MakeFee = f.Params.MakeFee
 	o.TakeFee = f.Params.TakeFee
 	o.Nonce = big.NewInt(int64(f.NonceGenerator.Intn(1e8)))
-	o.Status = "NEW"
+	o.Amount = big.NewInt(amount)
+	o.Side = "SELL"
 
 	amountBuy := &big.Int{}
-	amountBuy.Mul(big.NewInt(int64(amount)), big.NewInt(int64(price)))
+	amountBuy.Mul(big.NewInt(int64(amount)), big.NewInt(pricepoint))
+
 	o.BuyAmount = amountBuy
 	o.SellAmount = big.NewInt(int64(amount))
+	o.PricePoint = big.NewInt(pricepoint)
+	o.Price = big.NewInt(pricepoint)
+
+	if filled == nil {
+		o.FilledAmount = big.NewInt(0)
+		o.Status = "NEW"
+	} else if amount == filled[0] {
+		o.FilledAmount = big.NewInt(filled[0])
+		o.Status = "FILLED"
+	} else {
+		o.FilledAmount = big.NewInt(filled[0])
+		o.Status = "PARTIAL_FILLED"
+	}
 
 	o.Sign(f.Wallet)
 	return o, nil
@@ -233,8 +267,8 @@ func (f *OrderFactory) NewSellOrder(price int64, amount int64) (*types.Order, er
 
 // NewTrade returns a new trade with the given params. The trade is signed by the factory wallet.
 // Currently the nonce is chosen randomly which will be changed in the future
-func (f *OrderFactory) NewTrade(o *types.Order, amount int64) (*types.Trade, error) {
-	t := &types.Trade{}
+func (f *OrderFactory) NewTrade(o *types.Order, amount int64) (types.Trade, error) {
+	t := types.Trade{}
 
 	t.Maker = o.UserAddress
 	t.Taker = f.Wallet.Address

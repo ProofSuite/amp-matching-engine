@@ -54,3 +54,8 @@ func PrintJSON(x interface{}) {
 func PrintError(msg string, err error) {
 	log.Printf("\n%v: %v\n", msg, err)
 }
+
+// Util function to handle unused variables while testing
+func Use(...interface{}) {
+
+}

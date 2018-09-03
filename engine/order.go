@@ -22,7 +22,6 @@ package engine
 // 4. The orders hashmap is a mapping that stores serialized orders
 // Keys: hash
 // Values: serialized order
-
 import (
 	"encoding/json"
 	"log"
@@ -80,8 +79,6 @@ func (e *Engine) buyOrder(order *types.Order) (*types.EngineResponse, error) {
 
 	remainingOrder := *order
 	res.RemainingOrder = &remainingOrder
-	res.Trades = make([]*types.Trade, 0)
-	res.MatchingOrders = make([]*types.FillOrder, 0)
 	oskv := order.GetOBMatchKey()
 
 	// GET Range of sellOrder between minimum Sell order and order.Price
@@ -159,9 +156,7 @@ func (e *Engine) sellOrder(order *types.Order) (*types.EngineResponse, error) {
 	}
 
 	remOrder := *order
-	res.Trades = make([]*types.Trade, 0)
 	res.RemainingOrder = &remOrder
-	res.MatchingOrders = make([]*types.FillOrder, 0)
 	obkv := order.GetOBMatchKey()
 
 	// // GET Range of sellOrder between minimum Sell order and order.Price
@@ -431,6 +426,33 @@ func (e *Engine) RecoverOrders(orders []*types.FillOrder) error {
 	return nil
 }
 
+func (e *Engine) CancelTrades(orders []*types.Order, amount []*big.Int) error {
+	e.mutex.Lock()
+	defer e.mutex.Unlock()
+
+	for _, o := range orders {
+		o.Status = "PARTIAL_FILLED"
+		o.FilledAmount = math.Sub(o.FilledAmount, o.Amount)
+		if math.IsZero(o.Order.FilledAmount) {
+			o.Status = "OPEN"
+		}
+
+		if !e.redisConn.Exists(o.Hash.Hex()) {
+			if err := e.addOrder(o); err != nil {
+				log.Print(err)
+				return err
+			}
+		} else {
+			if err := e.updateOrder((o, math.Neg(o.Amount)); err != nil {
+				log.Print(err)
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
 // CancelOrder is used to cancel the order from orderbook
 func (e *Engine) CancelOrder(order *types.Order) (*types.EngineResponse, error) {
 	e.mutex.Lock()
@@ -453,9 +475,9 @@ func (e *Engine) CancelOrder(order *types.Order) (*types.EngineResponse, error) 
 	engineResponse := &types.EngineResponse{
 		FillStatus:     "CANCELLED",
 		Order:          stored,
-		RemainingOrder: &types.Order{},
-		Trades:         make([]*types.Trade, 0),
-		MatchingOrders: make([]*types.FillOrder, 0),
+		RemainingOrder: nil,
+		Trades:         nil,
+		MatchingOrders: nil,
 	}
 
 	return engineResponse, nil
