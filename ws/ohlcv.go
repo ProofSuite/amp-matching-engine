@@ -2,8 +2,6 @@ package ws
 
 import (
 	"errors"
-
-	"github.com/gorilla/websocket"
 )
 
 var ohlcvSocket *OHLCVSocket
@@ -11,118 +9,78 @@ var ohlcvSocket *OHLCVSocket
 // OHLCVSocket holds the map of subscribtions subscribed to pair channels
 // corresponding to the key/event they have subscribed to.
 type OHLCVSocket struct {
-	subscriptions map[string]map[*websocket.Conn]bool
+	subscriptions map[string]map[*Conn]bool
 }
 
 // GetOHLCVSocket return singleton instance of PairSockets type struct
 func GetOHLCVSocket() *OHLCVSocket {
 	if ohlcvSocket == nil {
-		ohlcvSocket = &OHLCVSocket{make(map[string]map[*websocket.Conn]bool)}
+		ohlcvSocket = &OHLCVSocket{make(map[string]map[*Conn]bool)}
 	}
 
 	return ohlcvSocket
 }
 
-// Register handles the registration of connection to get
+// Subscribe handles the registration of connection to get
 // streaming data over the socker for any pair.
-func (s *OHLCVSocket) Subscribe(channelId string, conn *websocket.Conn) error {
+func (s *OHLCVSocket) Subscribe(channelID string, conn *Conn) error {
 	if conn == nil {
 		return errors.New("Empty connection object")
 	}
 
-	if s.subscriptions[channelId] == nil {
-		s.subscriptions[channelId] = make(map[*websocket.Conn]bool)
+	if s.subscriptions[channelID] == nil {
+		s.subscriptions[channelID] = make(map[*Conn]bool)
 	}
 
-	s.subscriptions[channelId][conn] = true
+	s.subscriptions[channelID][conn] = true
 	return nil
 }
 
 // UnsubscribeHandler returns function of type unsubscribe handler,
 // it handles the unsubscription of pair in case of connection closing.
-func (s *OHLCVSocket) UnsubscribeHandler(channelId string) func(conn *websocket.Conn) {
-	return func(conn *websocket.Conn) {
-		s.Unsubscribe(channelId, conn)
+func (s *OHLCVSocket) UnsubscribeHandler(channelID string) func(conn *Conn) {
+	return func(conn *Conn) {
+		s.Unsubscribe(channelID, conn)
 	}
 }
 
-// UnregisterConnection is used to unsubscribe the connection from listening to the key
+// Unsubscribe is used to unsubscribe the connection from listening to the key
 // subscribed to. It can be called on unsubscription message from user or due to some other reason by
 // system
-func (s *OHLCVSocket) Unsubscribe(channelId string, conn *websocket.Conn) {
-	if s.subscriptions[channelId][conn] {
-		s.subscriptions[channelId][conn] = false
-		delete(s.subscriptions[channelId], conn)
+func (s *OHLCVSocket) Unsubscribe(channelID string, conn *Conn) {
+	if s.subscriptions[channelID][conn] {
+		s.subscriptions[channelID][conn] = false
+		delete(s.subscriptions[channelID], conn)
 	}
 }
 
-// Broadcast Message streams message to all the subscribtions subscribed to the pair
-func (s *OHLCVSocket) BroadcastOHLCV(channelId string, p interface{}) error {
-	for conn, status := range s.subscriptions[channelId] {
+// BroadcastOHLCV Message streams message to all the subscribtions subscribed to the pair
+func (s *OHLCVSocket) BroadcastOHLCV(channelID string, p interface{}) error {
+	for conn, status := range s.subscriptions[channelID] {
 		if status {
-			SendOHLCVMessage(conn, "UPDATE", p)
+			SendOHLCVUpdateMessage(conn, p)
 		}
 	}
 
 	return nil
 }
 
-// SendMessage sends a message on the orderbook channel
-func SendOHLCVMessage(conn *websocket.Conn, msgType string, p interface{}) {
+// SendOHLCVMessage sends a message on the ohlcv channel
+func SendOHLCVMessage(conn *Conn, msgType string, p interface{}) {
 	SendMessage(conn, OHLCVChannel, msgType, p)
 }
 
-// SendErrorMessage sends
-func SendOHLCVErrorMessage(conn *websocket.Conn, p interface{}) {
+// SendOHLCVErrorMessage is responsible for sending error messages on ohlcv channel
+func SendOHLCVErrorMessage(conn *Conn, p interface{}) {
 	SendOHLCVMessage(conn, "ERROR", p)
 }
 
-func SendOHLCVInitMesssage(conn *websocket.Conn, p interface{}) {
+// SendOHLCVInitMesssage is responsible for sending complete order book on subscription request
+func SendOHLCVInitMesssage(conn *Conn, p interface{}) {
 	SendOHLCVMessage(conn, "INIT", p)
 }
 
-func SendOHLCVUpdateMessage(conn *websocket.Conn, p interface{}) {
+// SendOHLCVUpdateMessage is responsible for update ohlcv tick messages
+func SendOHLCVUpdateMessage(conn *Conn, p interface{}) {
 	SendOHLCVMessage(conn, "UPDATE", p)
 }
-
-// // SendErrorMessage is responsible for sending error messages on orderbook channel
-// func (ps *PairSockets) SendErrorMessage(conn *websocket.Conn, msg interface{}) {
-// 	ps.SendMessage(conn, "ERROR", msg)
-// }
-
-// // SendBookMessage is responsible for sending complete order book on subscription request
-// func (ps *PairSockets) SendBookMessage(conn *websocket.Conn, msg interface{}) {
-// 	ps.SendMessage(conn, "INIT", msg)
-// }
-
-// func (ps *PairSockets) SendMessage(conn *websocket.Conn, msgType string, msg interface{}) {
-// 	SendMessage(conn, OrderBookChannel, msgType, msg)
-// }
-
-// // SendErrorMessage is responsible for sending error messages on orderbook channel
-// func (ps *PairSockets) SendErrorMessage(conn *websocket.Conn, msg interface{}) {
-// 	ps.SendMessage(conn, "ERROR", msg)
-// }
-
-// // SendBookMessage is responsible for sending complete order book on subscription request
-// func (ps *PairSockets) SendBookMessage(conn *websocket.Conn, msg interface{}) {
-// 	ps.SendMessage(conn, "INIT", msg)
-// }
-
-// func (s *OHLCVSocket) Subscribe(bt, qt common.Address, conn *websocket.Conn) error {
-// 	pair := utils.GetPairKey(bt, qt)
-// 	if conn == nil {
-// 		return errors.New("nil not allowed in arguments as *websocket.Conn")
-// 	} else if s.subscribtions == nil {
-// 		s.subscribtions = make(map[string]map[*websocket.Conn]bool)
-// 		s.subscribtions[pair] = make(map[*websocket.Conn]bool)
-// 	} else if s.subscribtions[pair] == nil {
-// 		s.subscribtions[pair] = make(map[*websocket.Conn]bool)
-// 	}
-
-// 	if !s.subscribtions[pair][conn] {
-// 		s.subscribtions[pair][conn] = true
-// 	}
-
-// 	return nil
-// }

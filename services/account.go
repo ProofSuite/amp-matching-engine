@@ -45,7 +45,6 @@ func (s *AccountService) Create(account *types.Account) error {
 	// currently by default, the tokens balances are set to 0
 	for _, token := range tokens {
 		account.TokenBalances[token.ContractAddress] = &types.TokenBalance{
-			ID:            token.ID,
 			Address:       token.ContractAddress,
 			Symbol:        token.Symbol,
 			Balance:       big.NewInt(10000000000000000),

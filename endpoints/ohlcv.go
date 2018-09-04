@@ -10,7 +10,6 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/ws"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/go-ozzo/ozzo-routing"
-	"github.com/gorilla/websocket"
 )
 
 type OHLCVEndpoint struct {
@@ -57,12 +56,22 @@ func (e *OHLCVEndpoint) ohlcv(c *routing.Context) error {
 	return c.Write(res)
 }
 
-func (e *OHLCVEndpoint) ohlcvWebSocket(input interface{}, conn *websocket.Conn) {
+func (e *OHLCVEndpoint) ohlcvWebSocket(input interface{}, conn *ws.Conn) {
 	startTs := time.Date(1970, time.January, 1, 0, 0, 0, 0, time.UTC)
 
 	mab, _ := json.Marshal(input)
+	var payload *types.WebSocketPayload
+	if err := json.Unmarshal(mab, &payload); err != nil {
+		log.Println("unmarshal to wsmsg <==>" + err.Error())
+	}
+	if payload.Type != "subscription" {
+		log.Println("Payload is not of subscription type")
+		ws.SendOrderBookErrorMessage(conn, "Payload is not of subscription type")
+		return
+	}
+	dab, _ := json.Marshal(payload.Data)
 	var msg *types.WebSocketSubscription
-	if err := json.Unmarshal(mab, &msg); err != nil {
+	if err := json.Unmarshal(dab, &msg); err != nil {
 		log.Println("unmarshal to wsmsg <==>" + err.Error())
 	}
 

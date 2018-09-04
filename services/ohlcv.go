@@ -9,7 +9,6 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/Proofsuite/amp-matching-engine/ws"
-	"github.com/gorilla/websocket"
 	"gopkg.in/mgo.v2/bson"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -23,15 +22,15 @@ func NewOHLCVService(TradeDao interfaces.TradeDao) *OHLCVService {
 	return &OHLCVService{TradeDao}
 }
 
-// UnregisterForTicks handles all the unsubscription messages for ticks corresponding to a pair
-func (s *OHLCVService) Unsubscribe(conn *websocket.Conn, bt, qt common.Address, params *types.Params) {
+// Unsubscribe handles all the unsubscription messages for ticks corresponding to a pair
+func (s *OHLCVService) Unsubscribe(conn *ws.Conn, bt, qt common.Address, params *types.Params) {
 	id := utils.GetOHLCVChannelID(bt, qt, params.Units, params.Duration)
 	ws.GetTradeSocket().Unsubscribe(id, conn)
 }
 
-// RegisterForTicks handles all the subscription messages for ticks corresponding to a pair
+// Subscribe handles all the subscription messages for ticks corresponding to a pair
 // It calls the corresponding channel's subscription method and sends trade history back on the connection
-func (s *OHLCVService) Subscribe(conn *websocket.Conn, bt, qt common.Address, params *types.Params) {
+func (s *OHLCVService) Subscribe(conn *ws.Conn, bt, qt common.Address, params *types.Params) {
 	ohlcv, err := s.GetOHLCV([]types.PairSubDoc{types.PairSubDoc{BaseToken: bt, QuoteToken: qt}},
 		params.Duration,
 		params.Units,
@@ -44,7 +43,7 @@ func (s *OHLCVService) Subscribe(conn *websocket.Conn, bt, qt common.Address, pa
 	}
 
 	id := utils.GetOHLCVChannelID(bt, qt, params.Units, params.Duration)
-	err = ws.GetTradeSocket().Subscribe(id, conn)
+	err = ws.GetOHLCVSocket().Subscribe(id, conn)
 	if err != nil {
 		message := map[string]string{
 			"Code":    "UNABLE_TO_SUBSCRIBE",
@@ -54,8 +53,8 @@ func (s *OHLCVService) Subscribe(conn *websocket.Conn, bt, qt common.Address, pa
 		ws.SendTradeErrorMessage(conn, message)
 	}
 
-	ws.RegisterConnectionUnsubscribeHandler(conn, ws.GetTradeSocket().UnsubscribeHandler(id))
-	ws.SendTradeInitMessage(conn, ohlcv)
+	ws.RegisterConnectionUnsubscribeHandler(conn, ws.GetOHLCVSocket().UnsubscribeHandler(id))
+	ws.SendOHLCVInitMesssage(conn, ohlcv)
 }
 
 // GetOHLCV fetches OHLCV data using

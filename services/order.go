@@ -11,6 +11,8 @@ import (
 	"github.com/streadway/amqp"
 
 	"github.com/Proofsuite/amp-matching-engine/interfaces"
+	"github.com/Proofsuite/amp-matching-engine/utils"
+	"github.com/Proofsuite/amp-matching-engine/utils/math"
 	"github.com/Proofsuite/amp-matching-engine/ws"
 	"github.com/ethereum/go-ethereum/common"
 
@@ -56,7 +58,7 @@ func (s *OrderService) GetByHash(hash common.Hash) (*types.Order, error) {
 	return s.orderDao.GetByHash(hash)
 }
 
-// Create validates if the passed order is valid or not based on user's available
+// NewOrder validates if the passed order is valid or not based on user's available
 // funds and order data.
 // If valid: Order is inserted in DB with order status as new and order is publiched
 // on rabbitmq queue for matching engine to process the order
@@ -101,9 +103,10 @@ func (s *OrderService) NewOrder(o *types.Order) error {
 	}
 
 	// fee balance validation
+	wethAddress := common.HexToAddress("0x2EB24432177e82907dE24b7c5a6E0a5c03226135")
 	wethTokenBalance, err := s.accountDao.GetTokenBalance(
 		o.UserAddress,
-		common.HexToAddress("0x2EB24432177e82907dE24b7c5a6E0a5c03226135"),
+		wethAddress,
 	)
 
 	if err != nil {
@@ -131,7 +134,7 @@ func (s *OrderService) NewOrder(o *types.Order) error {
 
 	wethTokenBalance.LockedBalance.Add(wethTokenBalance.LockedBalance, o.TakeFee)
 
-	err = s.accountDao.UpdateTokenBalance(o.UserAddress, o.QuoteToken, wethTokenBalance)
+	err = s.accountDao.UpdateTokenBalance(o.UserAddress, wethAddress, wethTokenBalance)
 	if err != nil {
 		log.Print(err)
 		return err
@@ -228,7 +231,7 @@ func (s *OrderService) HandleEngineResponse(res *types.EngineResponse) error {
 		s.handleEngineUnknownMessage(res)
 	}
 
-	// s.RelayUpdateOverSocket(res)
+	s.RelayUpdateOverSocket(res)
 	// ws.CloseOrderReadChannel(res.Order.Hash)
 	return nil
 }
@@ -353,21 +356,23 @@ func (s *OrderService) RecoverOrders(res *types.EngineResponse) {
 // RelayUpdateOverSocket is resonsible for notifying listening clients about new order/trade addition/deletion
 func (s *OrderService) RelayUpdateOverSocket(res *types.EngineResponse) {
 
-	// if
-	// if len(res.Trades) > 0 {
-	// 	fmt.Println("Trade relay over socket")
-	// 	ws.GetPairSockets().WriteMessage(res.Order.BaseToken, res.Order.QuoteToken, "TRADES_ADDED", res.Trades)
-	// }
+	// broadcast order's latest state
+	cid := utils.GetOrderBookChannelID(res.Order.BaseToken, res.Order.QuoteToken)
+	ws.GetOrderBookSocket().BroadcastMessage(cid, res.Order)
 
-	// if res.RemainingOrder != nil {
-	// 	fmt.Println("Order added Relay over socket")
-	// 	ws.GetPairSockets().WriteMessage(res.Order.BaseToken, res.Order.QuoteToken, "ORDER_ADDED", res.RemainingOrder)
-	// }
+	// broadcast trades, if any
+	if len(res.Trades) > 0 {
+		fmt.Println("Trade relay over socket")
+		cid := utils.GetTradeChannelID(res.Order.BaseToken, res.Order.QuoteToken)
+		ws.GetTradeSocket().BroadcastMessage(cid, res.Trades)
+	}
 
-	// if res.FillStatus == engine.CANCELLED {
-	// 	fmt.Println("Order cancelled Relay over socket")
-	// 	ws.GetPairSockets().WriteMessage(res.Order.BaseToken, res.Order.QuoteToken, "ORDER_CANCELED", res.Order)
-	// }
+	// broadcast remaining order, if any
+	if res.RemainingOrder != nil && res.RemainingOrder.Amount != nil && math.IsGreaterThan(res.RemainingOrder.Amount, big.NewInt(0)) {
+		fmt.Println("Order added Relay over socket")
+		cid := utils.GetOrderBookChannelID(res.Order.BaseToken, res.Order.QuoteToken)
+		ws.GetOrderBookSocket().BroadcastMessage(cid, res.RemainingOrder)
+	}
 }
 
 // SendMessage is resonsible for sending message to socket linked to a particular order

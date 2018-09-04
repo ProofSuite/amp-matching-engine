@@ -13,7 +13,7 @@ weth: "0x2EB24432177e82907dE24b7c5a6E0a5c03226135"
 fee_account: "0xe8e84ee367bc63ddb38d3d01bccef106c194dc47"
 
 tick_duration:
-    sec: [30]
+    sec: [5, 30]
     min: [1, 5, 15]
     hour: [1]
     day: [1]
