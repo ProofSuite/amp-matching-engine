@@ -379,24 +379,86 @@ func (s *OrderService) CancelTrades(trades []*types.Trade) error {
 
 // RelayUpdateOverSocket is resonsible for notifying listening clients about new order/trade addition/deletion
 func (s *OrderService) RelayUpdateOverSocket(res *types.EngineResponse) {
-
 	// broadcast order's latest state
-	cid := utils.GetOrderBookChannelID(res.Order.BaseToken, res.Order.QuoteToken)
-	ws.GetOrderBookSocket().BroadcastMessage(cid, res.Order)
+	s.RelayOrderUpdate(res)
+	s.RelayTradeUpdate(res)
+}
 
-	// broadcast trades, if any
-	if len(res.Trades) > 0 {
-		fmt.Println("Trade relay over socket")
-		cid := utils.GetTradeChannelID(res.Order.BaseToken, res.Order.QuoteToken)
-		ws.GetTradeSocket().BroadcastMessage(cid, res.Trades)
+// RelayOrderUpdate is resonsible for notifying listening clients about new order addition/deletion
+func (s *OrderService) RelayOrderUpdate(res *types.EngineResponse) {
+	// broadcast order's latest state
+	go broadcastLiteOBUpdate(res.Order.BaseToken, res.Order.QuoteToken, getLightOBPayload(res))
+	go broadcastFullOBUpdate(res.Order)
+}
+
+// RelayTradeUpdate is resonsible for notifying listening clients about new trades
+func (s *OrderService) RelayTradeUpdate(res *types.EngineResponse) {
+
+	if len(res.Trades) == 0 {
+		return
+	}
+	// broadcast trades
+	go broadcastTradeUpdate(res.Trades)
+}
+
+func broadcastLiteOBUpdate(baseToken, quoteToken common.Address, data interface{}) {
+	cid := utils.GetOrderBookChannelID(baseToken, quoteToken)
+	ws.GetLiteOrderBookSocket().BroadcastMessage(cid, data)
+}
+
+func broadcastFullOBUpdate(order *types.Order) {
+	cid := utils.GetOrderBookChannelID(order.BaseToken, order.QuoteToken)
+	ws.GetFullOrderBookSocket().BroadcastMessage(cid, order)
+}
+
+func broadcastTradeUpdate(trades []*types.Trade) {
+	cid := utils.GetTradeChannelID(trades[0].BaseToken, trades[0].QuoteToken)
+	ws.GetTradeSocket().BroadcastMessage(cid, trades)
+}
+
+func getLightOBPayload(res *types.EngineResponse) interface{} {
+
+	orderSide := make(map[string]string)
+	matchSide := make([]map[string]string, 0)
+
+	matchSideMap := make(map[string]*big.Int)
+
+	if math.Sub(res.Order.Amount, res.Order.FilledAmount).Cmp(big.NewInt(0)) != 0 {
+		orderSide["price"] = res.Order.PricePoint.String()
+		orderSide["amount"] = math.Sub(res.Order.Amount, res.Order.FilledAmount).String()
 	}
 
-	// broadcast remaining order, if any
-	if res.RemainingOrder != nil && res.RemainingOrder.Amount != nil && math.IsGreaterThan(res.RemainingOrder.Amount, big.NewInt(0)) {
-		fmt.Println("Order added Relay over socket")
-		cid := utils.GetOrderBookChannelID(res.Order.BaseToken, res.Order.QuoteToken)
-		ws.GetOrderBookSocket().BroadcastMessage(cid, res.RemainingOrder)
+	if len(res.MatchingOrders) > 0 {
+		for _, mo := range res.MatchingOrders {
+			pp := mo.Order.PricePoint.String()
+			if matchSideMap[pp] == nil {
+				matchSideMap[pp] = big.NewInt(0)
+			}
+			matchSideMap[pp] = math.Add(matchSideMap[pp], mo.Amount)
+		}
 	}
+	for price, amount := range matchSideMap {
+		temp := map[string]string{
+			"price":  price,
+			"amount": math.Neg(amount).String(),
+		}
+		matchSide = append(matchSide, temp)
+	}
+
+	var response map[string]interface{}
+	if res.Order.Side == "SELL" {
+		response = map[string]interface{}{
+			"asks": []map[string]string{orderSide},
+			"bids": matchSide,
+		}
+	} else {
+		response = map[string]interface{}{
+			"asks": matchSide,
+			"bids": []map[string]string{orderSide},
+		}
+	}
+
+	return response
 }
 
 // SendMessage is resonsible for sending message to socket linked to a particular order
