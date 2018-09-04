@@ -105,7 +105,7 @@ type Engine interface {
 	CancelOrder(order *types.Order) (*types.EngineResponse, error)
 	GetOrderBook(pair *types.Pair) (asks, bids []*map[string]float64)
 	CancelTrades(orders []*types.Order, amount []*big.Int) error
-	GetFullOrderBook(pair *types.Pair) [][]string
+	GetFullOrderBook(pair *types.Pair) [][]types.Order
 }
 
 type WalletService interface {
@@ -144,6 +144,7 @@ type OrderService interface {
 
 type OrderBookService interface {
 	GetOrderBook(bt, qt common.Address) (ob map[string]interface{}, err error)
+	GetFullOrderBook(bt, qt common.Address) (ob [][]types.Order, err error)
 	SubscribeLite(conn *ws.Conn, bt, qt common.Address)
 	UnsubscribeLite(conn *ws.Conn, bt, qt common.Address)
 	SubscribeFull(conn *ws.Conn, bt, qt common.Address)
