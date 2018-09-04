@@ -5,13 +5,12 @@ import (
 
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/gorilla/websocket"
 )
 
 // OrderConn is websocket order connection struct
 // It holds the reference to connection and the channel of type OrderMessage
 type OrderConnection struct {
-	Conn        *websocket.Conn
+	Conn        *Conn
 	ReadChannel chan *types.WebSocketPayload
 	Active      bool
 	Once        sync.Once
@@ -20,7 +19,7 @@ type OrderConnection struct {
 var orderConnections map[string]*OrderConnection
 
 // GetOrderConn returns the connection associated with an order ID
-func GetOrderConnection(hash common.Hash) (conn *websocket.Conn) {
+func GetOrderConnection(hash common.Hash) (conn *Conn) {
 	return orderConnections[hash.Hex()].Conn
 }
 
@@ -42,10 +41,10 @@ func GetOrderChannel(h common.Hash) chan *types.WebSocketPayload {
 }
 
 // OrderSocketUnsubscribeHandler returns a function of type unsubscribe handler.
-func OrderSocketUnsubscribeHandler(h common.Hash) func(conn *websocket.Conn) {
+func OrderSocketUnsubscribeHandler(h common.Hash) func(conn *Conn) {
 	hash := h.Hex()
 
-	return func(conn *websocket.Conn) {
+	return func(conn *Conn) {
 		if orderConnections[hash] != nil {
 			orderConnections[hash] = nil
 			delete(orderConnections, hash)
@@ -80,20 +79,10 @@ func CloseOrderReadChannel(h common.Hash) error {
 	return nil
 }
 
-func SendOrderMessage(conn *websocket.Conn, msgType string, data interface{}, hash ...common.Hash) {
+func SendOrderMessage(conn *Conn, msgType string, data interface{}, hash ...common.Hash) {
 	SendMessage(conn, OrderChannel, msgType, data, hash...)
 }
 
-func SendOrderErrorMessage(conn *websocket.Conn, data interface{}, hash ...common.Hash) {
+func SendOrderErrorMessage(conn *Conn, data interface{}, hash ...common.Hash) {
 	SendOrderMessage(conn, "ERROR", data, hash...)
 }
-
-// // OrderSendMessage is responsible for sending message on order channel
-// func OrderSendMessage(conn *websocket.Conn, msgType string, msg interface{}, hash ...common.Hash) {
-// 	SendMessage(conn, OrderChannel, msgType, msg, hash...)
-// }
-
-// // OrderSendErrorMessage is responsible for sending error message on order channel
-// func OrderSendErrorMessage(conn *websocket.Conn, msg interface{}, hash ...common.Hash) {
-// 	OrderSendMessage(conn, "ERROR", msg, hash...)
-// }

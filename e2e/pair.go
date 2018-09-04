@@ -3,7 +3,6 @@ package e2e
 import (
 	"encoding/json"
 	"fmt"
-	"math/big"
 	"net/http"
 	"strings"
 	"testing"
@@ -23,12 +22,13 @@ func testPair(t *testing.T, tokens []types.Token) []types.Pair {
 		QuoteTokenAddress: tokens[0].ContractAddress,
 		QuoteTokenSymbol:  tokens[0].Symbol,
 		Active:            true,
-		MakeFee:           big.NewInt(0),
-		TakeFee:           big.NewInt(0),
+		// MakeFee:           big.NewInt(0),
+		// TakeFee:           big.NewInt(0),
 	}
 
 	// create pair test
 	res := testAPI(router, "POST", "/pairs", `{"quoteTokenAddress":"`+tokens[0].ContractAddress.Hex()+`", "baseTokenAddress":"`+tokens[1].ContractAddress.Hex()+`", "active":true}`)
+
 	assert.Equal(t, http.StatusOK, res.Code, "t1 - create pair")
 	var resp types.Pair
 	if err := json.Unmarshal(res.Body.Bytes(), &resp); err != nil {

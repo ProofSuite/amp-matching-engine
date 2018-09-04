@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -22,6 +23,7 @@ import (
 	"github.com/go-ozzo/ozzo-routing/content"
 	"github.com/go-ozzo/ozzo-routing/cors"
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/mgo.v2/dbtest"
 )
 
 type apiTestCase struct {
@@ -35,18 +37,27 @@ type apiTestCase struct {
 	compareFn   func(t *testing.T, actual, expected interface{})
 }
 
+var server dbtest.DBServer
+
 // Init function initializes the e2e testing
 func Init(t *testing.T) {
-	if session, err := daos.InitSession(nil); err != nil {
+	temp, _ := ioutil.TempDir("", "test")
+	server.SetPath(temp)
+
+	session := server.Session()
+	_, err := daos.InitSession(session)
+	if err != nil {
 		panic(err)
 	} else {
 		err = session.DB(app.Config.DBName).DropDatabase()
 	}
 
 	// === drop database on test end ===
-	// defer session.DB(app.Config.DBName).DropDatabase()
-	// tokens := testToken(t)
-	// testPair(t, tokens)
+	defer session.DB(app.Config.DBName).DropDatabase()
+	tokens := testToken(t)
+	pair := testPair(t, tokens)
+	accounts := testAccount(t, tokens)
+	testWS(t, pair, accounts)
 	// address := testAddress(t, tokens)
 	// testBalance(t, tokens, address)
 }
@@ -76,7 +87,7 @@ func NewRouter() *routing.Router {
 	rabbitmq.InitConnection(app.Config.Rabbitmq)
 	ethereum.InitConnection(app.Config.Ethereum)
 	redisClient := redis.NewRedisConnection(app.Config.Redis)
-
+	redisClient.FlushAll()
 	// instantiate engine
 	engineResource, err := engine.InitEngine(redisClient)
 	if err != nil {
