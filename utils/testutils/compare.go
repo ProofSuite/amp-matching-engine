@@ -20,6 +20,7 @@ func CompareOrder(t *testing.T, a, b *types.Order) {
 	assert.Equal(t, a.BuyAmount, b.BuyAmount)
 	assert.Equal(t, a.SellAmount, b.SellAmount)
 	assert.Equal(t, a.Price, b.Price)
+	assert.Equal(t, a.PricePoint, b.PricePoint)
 	assert.Equal(t, a.Amount, b.Amount)
 	assert.Equal(t, a.FilledAmount, b.FilledAmount)
 	assert.Equal(t, a.Status, b.Status)

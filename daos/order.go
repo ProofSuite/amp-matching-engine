@@ -130,13 +130,13 @@ func (dao *OrderDao) GetByHash(hash common.Hash) (*types.Order, error) {
 }
 
 // GetByHashes
-func (dao *OrderDao) GetByHashes(hashes ...common.Hash) ([]*types.Order, error) {
+func (dao *OrderDao) GetByHashes(hashes []common.Hash) ([]*types.Order, error) {
 	hexes := []string{}
 	for _, h := range hashes {
 		hexes = append(hexes, h.Hex())
 	}
 
-	q := bson.M{"hash": bson.M{"$in": hashes}}
+	q := bson.M{"hash": bson.M{"$in": hexes}}
 	res := []*types.Order{}
 
 	err := db.Get(dao.dbName, dao.collectionName, q, 0, 0, &res)
@@ -150,9 +150,9 @@ func (dao *OrderDao) GetByHashes(hashes ...common.Hash) ([]*types.Order, error) 
 
 // GetByUserAddress function fetches list of orders from order collection based on user address.
 // Returns array of Order type struct
-func (dao *OrderDao) GetByUserAddress(addr common.Address) (response []*types.Order, err error) {
+func (dao *OrderDao) GetByUserAddress(addr common.Address) (res []*types.Order, err error) {
 	q := bson.M{"userAddress": addr.Hex()}
-	err = db.Get(dao.dbName, dao.collectionName, q, 0, 0, &response)
+	err = db.Get(dao.dbName, dao.collectionName, q, 0, 0, &res)
 	return
 }
 

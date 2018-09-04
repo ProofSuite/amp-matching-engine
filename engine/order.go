@@ -433,7 +433,7 @@ func (e *Engine) CancelTrades(orders []*types.Order, amount []*big.Int) error {
 	for _, o := range orders {
 		o.Status = "PARTIAL_FILLED"
 		o.FilledAmount = math.Sub(o.FilledAmount, o.Amount)
-		if math.IsZero(o.Order.FilledAmount) {
+		if math.IsZero(o.FilledAmount) {
 			o.Status = "OPEN"
 		}
 
@@ -443,7 +443,8 @@ func (e *Engine) CancelTrades(orders []*types.Order, amount []*big.Int) error {
 				return err
 			}
 		} else {
-			if err := e.updateOrder((o, math.Neg(o.Amount)); err != nil {
+			err := e.updateOrder(o, math.Neg(o.Amount))
+			if err != nil {
 				log.Print(err)
 				return err
 			}

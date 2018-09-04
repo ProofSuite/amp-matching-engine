@@ -20,6 +20,7 @@ type OrderDao interface {
 	UpdateByHash(hash common.Hash, o *types.Order) error
 	GetByID(id bson.ObjectId) (*types.Order, error)
 	GetByHash(hash common.Hash) (*types.Order, error)
+	GetByHashes(hashes []common.Hash) ([]*types.Order, error)
 	GetByUserAddress(addr common.Address) ([]*types.Order, error)
 	Drop() error
 }
@@ -103,6 +104,7 @@ type Engine interface {
 	RecoverOrders(orders []*types.FillOrder) error
 	CancelOrder(order *types.Order) (*types.EngineResponse, error)
 	GetOrderBook(pair *types.Pair) (asks, bids []*map[string]float64)
+	CancelTrades(orders []*types.Order, amount []*big.Int) error
 }
 
 type WalletService interface {
