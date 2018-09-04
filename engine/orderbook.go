@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"encoding/json"
 	"log"
 
 	"github.com/gomodule/redigo/redis"
@@ -41,17 +42,19 @@ func (e *Engine) GetOrderBook(pair *types.Pair) (sellBook, buyBook []*map[string
 }
 
 // GetFullOrderBook fetches the complete orderbook from redis for the required pair
-func (e *Engine) GetFullOrderBook(pair *types.Pair) (book [][]string) {
-	pattern := pair.GetKVPrefix() + "::*"
+func (e *Engine) GetFullOrderBook(pair *types.Pair) (book [][]types.Order) {
+	pattern := pair.GetKVPrefix() + "::*::*::orders::*"
 
 	groupInt := 100
 
-	book = make([][]string, 0)
+	book = make([][]types.Order, 0)
 	keys, err := e.redisConn.Keys(pattern)
 	if err != nil {
 		log.Print(err)
 		return
 	}
+
+	orders := make([]types.Order, 0)
 
 	for start := 0; start < len(keys); start = start + groupInt {
 		end := start + groupInt
@@ -63,8 +66,25 @@ func (e *Engine) GetFullOrderBook(pair *types.Pair) (book [][]string) {
 			log.Print(err)
 			return
 		}
-		book = append(book, res)
-
+		for _, r := range res {
+			if r == "" {
+				continue
+			}
+			var temp types.Order
+			if err := json.Unmarshal([]byte(r), &temp); err != nil {
+				continue
+			}
+			orders = append(orders, temp)
+		}
 	}
+
+	for start := 0; start < len(orders); start = start + groupInt {
+		end := start + groupInt
+		if len(keys) < end {
+			end = len(keys)
+		}
+		book = append(book, orders[start:end])
+	}
+
 	return
 }

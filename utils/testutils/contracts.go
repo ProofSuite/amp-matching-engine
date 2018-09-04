@@ -33,7 +33,7 @@ func (b *SimulatedBackend) PendingBalanceAt(ctx context.Context, account common.
 }
 
 func NewSimulatedBackend(alloc core.GenesisAlloc, gasLimit uint64) *SimulatedBackend {
-	return &SimulatedBackend{backends.NewSimulatedBackend(alloc, gasLimit)}
+	return &SimulatedBackend{backends.NewSimulatedBackend(alloc)} //, gasLimit)}
 }
 
 func NewDefaultDeployer(w interfaces.WalletService, tx interfaces.TxService) (*Deployer, error) {

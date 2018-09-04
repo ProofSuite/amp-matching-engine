@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/Proofsuite/amp-matching-engine/interfaces"
+	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/ethereum/go-ethereum/common"
 
@@ -86,7 +87,7 @@ func (s *OrderBookService) UnsubscribeLite(conn *ws.Conn, bt, qt common.Address)
 }
 
 // GetFullOrderBook fetches complete orderbook from engine/redis
-func (s *OrderBookService) GetFullOrderBook(bt, qt common.Address) (ob [][]string, err error) {
+func (s *OrderBookService) GetFullOrderBook(bt, qt common.Address) (ob [][]types.Order, err error) {
 	res, err := s.pairDao.GetByTokenAddress(bt, qt)
 	if err != nil {
 		message := map[string]string{
