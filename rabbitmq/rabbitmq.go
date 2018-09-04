@@ -115,7 +115,12 @@ func SubscribeOperator(fn func(*types.OperatorMessage) error) error {
 }
 
 func Purge(ch *amqp.Channel, name string) error {
-	_, err := ch.QueuePurge(name, true)
+	_, err := ch.QueueInspect(name)
+	if err != nil {
+		return nil
+	}
+
+	_, err = ch.QueuePurge(name, false)
 	if err != nil {
 		log.Print(err)
 		return err

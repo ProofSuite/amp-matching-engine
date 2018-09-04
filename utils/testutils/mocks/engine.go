@@ -2,6 +2,8 @@
 
 package mocks
 
+import big "math/big"
+
 import mock "github.com/stretchr/testify/mock"
 import rabbitmq "github.com/Proofsuite/amp-matching-engine/rabbitmq"
 import types "github.com/Proofsuite/amp-matching-engine/types"
@@ -29,6 +31,45 @@ func (_m *Engine) CancelOrder(order *types.Order) (*types.EngineResponse, error)
 		r1 = rf(order)
 	} else {
 		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// CancelTrades provides a mock function with given fields: orders, amount
+func (_m *Engine) CancelTrades(orders []*types.Order, amount []*big.Int) error {
+	ret := _m.Called(orders, amount)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func([]*types.Order, []*big.Int) error); ok {
+		r0 = rf(orders, amount)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// GetOrderBook provides a mock function with given fields: pair
+func (_m *Engine) GetOrderBook(pair *types.Pair) ([]*map[string]float64, []*map[string]float64) {
+	ret := _m.Called(pair)
+
+	var r0 []*map[string]float64
+	if rf, ok := ret.Get(0).(func(*types.Pair) []*map[string]float64); ok {
+		r0 = rf(pair)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*map[string]float64)
+		}
+	}
+
+	var r1 []*map[string]float64
+	if rf, ok := ret.Get(1).(func(*types.Pair) []*map[string]float64); ok {
+		r1 = rf(pair)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).([]*map[string]float64)
+		}
 	}
 
 	return r0, r1
