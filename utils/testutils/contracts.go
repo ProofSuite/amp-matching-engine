@@ -2,6 +2,7 @@ package testutils
 
 import (
 	"context"
+	"errors"
 	"log"
 	"math/big"
 
@@ -21,6 +22,18 @@ type Deployer struct {
 	WalletService interfaces.WalletService
 	TxService     interfaces.TxService
 	Backend       bind.ContractBackend
+}
+
+type SimulatedBackend struct {
+	*backends.SimulatedBackend
+}
+
+func (b *SimulatedBackend) PendingBalanceAt(ctx context.Context, account common.Address) (*big.Int, error) {
+	return nil, errors.New("PendingBalanceAt is not implemented on the simulated backend")
+}
+
+func NewSimulatedBackend(alloc core.GenesisAlloc, gasLimit uint64) *SimulatedBackend {
+	return &SimulatedBackend{backends.NewSimulatedBackend(alloc, gasLimit)}
 }
 
 func NewDefaultDeployer(w interfaces.WalletService, tx interfaces.TxService) (*Deployer, error) {
@@ -72,7 +85,7 @@ func NewSimulator(
 		(genesisAlloc)[a] = core.GenesisAccount{Balance: weiBalance}
 	}
 
-	simulator := backends.NewSimulatedBackend(genesisAlloc)
+	simulator := NewSimulatedBackend(genesisAlloc, 5e6)
 
 	return &Deployer{
 		WalletService: w,

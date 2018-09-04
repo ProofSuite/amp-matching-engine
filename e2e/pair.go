@@ -12,9 +12,9 @@ import (
 )
 
 func testPair(t *testing.T, tokens []types.Token) []types.Pair {
-	fmt.Printf("\n=== Starting Pair test ===\n")
 	router := NewRouter()
 	listPairs := make([]types.Pair, 0)
+
 	neededPair := types.Pair{
 		Name:              strings.ToUpper(tokens[0].Symbol + "/" + tokens[1].Symbol),
 		BaseTokenAddress:  tokens[1].ContractAddress,
@@ -34,6 +34,7 @@ func testPair(t *testing.T, tokens []types.Token) []types.Pair {
 	if err := json.Unmarshal(res.Body.Bytes(), &resp); err != nil {
 		fmt.Printf("%v", err)
 	}
+
 	if comparePair(t, resp, neededPair) {
 		fmt.Println("PASS  't1 - create pair'")
 	} else {
@@ -44,7 +45,6 @@ func testPair(t *testing.T, tokens []types.Token) []types.Pair {
 
 	// Duplicate pair test
 	res = testAPI(router, "POST", "/pairs", `{"quoteTokenAddress":"`+tokens[0].ContractAddress.Hex()+`", "baseTokenAddress":"`+tokens[1].ContractAddress.Hex()+`"}`)
-
 	if assert.Equal(t, 401, res.Code, "t2 - create duplicate pair") {
 		fmt.Println("PASS  't2 - create duplicate pair'")
 	} else {

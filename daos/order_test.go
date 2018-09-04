@@ -9,6 +9,7 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/Proofsuite/amp-matching-engine/utils/testutils"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/stretchr/testify/assert"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -242,4 +243,29 @@ func TestOrderDao(t *testing.T) {
 	}
 
 	testutils.CompareOrder(t, o, o2[0])
+}
+
+func TestOrderDaoGetByHashes(t *testing.T) {
+	dao := NewOrderDao()
+	err := dao.Drop()
+	if err != nil {
+		t.Error("Could not drop previous order state")
+	}
+
+	o1 := testutils.GetTestOrder1()
+	o2 := testutils.GetTestOrder2()
+	o3 := testutils.GetTestOrder3()
+
+	dao.Create(&o1)
+	dao.Create(&o2)
+	dao.Create(&o3)
+
+	orders, err := dao.GetByHashes([]common.Hash{o1.Hash, o2.Hash})
+	if err != nil {
+		t.Error("Could not ")
+	}
+
+	assert.Equal(t, len(orders), 2)
+	testutils.CompareOrder(t, orders[0], &o1)
+	testutils.CompareOrder(t, orders[1], &o2)
 }

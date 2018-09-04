@@ -15,9 +15,9 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/rabbitmq"
 	"github.com/Proofsuite/amp-matching-engine/services"
 	"github.com/Proofsuite/amp-matching-engine/types"
+	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/Proofsuite/amp-matching-engine/utils/testutils"
 	"github.com/Proofsuite/amp-matching-engine/utils/testutils/mocks"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind/backends"
 	"github.com/ethereum/go-ethereum/common"
 	eth "github.com/ethereum/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
@@ -32,7 +32,7 @@ func SetupTest(t *testing.T) (
 	common.Address,
 	*testutils.OrderFactory,
 	*testutils.OrderFactory,
-	*backends.SimulatedBackend,
+	*testutils.SimulatedBackend,
 	*mocks.TradeService,
 	*mocks.OrderService,
 ) {
@@ -73,7 +73,7 @@ func SetupTest(t *testing.T) (
 		panic(err)
 	}
 
-	simulator := deployer.Backend.(*backends.SimulatedBackend)
+	simulator := deployer.Backend.(*testutils.SimulatedBackend)
 	ethService := services.NewEthereumService(simulator)
 
 	//Initially Maker owns 1e18 units of sellToken and Taker owns 1e18 units buyToken
@@ -167,21 +167,9 @@ func TestGetShortestQueue(t *testing.T) {
 	txq2 := op.TxQueues[1]
 	txq3 := op.TxQueues[2]
 
-	//Refactor this into better helper function or something shorter
-	err := txq1.PurgePendingTrades()
-	if err != nil {
-		t.Errorf("Could not purge pending trades")
-	}
-
-	err = txq2.PurgePendingTrades()
-	if err != nil {
-		t.Errorf("Could not purge pending trades")
-	}
-
-	err = txq3.PurgePendingTrades()
-	if err != nil {
-		t.Errorf("Could not purge pending trades")
-	}
+	defer txq1.PurgePendingTrades()
+	defer txq2.PurgePendingTrades()
+	defer txq3.PurgePendingTrades()
 
 	o1, _ := factory1.NewOrder(zrx, 1, weth, 1)
 	o2, _ := factory1.NewOrder(zrx, 1, weth, 1)
@@ -195,11 +183,11 @@ func TestGetShortestQueue(t *testing.T) {
 	t4, _ := factory1.NewTrade(o4, 1)
 	t5, _ := factory1.NewTrade(o5, 1)
 
-	txq1.PublishPendingTrade(o1, t1)
-	txq2.PublishPendingTrade(o2, t2)
-	txq3.PublishPendingTrade(o3, t3)
-	txq1.PublishPendingTrade(o4, t4)
-	txq2.PublishPendingTrade(o5, t5)
+	txq1.PublishPendingTrade(o1, &t1)
+	txq2.PublishPendingTrade(o2, &t2)
+	txq3.PublishPendingTrade(o3, &t3)
+	txq1.PublishPendingTrade(o4, &t4)
+	txq2.PublishPendingTrade(o5, &t5)
 
 	time.Sleep(time.Second)
 
@@ -228,10 +216,9 @@ func TestPublishPendingTrade(t *testing.T) {
 		Exchange:        exchange,
 	}
 
-	err := txq.PurgePendingTrades()
-	if err != nil {
-		t.Errorf("Could not purge pending trades")
-	}
+	defer txq.PurgePendingTrades()
+
+	utils.Use(zrx, weth, factory1, simulator, tradeService)
 
 	o1, _ := factory1.NewOrder(zrx, 1, weth, 1)
 	o2, _ := factory1.NewOrder(zrx, 1, weth, 1)
@@ -241,14 +228,14 @@ func TestPublishPendingTrade(t *testing.T) {
 	t2, _ := factory1.NewTrade(o2, 1)
 	t3, _ := factory1.NewTrade(o3, 1)
 
-	txq.PublishPendingTrade(o1, t1)
-	txq.PublishPendingTrade(o2, t2)
-	txq.PublishPendingTrade(o3, t3)
+	txq.PublishPendingTrade(o1, &t1)
+	txq.PublishPendingTrade(o2, &t2)
+	txq.PublishPendingTrade(o3, &t3)
 
 	time.Sleep(time.Millisecond)
 	assert.Equal(t, 3, txq.Length())
 
-	_, err = txq.PopPendingTrade()
+	_, err := txq.PopPendingTrade()
 	if err != nil {
 		t.Errorf("Could not pop pending trade")
 	}
@@ -283,10 +270,7 @@ func TestPopPendingTrade(t *testing.T) {
 		Exchange:        exchange,
 	}
 
-	err := txq.PurgePendingTrades()
-	if err != nil {
-		t.Errorf("Could not purge pending trades")
-	}
+	defer txq.PurgePendingTrades()
 
 	o1, _ := factory1.NewOrder(zrx, 1, weth, 1)
 	o2, _ := factory1.NewOrder(zrx, 1, weth, 1)
@@ -296,14 +280,14 @@ func TestPopPendingTrade(t *testing.T) {
 	t2, _ := factory1.NewTrade(o2, 1)
 	t3, _ := factory1.NewTrade(o3, 1)
 
-	txq.PublishPendingTrade(o1, t1)
-	txq.PublishPendingTrade(o2, t2)
-	txq.PublishPendingTrade(o3, t3)
+	txq.PublishPendingTrade(o1, &t1)
+	txq.PublishPendingTrade(o2, &t2)
+	txq.PublishPendingTrade(o3, &t3)
 
 	time.Sleep(time.Millisecond)
 	assert.Equal(t, 3, txq.Length())
 
-	_, err = txq.PopPendingTrade()
+	_, err := txq.PopPendingTrade()
 	if err != nil {
 		t.Errorf("Could not pop pending trade")
 	}
@@ -331,12 +315,9 @@ func TestExecuteTrade(t *testing.T) {
 	o1, _ := factory1.NewOrder(zrx, 1, weth, 1)
 	t1, _ := factory1.NewTrade(o1, 1)
 
-	mockTx := &eth.Transaction{}
 	tradeService := new(mocks.TradeService)
 	exchange := new(mocks.Exchange)
 	ethService := services.NewEthereumService(simulator)
-	tradeService.On("UpdateTradeTx", t1, mockTx).Return(nil)
-	exchange.On("Trade", o1, t1).Return(mockTx, nil)
 
 	txq := &operator.TxQueue{
 		Name:            "queue1",
@@ -346,18 +327,22 @@ func TestExecuteTrade(t *testing.T) {
 		Exchange:        exchange,
 	}
 
-	err := txq.PurgePendingTrades()
-	if err != nil {
-		t.Errorf("Could not purge pending trades")
-	}
+	mockTx := &eth.Transaction{}
+	mockTxOpts := txq.GetTxSendOptions()
+	// mockTxOpts.Nonce = ethService.GetPendingNonceAt(txq.Wallet.Address)}
 
-	tx, err := txq.ExecuteTrade(o1, t1)
+	defer txq.PurgePendingTrades()
+
+	tradeService.On("UpdateTradeTx", &t1, mockTx).Return(nil)
+	exchange.On("Trade", o1, &t1, txq.GetTxSendOptions()).Return(mockTx, nil)
+
+	tx, err := txq.ExecuteTrade(o1, &t1)
 	if err != nil {
 		t.Errorf("Could not execute trade: %v", err)
 	}
 
-	tradeService.AssertCalled(t, "UpdateTradeTx", t1, mockTx)
-	exchange.AssertCalled(t, "Trade", o1, t1)
+	tradeService.AssertCalled(t, "UpdateTradeTx", &t1, mockTx)
+	exchange.AssertCalled(t, "Trade", o1, &t1, txq.GetTxSendOptions())
 
 	if !reflect.DeepEqual(tx, mockTx) {
 		t.Errorf("Expected: %v\n, Got: %v\n", tx, mockTx)
@@ -371,11 +356,9 @@ func TestQueueTrade(t *testing.T) {
 	o1, _ := factory1.NewOrder(zrx, 1, weth, 1)
 	t1, _ := factory1.NewTrade(o1, 1)
 
-	mockTx := &eth.Transaction{}
 	tradeService := new(mocks.TradeService)
 	exchange := new(mocks.Exchange)
-	tradeService.On("UpdateTradeTx", t1, mockTx).Return(nil)
-	exchange.On("Trade", o1, t1, mock.Anything).Return(mockTx, nil)
+
 	ethService := services.NewEthereumService(simulator)
 
 	txq := &operator.TxQueue{
@@ -386,18 +369,21 @@ func TestQueueTrade(t *testing.T) {
 		Exchange:        exchange,
 	}
 
-	err := txq.PurgePendingTrades()
-	if err != nil {
-		t.Errorf("Could not purge pending trades")
-	}
+	mockTx := &eth.Transaction{}
+	tradeService.On("UpdateTradeTx", &t1, mockTx).Return(nil)
+	exchange.On("Trade", o1, &t1, mock.Anything).Return(mockTx, nil)
 
-	err = txq.QueueTrade(o1, t1)
+	defer txq.PurgePendingTrades()
+
+	err := txq.QueueTrade(o1, &t1)
 	if err != nil {
 		t.Errorf("Could not execute trade: %v", err)
 	}
 
-	tradeService.AssertCalled(t, "UpdateTradeTx", t1, mockTx)
-	exchange.AssertCalled(t, "Trade", o1, t1, mock.Anything)
+	//we copy the trade in order to copy the nonce generated by the exchange
+
+	tradeService.AssertCalled(t, "UpdateTradeTx", &t1, mock.Anything)
+	exchange.AssertCalled(t, "Trade", o1, &t1, mock.Anything)
 }
 
 func TestHandleEvents1(t *testing.T) {
@@ -418,7 +404,7 @@ func TestHandleEvents1(t *testing.T) {
 		t1.Tx = tx
 	})
 	orderService.On("GetByHash", t1.OrderHash).Return(o1, nil)
-	tradeService.On("GetByHash", t1.Hash).Return(t1, nil)
+	tradeService.On("GetByHash", t1.Hash).Return(&t1, nil)
 
 	txq := &operator.TxQueue{
 		Name:            "queue1",
@@ -429,12 +415,9 @@ func TestHandleEvents1(t *testing.T) {
 		Exchange:        exchange,
 	}
 
-	err := txq.PurgePendingTrades()
-	if err != nil {
-		t.Errorf("Could not purge pending trades")
-	}
+	defer txq.PurgePendingTrades()
 
-	err = txq.QueueTrade(o1, t1)
+	err := txq.QueueTrade(o1, &t1)
 	if err != nil {
 		t.Errorf("Could not execute trade: %v", err)
 	}
@@ -442,7 +425,7 @@ func TestHandleEvents1(t *testing.T) {
 	simulator.Commit()
 
 	wg := sync.WaitGroup{}
-	wg.Add(2)
+	wg.Add(1)
 
 	go func() {
 		for {
@@ -505,17 +488,14 @@ func TestHandleEvents2(t *testing.T) {
 		Exchange:        exchange,
 	}
 
-	err := txq.PurgePendingTrades()
-	if err != nil {
-		t.Errorf("Could not purge pending trades")
-	}
+	defer txq.PurgePendingTrades()
 
-	err = txq.QueueTrade(o1, t1)
+	err := txq.QueueTrade(o1, &t1)
 	if err != nil {
 		t.Errorf("Could not execute trade: %v", err)
 	}
 
-	err = txq.QueueTrade(o2, t2)
+	err = txq.QueueTrade(o2, &t2)
 	if err != nil {
 		t.Errorf("Could not execute trade: %v", err)
 	}
@@ -612,15 +592,15 @@ func TestHandleEvents3(t *testing.T) {
 		t.Errorf("Could not purge pending trades")
 	}
 
-	txq.QueueTrade(o1, t1)
+	txq.QueueTrade(o1, &t1)
 	time.Sleep(10 * time.Millisecond)
-	txq.QueueTrade(o2, t2)
+	txq.QueueTrade(o2, &t2)
 	time.Sleep(10 * time.Millisecond)
-	txq.QueueTrade(o3, t3)
+	txq.QueueTrade(o3, &t3)
 	time.Sleep(10 * time.Millisecond)
-	txq.QueueTrade(o4, t4)
+	txq.QueueTrade(o4, &t4)
 	time.Sleep(10 * time.Millisecond)
-	txq.QueueTrade(o5, t5)
+	txq.QueueTrade(o5, &t5)
 
 	simulator.Commit()
 
@@ -720,21 +700,21 @@ func TestHandleEvents4(t *testing.T) {
 		Exchange:        exchange,
 	}
 
-	err := txq.PurgePendingTrades()
-	if err != nil {
-		t.Errorf("Could not purge pending trades")
-	}
+	// err := txq.PurgePendingTrades()
+	// if err != nil {
+	// 	t.Errorf("Could not purge pending trades")
+	// }
 
 	time.Sleep(2 * time.Millisecond)
-	txq.QueueTrade(o1, t1)
+	txq.QueueTrade(o1, &t1)
 	time.Sleep(2 * time.Millisecond)
-	txq.QueueTrade(o2, t2)
+	txq.QueueTrade(o2, &t2)
 	time.Sleep(2 * time.Millisecond)
-	txq.QueueTrade(o3, t3)
+	txq.QueueTrade(o3, &t3)
 	time.Sleep(2 * time.Millisecond)
-	txq.QueueTrade(o4, t4)
+	txq.QueueTrade(o4, &t4)
 	time.Sleep(2 * time.Millisecond)
-	txq.QueueTrade(o5, t5)
+	txq.QueueTrade(o5, &t5)
 
 	wg := sync.WaitGroup{}
 	wg.Add(10)
@@ -795,7 +775,7 @@ func TestHandleEvents5(t *testing.T) {
 	}
 
 	txq := op.TxQueues[0]
-	err = txq.QueueTrade(o1, t1)
+	err = txq.QueueTrade(o1, &t1)
 	if err != nil {
 		t.Errorf("Could not execute trade: %v", err)
 	}
@@ -886,15 +866,15 @@ func TestOperator1(t *testing.T) {
 	}
 
 	time.Sleep(2 * time.Millisecond)
-	op.QueueTrade(o1, t1)
+	op.QueueTrade(o1, &t1)
 	time.Sleep(2 * time.Millisecond)
-	op.QueueTrade(o2, t2)
+	op.QueueTrade(o2, &t2)
 	time.Sleep(2 * time.Millisecond)
-	op.QueueTrade(o3, t3)
+	op.QueueTrade(o3, &t3)
 	time.Sleep(2 * time.Millisecond)
-	op.QueueTrade(o4, t4)
+	op.QueueTrade(o4, &t4)
 	time.Sleep(2 * time.Millisecond)
-	op.QueueTrade(o5, t5)
+	op.QueueTrade(o5, &t5)
 
 	wg := sync.WaitGroup{}
 	wg.Add(10)
@@ -921,15 +901,6 @@ func TestOperator1(t *testing.T) {
 
 	wg.Wait()
 }
-
-
-
-
-
-
-
-
-
 
 // func TestNewOperator2(t *testing.T) {
 

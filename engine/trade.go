@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"math/big"
 
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/Proofsuite/amp-matching-engine/utils/math"
@@ -81,11 +80,8 @@ func (e *Engine) execute(order *types.Order, bookEntry *types.Order) (*types.Tra
 		Taker:      order.UserAddress,
 		PairName:   order.PairName,
 		Maker:      bookEntry.UserAddress,
-		TradeNonce: big.NewInt(0),
-		Signature:  nil,
 	}
 
-	trade.Hash = trade.ComputeHash()
 	return trade, fillOrder, nil
 }
 

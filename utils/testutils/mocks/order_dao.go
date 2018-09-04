@@ -64,6 +64,29 @@ func (_m *OrderDao) GetByHash(hash common.Hash) (*types.Order, error) {
 	return r0, r1
 }
 
+// GetByHashes provides a mock function with given fields: hashes
+func (_m *OrderDao) GetByHashes(hashes []common.Hash) ([]*types.Order, error) {
+	ret := _m.Called(hashes)
+
+	var r0 []*types.Order
+	if rf, ok := ret.Get(0).(func([]common.Hash) []*types.Order); ok {
+		r0 = rf(hashes)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*types.Order)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func([]common.Hash) error); ok {
+		r1 = rf(hashes)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetByID provides a mock function with given fields: id
 func (_m *OrderDao) GetByID(id bson.ObjectId) (*types.Order, error) {
 	ret := _m.Called(id)

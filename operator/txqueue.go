@@ -169,7 +169,6 @@ func (txq *TxQueue) PublishPendingTrade(o *types.Order, t *types.Trade) error {
 	name := "TX_QUEUES:" + txq.Name
 	ch := rabbitmq.GetChannel(name)
 	q := rabbitmq.GetQueue(ch, name)
-
 	msg := &types.PendingTradeMessage{o, t}
 
 	bytes, err := json.Marshal(msg)

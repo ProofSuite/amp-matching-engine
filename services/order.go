@@ -353,6 +353,30 @@ func (s *OrderService) RecoverOrders(res *types.EngineResponse) {
 	res.MatchingOrders = nil
 }
 
+func (s *OrderService) CancelTrades(trades []*types.Trade) error {
+	orderHashes := []common.Hash{}
+	amounts := []*big.Int{}
+
+	for _, t := range trades {
+		orderHashes = append(orderHashes, t.OrderHash)
+		amounts = append(amounts, t.Amount)
+	}
+
+	orders, err := s.orderDao.GetByHashes(orderHashes)
+	if err != nil {
+		log.Print(err)
+		return err
+	}
+
+	err = s.engine.CancelTrades(orders, amounts)
+	if err != nil {
+		log.Print(err)
+		return err
+	}
+
+	return nil
+}
+
 // RelayUpdateOverSocket is resonsible for notifying listening clients about new order/trade addition/deletion
 func (s *OrderService) RelayUpdateOverSocket(res *types.EngineResponse) {
 
