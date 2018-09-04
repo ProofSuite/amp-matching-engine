@@ -24,7 +24,8 @@ func ServeOrderBookResource(
 	e := &OrderBookEndpoint{orderBookService}
 
 	rg.Get("/orderbook/<baseToken>/<quoteToken>", e.orderBookEndpoint)
-	ws.RegisterChannel(ws.OrderBookChannel, e.orderBookWebSocket)
+	ws.RegisterChannel(ws.LiteOrderBookChannel, e.liteOrderBookWebSocket)
+	ws.RegisterChannel(ws.FullOrderBookChannel, e.fullOrderBookWebSocket)
 }
 
 // orderBookEndpoint
@@ -50,16 +51,19 @@ func (e *OrderBookEndpoint) orderBookEndpoint(c *routing.Context) error {
 	return c.Write(ob)
 }
 
-// orderBookWebSocket
-func (e *OrderBookEndpoint) orderBookWebSocket(input interface{}, conn *ws.Conn) {
+// liteOrderBookWebSocket
+func (e *OrderBookEndpoint) fullOrderBookWebSocket(input interface{}, conn *ws.Conn) {
 	mab, _ := json.Marshal(input)
 	var payload *types.WebSocketPayload
 	if err := json.Unmarshal(mab, &payload); err != nil {
 		log.Println("unmarshal to wsmsg <==>" + err.Error())
 	}
+
+	socket := ws.GetLiteOrderBookSocket()
+
 	if payload.Type != "subscription" {
 		log.Println("Payload is not of subscription type")
-		ws.SendOrderBookErrorMessage(conn, "Payload is not of subscription type")
+		socket.SendErrorMessage(conn, "Payload is not of subscription type")
 		return
 	}
 	dab, _ := json.Marshal(payload.Data)
@@ -73,7 +77,7 @@ func (e *OrderBookEndpoint) orderBookWebSocket(input interface{}, conn *ws.Conn)
 			"Message": "Invalid Pair BaseToken passed in query Params",
 		}
 
-		ws.SendOrderBookErrorMessage(conn, message)
+		socket.SendErrorMessage(conn, message)
 		return
 	}
 
@@ -83,15 +87,63 @@ func (e *OrderBookEndpoint) orderBookWebSocket(input interface{}, conn *ws.Conn)
 			"Message": "Invalid Pair QuoteToken passed in query Params",
 		}
 
-		ws.SendOrderBookErrorMessage(conn, message)
+		socket.SendErrorMessage(conn, message)
 		return
 	}
 
 	if msg.Event == types.SUBSCRIBE {
-		e.orderBookService.Subscribe(conn, msg.Pair.BaseToken, msg.Pair.QuoteToken)
+		e.orderBookService.SubscribeFull(conn, msg.Pair.BaseToken, msg.Pair.QuoteToken)
 	}
 
 	if msg.Event == types.UNSUBSCRIBE {
-		e.orderBookService.Unsubscribe(conn, msg.Pair.BaseToken, msg.Pair.QuoteToken)
+		e.orderBookService.UnsubscribeFull(conn, msg.Pair.BaseToken, msg.Pair.QuoteToken)
+	}
+}
+
+// liteOrderBookWebSocket
+func (e *OrderBookEndpoint) liteOrderBookWebSocket(input interface{}, conn *ws.Conn) {
+	mab, _ := json.Marshal(input)
+	var payload *types.WebSocketPayload
+	if err := json.Unmarshal(mab, &payload); err != nil {
+		log.Println("unmarshal to wsmsg <==>" + err.Error())
+	}
+
+	socket := ws.GetLiteOrderBookSocket()
+	if payload.Type != "subscription" {
+		log.Println("Payload is not of subscription type")
+		socket.SendErrorMessage(conn, "Payload is not of subscription type")
+		return
+	}
+	dab, _ := json.Marshal(payload.Data)
+	var msg *types.WebSocketSubscription
+	if err := json.Unmarshal(dab, &msg); err != nil {
+		log.Println("unmarshal to wsmsg <==>" + err.Error())
+	}
+	if (msg.Pair.BaseToken == common.Address{}) {
+		message := map[string]string{
+			"Code":    "Invalid_Pair_BaseToken",
+			"Message": "Invalid Pair BaseToken passed in query Params",
+		}
+
+		socket.SendErrorMessage(conn, message)
+		return
+	}
+
+	if (msg.Pair.QuoteToken == common.Address{}) {
+		message := map[string]string{
+			"Code":    "Invalid_Pair_QuoteToken",
+			"Message": "Invalid Pair QuoteToken passed in query Params",
+		}
+
+		socket.SendErrorMessage(conn, message)
+		return
+	}
+
+	if msg.Event == types.SUBSCRIBE {
+		e.orderBookService.SubscribeLite(conn, msg.Pair.BaseToken, msg.Pair.QuoteToken)
+	}
+
+	if msg.Event == types.UNSUBSCRIBE {
+		e.orderBookService.UnsubscribeLite(conn, msg.Pair.BaseToken, msg.Pair.QuoteToken)
 	}
 }

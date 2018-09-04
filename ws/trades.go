@@ -46,28 +46,28 @@ func (s *TradeSocket) BroadcastMessage(channelID string, p interface{}) {
 	go func() {
 		for conn, active := range tradeSocket.subscriptions[channelID] {
 			if active {
-				SendTradeUpdateMessage(conn, p)
+				s.SendUpdateMessage(conn, p)
 			}
 		}
 	}()
 }
 
-// SendTradeMessage sends a websocket message on the trade channel
-func SendTradeMessage(conn *Conn, msgType string, p interface{}) {
+// SendMessage sends a websocket message on the trade channel
+func (s *TradeSocket) SendMessage(conn *Conn, msgType string, p interface{}) {
 	SendMessage(conn, TradeChannel, msgType, p)
 }
 
-// SendTradeErrorMessage sends an error message on the trade channel
-func SendTradeErrorMessage(conn *Conn, p interface{}) {
-	SendTradeMessage(conn, "ERROR", p)
+// SendErrorMessage sends an error message on the trade channel
+func (s *TradeSocket) SendErrorMessage(conn *Conn, p interface{}) {
+	s.SendMessage(conn, "ERROR", p)
 }
 
-// SendTradeInitMessage is responsible for sending message on trade ohlcv channel at subscription
-func SendTradeInitMessage(conn *Conn, p interface{}) {
-	SendMessage(conn, TradeChannel, "INIT", p)
+// SendInitMessage is responsible for sending message on trade ohlcv channel at subscription
+func (s *TradeSocket) SendInitMessage(conn *Conn, p interface{}) {
+	s.SendMessage(conn, "INIT", p)
 }
 
-// SendTradeUpdateMessage is responsible for sending message on trade ohlcv channel at subscription
-func SendTradeUpdateMessage(conn *Conn, p interface{}) {
-	SendMessage(conn, TradeChannel, "UPDATE", p)
+// SendUpdateMessage is responsible for sending message on trade ohlcv channel at subscription
+func (s *TradeSocket) SendUpdateMessage(conn *Conn, p interface{}) {
+	s.SendMessage(conn, "UPDATE", p)
 }

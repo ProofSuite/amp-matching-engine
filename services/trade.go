@@ -68,7 +68,7 @@ func (t *TradeService) Subscribe(conn *ws.Conn, bt, qt common.Address) {
 
 	trades, err := t.GetTrades(bt, qt)
 	if err != nil {
-		ws.SendTradeErrorMessage(conn, err.Error())
+		socket.SendErrorMessage(conn, err.Error())
 		return
 	}
 
@@ -80,12 +80,12 @@ func (t *TradeService) Subscribe(conn *ws.Conn, bt, qt common.Address) {
 			"Message": "UNABLE_TO_REGISTER " + err.Error(),
 		}
 
-		ws.SendTradeErrorMessage(conn, message)
+		socket.SendErrorMessage(conn, message)
 		return
 	}
 
 	ws.RegisterConnectionUnsubscribeHandler(conn, socket.UnsubscribeHandler(id))
-	ws.SendTradeInitMessage(conn, trades)
+	socket.SendInitMessage(conn, trades)
 }
 
 // Unsubscribe

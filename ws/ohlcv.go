@@ -58,29 +58,29 @@ func (s *OHLCVSocket) Unsubscribe(channelID string, conn *Conn) {
 func (s *OHLCVSocket) BroadcastOHLCV(channelID string, p interface{}) error {
 	for conn, status := range s.subscriptions[channelID] {
 		if status {
-			SendOHLCVUpdateMessage(conn, p)
+			s.SendUpdateMessage(conn, p)
 		}
 	}
 
 	return nil
 }
 
-// SendOHLCVMessage sends a message on the ohlcv channel
-func SendOHLCVMessage(conn *Conn, msgType string, p interface{}) {
+// SendMessage sends a websocket message on the trade channel
+func (s *OHLCVSocket) SendMessage(conn *Conn, msgType string, p interface{}) {
 	SendMessage(conn, OHLCVChannel, msgType, p)
 }
 
-// SendOHLCVErrorMessage is responsible for sending error messages on ohlcv channel
-func SendOHLCVErrorMessage(conn *Conn, p interface{}) {
-	SendOHLCVMessage(conn, "ERROR", p)
+// SendErrorMessage sends an error message on the trade channel
+func (s *OHLCVSocket) SendErrorMessage(conn *Conn, p interface{}) {
+	s.SendMessage(conn, "ERROR", p)
 }
 
-// SendOHLCVInitMesssage is responsible for sending complete order book on subscription request
-func SendOHLCVInitMesssage(conn *Conn, p interface{}) {
-	SendOHLCVMessage(conn, "INIT", p)
+// SendInitMessage is responsible for sending message on trade ohlcv channel at subscription
+func (s *OHLCVSocket) SendInitMessage(conn *Conn, p interface{}) {
+	s.SendMessage(conn, "INIT", p)
 }
 
-// SendOHLCVUpdateMessage is responsible for update ohlcv tick messages
-func SendOHLCVUpdateMessage(conn *Conn, p interface{}) {
-	SendOHLCVMessage(conn, "UPDATE", p)
+// SendUpdateMessage is responsible for sending message on trade ohlcv channel at subscription
+func (s *OHLCVSocket) SendUpdateMessage(conn *Conn, p interface{}) {
+	s.SendMessage(conn, "UPDATE", p)
 }

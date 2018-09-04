@@ -18,7 +18,7 @@ func (e *Engine) GetOrderBook(pair *types.Pair) (sellBook, buyBook []*map[string
 
 	for i := 0; i < len(res); i = i + 2 {
 		temp := &map[string]float64{
-			"volume": float64(res[i]),
+			"amount": float64(res[i]),
 			"price":  float64(res[i+1]),
 		}
 		sellBook = append(sellBook, temp)
@@ -31,11 +31,40 @@ func (e *Engine) GetOrderBook(pair *types.Pair) (sellBook, buyBook []*map[string
 
 	for i := 0; i < len(res); i = i + 2 {
 		temp := &map[string]float64{
-			"volume": float64(res[i]),
+			"amount": float64(res[i]),
 			"price":  float64(res[i+1]),
 		}
 		buyBook = append(buyBook, temp)
 	}
 
+	return
+}
+
+// GetFullOrderBook fetches the complete orderbook from redis for the required pair
+func (e *Engine) GetFullOrderBook(pair *types.Pair) (book [][]string) {
+	pattern := pair.GetKVPrefix() + "::*"
+
+	groupInt := 100
+
+	book = make([][]string, 0)
+	keys, err := e.redisConn.Keys(pattern)
+	if err != nil {
+		log.Print(err)
+		return
+	}
+
+	for start := 0; start < len(keys); start = start + groupInt {
+		end := start + groupInt
+		if len(keys) < end {
+			end = len(keys)
+		}
+		res, err := e.redisConn.MGet(keys[start:end]...)
+		if err != nil {
+			log.Print(err)
+			return
+		}
+		book = append(book, res)
+
+	}
 	return
 }
