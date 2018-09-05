@@ -24,6 +24,7 @@ package engine
 // Values: serialized order
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"math/big"
 	"time"
@@ -106,6 +107,7 @@ func (e *Engine) buyOrder(order *types.Order) (*types.EngineResponse, error) {
 		for _, bookEntry := range entries {
 			entry := &types.Order{}
 			err = json.Unmarshal(bookEntry, &entry)
+			fmt.Printf("\n\n>>>>>  %s  <<<<<\n\n", string(bookEntry))
 			if err != nil {
 				log.Print(err)
 				return nil, err
@@ -410,8 +412,8 @@ func (e *Engine) RecoverOrders(orders []*types.FillOrder) error {
 		if math.IsZero(o.Order.FilledAmount) {
 			o.Order.Status = "OPEN"
 		}
-
-		if !e.redisConn.Exists(o.Order.Hash.Hex()) {
+		_, obListKey := o.Order.GetOBKeys()
+		if !e.redisConn.Exists(obListKey + "::orders::" + o.Order.Hash.Hex()) {
 			if err := e.addOrder(o.Order); err != nil {
 				log.Print(err)
 				return err
@@ -436,8 +438,8 @@ func (e *Engine) CancelTrades(orders []*types.Order, amount []*big.Int) error {
 		if math.IsZero(o.FilledAmount) {
 			o.Status = "OPEN"
 		}
-
-		if !e.redisConn.Exists(o.Hash.Hex()) {
+		_, obListKey := o.GetOBKeys()
+		if !e.redisConn.Exists(obListKey + "::orders::" + o.Hash.Hex()) {
 			if err := e.addOrder(o); err != nil {
 				log.Print(err)
 				return err
@@ -517,8 +519,13 @@ func (e *Engine) GetPricePointVolume(pricePointSetKey string, pricePoint int64) 
 
 func (e *Engine) GetFromOrderMap(hash common.Hash) (*types.Order, error) {
 	o := &types.Order{}
-
-	serialized, err := e.redisConn.GetValue(hash.Hex())
+	keys, err := e.redisConn.Keys("*::" + hash.Hex())
+	if err != nil {
+		return nil, err
+	} else if len(keys) == 0 {
+		return nil, fmt.Errorf("Key doesn't exists")
+	}
+	serialized, err := e.redisConn.GetValue(keys[0])
 	if err != nil {
 		log.Print(err)
 		return nil, err
@@ -534,7 +541,8 @@ func (e *Engine) GetFromOrderMap(hash common.Hash) (*types.Order, error) {
 
 // GetPricePointOrders returns the orders hashes for a (pair, pricepoint)
 func (e *Engine) GetMatchingOrders(obKey string, pricePoint int64) ([][]byte, error) {
-	orders, err := e.redisConn.Sort(obKey+"::"+utils.UintToPaddedString(pricePoint), "", true, false, "*")
+	k := obKey + "::" + utils.UintToPaddedString(pricePoint)
+	orders, err := e.redisConn.Sort(k, "", true, false, k+"::orders::*")
 	if err != nil {
 		return nil, err
 	}
@@ -627,8 +635,8 @@ func (e *Engine) AddToOrderMap(o *types.Order) error {
 
 	decoded := &types.Order{}
 	json.Unmarshal(bytes, decoded)
-
-	err = e.redisConn.Set(o.Hash.Hex(), string(bytes))
+	_, orderHashListKey := o.GetOBKeys()
+	err = e.redisConn.Set(orderHashListKey+"::orders::"+o.Hash.Hex(), string(bytes))
 	if err != nil {
 		log.Print(err)
 		return err
@@ -639,7 +647,8 @@ func (e *Engine) AddToOrderMap(o *types.Order) error {
 
 // RemoveFromOrderMap
 func (e *Engine) RemoveFromOrderMap(hash common.Hash) error {
-	err := e.redisConn.Del(hash.Hex())
+	keys, _ := e.redisConn.Keys("*::" + hash.Hex())
+	err := e.redisConn.Del(keys[0])
 	if err != nil {
 		log.Print(err)
 		return err

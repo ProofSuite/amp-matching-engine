@@ -166,3 +166,17 @@ func (c *RedisConnection) Sort(key, by string, alpha, desc bool, get ...string) 
 	}
 	return redis.ByteSlices(c.Do("SORT", args...))
 }
+
+// Keys returns the keys stored in redis with specified pattern
+func (c *RedisConnection) Keys(pattern string) (res []string, err error) {
+	return redis.Strings(c.Do("KEYS", pattern))
+}
+
+// MGet returns the value for keys passed
+func (c *RedisConnection) MGet(keys ...string) (res []string, err error) {
+	args := make([]interface{}, len(keys))
+	for _, key := range keys {
+		args = append(args, key)
+	}
+	return redis.Strings(c.Do("MGET", args...))
+}

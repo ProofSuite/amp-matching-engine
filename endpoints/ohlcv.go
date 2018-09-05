@@ -64,9 +64,12 @@ func (e *OHLCVEndpoint) ohlcvWebSocket(input interface{}, conn *ws.Conn) {
 	if err := json.Unmarshal(mab, &payload); err != nil {
 		log.Println("unmarshal to wsmsg <==>" + err.Error())
 	}
+
+	socket := ws.GetOHLCVSocket()
+
 	if payload.Type != "subscription" {
 		log.Println("Payload is not of subscription type")
-		ws.SendOrderBookErrorMessage(conn, "Payload is not of subscription type")
+		socket.SendErrorMessage(conn, "Payload is not of subscription type")
 		return
 	}
 	dab, _ := json.Marshal(payload.Data)
@@ -80,7 +83,7 @@ func (e *OHLCVEndpoint) ohlcvWebSocket(input interface{}, conn *ws.Conn) {
 			"Code":    "Invalid_Pair_BaseToken",
 			"Message": "Invalid Pair BaseToken passed in Params",
 		}
-		ws.SendOHLCVErrorMessage(conn, message)
+		socket.SendErrorMessage(conn, message)
 		return
 	}
 
@@ -89,7 +92,7 @@ func (e *OHLCVEndpoint) ohlcvWebSocket(input interface{}, conn *ws.Conn) {
 			"Code":    "Invalid_Pair_BaseToken",
 			"Message": "Invalid Pair BaseToken passed in Params",
 		}
-		ws.SendOHLCVErrorMessage(conn, message)
+		socket.SendErrorMessage(conn, message)
 		return
 	}
 

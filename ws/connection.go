@@ -15,10 +15,11 @@ import (
 
 // websocket channel's string
 const (
-	TradeChannel     = "trades"
-	OrderBookChannel = "order_book"
-	OrderChannel     = "orders"
-	OHLCVChannel     = "ohlcv"
+	TradeChannel          = "trades"
+	FullOrderBookChannel  = "order_book_full"
+	LiteOrderBookChannel = "order_book_lite"
+	OrderChannel          = "orders"
+	OHLCVChannel          = "ohlcv"
 )
 
 // gorilla websocket upgrader instance with configuration
