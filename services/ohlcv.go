@@ -31,6 +31,9 @@ func (s *OHLCVService) Unsubscribe(conn *ws.Conn, bt, qt common.Address, params 
 // Subscribe handles all the subscription messages for ticks corresponding to a pair
 // It calls the corresponding channel's subscription method and sends trade history back on the connection
 func (s *OHLCVService) Subscribe(conn *ws.Conn, bt, qt common.Address, params *types.Params) {
+
+	socket := ws.GetOHLCVSocket()
+
 	ohlcv, err := s.GetOHLCV([]types.PairSubDoc{types.PairSubDoc{BaseToken: bt, QuoteToken: qt}},
 		params.Duration,
 		params.Units,
@@ -39,22 +42,22 @@ func (s *OHLCVService) Subscribe(conn *ws.Conn, bt, qt common.Address, params *t
 	)
 
 	if err != nil {
-		ws.SendTradeErrorMessage(conn, err.Error())
+		socket.SendErrorMessage(conn, err.Error())
 	}
 
 	id := utils.GetOHLCVChannelID(bt, qt, params.Units, params.Duration)
-	err = ws.GetOHLCVSocket().Subscribe(id, conn)
+	err = socket.Subscribe(id, conn)
 	if err != nil {
 		message := map[string]string{
 			"Code":    "UNABLE_TO_SUBSCRIBE",
 			"Message": "UNABLE_TO_SUBSCRIBE: " + err.Error(),
 		}
 
-		ws.SendTradeErrorMessage(conn, message)
+		socket.SendErrorMessage(conn, message)
 	}
 
-	ws.RegisterConnectionUnsubscribeHandler(conn, ws.GetOHLCVSocket().UnsubscribeHandler(id))
-	ws.SendOHLCVInitMesssage(conn, ohlcv)
+	ws.RegisterConnectionUnsubscribeHandler(conn, socket.UnsubscribeHandler(id))
+	socket.SendInitMessage(conn, ohlcv)
 }
 
 // GetOHLCV fetches OHLCV data using

@@ -15,12 +15,12 @@ import (
 
 // Pair struct is used to model the pair data in the system and DB
 type Pair struct {
-	ID                bson.ObjectId  `json:"id" bson:"_id"`
-	Name              string         `json:"name" bson:"name"`
+	ID   bson.ObjectId `json:"id" bson:"_id"`
+	Name string        `json:"name" bson:"name"`
 
-	BaseTokenSymbol   string         `json:"baseTokenSymbol" bson:"baseTokenSymbol"`
-	BaseTokenAddress  common.Address `json:"baseTokenAddress" bson:"baseTokenAddress"`
-	BaseTokenDecimal  int            `json:"baseTokenDecimal" bson:"baseTokenDecimal"`
+	BaseTokenSymbol  string         `json:"baseTokenSymbol" bson:"baseTokenSymbol"`
+	BaseTokenAddress common.Address `json:"baseTokenAddress" bson:"baseTokenAddress"`
+	BaseTokenDecimal int            `json:"baseTokenDecimal" bson:"baseTokenDecimal"`
 
 	QuoteTokenSymbol  string         `json:"quoteTokenSymbol" bson:"quoteTokenSymbol"`
 	QuoteTokenAddress common.Address `json:"quoteTokenAddress" bson:"quoteTokenAddress"`
@@ -41,16 +41,16 @@ type PairSubDoc struct {
 }
 
 type PairRecord struct {
-	ID                bson.ObjectId `json:"id" bson:"_id"`
-	Name              string        `json:"name" bson:"name"`
+	ID   bson.ObjectId `json:"id" bson:"_id"`
+	Name string        `json:"name" bson:"name"`
 
-	BaseTokenSymbol   string        `json:"baseTokenSymbol" bson:"baseTokenSymbol"`
-	BaseTokenAddress  string        `json:"baseTokenAddress" bson:"baseTokenAddress"`
-	BaseTokenDecimal  int           `json:"baseTokenDecimal" bson:"baseTokenDecimal"`
+	BaseTokenSymbol  string `json:"baseTokenSymbol" bson:"baseTokenSymbol"`
+	BaseTokenAddress string `json:"baseTokenAddress" bson:"baseTokenAddress"`
+	BaseTokenDecimal int    `json:"baseTokenDecimal" bson:"baseTokenDecimal"`
 
-	QuoteTokenSymbol  string        `json:"quoteTokenSymbol" bson:"quoteTokenSymbol"`
-	QuoteTokenAddress string        `json:"quoteTokenAddress" bson:"quoteTokenAddress"`
-	QuoteTokenDecimal int           `json:"quoteTokenDecimal" bson:"quoteTokenDecimal"`
+	QuoteTokenSymbol  string `json:"quoteTokenSymbol" bson:"quoteTokenSymbol"`
+	QuoteTokenAddress string `json:"quoteTokenAddress" bson:"quoteTokenAddress"`
+	QuoteTokenDecimal int    `json:"quoteTokenDecimal" bson:"quoteTokenDecimal"`
 
 	Active  bool   `json:"active" bson:"active"`
 	MakeFee string `json:"makeFee" bson:"makeFee"`
@@ -75,11 +75,11 @@ func (p *Pair) SetBSON(raw bson.Raw) error {
 
 	p.ID = decoded.ID
 	p.Name = decoded.Name
-	
+
 	p.BaseTokenSymbol = decoded.BaseTokenSymbol
 	p.BaseTokenAddress = common.HexToAddress(decoded.BaseTokenAddress)
 	p.BaseTokenDecimal = decoded.BaseTokenDecimal
-	
+
 	p.QuoteTokenSymbol = decoded.QuoteTokenSymbol
 	p.QuoteTokenAddress = common.HexToAddress(decoded.QuoteTokenAddress)
 	p.QuoteTokenDecimal = decoded.QuoteTokenDecimal
@@ -96,22 +96,22 @@ func (p *Pair) SetBSON(raw bson.Raw) error {
 
 func (p *Pair) GetBSON() (interface{}, error) {
 	return &PairRecord{
-		ID:                p.ID,
-		Name:              p.Name,
-		
-		BaseTokenSymbol:   p.BaseTokenSymbol,
-		BaseTokenAddress:  p.BaseTokenAddress.Hex(),
-		BaseTokenDecimal:  p.BaseTokenDecimal,
-		
+		ID:   p.ID,
+		Name: p.Name,
+
+		BaseTokenSymbol:  p.BaseTokenSymbol,
+		BaseTokenAddress: p.BaseTokenAddress.Hex(),
+		BaseTokenDecimal: p.BaseTokenDecimal,
+
 		QuoteTokenSymbol:  p.QuoteTokenSymbol,
 		QuoteTokenAddress: p.QuoteTokenAddress.Hex(),
 		QuoteTokenDecimal: p.QuoteTokenDecimal,
-		
-		Active:            p.Active,
-		MakeFee:           p.MakeFee.String(),
-		TakeFee:           p.TakeFee.String(),
-		CreatedAt:         p.CreatedAt,
-		UpdatedAt:         p.UpdatedAt,
+
+		Active:    p.Active,
+		MakeFee:   p.MakeFee.String(),
+		TakeFee:   p.TakeFee.String(),
+		CreatedAt: p.CreatedAt,
+		UpdatedAt: p.UpdatedAt,
 	}, nil
 }
 
@@ -127,11 +127,15 @@ func (p Pair) Validate() error {
 // GetOrderBookKeys returns the orderbook price point keys for corresponding pair
 // It is used to fetch the orderbook from redis of a pair
 func (p *Pair) GetOrderBookKeys() (sell, buy string) {
-	return p.BaseTokenAddress.Hex() + "::" + p.QuoteTokenAddress.Hex() + "::SELL", p.BaseTokenAddress.Hex() + "::" + p.QuoteTokenAddress.Hex() + "::BUY"
+	return p.GetKVPrefix() + "::SELL", p.GetKVPrefix() + "::BUY"
 }
 
 func (p *Pair) GetPairName() string {
 	return p.BaseTokenSymbol + "/" + p.QuoteTokenSymbol
+}
+
+func (p *Pair) GetKVPrefix() string {
+	return p.BaseTokenAddress.Hex() + "::" + p.QuoteTokenAddress.Hex()
 }
 
 func (p *Pair) Print() {

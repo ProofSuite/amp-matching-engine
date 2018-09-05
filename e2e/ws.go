@@ -77,7 +77,7 @@ func testAddOrder(t *testing.T, client *testutils.Client, factory *testutils.Ord
 	client.Requests <- orderMsg
 	time.Sleep(time.Second)
 	assert.Equal(t, "ORDER_ADDED", client.ResponseLogs[0].Payload.Type)
-	assert.Equal(t, "UPDATE", obClient.ResponseLogs[len(obClient.ResponseLogs)-1].Payload.Type)
+	assert.Equal(t, "UPDATE", getLatestRLog(obClient.ResponseLogs).Payload.Type)
 }
 
 func testOrderMatch(t *testing.T, client *testutils.Client, factory *testutils.OrderFactory, obClient *testutils.Client, tradeClient *testutils.Client, baseToken, quoteToken common.Address) {
@@ -108,7 +108,6 @@ func testOrderMatch(t *testing.T, client *testutils.Client, factory *testutils.O
 
 	}
 	assert.Equal(t, "UPDATE", getLatestRLog(tradeClient.ResponseLogs).Payload.Type)
-
 }
 
 func testCancelOrder(t *testing.T, client *testutils.Client, factory *testutils.OrderFactory, obClient *testutils.Client, baseToken, quoteToken common.Address) {
@@ -164,7 +163,7 @@ func testInitSubscription(t *testing.T, client1 *testutils.Client, factory1 *tes
 
 func getOrderbookSubscribeRequest(baseToken, quoteToken common.Address) *types.WebSocketMessage {
 	return &types.WebSocketMessage{
-		Channel: ws.OrderBookChannel,
+		Channel: ws.LiteOrderBookChannel,
 		Payload: types.WebSocketPayload{
 			Type: "subscription",
 			Data: types.WebSocketSubscription{
@@ -252,7 +251,7 @@ func newObClient(t *testing.T, baseToken, quoteToken common.Address, testData in
 		}
 	}
 
-	expectedRes := getWebsocketMessage(ws.OrderBookChannel, "INIT", "", testData)
+	expectedRes := getWebsocketMessage(ws.LiteOrderBookChannel, "INIT", "", testData)
 
 	assert.Equal(t, expectedRes, obClient.ResponseLogs[0])
 	return obClient
@@ -296,4 +295,9 @@ func signTrades(trades []*types.Trade, wallet *types.Wallet) {
 			panic(err)
 		}
 	}
+}
+
+func print(data interface{}, tag string) {
+	dab, _ := json.Marshal(data)
+	fmt.Printf("\n XXX %s XXX \n>>>> %s\n", tag, string(dab))
 }

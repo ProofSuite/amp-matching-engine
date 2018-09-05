@@ -53,7 +53,7 @@ func TestAddOrder(t *testing.T) {
 	defer e.redisConn.FlushAll()
 
 	o1, _ := factory1.NewSellOrder(1e3, 1e8)
-	o2, _ := factory2.NewBuyOrder(1e3, 1e8)
+	o2, _ := factory2.NewSellOrder(1e3, 1e8)
 
 	e.addOrder(&o1)
 
@@ -85,7 +85,7 @@ func TestAddOrder(t *testing.T) {
 	assert.Contains(t, pricePointHashes, o1.Hash.Hex())
 	assert.Equal(t, int64(pricePointHashes[o1.Hash.Hex()]), o1.CreatedAt.Unix())
 	assert.Equal(t, "100000000", volume)
-	testutils.Compare(t, o1, stored)
+	testutils.CompareOrder(t, &o1, stored)
 
 	e.addOrder(&o2)
 
@@ -116,7 +116,7 @@ func TestAddOrder(t *testing.T) {
 	assert.Contains(t, pricePointHashes, o2.Hash.Hex())
 	assert.Equal(t, int64(pricePointHashes[o2.Hash.Hex()]), o2.CreatedAt.Unix())
 	assert.Equal(t, "200000000", volume)
-	testutils.Compare(t, o2, stored)
+	testutils.CompareOrder(t, &o2, stored)
 }
 
 func TestUpdateOrder(t *testing.T) {
@@ -203,7 +203,7 @@ func TestDeleteOrder(t *testing.T) {
 
 	assert.Equal(t, 1, len(pricepoints))
 	assert.Contains(t, pricepoints, utils.UintToPaddedString(o1.PricePoint.Int64()))
-	testutils.Compare(t, o1, stored)
+	testutils.CompareOrder(t, &o1, stored)
 
 	assert.Equal(t, 1, len(pricePointHashes))
 	assert.Contains(t, pricePointHashes, o1.Hash.Hex())
