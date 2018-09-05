@@ -79,6 +79,8 @@ var mutex = &sync.Mutex{}
 // func (op *Operator) QueueTrade(o *types.Order, t *types.Trade) error {
 // TODO: Currently doesn't seem thread safe and fails unless called with a sleep time between each call.
 func (txq *TxQueue) QueueTrade(o *types.Order, t *types.Trade) error {
+
+	fmt.Println("Length of the queue is ", txq.Length())
 	if txq.Length() == 0 {
 		_, err := txq.ExecuteTrade(o, t)
 		if err != nil {
@@ -129,14 +131,16 @@ func (txq *TxQueue) ExecuteTrade(o *types.Order, tr *types.Trade) (*eth.Transact
 	}
 
 	go func() {
+		fmt.Println("MINING TRADE")
 		_, err := txq.EthereumService.WaitMined(tx)
 		if err != nil {
 			log.Print(err)
 		}
 
-		fmt.Println("TRADE_MINED: ", tr.Hash.Hex())
+		fmt.Println("TRADE_MINED IN EXECUTE TRADE: ", tr.Hash.Hex())
 
 		len := txq.Length()
+		fmt.Println("LENGTH of the queue is ", len)
 		if len > 0 {
 			msg, err := txq.PopPendingTrade()
 			if err != nil {
@@ -146,15 +150,20 @@ func (txq *TxQueue) ExecuteTrade(o *types.Order, tr *types.Trade) (*eth.Transact
 
 			// very hacky
 			if msg.Trade.Hash == tr.Hash {
+				fmt.Println("HACKY POP PENDING TRADE: ", tr.Hash.Hex())
 				msg, err = txq.PopPendingTrade()
 				if err != nil {
 					log.Print(err)
 					return
 				}
 
+				// return
+
 				if msg == nil {
 					return
 				}
+
+				// asdfasdf
 			}
 
 			fmt.Println("NEXT_TRADE: ", msg.Trade.Hash.Hex())
@@ -186,6 +195,7 @@ func (txq *TxQueue) PublishPendingTrade(o *types.Order, t *types.Trade) error {
 }
 
 func (txq *TxQueue) PublishTradeSentMessage(or *types.Order, tr *types.Trade) error {
+	fmt.Println("PUBLISHING TRADE SENT MESSAGE")
 	ch := rabbitmq.GetChannel("OPERATOR_PUB")
 	q := rabbitmq.GetQueue(ch, "TX_MESSAGES")
 	msg := &types.OperatorMessage{
@@ -206,10 +216,12 @@ func (txq *TxQueue) PublishTradeSentMessage(or *types.Order, tr *types.Trade) er
 		return err
 	}
 
+	fmt.Println("PUBLISHED TRADE SENT MESSAGE")
 	return nil
 }
 
 func (txq *TxQueue) PurgePendingTrades() error {
+	fmt.Println("PURGING PENDING TRADES")
 	name := "TX_QUEUES:" + txq.Name
 	ch := rabbitmq.GetChannel(name)
 
@@ -219,11 +231,13 @@ func (txq *TxQueue) PurgePendingTrades() error {
 		return err
 	}
 
+	fmt.Println("PURGED PENDING TRADES")
 	return nil
 }
 
 // PopPendingTrade
 func (txq *TxQueue) PopPendingTrade() (*types.PendingTradeMessage, error) {
+	fmt.Println("POPPING PENDING TRADE")
 	name := "TX_QUEUES:" + txq.Name
 	ch := rabbitmq.GetChannel(name)
 	q := rabbitmq.GetQueue(ch, name)
@@ -244,5 +258,6 @@ func (txq *TxQueue) PopPendingTrade() (*types.PendingTradeMessage, error) {
 		return nil, err
 	}
 
+	fmt.Println("POPPED PENDING TRADE", pding.Trade.Hash.Hex())
 	return pding, nil
 }

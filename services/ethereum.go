@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"log"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -27,8 +28,8 @@ func NewEthereumService(e EthereumClientInterface) *EthereumService {
 func (s *EthereumService) WaitMined(tx *ethTypes.Transaction) (*ethTypes.Receipt, error) {
 	ctx := context.Background()
 	receipt, err := bind.WaitMined(ctx, s.EthereumClient, tx)
-
 	if err != nil {
+		log.Print(err)
 		return &ethTypes.Receipt{}, err
 	}
 
@@ -49,6 +50,7 @@ func (s *EthereumService) GetPendingNonceAt(a common.Address) (uint64, error) {
 	ctx := context.Background()
 	nonce, err := s.EthereumClient.PendingNonceAt(ctx, a)
 	if err != nil {
+		log.Print(err)
 		return 0, err
 	}
 

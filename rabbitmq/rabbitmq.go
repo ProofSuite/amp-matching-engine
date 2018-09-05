@@ -30,6 +30,15 @@ func InitConnection(address string) {
 	}
 }
 
+func NewConnection(address string) *amqp.Connection {
+	conn, err := amqp.Dial(address)
+	if err != nil {
+		panic(err)
+	}
+
+	return conn
+}
+
 func GetQueue(ch *amqp.Channel, queue string) *amqp.Queue {
 	if queues[queue] == nil {
 		q, err := ch.QueueDeclare(queue, false, false, false, false, nil)
@@ -110,6 +119,31 @@ func SubscribeOperator(fn func(*types.OperatorMessage) error) error {
 
 		<-forever
 	}()
+
+	return nil
+}
+
+func UnSubscribeOperator() error {
+	ch := GetChannel("OPERATOR_SUB")
+	q := GetQueue(ch, "TX_MESSAGES")
+
+	err := ch.Cancel(q.Name, false)
+	if err != nil {
+		log.Print(err)
+		return err
+	}
+
+	return nil
+}
+
+func PurgeOperatorQueue() error {
+	ch := GetChannel("OPERATOR_SUB")
+
+	_, err := ch.QueuePurge("TX_MESSAGES", false)
+	if err != nil {
+		log.Print(err)
+		return err
+	}
 
 	return nil
 }
