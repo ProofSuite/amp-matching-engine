@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/go-ozzo/ozzo-dbx"
 )
 
@@ -12,9 +13,9 @@ import (
 type RequestScope interface {
 	Logger
 	// UserID returns the ID of the user for the current request
-	UserID() string
+	UserAddress() common.Address
 	// SetUserID sets the ID of the currently authenticated user
-	SetUserID(id string)
+	SetUserAddress(address common.Address)
 	// RequestID returns the ID of the current request
 	RequestID() string
 	// Tx returns the currently active database transaction that can be used for DB query purpose
@@ -26,20 +27,20 @@ type RequestScope interface {
 }
 
 type requestScope struct {
-	Logger              // the logger tagged with the current request information
-	now       time.Time // the time when the request is being processed
-	requestID string    // an ID identifying one or multiple correlated HTTP requests
-	userID    string    // an ID identifying the current user
-	tx        *dbx.Tx   // the currently active transaction
+	Logger                     // the logger tagged with the current request information
+	now         time.Time      // the time when the request is being processed
+	requestID   string         // an ID identifying one or multiple correlated HTTP requests
+	userAddress common.Address // an ID identifying the current user
+	tx          *dbx.Tx        // the currently active transaction
 }
 
-func (rs *requestScope) UserID() string {
-	return rs.userID
+func (rs *requestScope) UserAddress() common.Address {
+	return rs.userAddress
 }
 
-func (rs *requestScope) SetUserID(id string) {
-	rs.Logger.SetField("UserID", id)
-	rs.userID = id
+func (rs *requestScope) SetUserAddress(address common.Address) {
+	rs.Logger.SetField("UserAddress", address.Hex())
+	rs.userAddress = address
 }
 
 func (rs *requestScope) RequestID() string {

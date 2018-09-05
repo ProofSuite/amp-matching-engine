@@ -61,6 +61,14 @@
   version = "v1.7"
 
 [[projects]]
+  digest = "1:6b014c67cb522566c30ef02116f9acb50cd60954708cf92c6654e2985696db18"
+  name = "github.com/dgrijalva/jwt-go"
+  packages = ["."]
+  pruneopts = "T"
+  revision = "06ea1031745cb8b3dab3f6a236daf2b0aa468b7e"
+  version = "v3.2.0"
+
+[[projects]]
   branch = "master"
   digest = "1:67d0b50be0549e610017cb91e0b0b745ec0cad7c613bc8e18ff2d1c1fc8825a7"
   name = "github.com/edsrzf/mmap-go"
@@ -136,6 +144,7 @@
   packages = [
     ".",
     "access",
+    "auth",
     "content",
     "cors",
     "fault",
@@ -541,6 +550,7 @@
   input-imports = [
     "github.com/Sirupsen/logrus",
     "github.com/alicebob/miniredis",
+    "github.com/dgrijalva/jwt-go",
     "github.com/ethereum/go-ethereum",
     "github.com/ethereum/go-ethereum/accounts/abi",
     "github.com/ethereum/go-ethereum/accounts/abi/bind",
@@ -556,6 +566,7 @@
     "github.com/go-ozzo/ozzo-dbx",
     "github.com/go-ozzo/ozzo-routing",
     "github.com/go-ozzo/ozzo-routing/access",
+    "github.com/go-ozzo/ozzo-routing/auth",
     "github.com/go-ozzo/ozzo-routing/content",
     "github.com/go-ozzo/ozzo-routing/cors",
     "github.com/go-ozzo/ozzo-routing/fault",

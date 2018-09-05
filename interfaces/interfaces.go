@@ -192,4 +192,5 @@ type AccountService interface {
 	GetByAddress(a common.Address) (*types.Account, error)
 	GetTokenBalance(owner common.Address, token common.Address) (*types.TokenBalance, error)
 	GetTokenBalances(owner common.Address) (map[common.Address]*types.TokenBalance, error)
+	Validate(address common.Address) (acnt *types.Account, valid bool)
 }

@@ -20,6 +20,7 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/engine"
 
 	"github.com/go-ozzo/ozzo-routing"
+	"github.com/go-ozzo/ozzo-routing/auth"
 	"github.com/go-ozzo/ozzo-routing/content"
 	"github.com/go-ozzo/ozzo-routing/cors"
 )
@@ -102,6 +103,12 @@ func NewRouter(logger *logrus.Logger) *routing.Router {
 	orderBookService := services.NewOrderBookService(pairDao, tokenDao, eng)
 	cronService := crons.NewCronService(ohlcvService)
 	// walletService := services.NewWalletService(walletDao, balanceDao)
+
+	rg.Post("/auth", endpoints.Auth(accountService, app.Config.JWTSigningKey))
+	rg.Use(auth.JWT(app.Config.JWTVerificationKey, auth.JWTOptions{
+		SigningMethod: app.Config.JWTSigningMethod,
+		TokenHandler:  endpoints.JWTHandler,
+	}))
 
 	endpoints.ServeAccountResource(rg, accountService)
 	endpoints.ServeTokenResource(rg, tokenService)

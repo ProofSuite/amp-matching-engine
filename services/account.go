@@ -62,6 +62,18 @@ func (s *AccountService) Create(account *types.Account) error {
 	return nil
 }
 
+// Validate valdates the address and sends back account and boolean for valid address
+func (s *AccountService) Validate(address common.Address) (acnt *types.Account, valid bool) {
+	acnt, err := s.GetByAddress(address)
+	if err != nil {
+		return
+	} else if acnt.IsBlocked {
+		return
+	}
+	valid = true
+	return
+}
+
 func (s *AccountService) GetByID(id bson.ObjectId) (*types.Account, error) {
 	return s.AccountDao.GetByID(id)
 }
