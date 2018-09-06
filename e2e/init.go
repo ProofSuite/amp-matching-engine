@@ -85,11 +85,11 @@ func NewRouter() *routing.Router {
 	rg := router.Group("")
 
 	rabbitmq.InitConnection(app.Config.Rabbitmq)
-	ethereum.InitConnection(app.Config.Ethereum)
+	provider := ethereum.NewDefaultEthereumProvider()
 	redisClient := redis.NewRedisConnection(app.Config.Redis)
 	redisClient.FlushAll()
-	// instantiate engine
-	engineResource, err := engine.InitEngine(redisClient)
+
+	eng, err := engine.InitEngine(redisClient)
 	if err != nil {
 		panic(err)
 	}
@@ -106,9 +106,9 @@ func NewRouter() *routing.Router {
 	ohlcvService := services.NewOHLCVService(tradeDao)
 	tokenService := services.NewTokenService(tokenDao)
 	tradeService := services.NewTradeService(tradeDao)
-	pairService := services.NewPairService(pairDao, tokenDao, engineResource, tradeService)
-	orderService := services.NewOrderService(orderDao, pairDao, accountDao, tradeDao, engineResource)
-	orderBookService := services.NewOrderBookService(pairDao, tokenDao, engineResource)
+	pairService := services.NewPairService(pairDao, tokenDao, eng, tradeService)
+	orderService := services.NewOrderService(orderDao, pairDao, accountDao, tradeDao, eng, provider)
+	orderBookService := services.NewOrderBookService(pairDao, tokenDao, eng)
 	cronService := crons.NewCronService(ohlcvService)
 	// walletService := services.NewWalletService(walletDao, balanceDao)
 
@@ -118,11 +118,11 @@ func NewRouter() *routing.Router {
 	endpoints.ServeOrderBookResource(rg, orderBookService)
 	endpoints.ServeOHLCVResource(rg, ohlcvService)
 	endpoints.ServeTradeResource(rg, tradeService)
-	endpoints.ServeOrderResource(rg, orderService, engineResource)
+	endpoints.ServeOrderResource(rg, orderService, eng)
 
 	//initialize rabbitmq subscriptions
-	orderService.SubscribeQueue(engineResource.HandleOrders)
-	engineResource.SubscribeResponseQueue(orderService.HandleEngineResponse)
+	orderService.SubscribeQueue(eng.HandleOrders)
+	eng.SubscribeResponseQueue(orderService.HandleEngineResponse)
 
 	// fmt.Printf("\n%+v\n", app.Config.TickDuration)
 	cronService.InitCrons()

@@ -54,9 +54,9 @@ func (t *Token) GetCustomTxSendOptions(w *types.Wallet) *bind.TransactOpts {
 }
 
 func (t *Token) BalanceOf(owner common.Address) (*big.Int, error) {
-	txCallOptions := t.GetTxCallOptions()
+	opts := t.GetTxCallOptions()
 
-	b, err := t.Interface.BalanceOf(txCallOptions, owner)
+	b, err := t.Interface.BalanceOf(opts, owner)
 	if err != nil {
 		return nil, err
 	}
@@ -65,9 +65,9 @@ func (t *Token) BalanceOf(owner common.Address) (*big.Int, error) {
 }
 
 func (t *Token) TotalSupply() (*big.Int, error) {
-	txCallOptions := t.GetTxCallOptions()
+	opts := t.GetTxCallOptions()
 
-	supply, err := t.Interface.TotalSupply(txCallOptions)
+	supply, err := t.Interface.TotalSupply(opts)
 	if err != nil {
 		return nil, errors.New("Could not retrieve total supply of user")
 	}
@@ -76,9 +76,9 @@ func (t *Token) TotalSupply() (*big.Int, error) {
 }
 
 func (t *Token) Transfer(receiver common.Address, amount *big.Int) (*eth.Transaction, error) {
-	txSendOptions, _ := t.GetTxSendOptions()
+	opts, _ := t.GetTxSendOptions()
 
-	tx, err := t.Interface.Transfer(txSendOptions, receiver, amount)
+	tx, err := t.Interface.Transfer(opts, receiver, amount)
 	if err != nil {
 		return nil, errors.New("Error making Transfer() transaction")
 	}
@@ -87,9 +87,9 @@ func (t *Token) Transfer(receiver common.Address, amount *big.Int) (*eth.Transac
 }
 
 func (t *Token) TransferFromCustomWallet(w *types.Wallet, receiver common.Address, amount *big.Int) (*eth.Transaction, error) {
-	txSendOptions := t.GetCustomTxSendOptions(w)
+	opts := t.GetCustomTxSendOptions(w)
 
-	tx, err := t.Interface.Transfer(txSendOptions, receiver, amount)
+	tx, err := t.Interface.Transfer(opts, receiver, amount)
 	if err != nil {
 		return nil, errors.New("Error making Transfer() transaction")
 	}
@@ -98,9 +98,8 @@ func (t *Token) TransferFromCustomWallet(w *types.Wallet, receiver common.Addres
 }
 
 func (t *Token) TransferFrom(sender, receiver common.Address, amount *big.Int) (*eth.Transaction, error) {
-	txSendOptions, _ := t.GetTxSendOptions()
-
-	tx, err := t.Interface.TransferFrom(txSendOptions, sender, receiver, amount)
+	opts, _ := t.GetTxSendOptions()
+	tx, err := t.Interface.TransferFrom(opts, sender, receiver, amount)
 	if err != nil {
 		return nil, errors.New("Error making TransferFrom() transaction")
 	}
@@ -121,9 +120,9 @@ func (t *Token) Allowance(owner common.Address, spender common.Address) (*big.In
 }
 
 func (t *Token) Approve(spender common.Address, amount *big.Int) (*eth.Transaction, error) {
-	txSendOptions, _ := t.GetTxSendOptions()
+	opts, _ := t.GetTxSendOptions()
 
-	tx, err := t.Interface.Approve(txSendOptions, spender, amount)
+	tx, err := t.Interface.Approve(opts, spender, amount)
 	if err != nil {
 		return nil, errors.New("Error making Approve() transaction")
 	}
@@ -132,9 +131,9 @@ func (t *Token) Approve(spender common.Address, amount *big.Int) (*eth.Transacti
 }
 
 func (t *Token) ApproveFrom(w *types.Wallet, spender common.Address, amount *big.Int) (*eth.Transaction, error) {
-	txSendOptions := t.GetCustomTxSendOptions(w)
+	opts := t.GetCustomTxSendOptions(w)
 
-	tx, err := t.Interface.Approve(txSendOptions, spender, amount)
+	tx, err := t.Interface.Approve(opts, spender, amount)
 	if err != nil {
 		return nil, errors.New("Error making ApproveFrom() transaction")
 	}
@@ -159,7 +158,6 @@ func (t *Token) ListenToTransferEvents() (chan *contractsinterfaces.TokenTransfe
 func (t *Token) PrintTransferEvents() error {
 	events := make(chan *contractsinterfaces.TokenTransfer)
 	options := &bind.WatchOpts{nil, nil}
-
 	toList := []common.Address{}
 	fromList := []common.Address{}
 

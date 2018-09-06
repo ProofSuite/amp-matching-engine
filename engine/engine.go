@@ -19,7 +19,7 @@ type Engine struct {
 	mutex     *sync.Mutex
 }
 
-// Engine is singleton Resource instance
+// Engine is singleton resource instance
 var engine *Engine
 
 // InitEngine initializes the engine singleton instance

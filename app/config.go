@@ -25,12 +25,6 @@ type appConfig struct {
 	TakeFee float64 `mapstructure:"take_fee"`
 	// the Rabbitmq is the URI of rabbitmq to use
 	Rabbitmq string `mapstructure:"rabbitmq"`
-
-	Ethereum string `mapstructure:"ethereum"`
-
-	WETH string `mapstructure:"weth"`
-
-	FeeAccount string `mapstructure:"fee_account"`
 	// the redis is the URI of redis to use
 	Redis string `mapstructure:"redis"`
 	// the signing method for JWT. Defaults to "HS256"
@@ -41,10 +35,8 @@ type appConfig struct {
 	JWTVerificationKey string `mapstructure:"jwt_verification_key"`
 	// TickDuration is user by tick streaming cron
 	TickDuration map[string][]int64 `mapstructure:"tick_duration"`
-	// ExchangeAddress is the address of the exchange smart-contract
-	ExchangeAddress string `mapstructure:"exchange"`
-	// Decimal is the number of decimal places used in matching engine
-	Decimal int `mapstructure:"decimal"`
+
+	Ethereum map[string]string `mapstructure:"ethereum"`
 }
 
 func (config appConfig) Validate() error {
