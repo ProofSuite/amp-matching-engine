@@ -269,6 +269,8 @@ func (s *OrderService) handleEngineOrderMatched(res *types.EngineResponse) {
 		s.transferAmount(mo.Order, mo.Amount)
 	}
 
+	utils.PrintJSON(res)
+
 	if len(res.Trades) != 0 {
 		err := s.tradeDao.Create(res.Trades...)
 		if err != nil {

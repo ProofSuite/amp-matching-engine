@@ -261,7 +261,7 @@ func (o *Order) MarshalJSON() ([]byte, error) {
 		"amount":          o.Amount.String(),
 		// NOTE: Currently removing this to simplify public API, might reinclude
 		// later. An alternative would be to create additional simplified type
-		// "createdAt": o.CreatedAt.Format(time.RFC3339Nano),
+		"createdAt": o.CreatedAt.Format(time.RFC3339Nano),
 		// "updatedAt": o.UpdatedAt.Format(time.RFC3339Nano),
 	}
 
