@@ -115,6 +115,7 @@ func TestOHLCV(t *testing.T) {
 		sampleTrade.Amount = amt.Add(sampleTrade.Amount, big.NewInt(10))
 		sampleTrade.Price = prc.Add(sampleTrade.Price, big.NewInt(5))
 		sampleTrade.ID = bson.NewObjectId()
+		sampleTrade.Hash = sampleTrade.ComputeHash()
 
 		if err := db.DB(app.Config.DBName).C("trades").Insert(&sampleTrade); err != nil {
 			panic(err)
@@ -128,7 +129,7 @@ func TestOHLCV(t *testing.T) {
 
 	for unit, durationSlice := range durations {
 		for _, duration := range durationSlice {
-			response, err := ohlcvService.GetOHLCV([]types.PairSubDoc{pair}, duration, unit)
+			response, err := ohlcvService.GetOHLCV([]types.PairSubDoc{pair}, duration, unit, 0, time.Now().Unix())
 			if err != nil {
 				t.Errorf("%s", err)
 				return
