@@ -275,7 +275,7 @@ func TestCancelOrder(t *testing.T) {
 		t.Error("Error when cancelling order: ", err)
 	}
 
-	assert.Equal(t, expected, res)
+	testutils.Compare(t, expected, res)
 
 	pricePointSetKey, orderHashListKey = o1.GetOBKeys()
 
@@ -461,8 +461,8 @@ func TestFillOrder1(t *testing.T) {
 		t.Errorf("Error when calling buy order")
 	}
 
-	assert.Equal(t, expectedBuyOrderResponse, buyOrderResponse)
-	assert.Equal(t, expectedSellOrderResponse, sellOrderResponse)
+	testutils.Compare(t, expectedBuyOrderResponse, buyOrderResponse)
+	testutils.Compare(t, expectedSellOrderResponse, sellOrderResponse)
 }
 
 func TestFillOrder2(t *testing.T) {
@@ -554,326 +554,163 @@ func TestMultiMatchOrder1(t *testing.T) {
 	testutils.Compare(t, expectedResponse, response)
 }
 
-// func TestMultiMatchOrder2(t *testing.T) {
-// 	e := getResource()
-// 	defer e.redisConn.FlushAll()
-// 	buyOrder := getBuyOrder()
+func TestMultiMatchOrder2(t *testing.T) {
+	e, _, _, _, _, _, _, factory1, factory2 := setupTest()
+	defer e.redisConn.FlushAll()
 
-// 	buyOrder1 := buyOrder
-// 	buyOrder1.PricePoint = math.Sub(buyOrder1.Price, big.NewInt(10))
-// 	buyOrder1.Nonce = math.Add(buyOrder1.Nonce, big.NewInt(1))
-// 	buyOrder1.Hash = buyOrder1.ComputeHash()
+	bo1, _ := factory1.NewBuyOrder(1e3+1, 1e8)
+	bo2, _ := factory1.NewBuyOrder(1e3+2, 1e8)
+	bo3, _ := factory1.NewBuyOrder(1e3+3, 1e8)
+	so1, _ := factory2.NewSellOrder(1e3, 3e8)
 
-// 	buyOrder2 := buyOrder1
-// 	buyOrder2.Nonce = math.Add(buyOrder2.Nonce, big.NewInt(1))
-// 	buyOrder2.Hash = buyOrder2.ComputeHash()
+	expbo1 := bo1
+	expbo1.Status = "FILLED"
+	expbo1.FilledAmount = big.NewInt(1e8)
+	expbo2 := bo2
+	expbo2.Status = "FILLED"
+	expbo2.FilledAmount = big.NewInt(1e8)
+	expbo3 := bo3
+	expbo3.Status = "FILLED"
+	expbo3.FilledAmount = big.NewInt(1e8)
+	expso1 := so1
+	expso1.Status = "FILLED"
+	expso1.FilledAmount = big.NewInt(3e8)
 
-// 	e.buyOrder(&buyOrder)
-// 	e.buyOrder(&buyOrder1)
-// 	e.buyOrder(&buyOrder2)
+	e.buyOrder(&bo1)
+	e.buyOrder(&bo2)
+	e.buyOrder(&bo3)
 
-// 	sellOrder := getSellOrder()
+	trade1, _ := types.NewUnsignedTrade1(&bo1, &so1, big.NewInt(1e8))
+	trade2, _ := types.NewUnsignedTrade1(&bo2, &so1, big.NewInt(1e8))
+	trade3, _ := types.NewUnsignedTrade1(&bo3, &so1, big.NewInt(1e8))
 
-// 	sellOrder.PricePoint = math.Sub(sellOrder.Price, big.NewInt(10))
-// 	sellOrder.Amount = math.Mul(sellOrder.Amount, big.NewInt(3))
+	expectedResponse := &types.EngineResponse{
+		"FULL",
+		&expso1,
+		nil,
+		[]*types.FillOrder{{big.NewInt(1e8), &expbo3}, {big.NewInt(1e8), &expbo2}, {big.NewInt(1e8), &expbo1}},
+		[]*types.Trade{&trade3, &trade2, &trade1},
+	}
 
-// 	// Test Case2: Send buyOrder first
-// 	responseSO := sellOrder
-// 	responseSO.FilledAmount = responseSO.Amount
-// 	responseSO.Status = "FILLED"
+	res, err := e.sellOrder(&so1)
+	if err != nil {
+		t.Errorf("Error in sell order: %s", err)
+	}
 
-// 	responseBO := buyOrder
-// 	responseBO.FilledAmount = responseBO.Amount
-// 	responseBO.Status = "FILLED"
+	testutils.Compare(t, expectedResponse.Trades, res.Trades)
+}
 
-// 	responseBO1 := buyOrder1
-// 	responseBO1.FilledAmount = responseBO1.Amount
-// 	responseBO1.Status = "FILLED"
+func TestPartialMatchOrder1(t *testing.T) {
+	e, _, _, _, _, _, _, factory1, factory2 := setupTest()
+	defer e.redisConn.FlushAll()
 
-// 	responseBO2 := buyOrder2
-// 	responseBO2.FilledAmount = responseBO2.Amount
-// 	responseBO2.Status = "FILLED"
+	so1, _ := factory1.NewSellOrder(1e3+1, 1e8)
+	so2, _ := factory1.NewSellOrder(1e3+2, 1e8)
+	so3, _ := factory1.NewSellOrder(1e3+3, 1e8)
+	so4, _ := factory1.NewSellOrder(1e3+4, 2e8)
+	bo1, _ := factory2.NewBuyOrder(1e3+5, 4e8)
 
-// 	trade := getTrade(&sellOrder, &buyOrder, buyOrder.Amount, big.NewInt(0))
-// 	trade1 := getTrade(&sellOrder, &buyOrder1, buyOrder1.Amount, big.NewInt(0))
-// 	trade2 := getTrade(&sellOrder, &buyOrder2, buyOrder2.Amount, big.NewInt(0))
+	expso1 := so1
+	expso1.FilledAmount = big.NewInt(1e8)
+	expso1.Status = "FILLED"
+	expso2 := so2
+	expso2.FilledAmount = big.NewInt(1e8)
+	expso2.Status = "FILLED"
+	expso3 := so3
+	expso3.FilledAmount = big.NewInt(1e8)
+	expso3.Status = "FILLED"
+	expso4 := so4
+	expso4.FilledAmount = big.NewInt(1e8)
+	expso4.Status = "PARTIAL_FILLED"
+	expbo1 := bo1
+	expbo1.FilledAmount = big.NewInt(4e8)
+	expbo1.Status = "FILLED"
 
-// 	trade.Hash = trade.ComputeHash()
-// 	trade1.Hash = trade1.ComputeHash()
-// 	trade2.Hash = trade2.ComputeHash()
+	trade1, _ := types.NewUnsignedTrade1(&so1, &bo1, big.NewInt(1e8))
+	trade2, _ := types.NewUnsignedTrade1(&so2, &bo1, big.NewInt(1e8))
+	trade3, _ := types.NewUnsignedTrade1(&so3, &bo1, big.NewInt(1e8))
+	trade4, _ := types.NewUnsignedTrade1(&so4, &bo1, big.NewInt(1e8))
 
-// 	expectedResponse := getEResponse(&responseSO,
-// 		[]*types.Trade{trade, trade1, trade2},
-// 		"FULL",
-// 		[]*types.FillOrder{
-// 			{responseBO.FilledAmount, &responseBO},
-// 			{responseBO1.FilledAmount, &responseBO1},
-// 			{responseBO2.FilledAmount, &responseBO2}},
-// 		nil)
+	e.sellOrder(&so1)
+	e.sellOrder(&so2)
+	e.sellOrder(&so3)
+	e.sellOrder(&so4)
 
-// 	expBytes, _ := json.Marshal(expectedResponse)
-// 	response, err := e.sellOrder(&sellOrder)
-// 	if err != nil {
-// 		t.Errorf("Error in sellOrder: %s", err)
-// 	}
+	res, err := e.buyOrder(&bo1)
+	if err != nil {
+		t.Errorf("Error when buying order")
+	}
 
-// 	resBytes, _ := json.Marshal(response)
-// 	assert.JSONEq(t, string(expBytes), string(resBytes))
+	expectedResponse := &types.EngineResponse{
+		"FULL",
+		&expbo1,
+		nil,
+		[]*types.FillOrder{
+			{big.NewInt(1e8), &expso1},
+			{big.NewInt(1e8), &expso2},
+			{big.NewInt(1e8), &expso3},
+			{big.NewInt(1e8), &expso4},
+		},
+		[]*types.Trade{&trade1, &trade2, &trade3, &trade4},
+	}
 
-// }
+	testutils.Compare(t, expectedResponse, res)
+}
 
-// func TestPartialMatchOrder1(t *testing.T) {
-// 	e := getResource()
-// 	defer e.redisConn.FlushAll()
+func TestPartialMatchOrder2(t *testing.T) {
+	e, _, _, _, _, _, _, factory1, factory2 := setupTest()
+	defer e.redisConn.FlushAll()
 
-// 	sellOrder := getSellOrder()
-// 	buyOrder := getBuyOrder()
-// 	sellOrder1 := getSellOrder()
+	bo1, _ := factory1.NewBuyOrder(1e3+5, 1e8)
+	bo2, _ := factory1.NewBuyOrder(1e3+4, 1e8)
+	bo3, _ := factory1.NewBuyOrder(1e3+3, 1e8)
+	bo4, _ := factory1.NewBuyOrder(1e3+2, 2e8)
+	so1, _ := factory2.NewSellOrder(1e3+1, 4e8)
 
-// 	sellOrder1.PricePoint = math.Add(sellOrder1.PricePoint, big.NewInt(10))
-// 	sellOrder1.Nonce = math.Add(sellOrder1.Nonce, big.NewInt(1))
-// 	sellOrder1.Hash = sellOrder1.ComputeHash()
+	expbo1 := bo1
+	expbo1.FilledAmount = big.NewInt(1e8)
+	expbo1.Status = "FILLED"
+	expbo2 := bo2
+	expbo2.FilledAmount = big.NewInt(1e8)
+	expbo2.Status = "FILLED"
+	expbo3 := bo3
+	expbo3.FilledAmount = big.NewInt(1e8)
+	expbo3.Status = "FILLED"
+	expbo4 := bo4
+	expbo4.FilledAmount = big.NewInt(1e8)
+	expbo4.Status = "PARTIAL_FILLED"
 
-// 	sellOrder2 := sellOrder1
-// 	sellOrder2.Nonce = math.Add(sellOrder2.Nonce, big.NewInt(1))
-// 	sellOrder2.Hash = sellOrder2.ComputeHash()
+	expso1 := so1
+	expso1.FilledAmount = big.NewInt(4e8)
+	expso1.Status = "FILLED"
 
-// 	sellOrder3 := sellOrder1
-// 	sellOrder3.PricePoint = math.Add(sellOrder3.PricePoint, big.NewInt(10))
-// 	sellOrder3.Amount = math.Mul(sellOrder3.Amount, big.NewInt(2))
+	trade1, _ := types.NewUnsignedTrade1(&bo1, &so1, big.NewInt(1e8))
+	trade2, _ := types.NewUnsignedTrade1(&bo2, &so1, big.NewInt(1e8))
+	trade3, _ := types.NewUnsignedTrade1(&bo3, &so1, big.NewInt(1e8))
+	trade4, _ := types.NewUnsignedTrade1(&bo4, &so1, big.NewInt(1e8))
 
-// 	sellOrder3.Nonce = sellOrder3.Nonce.Add(sellOrder2.Nonce, big.NewInt(1))
-// 	sellOrder3.Hash = sellOrder3.ComputeHash()
+	e.buyOrder(&bo1)
+	e.buyOrder(&bo2)
+	e.buyOrder(&bo3)
+	e.buyOrder(&bo4)
 
-// 	e.sellOrder(&sellOrder)
-// 	e.sellOrder(&sellOrder1)
-// 	e.sellOrder(&sellOrder2)
-// 	e.sellOrder(&sellOrder3)
+	res, err := e.sellOrder(&so1)
+	if err != nil {
+		t.Errorf("Error when buying order")
+	}
 
-// 	buyOrder.PricePoint = math.Add(buyOrder.PricePoint, big.NewInt(20))
-// 	buyOrder.Amount = math.Mul(buyOrder.Amount, big.NewInt(4))
+	expectedResponse := &types.EngineResponse{
+		"FULL",
+		&expso1,
+		nil,
+		[]*types.FillOrder{
+			{big.NewInt(1e8), &expbo1},
+			{big.NewInt(1e8), &expbo2},
+			{big.NewInt(1e8), &expbo3},
+			{big.NewInt(1e8), &expbo4},
+		},
+		[]*types.Trade{&trade1, &trade2, &trade3, &trade4},
+	}
 
-// 	// Test Case1: Send sellOrder first
-// 	responseBO := buyOrder
-// 	responseBO.FilledAmount = buyOrder.Amount
-// 	responseBO.Status = "FILLED"
-// 	responseSO := sellOrder
-// 	responseSO.FilledAmount = responseSO.Amount
-// 	responseSO.Status = "FILLED"
-// 	responseSO1 := sellOrder1
-// 	responseSO1.FilledAmount = responseSO1.Amount
-// 	responseSO1.Status = "FILLED"
-// 	responseSO2 := sellOrder2
-// 	responseSO2.FilledAmount = responseSO2.Amount
-// 	responseSO2.Status = "FILLED"
-// 	responseSO3 := sellOrder3
-// 	responseSO3.FilledAmount = math.Div(responseSO3.Amount, big.NewInt(2))
-// 	responseSO3.Status = "PARTIAL_FILLED"
-
-// 	trade := getTrade(&buyOrder, &sellOrder, responseSO.FilledAmount, big.NewInt(0))
-// 	trade1 := getTrade(&buyOrder, &sellOrder1, responseSO1.FilledAmount, big.NewInt(0))
-// 	trade2 := getTrade(&buyOrder, &sellOrder2, responseSO2.FilledAmount, big.NewInt(0))
-// 	trade3 := getTrade(&buyOrder, &sellOrder3, responseSO3.FilledAmount, big.NewInt(0))
-
-// 	trade.Hash = trade.ComputeHash()
-// 	trade1.Hash = trade1.ComputeHash()
-// 	trade2.Hash = trade2.ComputeHash()
-// 	trade3.Hash = trade3.ComputeHash()
-
-// 	expectedResponse := &types.EngineResponse{
-// 		Order:      &responseBO,
-// 		Trades:     []*types.Trade{trade, trade1, trade2, trade3},
-// 		FillStatus: "FULL",
-// 		MatchingOrders: []*types.FillOrder{
-// 			{responseSO.FilledAmount, &responseSO},
-// 			{responseSO1.FilledAmount, &responseSO1},
-// 			{responseSO2.FilledAmount, &responseSO2},
-// 			{responseSO3.FilledAmount, &responseSO3}},
-// 	}
-
-// 	erBytes, _ := json.Marshal(expectedResponse)
-// 	response, err := e.buyOrder(&buyOrder)
-// 	if err != nil {
-// 		t.Errorf("Error in buyOrder: %s", err)
-// 	}
-
-// 	resBytes, _ := json.Marshal(response)
-// 	assert.JSONEq(t, string(erBytes), string(resBytes))
-
-// 	// Try matching remaining sellOrder with bigger buyOrder amount (partial filled buy Order)
-// 	buyOrder = getBuyOrder()
-// 	buyOrder.PricePoint = math.Add(buyOrder.PricePoint, big.NewInt(20))
-// 	buyOrder.Amount = math.Mul(buyOrder.Amount, big.NewInt(2))
-
-// 	responseBO = buyOrder
-// 	responseBO.Status = "PARTIAL_FILLED"
-// 	responseBO.FilledAmount = math.Div(buyOrder.Amount, big.NewInt(2))
-
-// 	remOrder := getBuyOrder()
-// 	remOrder.PricePoint = math.Add(remOrder.PricePoint, big.NewInt(20))
-// 	remOrder.Hash = common.HexToHash("")
-// 	remOrder.Signature = nil
-// 	remOrder.Nonce = nil
-
-// 	responseSO3.Status = "FILLED"
-// 	responseSO3.FilledAmount = responseSO3.Amount
-// 	trade4 := &types.Trade{
-// 		Amount:     responseBO.FilledAmount,
-// 		Price:      buyOrder.PricePoint,
-// 		PricePoint: buyOrder.PricePoint,
-// 		BaseToken:  buyOrder.BaseToken,
-// 		QuoteToken: buyOrder.QuoteToken,
-// 		OrderHash:  sellOrder3.Hash,
-// 		Side:       buyOrder.Side,
-// 		Taker:      buyOrder.UserAddress,
-// 		PairName:   buyOrder.PairName,
-// 		Maker:      sellOrder.UserAddress,
-// 		TradeNonce: big.NewInt(0),
-// 	}
-
-// 	trade4.Hash = trade4.ComputeHash()
-// 	expectedResponse = &types.EngineResponse{
-// 		Order:          &responseBO,
-// 		RemainingOrder: &remOrder,
-// 		Trades:         []*types.Trade{trade4},
-// 		FillStatus:     "PARTIAL",
-// 		MatchingOrders: []*types.FillOrder{
-// 			{responseBO.FilledAmount, &responseSO3}},
-// 	}
-// 	erBytes, _ = json.Marshal(expectedResponse)
-// 	response, err = e.buyOrder(&buyOrder)
-// 	if err != nil {
-// 		t.Errorf("Error in buyOrder: %s", err)
-// 	}
-
-// 	resBytes, _ = json.Marshal(response)
-// 	assert.JSONEq(t, string(erBytes), string(resBytes))
-// }
-
-// func TestPartialMatchOrder2(t *testing.T) {
-// 	e := getResource()
-// 	defer e.redisConn.FlushAll()
-
-// 	sellOrder := getSellOrder()
-// 	buyOrder := getBuyOrder()
-
-// 	buyOrder1 := getBuyOrder()
-// 	buyOrder1.PricePoint = math.Sub(buyOrder1.PricePoint, big.NewInt(10))
-// 	buyOrder1.Nonce = math.Add(buyOrder1.Nonce, big.NewInt(1))
-// 	buyOrder1.Hash = buyOrder1.ComputeHash()
-
-// 	buyOrder2 := buyOrder1
-// 	buyOrder2.Nonce = math.Add(buyOrder2.Nonce, big.NewInt(1))
-// 	buyOrder2.Hash = buyOrder2.ComputeHash()
-
-// 	buyOrder3 := buyOrder1
-// 	buyOrder3.PricePoint = math.Sub(buyOrder3.PricePoint, big.NewInt(10))
-// 	buyOrder3.Amount = math.Mul(buyOrder3.Amount, big.NewInt(2))
-// 	buyOrder3.Nonce = buyOrder3.Nonce.Add(buyOrder2.Nonce, big.NewInt(1))
-// 	buyOrder3.Hash = buyOrder3.ComputeHash()
-
-// 	e.buyOrder(&buyOrder)
-// 	e.buyOrder(&buyOrder1)
-// 	e.buyOrder(&buyOrder2)
-// 	e.buyOrder(&buyOrder3)
-
-// 	sellOrder.PricePoint = math.Sub(sellOrder.PricePoint, big.NewInt(20))
-// 	sellOrder.Amount = math.Mul(sellOrder.Amount, big.NewInt(4))
-
-// 	// Test Case1: Send sellOrder first
-// 	responseSO := sellOrder
-// 	responseSO.FilledAmount = sellOrder.Amount
-// 	responseSO.Status = "FILLED"
-// 	responseBO := buyOrder
-// 	responseBO.FilledAmount = responseBO.Amount
-// 	responseBO.Status = "FILLED"
-// 	responseBO1 := buyOrder1
-// 	responseBO1.FilledAmount = responseBO1.Amount
-// 	responseBO1.Status = "FILLED"
-// 	responseBO2 := buyOrder2
-// 	responseBO2.FilledAmount = responseBO2.Amount
-// 	responseBO2.Status = "FILLED"
-// 	responseBO3 := buyOrder3
-// 	responseBO3.FilledAmount = math.Div(responseBO3.Amount, big.NewInt(2))
-// 	responseBO3.Status = "PARTIAL_FILLED"
-
-// 	trade := getTrade(&sellOrder, &buyOrder, responseBO.FilledAmount, big.NewInt(0))
-// 	trade1 := getTrade(&sellOrder, &buyOrder1, responseBO1.FilledAmount, big.NewInt(0))
-// 	trade2 := getTrade(&sellOrder, &buyOrder2, responseBO2.FilledAmount, big.NewInt(0))
-// 	trade3 := getTrade(&sellOrder, &buyOrder3, responseBO3.FilledAmount, big.NewInt(0))
-
-// 	trade.Hash = trade.ComputeHash()
-// 	trade1.Hash = trade1.ComputeHash()
-// 	trade2.Hash = trade2.ComputeHash()
-// 	trade3.Hash = trade3.ComputeHash()
-
-// 	expectedResponse := &types.EngineResponse{
-// 		Order:      &responseSO,
-// 		Trades:     []*types.Trade{trade, trade1, trade2, trade3},
-// 		FillStatus: "FULL",
-// 		MatchingOrders: []*types.FillOrder{
-// 			{responseBO.FilledAmount, &responseBO},
-// 			{responseBO1.FilledAmount, &responseBO1},
-// 			{responseBO2.FilledAmount, &responseBO2},
-// 			{responseBO3.FilledAmount, &responseBO3}},
-// 	}
-
-// 	erBytes, _ := json.Marshal(expectedResponse)
-// 	response, err := e.sellOrder(&sellOrder)
-// 	if err != nil {
-// 		t.Errorf("Error in buyOrder: %s", err)
-// 	}
-
-// 	resBytes, _ := json.Marshal(response)
-// 	assert.JSONEq(t, string(erBytes), string(resBytes))
-
-// 	// Try matching remaining buyOrder with bigger sellOrder amount (partial filled sell Order)
-// 	sellOrder = getSellOrder()
-// 	sellOrder.PricePoint = math.Sub(sellOrder.PricePoint, big.NewInt(20))
-// 	sellOrder.Amount = math.Mul(sellOrder.Amount, big.NewInt(2))
-
-// 	responseSO = sellOrder
-// 	responseSO.Status = "PARTIAL_FILLED"
-// 	responseSO.FilledAmount = math.Div(sellOrder.Amount, big.NewInt(2))
-
-// 	remOrder := getSellOrder()
-// 	remOrder.PricePoint = math.Sub(remOrder.PricePoint, big.NewInt(20))
-// 	remOrder.Hash = common.HexToHash("")
-// 	remOrder.Signature = nil
-// 	remOrder.Nonce = nil
-// 	responseBO3.Status = "FILLED"
-// 	responseBO3.FilledAmount = responseBO3.Amount
-
-// 	trade4 := &types.Trade{
-// 		Amount:     responseSO.FilledAmount,
-// 		Price:      sellOrder.PricePoint,
-// 		PricePoint: sellOrder.PricePoint,
-// 		BaseToken:  sellOrder.BaseToken,
-// 		QuoteToken: sellOrder.QuoteToken,
-// 		OrderHash:  buyOrder3.Hash,
-// 		Side:       sellOrder.Side,
-// 		Taker:      sellOrder.UserAddress,
-// 		PairName:   sellOrder.PairName,
-// 		Maker:      buyOrder.UserAddress,
-// 		TradeNonce: big.NewInt(0),
-// 	}
-
-// 	trade4.Hash = trade4.ComputeHash()
-// 	expectedResponse = &types.EngineResponse{
-// 		Order:          &responseSO,
-// 		RemainingOrder: &remOrder,
-// 		Trades:         []*types.Trade{trade4},
-// 		FillStatus:     "PARTIAL",
-// 		MatchingOrders: []*types.FillOrder{
-// 			{responseSO.FilledAmount, &responseBO3}},
-// 	}
-
-// 	erBytes, _ = json.Marshal(expectedResponse)
-// 	response, err = e.sellOrder(&sellOrder)
-// 	if err != nil {
-// 		t.Errorf("Error in buyOrder: %s", err)
-// 	}
-
-// 	resBytes, _ = json.Marshal(response)
-// 	assert.JSONEq(t, string(erBytes), string(resBytes))
-// }
+	testutils.Compare(t, expectedResponse, res)
+}

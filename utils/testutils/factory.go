@@ -216,6 +216,7 @@ func (f *OrderFactory) NewBuyOrder(pricepoint int64, amount int64, filled ...int
 	o.PricePoint = big.NewInt(pricepoint)
 	o.Price = big.NewInt(pricepoint)
 	o.FilledAmount = big.NewInt(0)
+	o.CreatedAt = time.Now()
 
 	o.Sign(f.Wallet)
 	return o, nil
@@ -249,6 +250,7 @@ func (f *OrderFactory) NewSellOrder(pricepoint int64, amount int64, filled ...in
 	o.SellAmount = big.NewInt(int64(amount))
 	o.PricePoint = big.NewInt(pricepoint)
 	o.Price = big.NewInt(pricepoint)
+	o.CreatedAt = time.Now()
 
 	if filled == nil {
 		o.FilledAmount = big.NewInt(0)
