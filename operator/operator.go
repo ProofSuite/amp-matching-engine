@@ -175,11 +175,13 @@ func (op *Operator) HandleEvents() error {
 			}()
 
 		case event := <-tradeEvents:
-			fmt.Println("TRADE_SUCCESS_EVENT")
+
 			tr, err := op.TradeService.GetByHash(event.TradeHash)
 			if err != nil {
 				log.Print(err)
 			}
+
+			fmt.Println("TRADE_SUCCESS_EVENT", tr.Hash.Hex())
 
 			or, err := op.OrderService.GetByHash(tr.OrderHash)
 			if err != nil {
@@ -191,6 +193,7 @@ func (op *Operator) HandleEvents() error {
 				if err != nil {
 					log.Print(err)
 				}
+				fmt.Println("TRADE_MINED IN HANDLE EVENTS: ", tr.Hash.Hex())
 
 				err = op.PublishTradeSuccessMessage(or, tr)
 				if err != nil {
