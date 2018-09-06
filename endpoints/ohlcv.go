@@ -31,17 +31,12 @@ func (e *OHLCVEndpoint) ohlcv(c *routing.Context) error {
 		return err
 	}
 
-	startTs := time.Date(1970, time.January, 1, 0, 0, 0, 0, time.UTC)
 	if model.Units == "" {
 		model.Units = "hour"
 	}
 
 	if model.Duration == 0 {
 		model.Duration = 24
-	}
-
-	if model.From == 0 {
-		model.From = startTs.Unix()
 	}
 
 	if model.To == 0 {
