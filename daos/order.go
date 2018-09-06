@@ -156,6 +156,39 @@ func (dao *OrderDao) GetByUserAddress(addr common.Address) (res []*types.Order, 
 	return
 }
 
+// GetCurrentByUserAddress function fetches list of open/partial orders from order collection based on user address.
+// Returns array of Order type struct
+func (dao *OrderDao) GetCurrentByUserAddress(addr common.Address) (res []*types.Order, err error) {
+	q := bson.M{
+		"userAddress": addr.Hex(),
+		"status": bson.M{"$in": []string{
+			"OPEN",
+			"NEW",
+			"PARTIALLY_FILLED",
+		},
+		},
+	}
+	err = db.Get(dao.dbName, dao.collectionName, q, 0, 0, &res)
+	return
+}
+
+// GetHistoryByUserAddress function fetches list of orders which are not in open/partial order status
+// from order collection based on user address.
+// Returns array of Order type struct
+func (dao *OrderDao) GetHistoryByUserAddress(addr common.Address) (res []*types.Order, err error) {
+	q := bson.M{
+		"userAddress": addr.Hex(),
+		"status": bson.M{"$nin": []string{
+			"OPEN",
+			"NEW",
+			"PARTIALLY_FILLED",
+		},
+		},
+	}
+	err = db.Get(dao.dbName, dao.collectionName, q, 0, 0, &res)
+	return
+}
+
 // Drop drops all the order documents in the current database
 func (dao *OrderDao) Drop() error {
 	err := db.DropCollection(dao.dbName, dao.collectionName)

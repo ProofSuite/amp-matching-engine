@@ -58,6 +58,19 @@ func (s *OrderService) GetByHash(hash common.Hash) (*types.Order, error) {
 	return s.orderDao.GetByHash(hash)
 }
 
+// GetCurrentByUserAddress function fetches list of open/partial orders from order collection based on user address.
+// Returns array of Order type struct
+func (s *OrderService) GetCurrentByUserAddress(addr common.Address) ([]*types.Order, error) {
+	return s.orderDao.GetCurrentByUserAddress(addr)
+}
+
+// GetHistoryByUserAddress function fetches list of orders which are not in open/partial order status
+// from order collection based on user address.
+// Returns array of Order type struct
+func (s *OrderService) GetHistoryByUserAddress(addr common.Address) ([]*types.Order, error) {
+	return s.orderDao.GetHistoryByUserAddress(addr)
+}
+
 // NewOrder validates if the passed order is valid or not based on user's available
 // funds and order data.
 // If valid: Order is inserted in DB with order status as new and order is publiched
@@ -612,209 +625,3 @@ func (s *OrderService) PublishOrder(order *rabbitmq.Message) error {
 
 	return nil
 }
-
-// func (s *OrderService) handleNewTrade(msg *types.Message, res *types.EngineResponse) {
-// 	bytes, err := json.Marshal(msg.Data)
-// 	if err != nil {
-// 		s.RecoverOrders(res)
-// 		ws.OrderSendErrorMessage(ws.GetOrderConn(res.Order.Hash), err.Error(), res.Order.Hash)
-// 	}
-
-// 	res := &types.EngineResponse{}
-// 	err = json.Unmarshal(bytes, &resp)
-// 	if err != nil {
-// 		s.RecoverOrders(res)
-// 		ws.OrderSendErrorMessage(ws.GetOrderConn(res.Order.Hash), err.Error(), res.Order.Hash)
-// 	}
-
-// 	if res.FillStatus == engine.PARTIAL {
-// 		res.Order.OrderBook = &types.asdl
-// 		kfjasd
-// 		ljfk
-// 	}
-
-// }
-
-// if o.Side == "SELL" {
-// 	sellBalance, err := s.accountDao.GetTokenBalance(o.UserAddress, o.QuoteToken)
-// 	if err != nil {
-// 		log.Fatalf("\n%v\n")
-// 	}
-
-// 	sellBalance.LockedBalance = sellBalance.LockedBalance.
-// }
-
-// if o.Side == "BUY" {
-// 	sbal := res.Tokens[o.QuoteToken]
-// 	sbal.LockedAmount = sbal.LockedAmount - int64((float64(filledAmount)/math.Pow10(8))*float64(o.Price))
-// 	err := s.balanceDao.UpdateAmount(o.UserAddress, o.QuoteToken, &sbal)
-// 	if err != nil {
-// 		log.Fatalf("\n%s\n", err)
-// 	}
-// 	bbal := res.Tokens[o.BaseToken]
-// 	bbal.Amount = bbal.Amount + filledAmount
-// 	err = s.balanceDao.UpdateAmount(o.UserAddress, o.BaseToken, &bbal)
-// 	if err != nil {
-// 		log.Fatalf("\n%s\n", err)
-// 	}
-// 	fmt.Printf("\n Order Buy\n==>sbal: %v \n==>bbal: %v\n==>Unlock Amount: %v\n", sbal, bbal, int64((float64(filledAmount)/math.Pow10(8))*float64(o.Price)))
-// }
-// if o.Side == "SELL" {
-// 	bbal := res.Tokens[o.BaseToken]
-// 	bbal.LockedAmount = bbal.LockedAmount - filledAmount
-// 	err := s.balanceDao.UpdateAmount(o.UserAddress, o.BaseToken, &bbal)
-// 	if err != nil {
-// 		log.Fatalf("\n%s\n", err)
-// 	}
-
-// 	sbal := res.Tokens[o.QuoteToken]
-// 	sbal.Amount = sbal.Amount + int64((float64(filledAmount)/math.Pow10(8))*float64(o.Price))
-// 	err = s.balanceDao.UpdateAmount(o.UserAddress, o.QuoteToken, &sbal)
-// 	if err != nil {
-// 		log.Fatalf("\n%s\n", err)
-// 	}
-// 	fmt.Printf("\n Order Sell\n==>sbal: %v \n==>bbal: %v\n==>Unlock Amount: %v\n", sbal, bbal, filledAmount)
-
-// }
-
-// func (s *OrderService) HandleClientResponse() error {
-// 	t := time.NewTimer(10 * time.Second)
-// 	ch := ws.GetOrderChannel(res.Order.Hash)
-// 	if ch == nil {
-// 		s.RecoverOrders(res)
-// 	} else {
-
-// 		select {
-// 		case msg := <-ch:
-// 			if msg.Type == "REQUEST_SIGNATURE" {
-// 				bytes, err := json.Marshal(msg.Data)
-// 				if err != nil {
-// 					fmt.Printf("=== Error while marshaling EngineResponse ===")
-// 					s.RecoverOrders(res)
-// 					ws.OrderSendErrorMessage(ws.GetOrderConn(res.Order.Hash), res.Order.Hash, err.Error())
-// 				}
-
-// 				var ersb *types.EngineResponse
-// 				err = json.Unmarshal(bytes, &ersb)
-// 				if err != nil {
-// 					fmt.Printf("=== Error while unmarshaling EngineResponse ===")
-// 					ws.OrderSendErrorMessage(ws.GetOrderConn(res.Order.Hash), res.Order.Hash, err.Error())
-// 					s.RecoverOrders(res)
-// 				}
-
-// 				if res.FillStatus == engine.PARTIAL {
-// 					res.Order.OrderBook = &types.OrderSubDoc{Amount: ersb.RemainingOrder.Amount, Signature: ersb.RemainingOrder.Signature}
-// 					orderAsBytes, _ := json.Marshal(res.Order)
-// 					s.engine.PublishMessage(&engine.Message{Type: "remaining_order_add", Data: orderAsBytes})
-// 				}
-
-// 			}
-// 			t.Stop()
-// 			break
-
-// 		case <-t.C:
-// 			fmt.Printf("\nTimeout\n")
-// 			s.RecoverOrders(res)
-// 			t.Stop()
-// 			break
-// 		}
-// 	}
-// }
-
-// DEPRECATED
-// bal, err := s.balanceDao.GetByAddress(order.UserAddress)
-// if err != nil {
-// 	return err
-// }
-// if order.Side == "BUY" {
-// 	amt := bal.Tokens[order.QuoteToken]
-// 	if amt.Amount < order.SellAmount+order.Fee {
-// 		return errors.New("Insufficient Balance")
-// 	}
-// 	fmt.Println("Buy : Verified")
-
-// 	amt.Amount = amt.Amount - (order.SellAmount)             // + order.Fee
-// 	amt.LockedAmount = amt.LockedAmount + (order.SellAmount) // + order.Fee
-// 	err = s.balanceDao.UpdateAmount(order.UserAddress, order.QuoteToken, &amt)
-
-// 	if err != nil {
-// 		return err
-// 	}
-
-// } else if order.Side == "SELL" {
-// 	amt := bal.Tokens[order.BaseToken]
-// 	if amt.Amount < order.BuyAmount+order.Fee {
-// 		return errors.New("Insufficient Balance")
-// 	}
-// 	fmt.Println("Sell : Verified")
-// 	amt.Amount = amt.Amount - (order.BuyAmount)             // + order.Fee
-// 	amt.LockedAmount = amt.LockedAmount + (order.BuyAmount) // + order.Fee
-// 	err = s.balanceDao.UpdateAmount(order.UserAddress, order.BaseToken, &amt)
-
-// 	if res.FillStatus == engine.ERROR {
-// 		fmt.Println("Error")
-// 		s.orderDao.Update(res.Ordres.ID, res.Order)
-// 		s.cancelOrderUnlockAmount(res.Order)
-// 	} else if res.FillStatus == engine.NOMATCH {
-// 		fmt.Println("No Match")
-// 		s.orderDao.Update(res.Ordres.ID, res.Order)
-
-// 		// TODO: Update locked amount (change taker fee to maker fee)
-// 		// res, err := s.balanceDao.GetByAddress(res.Ordres.UserAddress)
-// 		// if err != nil {
-// 		// 	log.Fatalf("\n%s\n", err)
-// 		// }
-
-// 	} else if res.FillStatus == engine.FULL || res.FillStatus == engine.PARTIAL {
-// 		fmt.Printf("\nPartial Or filled: %d\n", res.FillStatus)
-
-// 		s.orderDao.Update(res.Order.Hash, res.Order)
-// 		// Unlock and transfer Amount
-// 		s.transferAmount(res.Order, res.Order.FilledAmount)
-
-// 		for _, mo := range res.MatchingOrders {
-// 			s.orderDao.Update(mo.Order.ID, mo.Order)
-
-// 			// Unlock and transfer Amount
-// 			s.transferAmount(mo.Order, mo.Amount)
-// 		}
-
-// 		if len(res.Trades) != 0 {
-// 			err := s.tradeDao.Create(res.Trades...)
-// 			if err != nil {
-// 				log.Fatalf("\n Error adding trades to db: %s\n", err)
-// 			}
-// 		}
-
-// // 	}
-// // }
-
-// // UpdateUsingEngineResponse is responsible for updating order status of maker
-// // and taker orders and transfer/unlock amount based on the response sent by the
-// // matching engine
-// func (s *OrderService) UpdateUsingEngineResponse(res *types.EngineResponse) {
-// 	switch res.FillStatus {
-// 	case engine.ERROR:
-// 		s.orderDao.Update(res.Order.Hash, res.Order)
-// 		s.cancelOrderUnlockAmount(res.Order)
-
-// 	case engine.NOMATCH:
-// 		s.orderDao.Update(res.Order.Hash, res.Order)
-
-// 	case engine.FULL:
-// 	case engine.PARTIAL:
-// 		s.orderDao.Update(res.Order.Hash, res.Order)
-// 		s.transferAmount(res.Order, big.NewInt(res.Order.FilledAmount))
-
-// 		for _, mo := range res.MatchingOrders {
-// 			s.orderDao.Update(mo.Order.ID, mo.Order)
-// 			s.transferAmount(mo.Order, big.NewInt(mo.Amount))
-// 		}
-
-// 		if len(res.Trades) != 0 {
-// 			err := s.tradeDao.Create(res.Trades...)
-// 			if err != nil {
-// 				log.Fatalf("\n Error saving trades to db: %s\n", err)
-// 			}
-// 		}
-// 	}
