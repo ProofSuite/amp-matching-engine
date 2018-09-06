@@ -23,6 +23,7 @@ func ServeOrderBookResource(
 ) {
 	e := &OrderBookEndpoint{orderBookService}
 
+	rg.Get("/orderbook/<baseToken>/<quoteToken>/full", e.fullOrderBookEndpoint)
 	rg.Get("/orderbook/<baseToken>/<quoteToken>", e.orderBookEndpoint)
 	ws.RegisterChannel(ws.LiteOrderBookChannel, e.liteOrderBookWebSocket)
 	ws.RegisterChannel(ws.FullOrderBookChannel, e.fullOrderBookWebSocket)
@@ -51,6 +52,28 @@ func (e *OrderBookEndpoint) orderBookEndpoint(c *routing.Context) error {
 	return c.Write(ob)
 }
 
+// orderBookEndpoint
+func (e *OrderBookEndpoint) fullOrderBookEndpoint(c *routing.Context) error {
+
+	bt := c.Param("baseToken")
+	if !common.IsHexAddress(bt) {
+		return errors.NewAPIError(400, "INVALID_HEX_ADDRESS", nil)
+	}
+
+	qt := c.Param("quoteToken")
+	if !common.IsHexAddress(qt) {
+		return errors.NewAPIError(400, "INVALID_HEX_ADDRESS", nil)
+	}
+
+	baseTokenAddress := common.HexToAddress(bt)
+	quoteTokenAddress := common.HexToAddress(qt)
+	ob, err := e.orderBookService.GetFullOrderBook(baseTokenAddress, quoteTokenAddress)
+	if err != nil {
+		return err
+	}
+
+	return c.Write(ob)
+}
 // liteOrderBookWebSocket
 func (e *OrderBookEndpoint) fullOrderBookWebSocket(input interface{}, conn *ws.Conn) {
 	mab, _ := json.Marshal(input)
