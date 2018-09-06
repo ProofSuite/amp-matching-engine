@@ -1,12 +1,14 @@
 package interfaces
 
 import (
+	"context"
 	"math/big"
 
 	"github.com/Proofsuite/amp-matching-engine/contracts/contractsinterfaces"
 	"github.com/Proofsuite/amp-matching-engine/rabbitmq"
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/Proofsuite/amp-matching-engine/ws"
+	ethereum "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	eth "github.com/ethereum/go-ethereum/core/types"
@@ -128,8 +130,8 @@ type OHLCVService interface {
 
 type EthereumService interface {
 	WaitMined(tx *eth.Transaction) (*eth.Receipt, error)
+	GetBalanceAt(a common.Address) (*big.Int, error)
 	GetPendingNonceAt(a common.Address) (uint64, error)
-	// GetPendingBalanceAt(a common.Address) (*big.Int, error)
 }
 
 type OrderService interface {
@@ -200,4 +202,33 @@ type AccountService interface {
 	GetByAddress(a common.Address) (*types.Account, error)
 	GetTokenBalance(owner common.Address, token common.Address) (*types.TokenBalance, error)
 	GetTokenBalances(owner common.Address) (map[common.Address]*types.TokenBalance, error)
+}
+
+type EthereumConfig interface {
+	GetURL() string
+	ExchangeAddress() common.Address
+	WethAddress() common.Address
+}
+
+type EthereumClient interface {
+	CodeAt(ctx context.Context, contract common.Address, blockNumber *big.Int) ([]byte, error)
+	CallContract(ctx context.Context, call ethereum.CallMsg, blockNumber *big.Int) ([]byte, error)
+	PendingCodeAt(ctx context.Context, account common.Address) ([]byte, error)
+	TransactionReceipt(ctx context.Context, txHash common.Hash) (*eth.Receipt, error)
+	EstimateGas(ctx context.Context, call ethereum.CallMsg) (gas uint64, err error)
+	SendTransaction(ctx context.Context, tx *eth.Transaction) error
+	PendingNonceAt(ctx context.Context, account common.Address) (uint64, error)
+	BalanceAt(ctx context.Context, contract common.Address, blockNumber *big.Int) (*big.Int, error)
+	FilterLogs(ctx context.Context, query ethereum.FilterQuery) ([]eth.Log, error)
+	SubscribeFilterLogs(ctx context.Context, query ethereum.FilterQuery, ch chan<- eth.Log) (ethereum.Subscription, error)
+	SuggestGasPrice(ctx context.Context) (*big.Int, error)
+}
+
+type EthereumProvider interface {
+	WaitMined(tx *eth.Transaction) (*eth.Receipt, error)
+	GetBalanceAt(a common.Address) (*big.Int, error)
+	GetPendingNonceAt(a common.Address) (uint64, error)
+	BalanceOf(owner common.Address, token common.Address) (*big.Int, error)
+	Allowance(owner, spender, token common.Address) (*big.Int, error)
+	ExchangeAllowance(owner, token common.Address) (*big.Int, error)
 }

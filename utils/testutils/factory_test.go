@@ -15,7 +15,7 @@ func TestNewOrderFromFactory(t *testing.T) {
 		t.Errorf("Could not load configuration: %v", err)
 	}
 
-	exchangeAddress := common.HexToAddress(app.Config.ExchangeAddress)
+	exchangeAddress := common.HexToAddress(app.Config.Ethereum["exchange_address"])
 	pair := GetZRXWETHTestPair()
 	wallet := GetTestWallet1()
 	ZRX := pair.BaseTokenAddress
@@ -56,7 +56,7 @@ func TestNewFactoryBuyOrder(t *testing.T) {
 		t.Errorf("Could not load configuration: %v", err)
 	}
 
-	exchangeAddress := common.HexToAddress(app.Config.ExchangeAddress)
+	exchangeAddress := common.HexToAddress(app.Config.Ethereum["exchange_address"])
 	pair := GetZRXWETHTestPair()
 	wallet := GetTestWallet1()
 	ZRX := pair.BaseTokenAddress
@@ -108,7 +108,7 @@ func TestNewFactorySellOrder(t *testing.T) {
 		t.Errorf("Could not load configuration: %v", err)
 	}
 
-	exchange := common.HexToAddress(app.Config.ExchangeAddress)
+	exchange := common.HexToAddress(app.Config.Ethereum["exchange_address"])
 	pair := GetZRXWETHTestPair()
 	wallet := GetTestWallet1()
 	ZRX := pair.BaseTokenAddress
@@ -160,7 +160,7 @@ func TestNewFactorySellOrder2(t *testing.T) {
 		t.Errorf("Could not load configuration: %v", err)
 	}
 
-	exchange := common.HexToAddress(app.Config.ExchangeAddress)
+	exchange := common.HexToAddress(app.Config.Ethereum["exchange_address"])
 	pair := GetZRXWETHTestPair()
 	wallet := GetTestWallet1()
 	ZRX := pair.BaseTokenAddress
@@ -212,7 +212,7 @@ func TestNewWebSocketMessage(t *testing.T) {
 		t.Errorf("Could not load configuration: %v", err)
 	}
 
-	exchange := common.HexToAddress(app.Config.ExchangeAddress)
+	exchange := common.HexToAddress(app.Config.Ethereum["exchange_address"])
 	pair := GetZRXWETHTestPair()
 	wallet := GetTestWallet1()
 	ZRX := pair.BaseTokenAddress

@@ -76,7 +76,7 @@ func NewRouter(logger *logrus.Logger) *routing.Router {
 	rg := router.Group("")
 
 	rabbitmq.InitConnection(app.Config.Rabbitmq)
-	ethereum.InitConnection(app.Config.Ethereum)
+	provider := ethereum.NewDefaultEthereumProvider()
 	redisClient := redis.NewRedisConnection(app.Config.Redis)
 
 	// instantiate engine
@@ -98,7 +98,7 @@ func NewRouter(logger *logrus.Logger) *routing.Router {
 	tokenService := services.NewTokenService(tokenDao)
 	tradeService := services.NewTradeService(tradeDao)
 	pairService := services.NewPairService(pairDao, tokenDao, eng, tradeService)
-	orderService := services.NewOrderService(orderDao, pairDao, accountDao, tradeDao, eng)
+	orderService := services.NewOrderService(orderDao, pairDao, accountDao, tradeDao, eng, provider)
 	orderBookService := services.NewOrderBookService(pairDao, tokenDao, eng)
 	cronService := crons.NewCronService(ohlcvService)
 	// walletService := services.NewWalletService(walletDao, balanceDao)
