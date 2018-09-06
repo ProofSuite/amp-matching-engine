@@ -2,7 +2,6 @@ package testutils
 
 import (
 	"context"
-	"errors"
 	"log"
 	"math/big"
 
@@ -10,9 +9,7 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/contracts/contractsinterfaces"
 	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind/backends"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core"
 	ethTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
@@ -21,19 +18,19 @@ import (
 type Deployer struct {
 	WalletService interfaces.WalletService
 	TxService     interfaces.TxService
-	Backend       bind.ContractBackend
+	Client        bind.ContractBackend
 }
 
-type SimulatedBackend struct {
-	*backends.SimulatedBackend
-}
-
-func (b *SimulatedBackend) PendingBalanceAt(ctx context.Context, account common.Address) (*big.Int, error) {
-	return nil, errors.New("PendingBalanceAt is not implemented on the simulated backend")
-}
-
-func NewSimulatedBackend(alloc core.GenesisAlloc, gasLimit uint64) *SimulatedBackend {
-	return &SimulatedBackend{backends.NewSimulatedBackend(alloc, gasLimit)} //, gasLimit)}
+func NewDeployer(
+	w interfaces.WalletService,
+	tx interfaces.TxService,
+	client bind.ContractBackend,
+) *Deployer {
+	return &Deployer{
+		WalletService: w,
+		TxService:     tx,
+		Client:        client,
+	}
 }
 
 func NewDefaultDeployer(w interfaces.WalletService, tx interfaces.TxService) (*Deployer, error) {
@@ -42,12 +39,12 @@ func NewDefaultDeployer(w interfaces.WalletService, tx interfaces.TxService) (*D
 		return nil, err
 	}
 
-	backend := ethclient.NewClient(conn)
+	client := ethclient.NewClient(conn)
 
 	return &Deployer{
 		WalletService: w,
 		TxService:     tx,
-		Backend:       backend,
+		Client:        client,
 	}, nil
 }
 
@@ -57,52 +54,62 @@ func NewWebSocketDeployer(w interfaces.WalletService, tx interfaces.TxService) (
 		return nil, err
 	}
 
-	backend := ethclient.NewClient(conn)
+	client := ethclient.NewClient(conn)
 
 	return &Deployer{
 		WalletService: w,
 		TxService:     tx,
-		Backend:       backend,
+		Client:        client,
 	}, nil
 }
 
-// NewDefaultSimulator returns a simulated deployer useful for unit testing certain functions
-// This simulator functions different from a standard deployer. It does not call a blockchain
-// and uses a fake backend.
-func NewSimulator(
-	w interfaces.WalletService,
-	tx interfaces.TxService,
-	accs []common.Address,
-) (*Deployer, error) {
-	weiBalance := &big.Int{}
-	ether := big.NewInt(1e18)
-	etherBalance := big.NewInt(1000)
+// func NewSimulator(accs []common.Address) {
+// 	genesisAlloc := make(core.GenesisAlloc)
+// }
 
-	genesisAlloc := make(core.GenesisAlloc)
-	weiBalance.Mul(etherBalance, ether)
+// // NewDefaultSimulator returns a simulated deployer useful for unit testing certain functions
+// // This simulator functions different from a standard deployer. It does not call a blockchain
+// // and uses a fake backend.
+// func NewSimulator(
+// 	w interfaces.WalletService,
+// 	tx interfaces.TxService,
+// 	accs []common.Address,
+// ) (*Deployer, error) {
+// 	weiBalance := &big.Int{}
+// 	ether := big.NewInt(1e18)
+// 	etherBalance := big.NewInt(1000)
 
-	for _, a := range accs {
-		(genesisAlloc)[a] = core.GenesisAccount{Balance: weiBalance}
-	}
+// 	genesisAlloc := make(core.GenesisAlloc)
+// 	weiBalance.Mul(etherBalance, ether)
 
-	simulator := NewSimulatedBackend(genesisAlloc, 5e6)
+// 	for _, a := range accs {
+// 		(genesisAlloc)[a] = core.GenesisAccount{Balance: weiBalance}
+// 	}
 
-	return &Deployer{
-		WalletService: w,
-		TxService:     tx,
-		Backend:       simulator,
-	}, nil
-}
+// 	simulator := NewSimulatedBackend(genesisAlloc, 5e6)
+
+// 	return &Deployer{
+// 		WalletService: w,
+// 		TxService:     tx,
+// 		Backend:       simulator,
+// 	}, nil
+// }
+
+// func NewSimulatedDeployer(
+// 	w interfaces.WalletService,
+// 	tx interfaces.TxService,
+// 	client adfadfasdf
+// )
 
 // DeployToken
 func (d *Deployer) DeployToken(receiver common.Address, amount *big.Int) (*contracts.Token, common.Address, *ethTypes.Transaction, error) {
 	// callOptions := d.TxService.GetTxCallOptions()
 	sendOptions, _ := d.TxService.GetTxSendOptions()
 
-	address, tx, tokenInterface, err := contractsinterfaces.DeployToken(sendOptions, d.Backend, receiver, amount)
+	address, tx, tokenInterface, err := contractsinterfaces.DeployToken(sendOptions, d.Client, receiver, amount)
 	if err != nil && err.Error() == "replacement transaction underpriced" {
 		sendOptions.Nonce, _ = d.GetNonce()
-		address, tx, tokenInterface, err = contractsinterfaces.DeployToken(sendOptions, d.Backend, receiver, amount)
+		address, tx, tokenInterface, err = contractsinterfaces.DeployToken(sendOptions, d.Client, receiver, amount)
 	} else if err != nil {
 		return nil, common.Address{}, nil, err
 	}
@@ -115,7 +122,7 @@ func (d *Deployer) DeployToken(receiver common.Address, amount *big.Int) (*contr
 }
 
 func (d *Deployer) NewToken(addr common.Address) (*contracts.Token, error) {
-	tokenInterface, err := contractsinterfaces.NewToken(addr, d.Backend)
+	tokenInterface, err := contractsinterfaces.NewToken(addr, d.Client)
 	if err != nil {
 		return nil, err
 	}
@@ -131,10 +138,10 @@ func (d *Deployer) NewToken(addr common.Address) (*contracts.Token, error) {
 func (d *Deployer) DeployExchange(wethToken common.Address, feeAccount common.Address) (*contracts.Exchange, common.Address, *ethTypes.Transaction, error) {
 	sendOptions, _ := d.TxService.GetTxSendOptions()
 
-	address, tx, exchangeInterface, err := contractsinterfaces.DeployExchange(sendOptions, d.Backend, wethToken, feeAccount)
+	address, tx, exchangeInterface, err := contractsinterfaces.DeployExchange(sendOptions, d.Client, wethToken, feeAccount)
 	if err != nil && err.Error() == "replacement transaction underpriced" {
 		sendOptions.Nonce, _ = d.GetNonce()
-		address, tx, exchangeInterface, err = contractsinterfaces.DeployExchange(sendOptions, d.Backend, wethToken, feeAccount)
+		address, tx, exchangeInterface, err = contractsinterfaces.DeployExchange(sendOptions, d.Client, wethToken, feeAccount)
 		if err != nil {
 			return nil, common.Address{}, nil, err
 		}
@@ -146,13 +153,13 @@ func (d *Deployer) DeployExchange(wethToken common.Address, feeAccount common.Ad
 		WalletService: d.WalletService,
 		TxService:     d.TxService,
 		Interface:     exchangeInterface,
-		Client:        d.Backend,
+		Client:        d.Client,
 	}, address, tx, err
 }
 
 // NewExchange
 func (d *Deployer) NewExchange(addr common.Address) (*contracts.Exchange, error) {
-	exchangeInterface, err := contractsinterfaces.NewExchange(addr, d.Backend)
+	exchangeInterface, err := contractsinterfaces.NewExchange(addr, d.Client)
 	if err != nil {
 		return nil, err
 	}
@@ -174,7 +181,7 @@ func (d *Deployer) GetNonce() (*big.Int, error) {
 		return nil, err
 	}
 
-	n, err := d.Backend.PendingNonceAt(ctx, wallet.Address)
+	n, err := d.Client.PendingNonceAt(ctx, wallet.Address)
 	if err != nil {
 		log.Print(err)
 		return nil, err
@@ -185,7 +192,7 @@ func (d *Deployer) GetNonce() (*big.Int, error) {
 
 func (d *Deployer) WaitMined(tx *ethTypes.Transaction) (*ethTypes.Receipt, error) {
 	ctx := context.Background()
-	backend := d.Backend.(bind.DeployBackend)
+	backend := d.Client.(bind.DeployBackend)
 
 	receipt, err := bind.WaitMined(ctx, backend, tx)
 	if err != nil {
@@ -194,3 +201,15 @@ func (d *Deployer) WaitMined(tx *ethTypes.Transaction) (*ethTypes.Receipt, error
 
 	return receipt, nil
 }
+
+// type SimulatedBackend struct {
+// 	*backends.SimulatedBackend
+// }
+
+// func (b *SimulatedBackend) PendingBalanceAt(ctx context.Context, account common.Address) (*big.Int, error) {
+// 	return nil, errors.New("PendingBalanceAt is not implemented on the simulated backend")
+// }
+
+// func NewSimulatedBackend(alloc core.GenesisAlloc, gasLimit uint64) *SimulatedBackend {
+// 	return &SimulatedBackend{backends.NewSimulatedBackend(alloc, gasLimit)} //, gasLimit)}
+// }

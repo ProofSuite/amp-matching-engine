@@ -23,7 +23,7 @@ type Operator struct {
 	WalletService     interfaces.WalletService
 	TradeService      interfaces.TradeService
 	OrderService      interfaces.OrderService
-	EthereumService   interfaces.EthereumService
+	EthereumProvider  interfaces.EthereumProvider
 	Exchange          interfaces.Exchange
 	TxQueues          []*TxQueue
 	QueueAddressIndex map[common.Address]*TxQueue
@@ -48,7 +48,7 @@ func NewOperator(
 	walletService interfaces.WalletService,
 	tradeService interfaces.TradeService,
 	orderService interfaces.OrderService,
-	ethereumService interfaces.EthereumService,
+	provider interfaces.EthereumProvider,
 	exchange interfaces.Exchange,
 ) (*Operator, error) {
 
@@ -63,11 +63,11 @@ func NewOperator(
 	for i, w := range wallets {
 		name := strconv.Itoa(i) + w.Address.Hex()
 		txq := &TxQueue{
-			Name:            name,
-			Wallet:          w,
-			TradeService:    tradeService,
-			EthereumService: ethereumService,
-			Exchange:        exchange,
+			Name:             name,
+			Wallet:           w,
+			TradeService:     tradeService,
+			EthereumProvider: provider,
+			Exchange:         exchange,
 		}
 
 		txqueues = append(txqueues, txq)
@@ -77,7 +77,7 @@ func NewOperator(
 		WalletService:     walletService,
 		TradeService:      tradeService,
 		OrderService:      orderService,
-		EthereumService:   ethereumService,
+		EthereumProvider:  provider,
 		Exchange:          exchange,
 		TxQueues:          txqueues,
 		QueueAddressIndex: addressIndex,
@@ -175,7 +175,6 @@ func (op *Operator) HandleEvents() error {
 			}()
 
 		case event := <-tradeEvents:
-
 			tr, err := op.TradeService.GetByHash(event.TradeHash)
 			if err != nil {
 				log.Print(err)
@@ -189,7 +188,7 @@ func (op *Operator) HandleEvents() error {
 			}
 
 			go func() {
-				_, err := op.EthereumService.WaitMined(tr.Tx)
+				_, err := op.EthereumProvider.WaitMined(tr.Tx)
 				if err != nil {
 					log.Print(err)
 				}
@@ -492,7 +491,7 @@ func (op *Operator) PurgeQueues() error {
 // 	// 	return err
 // 	// }
 
-// 	// balance, err := op.EthereumService.GetPendingBalanceAt(wallet.Address)
+// 	// balance, err := op.Ethereum.GetPendingBalanceAt(wallet.Address)
 // 	// if err != nil {
 // 	// 	return err
 // 	// }
@@ -571,7 +570,7 @@ func (op *Operator) PurgeQueues() error {
 
 // 			// only execute the next transaction in the queue when this transaction is mined
 // 			go func() {
-// 				_, err := op.EthereumService.WaitMined(tr.Tx)
+// 				_, err := op.Ethereum.WaitMined(tr.Tx)
 // 				if err != nil {
 // 					log.Printf("Could not execute trade: %v\n", err)
 // 				}

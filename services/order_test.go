@@ -16,6 +16,7 @@ func TestCancelTrades(t *testing.T) {
 	accountDao := new(mocks.AccountDao)
 	tradeDao := new(mocks.TradeDao)
 	engine := new(mocks.Engine)
+	ethereum := new(mocks.Ethereum)
 
 	orderService := NewOrderService(
 		orderDao,
@@ -23,6 +24,7 @@ func TestCancelTrades(t *testing.T) {
 		accountDao,
 		tradeDao,
 		engine,
+		ethereum,
 	)
 
 	t1 := testutils.GetTestTrade1()

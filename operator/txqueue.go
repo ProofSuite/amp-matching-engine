@@ -17,31 +17,31 @@ import (
 )
 
 type TxQueue struct {
-	Name            string
-	Wallet          *types.Wallet
-	TradeService    interfaces.TradeService
-	OrderService    interfaces.OrderService
-	EthereumService interfaces.EthereumService
-	Exchange        interfaces.Exchange
+	Name             string
+	Wallet           *types.Wallet
+	TradeService     interfaces.TradeService
+	OrderService     interfaces.OrderService
+	EthereumProvider interfaces.EthereumProvider
+	Exchange         interfaces.Exchange
 }
 
 // NewTxQueue
 func NewTxQueue(
 	n string,
 	tr interfaces.TradeService,
-	e interfaces.EthereumService,
+	p interfaces.EthereumProvider,
 	o interfaces.OrderService,
 	w *types.Wallet,
 	ex interfaces.Exchange,
 ) (*TxQueue, error) {
 
 	txq := &TxQueue{
-		Name:            n,
-		TradeService:    tr,
-		OrderService:    o,
-		EthereumService: e,
-		Wallet:          w,
-		Exchange:        ex,
+		Name:             n,
+		TradeService:     tr,
+		OrderService:     o,
+		EthereumProvider: p,
+		Wallet:           w,
+		Exchange:         ex,
 	}
 
 	return txq, nil
@@ -103,7 +103,7 @@ func (txq *TxQueue) QueueTrade(o *types.Order, t *types.Trade) error {
 // (order service)
 func (txq *TxQueue) ExecuteTrade(o *types.Order, tr *types.Trade) (*eth.Transaction, error) {
 	fmt.Println("EXECUTE_TRADE: ", tr.Hash.Hex())
-	nonce, err := txq.EthereumService.GetPendingNonceAt(txq.Wallet.Address)
+	nonce, err := txq.EthereumProvider.GetPendingNonceAt(txq.Wallet.Address)
 	if err != nil {
 		log.Print(err)
 		return nil, err
@@ -132,7 +132,7 @@ func (txq *TxQueue) ExecuteTrade(o *types.Order, tr *types.Trade) (*eth.Transact
 
 	go func() {
 		fmt.Println("MINING TRADE")
-		_, err := txq.EthereumService.WaitMined(tx)
+		_, err := txq.EthereumProvider.WaitMined(tx)
 		if err != nil {
 			log.Print(err)
 		}
