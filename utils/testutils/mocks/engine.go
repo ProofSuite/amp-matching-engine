@@ -66,6 +66,22 @@ func (_m *Engine) GetFullOrderBook(pair *types.Pair) [][]types.Order {
 	return r0
 }
 
+// GetFullOrderBook provides a mock function with given fields: pair
+func (_m *Engine) GetFullOrderBook(pair *types.Pair) [][]types.Order {
+	ret := _m.Called(pair)
+
+	var r0 [][]types.Order
+	if rf, ok := ret.Get(0).(func(*types.Pair) [][]types.Order); ok {
+		r0 = rf(pair)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([][]types.Order)
+		}
+	}
+
+	return r0
+}
+
 // GetOrderBook provides a mock function with given fields: pair
 func (_m *Engine) GetOrderBook(pair *types.Pair) ([]*map[string]float64, []*map[string]float64) {
 	ret := _m.Called(pair)

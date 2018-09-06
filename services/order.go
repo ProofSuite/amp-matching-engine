@@ -25,11 +25,12 @@ import (
 // OrderService struct with daos required, responsible for communicating with daos.
 // OrderService functions are responsible for interacting with daos and implements business logics.
 type OrderService struct {
-	orderDao   interfaces.OrderDao
-	pairDao    interfaces.PairDao
-	accountDao interfaces.AccountDao
-	tradeDao   interfaces.TradeDao
-	engine     interfaces.Engine
+	orderDao         interfaces.OrderDao
+	pairDao          interfaces.PairDao
+	accountDao       interfaces.AccountDao
+	tradeDao         interfaces.TradeDao
+	engine           interfaces.Engine
+	ethereumProvider interfaces.EthereumProvider
 }
 
 // NewOrderService returns a new instance of orderservice
@@ -39,8 +40,16 @@ func NewOrderService(
 	accountDao interfaces.AccountDao,
 	tradeDao interfaces.TradeDao,
 	engine interfaces.Engine,
+	ethereumProvider interfaces.EthereumProvider,
 ) *OrderService {
-	return &OrderService{orderDao, pairDao, accountDao, tradeDao, engine}
+	return &OrderService{
+		orderDao,
+		pairDao,
+		accountDao,
+		tradeDao,
+		engine,
+		ethereumProvider,
+	}
 }
 
 // GetByID fetches the details of an order using order's mongo ID
@@ -117,11 +126,7 @@ func (s *OrderService) NewOrder(o *types.Order) error {
 
 	// fee balance validation
 	wethAddress := common.HexToAddress("0x2EB24432177e82907dE24b7c5a6E0a5c03226135")
-	wethTokenBalance, err := s.accountDao.GetTokenBalance(
-		o.UserAddress,
-		wethAddress,
-	)
-
+	wethTokenBalance, err := s.accountDao.GetTokenBalance(o.UserAddress, wethAddress)
 	if err != nil {
 		log.Printf("Error retrieving WETH balance: %v", err.Error())
 		return err
@@ -144,7 +149,6 @@ func (s *OrderService) NewOrder(o *types.Order) error {
 	}
 
 	wethTokenBalance.Balance.Sub(wethTokenBalance.Balance, o.MakeFee)
-
 	wethTokenBalance.LockedBalance.Add(wethTokenBalance.LockedBalance, o.TakeFee)
 
 	err = s.accountDao.UpdateTokenBalance(o.UserAddress, wethAddress, wethTokenBalance)

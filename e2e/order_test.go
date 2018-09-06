@@ -34,7 +34,7 @@ func SetupTest() (*types.Wallet, *types.Wallet, *testutils.Client, *testutils.Cl
 	log.SetPrefix("\nLOG: ")
 
 	rabbitmq.InitConnection(app.Config.Rabbitmq)
-	ethereum.InitConnection(app.Config.Ethereum)
+	ethereum.NewDefaultEthereumProvider()
 	redisConn := redis.NewRedisConnection(app.Config.Redis)
 	defer redisConn.FlushAll()
 
