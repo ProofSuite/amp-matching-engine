@@ -54,6 +54,18 @@ func (dao *TokenDao) GetAll() (response []types.Token, err error) {
 	return
 }
 
+// GetQuote function fetches all the quote tokens in the token collection of mongodb.
+func (dao *TokenDao) GetQuote() (response []types.Token, err error) {
+	err = db.Get(dao.dbName, dao.collectionName, bson.M{"quote": true}, 0, 0, &response)
+	return
+}
+
+// GetBase function fetches all the base tokens in the token collection of mongodb.
+func (dao *TokenDao) GetBase() (response []types.Token, err error) {
+	err = db.Get(dao.dbName, dao.collectionName, bson.M{"quote": false}, 0, 0, &response)
+	return
+}
+
 // GetByID function fetches details of a token based on its mongo id
 func (dao *TokenDao) GetByID(id bson.ObjectId) (response *types.Token, err error) {
 	err = db.GetByID(dao.dbName, dao.collectionName, id, &response)

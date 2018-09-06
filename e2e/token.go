@@ -17,7 +17,7 @@ func testToken(t *testing.T) []types.Token {
 	listTokens := make([]types.Token, 0)
 	dbTokensList := make([]types.Token, 0)
 
-	expectedToken1 := types.Token{
+	quoteToken := types.Token{
 		Name:            "HotPotCoin",
 		Symbol:          "HPC",
 		Decimal:         18,
@@ -26,12 +26,13 @@ func testToken(t *testing.T) []types.Token {
 		Quote:           true,
 	}
 
-	expectedToken2 := types.Token{
+	baseToken := types.Token{
 		Name:            "Aura.Test",
 		Symbol:          "AUT",
 		Decimal:         18,
 		ContractAddress: common.HexToAddress("0x2034842261b82651885751fc293bba7ba5398156"),
 		Active:          true,
+		Quote:           false,
 	}
 	wethToken := types.Token{
 		Name:            "Weth",
@@ -39,6 +40,7 @@ func testToken(t *testing.T) []types.Token {
 		Decimal:         18,
 		ContractAddress: common.HexToAddress("0x2EB24432177e82907dE24b7c5a6E0a5c03226135"),
 		Active:          true,
+		Quote:           false,
 	}
 	// create token test
 	res := testAPI(router, "POST", "/tokens", `{  "name":"HotPotCoin", "symbol":"HPC", "decimal":18, "contractAddress":"0x1888a8db0b7db59413ce07150b3373972bf818d3","active":true,"quote":true}`)
@@ -49,13 +51,13 @@ func testToken(t *testing.T) []types.Token {
 		fmt.Printf("%v", err)
 	}
 
-	if compareToken(t, resp, expectedToken1) {
+	if compareToken(t, resp, quoteToken) {
 		fmt.Println("PASS  't1 - create token'")
 	} else {
 		fmt.Println("FAIL  't1 - create token'")
 	}
 
-	listTokens = append(listTokens, expectedToken1)
+	listTokens = append(listTokens, quoteToken)
 	dbTokensList = append(dbTokensList, resp)
 
 	// Duplicate token test
@@ -74,13 +76,13 @@ func testToken(t *testing.T) []types.Token {
 		fmt.Printf("%v", err)
 	}
 
-	if compareToken(t, resp, expectedToken2) {
+	if compareToken(t, resp, baseToken) {
 		fmt.Println("PASS  't3 - create second token'")
 	} else {
 		fmt.Println("FAIL  't3 - create second token'")
 	}
 
-	listTokens = append(listTokens, expectedToken2)
+	listTokens = append(listTokens, baseToken)
 	dbTokensList = append(dbTokensList, resp)
 
 	// fetch token detail test
@@ -89,7 +91,7 @@ func testToken(t *testing.T) []types.Token {
 	if err := json.Unmarshal(res.Body.Bytes(), &resp); err != nil {
 		fmt.Printf("%v", err)
 	}
-	if compareToken(t, resp, expectedToken1) {
+	if compareToken(t, resp, quoteToken) {
 		fmt.Println("PASS  't4 - fetch token'")
 	} else {
 		fmt.Println("FAIL  't4 - fetch token'")
@@ -132,6 +134,49 @@ func testToken(t *testing.T) []types.Token {
 	}
 	dbTokensList = append(dbTokensList, resp)
 
+	// fetch quote tokens list
+	res = testAPI(router, "GET", "/tokens/quote", "")
+	assert.Equal(t, http.StatusOK, res.Code, "t7 - fetch quote token list")
+	if err := json.Unmarshal(res.Body.Bytes(), &respArray); err != nil {
+		fmt.Printf("%v", err)
+	}
+	quoteTokens := []types.Token{quoteToken}
+	if assert.Lenf(t, respArray, len(quoteTokens), fmt.Sprintf("Expected Length: %v Got length: %v", len(quoteTokens), len(respArray))) {
+		rb := true
+		for i, r := range respArray {
+			if rb = rb && compareToken(t, r, quoteTokens[i]); !rb {
+				fmt.Println("FAIL  't7 - fetch quote token list'")
+				break
+			}
+		}
+		if rb {
+			fmt.Println("PASS  't7 - fetch quote token list'")
+		}
+	} else {
+		fmt.Println("FAIL  't7 - fetch quote token list'")
+	}
+
+	// fetch tokens list
+	res = testAPI(router, "GET", "/tokens/base", "")
+	assert.Equal(t, http.StatusOK, res.Code, "t8 - fetch base token list")
+	if err := json.Unmarshal(res.Body.Bytes(), &respArray); err != nil {
+		fmt.Printf("%v", err)
+	}
+	baseTokens := []types.Token{baseToken, wethToken}
+	if assert.Lenf(t, respArray, len(baseTokens), fmt.Sprintf("Expected Length: %v Got length: %v", len(baseTokens), len(respArray))) {
+		rb := true
+		for i, r := range respArray {
+			if rb = rb && compareToken(t, r, baseTokens[i]); !rb {
+				fmt.Println("FAIL  't8 - fetch base token list'")
+				break
+			}
+		}
+		if rb {
+			fmt.Println("PASS  't8 - fetch base token list'")
+		}
+	} else {
+		fmt.Println("FAIL  't8 - fetch base token list'")
+	}
 	return dbTokensList
 }
 

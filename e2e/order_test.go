@@ -385,7 +385,7 @@ func TestMatchPartialOrder3(t *testing.T) {
 
 	t1.Hash = t1.ComputeHash()
 
-	client2.ResponseLogs[1].Print()
+	// client2.ResponseLogs[1].Print()
 
 	//Responses received by the first client
 	res1 := types.NewOrderAddedWebsocketMessage(o1, pair, 0)

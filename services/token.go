@@ -48,3 +48,13 @@ func (s *TokenService) GetByAddress(addr common.Address) (*types.Token, error) {
 func (s *TokenService) GetAll() ([]types.Token, error) {
 	return s.tokenDao.GetAll()
 }
+
+// GetQuote fetches all the quote tokens from db
+func (s *TokenService) GetQuote() ([]types.Token, error) {
+	return s.tokenDao.GetQuote()
+}
+
+// GetBase fetches all the quote tokens from db
+func (s *TokenService) GetBase() ([]types.Token, error) {
+	return s.tokenDao.GetBase()
+}

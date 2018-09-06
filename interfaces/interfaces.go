@@ -22,6 +22,8 @@ type OrderDao interface {
 	GetByHash(hash common.Hash) (*types.Order, error)
 	GetByHashes(hashes []common.Hash) ([]*types.Order, error)
 	GetByUserAddress(addr common.Address) ([]*types.Order, error)
+	GetCurrentByUserAddress(addr common.Address) ([]*types.Order, error)
+	GetHistoryByUserAddress(addr common.Address) ([]*types.Order, error)
 	Drop() error
 }
 
@@ -77,6 +79,8 @@ type TokenDao interface {
 	GetAll() ([]types.Token, error)
 	GetByID(id bson.ObjectId) (*types.Token, error)
 	GetByAddress(owner common.Address) (*types.Token, error)
+	GetQuote() ([]types.Token, error)
+	GetBase() ([]types.Token, error)
 	Drop() error
 }
 
@@ -140,6 +144,8 @@ type OrderService interface {
 	SendMessage(msgType string, hash common.Hash, data interface{})
 	SubscribeQueue(fn func(*rabbitmq.Message) error) error
 	PublishOrder(order *rabbitmq.Message) error
+	GetCurrentByUserAddress(addr common.Address) ([]*types.Order, error)
+	GetHistoryByUserAddress(addr common.Address) ([]*types.Order, error)
 }
 
 type OrderBookService interface {
@@ -163,6 +169,8 @@ type TokenService interface {
 	GetByID(id bson.ObjectId) (*types.Token, error)
 	GetByAddress(addr common.Address) (*types.Token, error)
 	GetAll() ([]types.Token, error)
+	GetQuote() ([]types.Token, error)
+	GetBase() ([]types.Token, error)
 }
 
 type TradeService interface {
