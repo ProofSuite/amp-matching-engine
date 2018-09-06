@@ -133,6 +133,52 @@ func (_m *OrderDao) GetByUserAddress(addr common.Address) ([]*types.Order, error
 	return r0, r1
 }
 
+// GetCurrentByUserAddress provides a mock function with given fields: addr
+func (_m *OrderDao) GetCurrentByUserAddress(addr common.Address) ([]*types.Order, error) {
+	ret := _m.Called(addr)
+
+	var r0 []*types.Order
+	if rf, ok := ret.Get(0).(func(common.Address) []*types.Order); ok {
+		r0 = rf(addr)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*types.Order)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(common.Address) error); ok {
+		r1 = rf(addr)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetHistoryByUserAddress provides a mock function with given fields: addr
+func (_m *OrderDao) GetHistoryByUserAddress(addr common.Address) ([]*types.Order, error) {
+	ret := _m.Called(addr)
+
+	var r0 []*types.Order
+	if rf, ok := ret.Get(0).(func(common.Address) []*types.Order); ok {
+		r0 = rf(addr)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*types.Order)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(common.Address) error); ok {
+		r1 = rf(addr)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // Update provides a mock function with given fields: id, o
 func (_m *OrderDao) Update(id bson.ObjectId, o *types.Order) error {
 	ret := _m.Called(id, o)

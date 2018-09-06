@@ -12,6 +12,7 @@ import (
 )
 
 func testPair(t *testing.T, tokens []types.Token) []types.Pair {
+	fmt.Printf("\n=== Starting Pair test ===\n")
 	router := NewRouter()
 	listPairs := make([]types.Pair, 0)
 

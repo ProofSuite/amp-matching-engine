@@ -25,11 +25,13 @@ func ServeOrderResource(
 	engine interfaces.Engine,
 ) {
 	e := &orderEndpoint{orderService, engine}
-	rg.Get("/orders/<address>", e.get)
+	rg.Get("/orders/<address>/history", e.queryHistory)
+	rg.Get("/orders/<address>/current", e.queryCurrent)
+	rg.Get("/orders/<address>", e.query)
 	ws.RegisterChannel(ws.OrderChannel, e.ws)
 }
 
-func (e *orderEndpoint) get(c *routing.Context) error {
+func (e *orderEndpoint) query(c *routing.Context) error {
 	addr := c.Param("address")
 	if !common.IsHexAddress(addr) {
 		return errors.NewAPIError(400, "Invalid Adrress", map[string]interface{}{})
@@ -37,6 +39,36 @@ func (e *orderEndpoint) get(c *routing.Context) error {
 
 	address := common.HexToAddress(addr)
 	orders, err := e.orderService.GetByUserAddress(address)
+	if err != nil {
+		return errors.NewAPIError(400, "Fetch Error", map[string]interface{}{})
+	}
+
+	return c.Write(orders)
+}
+
+func (e *orderEndpoint) queryCurrent(c *routing.Context) error {
+	addr := c.Param("address")
+	if !common.IsHexAddress(addr) {
+		return errors.NewAPIError(400, "Invalid Adrress", map[string]interface{}{})
+	}
+
+	address := common.HexToAddress(addr)
+	orders, err := e.orderService.GetCurrentByUserAddress(address)
+	if err != nil {
+		return errors.NewAPIError(400, "Fetch Error", map[string]interface{}{})
+	}
+
+	return c.Write(orders)
+}
+
+func (e *orderEndpoint) queryHistory(c *routing.Context) error {
+	addr := c.Param("address")
+	if !common.IsHexAddress(addr) {
+		return errors.NewAPIError(400, "Invalid Adrress", map[string]interface{}{})
+	}
+
+	address := common.HexToAddress(addr)
+	orders, err := e.orderService.GetHistoryByUserAddress(address)
 	if err != nil {
 		return errors.NewAPIError(400, "Fetch Error", map[string]interface{}{})
 	}
