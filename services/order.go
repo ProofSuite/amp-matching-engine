@@ -31,6 +31,7 @@ type OrderService struct {
 	tradeDao         interfaces.TradeDao
 	engine           interfaces.Engine
 	ethereumProvider interfaces.EthereumProvider
+	amqp             *rabbitmq.Connection
 }
 
 // NewOrderService returns a new instance of orderservice
@@ -41,6 +42,7 @@ func NewOrderService(
 	tradeDao interfaces.TradeDao,
 	engine interfaces.Engine,
 	ethereumProvider interfaces.EthereumProvider,
+	amqp *rabbitmq.Connection,
 ) *OrderService {
 	return &OrderService{
 		orderDao,
@@ -49,6 +51,7 @@ func NewOrderService(
 		tradeDao,
 		engine,
 		ethereumProvider,
+		amqp,
 	}
 }
 
@@ -564,8 +567,8 @@ func (s *OrderService) transferAmount(o *types.Order, filledAmount *big.Int) {
 }
 
 func (s *OrderService) SubscribeQueue(fn func(*rabbitmq.Message) error) error {
-	ch := rabbitmq.GetChannel("orderSubscribe")
-	q := rabbitmq.GetQueue(ch, "order")
+	ch := s.amqp.GetChannel("orderSubscribe")
+	q := s.amqp.GetQueue(ch, "order")
 
 	go func() {
 		msgs, err := ch.Consume(
@@ -603,8 +606,8 @@ func (s *OrderService) SubscribeQueue(fn func(*rabbitmq.Message) error) error {
 }
 
 func (s *OrderService) PublishOrder(order *rabbitmq.Message) error {
-	ch := rabbitmq.GetChannel("orderPublish")
-	q := rabbitmq.GetQueue(ch, "order")
+	ch := s.amqp.GetChannel("orderPublish")
+	q := s.amqp.GetQueue(ch, "order")
 
 	bytes, err := json.Marshal(order)
 	if err != nil {

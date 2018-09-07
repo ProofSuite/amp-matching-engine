@@ -196,38 +196,3 @@ func (dao *AccountDao) UpdateAllowance(owner common.Address, token common.Addres
 func (dao *AccountDao) Drop() {
 	db.DropCollection(dao.dbName, dao.collectionName)
 }
-
-// func (dao *AccountDao) UpdateAllowance(owner common.Address, token common.Address, allowance *big.Int) (err error) {
-// 	q := bson.M{
-// 		"address": bson.RegEx{
-// 			Pattern: owner.Hex(),
-// 			Options: "i",
-// 		},
-// 	}
-// 	updateQuery := bson.M{
-// 		"$set": bson.M{
-// 			"tokenBalances." + token.Hex() + ".allowance": allowance.String(),
-// 		},
-// 	}
-
-// 	err = db.Update(dao.dbName, dao.collectionName, q, updateQuery)
-// 	return
-// }
-
-// func (dao *AccountDao) UpdateLockedBalance(owner common.Address, token common.Address, locked *big.Int) (err error) {
-// 	q := bson.M{
-// 		"address": bson.RegEx{
-// 			Pattern: owner.Hex(),
-// 			Options: "i",
-// 		},
-// 	}
-// 	updateQuery := bson.M{
-// 		"$set": bson.M{
-// 			"tokenBalances." + token.Hex() + ".lockedBalance": locked.String(),
-// 		},
-// 	}
-
-// 	err = db.Update(dao.dbName, dao.collectionName, q, updateQuery)
-// 	return
-
-// }

@@ -75,12 +75,11 @@ func NewRouter(logger *logrus.Logger) *routing.Router {
 
 	rg := router.Group("")
 
-	rabbitmq.InitConnection(app.Config.Rabbitmq)
+	amqp := rabbitmq.InitConnection(app.Config.Rabbitmq)
 	provider := ethereum.NewDefaultEthereumProvider()
 	redisClient := redis.NewRedisConnection(app.Config.Redis)
-
 	// instantiate engine
-	eng, err := engine.InitEngine(redisClient)
+	eng, err := engine.InitEngine(redisClient, amqp)
 	if err != nil {
 		panic(err)
 	}
@@ -98,7 +97,7 @@ func NewRouter(logger *logrus.Logger) *routing.Router {
 	tokenService := services.NewTokenService(tokenDao)
 	tradeService := services.NewTradeService(tradeDao)
 	pairService := services.NewPairService(pairDao, tokenDao, eng, tradeService)
-	orderService := services.NewOrderService(orderDao, pairDao, accountDao, tradeDao, eng, provider)
+	orderService := services.NewOrderService(orderDao, pairDao, accountDao, tradeDao, eng, provider, amqp)
 	orderBookService := services.NewOrderBookService(pairDao, tokenDao, eng)
 	cronService := crons.NewCronService(ohlcvService)
 	// walletService := services.NewWalletService(walletDao, balanceDao)
@@ -115,7 +114,6 @@ func NewRouter(logger *logrus.Logger) *routing.Router {
 	orderService.SubscribeQueue(eng.HandleOrders)
 	eng.SubscribeResponseQueue(orderService.HandleEngineResponse)
 
-	// fmt.Printf("\n%+v\n", app.Config.TickDuration)
 	cronService.InitCrons()
 	return router
 }

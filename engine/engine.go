@@ -16,6 +16,7 @@ import (
 // Engine contains daos and redis connection required for engine to work
 type Engine struct {
 	redisConn *redis.RedisConnection
+	amqp      *rabbitmq.Connection
 	mutex     *sync.Mutex
 }
 
@@ -23,9 +24,9 @@ type Engine struct {
 var engine *Engine
 
 // InitEngine initializes the engine singleton instance
-func InitEngine(redisConn *redis.RedisConnection) (*Engine, error) {
+func InitEngine(redisConn *redis.RedisConnection, amqp *rabbitmq.Connection) (*Engine, error) {
 	if engine == nil {
-		engine = &Engine{redisConn, &sync.Mutex{}}
+		engine = &Engine{redisConn, amqp, &sync.Mutex{}}
 	}
 
 	return engine, nil
@@ -34,8 +35,8 @@ func InitEngine(redisConn *redis.RedisConnection) (*Engine, error) {
 // publishEngineResponse is used by matching engine to publish or send response of matching engine to
 // system for further processing
 func (e *Engine) publishEngineResponse(res *types.EngineResponse) error {
-	ch := rabbitmq.GetChannel("erPub")
-	q := rabbitmq.GetQueue(ch, "engineResponse")
+	ch := e.amqp.GetChannel("erPub")
+	q := e.amqp.GetQueue(ch, "engineResponse")
 
 	bytes, err := json.Marshal(res)
 	if err != nil {
@@ -65,8 +66,8 @@ func (e *Engine) publishEngineResponse(res *types.EngineResponse) error {
 // SubscribeResponseQueue subscribes to engineResponse queue and triggers the function
 // passed as arguments for each message.
 func (e *Engine) SubscribeResponseQueue(fn func(*types.EngineResponse) error) error {
-	ch := rabbitmq.GetChannel("erSub")
-	q := rabbitmq.GetQueue(ch, "engineResponse")
+	ch := e.amqp.GetChannel("erSub")
+	q := e.amqp.GetQueue(ch, "engineResponse")
 
 	go func() {
 		msgs, err := ch.Consume(
