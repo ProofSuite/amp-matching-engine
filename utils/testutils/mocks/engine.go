@@ -106,11 +106,11 @@ func (_m *Engine) HandleOrders(msg *rabbitmq.Message) error {
 }
 
 // RecoverOrders provides a mock function with given fields: orders
-func (_m *Engine) RecoverOrders(orders []*types.FillOrder) error {
+func (_m *Engine) RecoverOrders(orders []*types.OrderTradePair) error {
 	ret := _m.Called(orders)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func([]*types.FillOrder) error); ok {
+	if rf, ok := ret.Get(0).(func([]*types.OrderTradePair) error); ok {
 		r0 = rf(orders)
 	} else {
 		r0 = ret.Error(0)

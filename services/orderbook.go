@@ -30,7 +30,7 @@ func NewOrderBookService(
 }
 
 // GetOrderBook fetches orderbook from engine/redis and returns it as an map[string]interface
-func (s *OrderBookService) GetOrderBook(bt, qt common.Address) (ob map[string]interface{}, err error) {
+func (s *OrderBookService) GetOrderBook(bt, qt common.Address) (map[string]interface{}, error) {
 	res, err := s.pairDao.GetByTokenAddress(bt, qt)
 	if err != nil {
 		message := map[string]string{
@@ -44,11 +44,11 @@ func (s *OrderBookService) GetOrderBook(bt, qt common.Address) (ob map[string]in
 	// sKey, bKey := res.GetOrderBookKeys()
 
 	bids, asks := s.eng.GetOrderBook(res)
-	ob = map[string]interface{}{
+	ob := map[string]interface{}{
 		"asks": asks,
 		"bids": bids,
 	}
-	return
+	return ob, nil
 }
 
 // SubscribeLite is responsible for handling incoming orderbook subscription messages
@@ -87,7 +87,7 @@ func (s *OrderBookService) UnsubscribeLite(conn *ws.Conn, bt, qt common.Address)
 }
 
 // GetFullOrderBook fetches complete orderbook from engine/redis
-func (s *OrderBookService) GetFullOrderBook(bt, qt common.Address) (ob [][]types.Order, err error) {
+func (s *OrderBookService) GetFullOrderBook(bt, qt common.Address) ([][]types.Order, error) {
 	res, err := s.pairDao.GetByTokenAddress(bt, qt)
 	if err != nil {
 		message := map[string]string{

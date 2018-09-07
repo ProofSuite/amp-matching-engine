@@ -280,7 +280,7 @@ func (t *Trade) SetBSON(raw bson.Raw) error {
 	t.QuoteToken = common.HexToAddress(decoded.QuoteToken)
 	t.OrderHash = common.HexToHash(decoded.OrderHash)
 	t.Hash = common.HexToHash(decoded.Hash)
-	t.TxHash = common.HexToHash(decoded.Hash)
+	t.TxHash = common.HexToHash(decoded.TxHash)
 
 	t.TradeNonce = math.ToBigInt(decoded.TradeNonce)
 	t.Amount = math.ToBigInt(decoded.Amount)

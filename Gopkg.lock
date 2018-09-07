@@ -2,6 +2,17 @@
 
 
 [[projects]]
+<<<<<<< 556f5b5c7dedd795707d27e85a3192db0f0506a4
+=======
+  digest = "1:a81e18f55d2cec58eff1d74f0ecffd00baec0035ff824478072945595bc6a48e"
+  name = "github.com/Proofsuite/go-ethereum"
+  packages = ["ethclient"]
+  pruneopts = "T"
+  revision = "ff9b14617e73c07dfa028bc477fe86c1e04d80c5"
+  version = "v1.8.9"
+
+[[projects]]
+>>>>>>> amqp singleton pattern changed to DI, daos,services named returns removed
   digest = "1:e3bb58bcd5cf318d91ccdb290fd8e0e78d16add716b1ccf861fed19c1551fde0"
   name = "github.com/Sirupsen/logrus"
   packages = ["."]
@@ -547,6 +558,10 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+<<<<<<< 556f5b5c7dedd795707d27e85a3192db0f0506a4
+=======
+    "github.com/Proofsuite/go-ethereum/ethclient",
+>>>>>>> amqp singleton pattern changed to DI, daos,services named returns removed
     "github.com/Sirupsen/logrus",
     "github.com/alicebob/miniredis",
     "github.com/ethereum/go-ethereum",

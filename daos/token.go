@@ -35,7 +35,7 @@ func NewTokenDao() *TokenDao {
 }
 
 // Create function performs the DB insertion task for token collection
-func (dao *TokenDao) Create(token *types.Token) (err error) {
+func (dao *TokenDao) Create(token *types.Token) error {
 	if err := token.Validate(); err != nil {
 		return err
 	}
@@ -44,32 +44,36 @@ func (dao *TokenDao) Create(token *types.Token) (err error) {
 	token.CreatedAt = time.Now()
 	token.UpdatedAt = time.Now()
 
-	err = db.Create(dao.dbName, dao.collectionName, token)
-	return
+	err := db.Create(dao.dbName, dao.collectionName, token)
+	return err
 }
 
 // GetAll function fetches all the tokens in the token collection of mongodb.
-func (dao *TokenDao) GetAll() (response []types.Token, err error) {
-	err = db.Get(dao.dbName, dao.collectionName, bson.M{}, 0, 0, &response)
-	return
+func (dao *TokenDao) GetAll() ([]types.Token, error) {
+	var response []types.Token
+	err := db.Get(dao.dbName, dao.collectionName, bson.M{}, 0, 0, &response)
+	return response, err
 }
 
 // GetQuote function fetches all the quote tokens in the token collection of mongodb.
-func (dao *TokenDao) GetQuote() (response []types.Token, err error) {
-	err = db.Get(dao.dbName, dao.collectionName, bson.M{"quote": true}, 0, 0, &response)
-	return
+func (dao *TokenDao) GetQuote() ([]types.Token, error) {
+	var response []types.Token
+	err := db.Get(dao.dbName, dao.collectionName, bson.M{"quote": true}, 0, 0, &response)
+	return response, err
 }
 
 // GetBase function fetches all the base tokens in the token collection of mongodb.
-func (dao *TokenDao) GetBase() (response []types.Token, err error) {
-	err = db.Get(dao.dbName, dao.collectionName, bson.M{"quote": false}, 0, 0, &response)
-	return
+func (dao *TokenDao) GetBase() ([]types.Token, error) {
+	var response []types.Token
+	err := db.Get(dao.dbName, dao.collectionName, bson.M{"quote": false}, 0, 0, &response)
+	return response, err
 }
 
 // GetByID function fetches details of a token based on its mongo id
-func (dao *TokenDao) GetByID(id bson.ObjectId) (response *types.Token, err error) {
-	err = db.GetByID(dao.dbName, dao.collectionName, id, &response)
-	return
+func (dao *TokenDao) GetByID(id bson.ObjectId) (*types.Token, error) {
+	var response *types.Token
+	err := db.GetByID(dao.dbName, dao.collectionName, id, &response)
+	return response, err
 }
 
 // GetByAddress function fetches details of a token based on its contract address
