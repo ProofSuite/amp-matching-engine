@@ -107,6 +107,7 @@ func (a *Account) SetBSON(raw bson.Raw) error {
 	}
 
 	a.Address = common.HexToAddress(decoded.Address)
+	a.ID = decoded.ID
 	a.IsBlocked = decoded.IsBlocked
 	a.CreatedAt = decoded.CreatedAt
 	a.UpdatedAt = decoded.UpdatedAt

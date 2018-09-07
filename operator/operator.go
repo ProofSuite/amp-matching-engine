@@ -22,14 +22,15 @@ import (
 // account that initially deployed the exchange contract or an address with operator rights
 // on the contract
 type Operator struct {
-	WalletService     interfaces.WalletService
-	TradeService      interfaces.TradeService
-	OrderService      interfaces.OrderService
-	EthereumProvider  interfaces.EthereumProvider
-	Exchange          interfaces.Exchange
-	TxQueues          []*TxQueue
-	QueueAddressIndex map[common.Address]*TxQueue
-	mutex             *sync.Mutex
+	WalletService      interfaces.WalletService
+	TradeService       interfaces.TradeService
+	OrderService       interfaces.OrderService
+	EthereumProvider   interfaces.EthereumProvider
+	Exchange           interfaces.Exchange
+	TxQueues           []*TxQueue
+	QueueAddressIndex  map[common.Address]*TxQueue
+	mutex              *sync.Mutex
+	RabbitMQConnection *rabbitmq.Connection
 }
 
 type OperatorInterface interface {
@@ -53,6 +54,7 @@ func NewOperator(
 	orderService interfaces.OrderService,
 	provider interfaces.EthereumProvider,
 	exchange interfaces.Exchange,
+	conn *rabbitmq.Connection,
 ) (*Operator, error) {
 	txqueues := []*TxQueue{}
 	addressIndex := make(map[common.Address]*TxQueue)
@@ -64,8 +66,8 @@ func NewOperator(
 
 	for i, w := range wallets {
 		name := strconv.Itoa(i) + w.Address.Hex()
-		ch := rabbitmq.GetChannel("TX_QUEUES:" + name)
-		err := rabbitmq.DeclareQueue(ch, "TX_QUEUES:"+name)
+		ch := conn.GetChannel("TX_QUEUES:" + name)
+		err := conn.DeclareQueue(ch, "TX_QUEUES:"+name)
 		if err != nil {
 			panic(err)
 		}
@@ -104,8 +106,8 @@ func NewOperator(
 
 // SubscribeOperatorMessages
 func (op *Operator) SubscribeOperatorMessages(fn func(*types.OperatorMessage) error) error {
-	ch := rabbitmq.GetChannel("OPERATOR_SUB")
-	q := rabbitmq.GetQueue(ch, "TX_MESSAGES")
+	ch := op.RabbitMQConnection.GetChannel("OPERATOR_SUB")
+	q := op.RabbitMQConnection.GetQueue(ch, "TX_MESSAGES")
 
 	go func() {
 		msgs, err := ch.Consume(
@@ -232,8 +234,8 @@ func (op *Operator) HandleTrades(msg *types.OperatorMessage) error {
 
 // PublishTxErrorMessage publishes a messages when a trade execution fails
 func (op *Operator) PublishTxErrorMessage(tr *types.Trade, errID int) error {
-	ch := rabbitmq.GetChannel("OPERATOR_PUB")
-	q := rabbitmq.GetQueue(ch, "TX_MESSAGES")
+	ch := op.RabbitMQConnection.GetChannel("OPERATOR_PUB")
+	q := op.RabbitMQConnection.GetQueue(ch, "TX_MESSAGES")
 	msg := &types.OperatorMessage{
 		MessageType: "TRADE_ERROR_MESSAGE",
 		Trade:       tr,
@@ -245,7 +247,7 @@ func (op *Operator) PublishTxErrorMessage(tr *types.Trade, errID int) error {
 		log.Printf("Failed to marshal %s: %s", msg.MessageType, err)
 	}
 
-	err = rabbitmq.Publish(ch, q, bytes)
+	err = op.RabbitMQConnection.Publish(ch, q, bytes)
 	if err != nil {
 		log.Print(err)
 		return err
@@ -256,8 +258,8 @@ func (op *Operator) PublishTxErrorMessage(tr *types.Trade, errID int) error {
 
 // PublishTradeCancelMessage publishes a message when a trade is canceled
 func (op *Operator) PublishTradeCancelMessage(o *types.Order, tr *types.Trade) error {
-	ch := rabbitmq.GetChannel("OPERATOR_PUB")
-	q := rabbitmq.GetQueue(ch, "TX_MESSAGES")
+	ch := op.RabbitMQConnection.GetChannel("OPERATOR_PUB")
+	q := op.RabbitMQConnection.GetQueue(ch, "TX_MESSAGES")
 	msg := &types.OperatorMessage{
 		MessageType: "TRADE_CANCEL_MESSAGE",
 		Trade:       tr,
@@ -268,7 +270,7 @@ func (op *Operator) PublishTradeCancelMessage(o *types.Order, tr *types.Trade) e
 		log.Printf("Failed to marshal %s: %s", msg.MessageType, err)
 	}
 
-	err = rabbitmq.Publish(ch, q, bytes)
+	err = op.RabbitMQConnection.Publish(ch, q, bytes)
 	if err != nil {
 		log.Print(err)
 		return err
@@ -279,8 +281,8 @@ func (op *Operator) PublishTradeCancelMessage(o *types.Order, tr *types.Trade) e
 
 // PublishTradeSuccessMessage publishes a message when a trade transaction is successful
 func (op *Operator) PublishTradeSuccessMessage(o *types.Order, tr *types.Trade) error {
-	ch := rabbitmq.GetChannel("OPERATOR_PUB")
-	q := rabbitmq.GetQueue(ch, "TX_MESSAGES")
+	ch := op.RabbitMQConnection.GetChannel("OPERATOR_PUB")
+	q := op.RabbitMQConnection.GetQueue(ch, "TX_MESSAGES")
 	msg := &types.OperatorMessage{
 		MessageType: "TRADE_SUCCESS_MESSAGE",
 		Order:       o,
@@ -292,7 +294,7 @@ func (op *Operator) PublishTradeSuccessMessage(o *types.Order, tr *types.Trade) 
 		log.Printf("Failed to marshal %s: %s", msg.MessageType, err)
 	}
 
-	err = rabbitmq.Publish(ch, q, bytes)
+	err = op.RabbitMQConnection.Publish(ch, q, bytes)
 	if err != nil {
 		log.Print(err)
 		return err

@@ -661,17 +661,3 @@ func (e *Engine) RemoveFromOrderMap(hash common.Hash) error {
 
 	return nil
 }
-
-// // RecoverOrders2 is an alternative suggestion for RecoverOrders2
-// // It would requires an alternative key system for redis where we store only the hash with the listkey prefix
-// func (e *Resource) RecoverOrders2(hashes []common.Hash, amounts []*big.Int) error {
-// 	for i, _ := range hashes {
-// 		err := e.updateOrderAmount(hashes[i], amounts[i])
-// 		if err != nil {
-// 			log.Print(err)
-// 			return err
-// 		}
-// 	}
-
-// 	return nil
-// }

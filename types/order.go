@@ -503,16 +503,28 @@ func (o *Order) GetBSON() (interface{}, error) {
 		Status:          o.Status,
 		Side:            o.Side,
 		Hash:            o.Hash.Hex(),
-		Price:           o.Price.String(),
-		PricePoint:      o.PricePoint.String(),
-		Amount:          o.Amount.String(),
-		FilledAmount:    o.FilledAmount.String(),
 		Nonce:           o.Nonce.String(),
 		Expires:         o.Expires.String(),
 		MakeFee:         o.MakeFee.String(),
 		TakeFee:         o.TakeFee.String(),
 		CreatedAt:       o.CreatedAt,
 		UpdatedAt:       o.UpdatedAt,
+	}
+
+	if o.Price != nil {
+		or.Price = o.Price.String()
+	}
+
+	if o.PricePoint != nil {
+		or.PricePoint = o.PricePoint.String()
+	}
+
+	if o.Amount != nil {
+		or.Amount = o.Amount.String()
+	}
+
+	if o.FilledAmount != nil {
+		or.FilledAmount = o.FilledAmount.String()
 	}
 
 	if o.Signature != nil {
@@ -584,17 +596,30 @@ func (o *Order) SetBSON(raw bson.Raw) error {
 	o.BuyAmount = math.ToBigInt(decoded.BuyAmount)
 	o.SellAmount = math.ToBigInt(decoded.SellAmount)
 	o.FilledAmount = math.ToBigInt(decoded.FilledAmount)
-	o.Amount = math.ToBigInt(decoded.Amount)
+
 	o.Nonce = math.ToBigInt(decoded.Nonce)
 	o.Expires = math.ToBigInt(decoded.Expires)
 	o.MakeFee = math.ToBigInt(decoded.MakeFee)
 	o.TakeFee = math.ToBigInt(decoded.TakeFee)
-	o.PricePoint = math.ToBigInt(decoded.PricePoint)
-	o.Price = math.ToBigInt(decoded.Price)
-
 	o.Status = decoded.Status
 	o.Side = decoded.Side
 	o.Hash = common.HexToHash(decoded.Hash)
+
+	if decoded.Amount != "" {
+		o.Amount = math.ToBigInt(decoded.Amount)
+	}
+
+	if decoded.FilledAmount != "" {
+		o.FilledAmount = math.ToBigInt(decoded.FilledAmount)
+	}
+
+	if decoded.PricePoint != "" {
+		o.PricePoint = math.ToBigInt(decoded.PricePoint)
+	}
+
+	if decoded.Price != "" {
+		o.Price = math.ToBigInt(decoded.Price)
+	}
 
 	if decoded.Signature != nil {
 		o.Signature = &Signature{
