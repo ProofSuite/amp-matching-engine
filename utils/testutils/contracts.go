@@ -151,7 +151,6 @@ func (d *Deployer) DeployExchange(wethToken common.Address, feeAccount common.Ad
 
 	return &contracts.Exchange{
 		WalletService: d.WalletService,
-		TxService:     d.TxService,
 		Interface:     exchangeInterface,
 		Client:        d.Client,
 	}, address, tx, err
@@ -166,8 +165,8 @@ func (d *Deployer) NewExchange(addr common.Address) (*contracts.Exchange, error)
 
 	return &contracts.Exchange{
 		WalletService: d.WalletService,
-		TxService:     d.TxService,
 		Interface:     exchangeInterface,
+		Client:        d.Client,
 	}, nil
 }
 

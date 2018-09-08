@@ -1,7 +1,7 @@
 package types
 
 import (
-	"fmt"
+	"log"
 	"math/big"
 	"time"
 
@@ -25,11 +25,12 @@ type Account struct {
 // TokenBalance holds the Balance, Allowance and the Locked balance values for a single Ethereum token
 // Balance, Allowance and Locked Balance are stored as big.Int as they represent uint256 values
 type TokenBalance struct {
-	Address       common.Address `json:"address" bson:"address"`
-	Symbol        string         `json:"symbol" bson:"symbol"`
-	Balance       *big.Int       `json:"balance" bson:"balance"`
-	Allowance     *big.Int       `json:"allowance" bson:"allowance"`
-	LockedBalance *big.Int       `json:"lockedBalance" bson:"lockedBalance"`
+	Address        common.Address `json:"address" bson:"address"`
+	Symbol         string         `json:"symbol" bson:"symbol"`
+	Balance        *big.Int       `json:"balance" bson:"balance"`
+	Allowance      *big.Int       `json:"allowance" bson:"allowance"`
+	PendingBalance *big.Int       `json:"pendingBalance" bson:"pendingBalance"`
+	LockedBalance  *big.Int       `json:"lockedBalance" bson:"lockedBalance"`
 }
 
 // AccountRecord corresponds to what is stored in the DB. big.Ints are encoded as strings
@@ -44,11 +45,12 @@ type AccountRecord struct {
 
 // TokenBalanceRecord corresponds to a TokenBalance struct that is stored in the DB. big.Ints are encoded as strings
 type TokenBalanceRecord struct {
-	Address       string `json:"address" bson:"address"`
-	Symbol        string `json:"symbol" bson:"symbol"`
-	Balance       string `json:"balance" bson:"balance"`
-	Allowance     string `json:"allowance" bson:"allowance"`
-	LockedBalance string `json:"lockedBalance" bson:"lockedBalance"`
+	Address        string `json:"address" bson:"address"`
+	Symbol         string `json:"symbol" bson:"symbol"`
+	Balance        string `json:"balance" bson:"balance"`
+	Allowance      string `json:"allowance" bson:"allowance"`
+	PendingBalance string `json:"pendingBalance" base:"pendingBalance"`
+	LockedBalance  string `json:"lockedBalance" bson:"lockedBalance"`
 }
 
 // GetBSON implements bson.Getter
@@ -57,11 +59,12 @@ func (a *Account) GetBSON() (interface{}, error) {
 
 	for key, value := range a.TokenBalances {
 		tokenBalances[key.Hex()] = TokenBalanceRecord{
-			Address:       value.Address.Hex(),
-			Symbol:        value.Symbol,
-			Balance:       value.Balance.String(),
-			Allowance:     value.Allowance.String(),
-			LockedBalance: value.LockedBalance.String(),
+			Address:        value.Address.Hex(),
+			Symbol:         value.Symbol,
+			Balance:        value.Balance.String(),
+			Allowance:      value.Allowance.String(),
+			LockedBalance:  value.LockedBalance.String(),
+			PendingBalance: value.PendingBalance.String(),
 		}
 	}
 
@@ -90,13 +93,16 @@ func (a *Account) SetBSON(raw bson.Raw) error {
 		allowance, _ = allowance.SetString(value.Allowance, 10)
 		lockedBalance := new(big.Int)
 		lockedBalance, _ = lockedBalance.SetString(value.LockedBalance, 10)
+		pendingBalance := new(big.Int)
+		pendingBalance, _ = pendingBalance.SetString(value.PendingBalance, 10)
 
 		a.TokenBalances[common.HexToAddress(key)] = &TokenBalance{
-			Address:       common.HexToAddress(value.Address),
-			Symbol:        value.Symbol,
-			Balance:       balance,
-			Allowance:     allowance,
-			LockedBalance: lockedBalance,
+			Address:        common.HexToAddress(value.Address),
+			Symbol:         value.Symbol,
+			Balance:        balance,
+			Allowance:      allowance,
+			LockedBalance:  lockedBalance,
+			PendingBalance: pendingBalance,
 		}
 	}
 
@@ -119,16 +125,20 @@ func (a *Account) MarshalJSON() ([]byte, error) {
 		"createdAt": a.CreatedAt.String(),
 		"updatedAt": a.UpdatedAt.String(),
 	}
+
 	tokenBalance := make(map[string]interface{})
+
 	for address, balance := range a.TokenBalances {
 		tokenBalance[address.Hex()] = map[string]interface{}{
-			"address":       balance.Address.Hex(),
-			"symbol":        balance.Symbol,
-			"balance":       balance.Balance.String(),
-			"allowance":     balance.Allowance.String(),
-			"lockedBalance": balance.LockedBalance.String(),
+			"address":        balance.Address.Hex(),
+			"symbol":         balance.Symbol,
+			"balance":        balance.Balance.String(),
+			"allowance":      balance.Allowance.String(),
+			"lockedBalance":  balance.LockedBalance.String(),
+			"pendingBalance": balance.PendingBalance.String(),
 		}
 	}
+
 	account["tokenBalances"] = tokenBalance
 	return json.Marshal(account)
 }
@@ -139,12 +149,15 @@ func (a *Account) UnmarshalJSON(b []byte) error {
 	if err != nil {
 		return err
 	}
+
 	if account["id"] != nil && bson.IsObjectIdHex(account["id"].(string)) {
 		a.ID = bson.ObjectIdHex(account["id"].(string))
 	}
+
 	if account["address"] != nil {
 		a.Address = common.HexToAddress(account["address"].(string))
 	}
+
 	if account["tokenBalances"] != nil {
 		tokenBalances := account["tokenBalances"].(map[string]interface{})
 		a.TokenBalances = make(map[common.Address]*TokenBalance)
@@ -152,30 +165,43 @@ func (a *Account) UnmarshalJSON(b []byte) error {
 			if !common.IsHexAddress(address) {
 				continue
 			}
+
 			tokenBalance := balance.(map[string]interface{})
 			tb := &TokenBalance{}
+
 			if tokenBalance["address"] != nil && common.IsHexAddress(tokenBalance["address"].(string)) {
 				tb.Address = common.HexToAddress(tokenBalance["address"].(string))
 			}
+
 			if tokenBalance["symbol"] != nil {
 				tb.Symbol = tokenBalance["symbol"].(string)
 			}
+
 			tb.Balance = new(big.Int)
 			tb.Allowance = new(big.Int)
 			tb.LockedBalance = new(big.Int)
+			tb.PendingBalance = new(big.Int)
 
 			if tokenBalance["balance"] != nil {
 				tb.Balance.UnmarshalJSON([]byte(tokenBalance["balance"].(string)))
 			}
+
 			if tokenBalance["allowance"] != nil {
 				tb.Allowance.UnmarshalJSON([]byte(tokenBalance["allowance"].(string)))
 			}
+
 			if tokenBalance["lockedBalance"] != nil {
 				tb.LockedBalance.UnmarshalJSON([]byte(tokenBalance["lockedBalance"].(string)))
 			}
+
+			if tokenBalance["pendingBalance"] != nil {
+				tb.PendingBalance.UnmarshalJSON([]byte(tokenBalance["pendingBalance"].(string)))
+			}
+
 			a.TokenBalances[common.HexToAddress(address)] = tb
 		}
 	}
+
 	return nil
 }
 
@@ -189,35 +215,35 @@ func (a Account) Validate() error {
 func (a *Account) Print() {
 	b, err := json.MarshalIndent(a, "", "  ")
 	if err != nil {
-		fmt.Println("Error: ", err)
+		log.Print("Error: ", err)
 	}
 
-	fmt.Print(string(b))
+	log.Print(string(b))
 }
 
 func (a *AccountRecord) Print() {
 	b, err := json.MarshalIndent(a, "", "  ")
 	if err != nil {
-		fmt.Println("Error: ", err)
+		log.Print("Error: ", err)
 	}
 
-	fmt.Print(string(b))
+	log.Print(string(b))
 }
 
 func (t *TokenBalance) Print() {
 	b, err := json.MarshalIndent(t, "", "  ")
 	if err != nil {
-		fmt.Println("Error: ", err)
+		log.Print("Error: ", err)
 	}
 
-	fmt.Print(string(b))
+	log.Print(string(b))
 }
 
 func (t *TokenBalanceRecord) Print() {
 	b, err := json.MarshalIndent(t, "", "  ")
 	if err != nil {
-		fmt.Println("Error: ", err)
+		log.Print("Error: ", err)
 	}
 
-	fmt.Print(string(b))
+	log.Print(string(b))
 }

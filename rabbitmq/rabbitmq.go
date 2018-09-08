@@ -50,6 +50,20 @@ func GetQueue(ch *amqp.Channel, queue string) *amqp.Queue {
 	return queues[queue]
 }
 
+func DeclareQueue(ch *amqp.Channel, name string) error {
+	if queues[name] == nil {
+		q, err := ch.QueueDeclare(name, false, false, false, false, nil)
+		if err != nil {
+			log.Print(err)
+			return err
+		}
+
+		queues[name] = &q
+	}
+
+	return nil
+}
+
 func GetChannel(id string) *amqp.Channel {
 	if channels[id] == nil {
 		ch, err := Conn.Channel()

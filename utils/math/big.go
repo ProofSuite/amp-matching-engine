@@ -28,6 +28,14 @@ func ToBigInt(s string) *big.Int {
 	return res
 }
 
+func Max(a, b *big.Int) *big.Int {
+	if a.Cmp(b) == 1 {
+		return a
+	} else {
+		return b
+	}
+}
+
 func IsZero(x *big.Int) bool {
 	if x.Cmp(big.NewInt(0)) == 0 {
 		return true
