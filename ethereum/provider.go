@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"math/big"
+	"time"
 
 	"github.com/Proofsuite/amp-matching-engine/app"
 	"github.com/Proofsuite/amp-matching-engine/contracts/contractsinterfaces"
@@ -21,12 +22,7 @@ type EthereumProvider struct {
 }
 
 func NewEthereumProvider(c interfaces.EthereumClient) *EthereumProvider {
-	err := app.LoadConfig("../config", "")
-	if err != nil {
-		panic(err)
-	}
-
-	url := app.Config.Ethereum["URL"]
+	url := app.Config.Ethereum["http_url"]
 	exchange := common.HexToAddress(app.Config.Ethereum["exchange_address"])
 	weth := common.HexToAddress(app.Config.Ethereum["weth_address"])
 	config := NewEthereumConfig(url, exchange, weth)
@@ -38,16 +34,30 @@ func NewEthereumProvider(c interfaces.EthereumClient) *EthereumProvider {
 }
 
 func NewDefaultEthereumProvider() *EthereumProvider {
-	err := app.LoadConfig("./config", "")
+	url := app.Config.Ethereum["http_url"]
+	exchange := common.HexToAddress(app.Config.Ethereum["exchange_address"])
+	weth := common.HexToAddress(app.Config.Ethereum["weth_address"])
+
+	conn, err := rpc.DialHTTP(app.Config.Ethereum["http_url"])
 	if err != nil {
 		panic(err)
 	}
 
-	url := app.Config.Ethereum["URL"]
+	client := ethclient.NewClient(conn)
+	config := NewEthereumConfig(url, exchange, weth)
+
+	return &EthereumProvider{
+		Client: client,
+		Config: config,
+	}
+}
+
+func NewWebsocketProvider() *EthereumProvider {
+	url := app.Config.Ethereum["ws_url"]
 	exchange := common.HexToAddress(app.Config.Ethereum["exchange_address"])
 	weth := common.HexToAddress(app.Config.Ethereum["weth_address"])
 
-	conn, err := rpc.DialHTTP(app.Config.Ethereum["URL"])
+	conn, err := rpc.DialWebsocket(context.Background(), url, "")
 	if err != nil {
 		panic(err)
 	}
@@ -62,14 +72,9 @@ func NewDefaultEthereumProvider() *EthereumProvider {
 }
 
 func NewSimulatedEthereumProvider(accs []common.Address) *EthereumProvider {
-	url := app.Config.Ethereum["URL"]
+	url := app.Config.Ethereum["http_url"]
 	exchange := common.HexToAddress(app.Config.Ethereum["exchange_address"])
 	weth := common.HexToAddress(app.Config.Ethereum["weth_address"])
-
-	err := app.LoadConfig("../config", "")
-	if err != nil {
-		panic(err)
-	}
 
 	config := NewEthereumConfig(url, exchange, weth)
 	client := NewSimulatedClient(accs)
@@ -80,15 +85,28 @@ func NewSimulatedEthereumProvider(accs []common.Address) *EthereumProvider {
 	}
 }
 
-func (e *EthereumProvider) WaitMined(tx *eth.Transaction) (*eth.Receipt, error) {
+func (e *EthereumProvider) WaitMined(hash common.Hash) (*eth.Receipt, error) {
 	ctx := context.Background()
-	receipt, err := bind.WaitMined(ctx, e.Client, tx)
-	if err != nil {
-		log.Print(err)
-		return &eth.Receipt{}, err
-	}
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
 
-	return receipt, nil
+	for {
+		receipt, err := e.Client.TransactionReceipt(ctx, hash)
+		if receipt != nil {
+			return receipt, nil
+		}
+
+		if err != nil {
+			log.Print(err)
+			return nil, err
+		}
+
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-ticker.C:
+		}
+	}
 }
 
 func (e *EthereumProvider) GetBalanceAt(a common.Address) (*big.Int, error) {
@@ -116,6 +134,7 @@ func (e *EthereumProvider) GetPendingNonceAt(a common.Address) (uint64, error) {
 func (e *EthereumProvider) BalanceOf(owner common.Address, token common.Address) (*big.Int, error) {
 	tokenInterface, err := contractsinterfaces.NewToken(token, e.Client)
 	if err != nil {
+		log.Print(err)
 		return nil, err
 	}
 
@@ -152,7 +171,7 @@ func (e *EthereumProvider) ExchangeAllowance(owner, token common.Address) (*big.
 		return nil, err
 	}
 
-	exchange := e.Config.ExchangeAddress()
+	exchange := common.HexToAddress(app.Config.Ethereum["exchange_address"])
 	opts := &bind.CallOpts{Pending: true}
 	a, err := tokenInterface.Allowance(opts, owner, exchange)
 	if err != nil {
@@ -162,6 +181,44 @@ func (e *EthereumProvider) ExchangeAllowance(owner, token common.Address) (*big.
 
 	return a, nil
 }
+
+// func (e *EthereumProvider) NewTokenInstance(
+// 	w interfaces.WalletService,
+// 	tx interfaces.TxService,
+// 	token common.Address,
+// ) (*contractsinterfaces.Token, error) {
+// 	tokenInterface, err := contractsinterfaces.NewToken(token, e.Client)
+// 	if err != nil {
+// 		log.Print(err)
+// 		return nil, err
+// 	}
+
+// 	return &contracts.Token{
+// 		WalletService: w,
+// 		TxService:     tx,
+// 		Interface:     tokenInterface,
+// 	}, nil
+// }
+
+// func (e *EthereumProvider) NewExchangeInstance(w interfaces.WalletService, tx interfaces.TxService) (*contracts.Exchange, error) {
+// 	exchangeAddress := app.Config.Ethereum["exchange_address"]
+// 	if exchangeAddress == "" {
+// 		return nil, errors.New("Exchange address configuration not found")
+// 	}
+
+// 	exchangeInterface, err := contractsinterfaces.NewExchange(exchangeAddress, e.Client)
+// 	if err != nil {
+// 		log.Print(err)
+// 		return nil, err
+// 	}
+
+// 	return &contracts.Exchange{
+// 		WalletService: w,
+// 		TxService:     tx,
+// 		Interface:     exchangeInterface,
+// 		Client:        e.Client,
+// 	}, nil
+// }
 
 // func NewEthereumWebSocketConnection(config app.Config) *Ethereum {
 // 	conn, err := rpc.DialWebsocket(context.Background(), config.EthereumURL)

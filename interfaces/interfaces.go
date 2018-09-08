@@ -35,7 +35,6 @@ type AccountDao interface {
 	GetByID(id bson.ObjectId) (*types.Account, error)
 	GetByAddress(owner common.Address) (response *types.Account, err error)
 	GetTokenBalances(owner common.Address) (map[common.Address]*types.TokenBalance, error)
-	GetWethTokenBalance(owner common.Address) (*types.TokenBalance, error)
 	GetTokenBalance(owner common.Address, token common.Address) (*types.TokenBalance, error)
 	UpdateTokenBalance(owner common.Address, token common.Address, tokenBalance *types.TokenBalance) (err error)
 	UpdateBalance(owner common.Address, token common.Address, balance *big.Int) (err error)
@@ -87,12 +86,9 @@ type TokenDao interface {
 }
 
 type Exchange interface {
-	SetTxSender(w *types.Wallet)
 	GetTxCallOptions() *bind.CallOpts
-	GetTxSendOptions() (*bind.TransactOpts, error)
-	GetCustomTxSendOptions(w *types.Wallet) *bind.TransactOpts
-	SetFeeAccount(a common.Address) (*eth.Transaction, error)
-	SetOperator(a common.Address, isOperator bool) (*eth.Transaction, error)
+	SetFeeAccount(a common.Address, txOpts *bind.TransactOpts) (*eth.Transaction, error)
+	SetOperator(a common.Address, isOperator bool, txOpts *bind.TransactOpts) (*eth.Transaction, error)
 	FeeAccount() (common.Address, error)
 	Operator(a common.Address) (bool, error)
 	Trade(o *types.Order, t *types.Trade, txOpts *bind.TransactOpts) (*eth.Transaction, error)
@@ -107,7 +103,7 @@ type Exchange interface {
 type Engine interface {
 	HandleOrders(msg *rabbitmq.Message) error
 	SubscribeResponseQueue(fn func(*types.EngineResponse) error) error
-	RecoverOrders(orders []*types.FillOrder) error
+	RecoverOrders(orders []*types.OrderTradePair) error
 	CancelOrder(order *types.Order) (*types.EngineResponse, error)
 	GetOrderBook(pair *types.Pair) (asks, bids []*map[string]float64)
 	CancelTrades(orders []*types.Order, amount []*big.Int) error
@@ -129,7 +125,7 @@ type OHLCVService interface {
 }
 
 type EthereumService interface {
-	WaitMined(tx *eth.Transaction) (*eth.Receipt, error)
+	WaitMined(hash common.Hash) (*eth.Receipt, error)
 	GetBalanceAt(a common.Address) (*big.Int, error)
 	GetPendingNonceAt(a common.Address) (uint64, error)
 }
@@ -144,10 +140,12 @@ type OrderService interface {
 	RecoverOrders(res *types.EngineResponse)
 	RelayUpdateOverSocket(res *types.EngineResponse)
 	SendMessage(msgType string, hash common.Hash, data interface{})
-	SubscribeQueue(fn func(*rabbitmq.Message) error) error
-	PublishOrder(order *rabbitmq.Message) error
 	GetCurrentByUserAddress(addr common.Address) ([]*types.Order, error)
 	GetHistoryByUserAddress(addr common.Address) ([]*types.Order, error)
+	SubscribeOrders(fn func(*rabbitmq.Message) error) error
+	PublishOrder(order *rabbitmq.Message) error
+	SubscribeTrades(fn func(*types.OperatorMessage) error) error
+	PublishTrade(o *types.Order, t *types.Trade) error
 }
 
 type OrderBookService interface {
@@ -225,7 +223,7 @@ type EthereumClient interface {
 }
 
 type EthereumProvider interface {
-	WaitMined(tx *eth.Transaction) (*eth.Receipt, error)
+	WaitMined(hash common.Hash) (*eth.Receipt, error)
 	GetBalanceAt(a common.Address) (*big.Int, error)
 	GetPendingNonceAt(a common.Address) (uint64, error)
 	BalanceOf(owner common.Address, token common.Address) (*big.Int, error)
