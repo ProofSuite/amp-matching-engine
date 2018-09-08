@@ -1,8 +1,11 @@
 package daos
 
 import (
+	"log"
+
 	"github.com/Proofsuite/amp-matching-engine/app"
 	"github.com/Proofsuite/amp-matching-engine/types"
+	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/ethereum/go-ethereum/common"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -16,7 +19,7 @@ type WalletDao struct {
 }
 
 func NewWalletDao() *WalletDao {
-	return &WalletDao{"wallet", app.Config.DBName}
+	return &WalletDao{"wallets", app.Config.DBName}
 }
 
 func (dao *WalletDao) Create(wallet *types.Wallet) (err error) {
@@ -73,8 +76,11 @@ func (dao *WalletDao) GetOperatorWallets() ([]*types.Wallet, error) {
 
 	err := db.Get(dao.dbName, dao.collectionName, q, 0, 1, &res)
 	if err != nil || len(res) == 0 {
+		log.Print(err)
 		return nil, err
 	}
+
+	utils.PrintJSON(res)
 
 	return res, nil
 }

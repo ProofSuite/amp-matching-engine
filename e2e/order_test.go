@@ -14,6 +14,7 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/rabbitmq"
 	"github.com/Proofsuite/amp-matching-engine/redis"
 	"github.com/Proofsuite/amp-matching-engine/types"
+	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/Proofsuite/amp-matching-engine/utils/testutils"
 	"github.com/Proofsuite/amp-matching-engine/ws"
 	"github.com/ethereum/go-ethereum/common"
@@ -25,7 +26,7 @@ type OrderTestSetup struct {
 }
 
 func SetupTest() (*types.Wallet, *types.Wallet, *testutils.Client, *testutils.Client, *testutils.OrderFactory, *testutils.OrderFactory, *types.Pair, common.Address, common.Address) {
-	err := app.LoadConfig("../config", "")
+	err := app.LoadConfig("../config", "test")
 	if err != nil {
 		panic(err)
 	}
@@ -34,8 +35,9 @@ func SetupTest() (*types.Wallet, *types.Wallet, *testutils.Client, *testutils.Cl
 	log.SetPrefix("\nLOG: ")
 
 	rabbitmq.InitConnection(app.Config.Rabbitmq)
-	ethereum.NewDefaultEthereumProvider()
+	ethereum.NewWebsocketProvider()
 	redisConn := redis.NewRedisConnection(app.Config.Redis)
+
 	defer redisConn.FlushAll()
 
 	_, err = daos.InitSession(nil)
@@ -44,7 +46,7 @@ func SetupTest() (*types.Wallet, *types.Wallet, *testutils.Client, *testutils.Cl
 	}
 
 	pairDao := daos.NewPairDao()
-	exchangeAddress := common.HexToAddress("0x")
+	exchangeAddress := common.HexToAddress(app.Config.Ethereum["exchange_address"])
 	pair, err := pairDao.GetByTokenSymbols("ZRX", "WETH")
 	if err != nil {
 		panic(err)
@@ -155,24 +157,49 @@ func TestMatchOrder(t *testing.T) {
 	m1, _, _ := factory1.NewOrderMessage(ZRX, 1e10, WETH, 1e10)
 	m2, _, _ := factory2.NewOrderMessage(WETH, 1e10, ZRX, 1e10)
 
+	log.Print("HERE IS THER ORDER IN THE BEGIN")
+	utils.PrintJSON(m1)
+
 	//We put a millisecond delay between both requests to ensure they are
 	//received in the same order for each test
 	client1.Requests <- m1
-	time.Sleep(time.Millisecond)
+	time.Sleep(500 * time.Millisecond)
 	client2.Requests <- m2
 	time.Sleep(time.Millisecond)
 
 	wg := sync.WaitGroup{}
-	wg.Add(2)
+	wg.Add(4)
 
 	go func() {
 		for {
 			select {
 			case l := <-client1.Logs:
+				log.Print(l)
+				switch l.MessageType {
+				case "ORDER_ADDED":
+					wg.Done()
+				case "REQUEST_SIGNATURE":
+					wg.Done()
+				case "ORDER_MATCHED":
+					wg.Done()
+				case "ERROR":
+					t.Errorf("Received an error")
+				}
+			}
+		}
+	}()
+
+	go func() {
+		for {
+			select {
+			case l := <-client2.Logs:
+				log.Print(l)
 				switch l.MessageType {
 				case "ORDER_ADDED":
 					wg.Done()
 				case "ORDER_MATCHED":
+					wg.Done()
+				case "REQUEST_SIGNATURE":
 					wg.Done()
 				case "ERROR":
 					t.Errorf("Received an error")
@@ -299,14 +326,14 @@ func TestMatchPartialOrder2(t *testing.T) {
 	t2.Hash = t2.ComputeHash()
 
 	//Responses received by the first client
-	res1 := types.NewOrderAddedWebsocketMessage(o1, pair, 0)
+	expres1 := types.NewOrderAddedWebsocketMessage(o1, pair, 0)
 	// Responses received by the second client
-	res2 := types.NewRequestSignaturesWebsocketMessage(o2.Hash, []*types.Trade{t1}, nil)
-	res3 := types.NewRequestSignaturesWebsocketMessage(o3.Hash, []*types.Trade{t2}, nil)
+	expres2 := types.NewRequestSignaturesWebsocketMessage(o2.Hash, []*types.OrderTradePair{{o1, t1}}, nil)
+	expres3 := types.NewRequestSignaturesWebsocketMessage(o3.Hash, []*types.OrderTradePair{{o1, t2}}, nil)
 
-	testutils.Compare(t, res1, client1.ResponseLogs[0])
-	testutils.Compare(t, res2, client2.ResponseLogs[0])
-	testutils.Compare(t, res3, client2.ResponseLogs[1])
+	testutils.Compare(t, expres1, client1.ResponseLogs[0])
+	testutils.Compare(t, expres2, client2.ResponseLogs[0])
+	testutils.Compare(t, expres3, client2.ResponseLogs[1])
 }
 
 func TestMatchPartialOrder3(t *testing.T) {
@@ -390,7 +417,7 @@ func TestMatchPartialOrder3(t *testing.T) {
 	//Responses received by the first client
 	res1 := types.NewOrderAddedWebsocketMessage(o1, pair, 0)
 	// Responses received by the second client
-	res2 := types.NewRequestSignaturesWebsocketMessage(o2.Hash, []*types.Trade{t1}, ro1)
+	res2 := types.NewRequestSignaturesWebsocketMessage(o2.Hash, []*types.OrderTradePair{{o1, t1}}, ro1)
 
 	testutils.Compare(t, res1, client1.ResponseLogs[0])
 	testutils.Compare(t, res2, client2.ResponseLogs[0])
@@ -493,7 +520,7 @@ func TestMatchPartialOrder4(t *testing.T) {
 
 	res1 := types.NewOrderAddedWebsocketMessage(o1, pair, 0)
 	res2 := types.NewOrderAddedWebsocketMessage(o2, pair, 0)
-	res3 := types.NewRequestSignaturesWebsocketMessage(o3.Hash, []*types.Trade{t1, t2}, ro1)
+	res3 := types.NewRequestSignaturesWebsocketMessage(o3.Hash, []*types.OrderTradePair{{o1, t1}, {o2, t2}}, ro1)
 	testutils.Compare(t, res1, client1.ResponseLogs[0])
 	testutils.Compare(t, res2, client1.ResponseLogs[1])
 	testutils.Compare(t, res3, client2.ResponseLogs[0])
@@ -556,7 +583,7 @@ func TestMatchPartialOrder5(t *testing.T) {
 	}
 
 	t1.Hash = t1.ComputeHash()
-	res2 := types.NewRequestSignaturesWebsocketMessage(o2.Hash, []*types.Trade{t1}, nil)
+	res2 := types.NewRequestSignaturesWebsocketMessage(o2.Hash, []*types.OrderTradePair{{o1, t1}}, nil)
 
 	testutils.Compare(t, res1, client1.ResponseLogs[0])
 	testutils.Compare(t, res2, client2.ResponseLogs[0])

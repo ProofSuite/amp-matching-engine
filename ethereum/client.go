@@ -14,7 +14,7 @@ type SimulatedClient struct {
 	*backends.SimulatedBackend
 }
 
-func (b *SimulatedClient) PendingBalanceAt(ctx context.Context, account common.Address) (*big.Int, error) {
+func (b *SimulatedClient) PendingBalanceAt(ctx context.Context, acc common.Address) (*big.Int, error) {
 	return nil, errors.New("PendingBalanceAt is not implemented on the simulated backend")
 }
 

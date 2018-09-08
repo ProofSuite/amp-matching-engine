@@ -86,7 +86,12 @@ func (w *Wallet) SetBSON(raw bson.Raw) error {
 
 	w.ID = decoded.ID
 	w.Address = common.HexToAddress(decoded.Address)
-	w.PrivateKey, _ = crypto.HexToECDSA(decoded.PrivateKey)
+	w.PrivateKey, err = crypto.HexToECDSA(decoded.PrivateKey)
+	if err != nil {
+		log.Print(err)
+		return err
+	}
+
 	w.Admin = decoded.Admin
 	w.Operator = decoded.Operator
 	return nil
@@ -117,14 +122,14 @@ func (w *Wallet) SignHash(h common.Hash) (*Signature, error) {
 // SignTrade signs and sets the signature of a trade with a wallet private key
 func (w *Wallet) SignTrade(t *Trade) error {
 	hash := t.ComputeHash()
+
+	sig, err := w.SignHash(hash)
+	if err != nil {
+		return err
+	}
+
 	t.Hash = hash
-
-	// sig, err := w.SignHash(hash)
-	// if err != nil {
-	// 	return err
-	// }
-
-	// t.Signature = sig
+	t.Signature = sig
 	return nil
 }
 

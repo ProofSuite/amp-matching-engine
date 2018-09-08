@@ -10,15 +10,18 @@ import (
 	"testing"
 
 	"github.com/Proofsuite/amp-matching-engine/app"
+	"github.com/Proofsuite/amp-matching-engine/contracts"
 	"github.com/Proofsuite/amp-matching-engine/crons"
 	"github.com/Proofsuite/amp-matching-engine/daos"
 	"github.com/Proofsuite/amp-matching-engine/endpoints"
 	"github.com/Proofsuite/amp-matching-engine/engine"
 	"github.com/Proofsuite/amp-matching-engine/ethereum"
+	"github.com/Proofsuite/amp-matching-engine/operator"
 	"github.com/Proofsuite/amp-matching-engine/rabbitmq"
 	"github.com/Proofsuite/amp-matching-engine/redis"
 	"github.com/Proofsuite/amp-matching-engine/services"
 	"github.com/Sirupsen/logrus"
+	"github.com/ethereum/go-ethereum/common"
 	routing "github.com/go-ozzo/ozzo-routing"
 	"github.com/go-ozzo/ozzo-routing/content"
 	"github.com/go-ozzo/ozzo-routing/cors"
@@ -85,7 +88,7 @@ func NewRouter() *routing.Router {
 	rg := router.Group("")
 
 	rabbitmq.InitConnection(app.Config.Rabbitmq)
-	provider := ethereum.NewDefaultEthereumProvider()
+	provider := ethereum.NewWebsocketProvider()
 	redisClient := redis.NewRedisConnection(app.Config.Redis)
 	redisClient.FlushAll()
 
@@ -100,6 +103,7 @@ func NewRouter() *routing.Router {
 	pairDao := daos.NewPairDao()
 	tradeDao := daos.NewTradeDao()
 	accountDao := daos.NewAccountDao()
+	walletDao := daos.NewWalletDao()
 
 	// get services for injection
 	accountService := services.NewAccountService(accountDao, tokenDao)
@@ -109,8 +113,33 @@ func NewRouter() *routing.Router {
 	pairService := services.NewPairService(pairDao, tokenDao, eng, tradeService)
 	orderService := services.NewOrderService(orderDao, pairDao, accountDao, tradeDao, eng, provider)
 	orderBookService := services.NewOrderBookService(pairDao, tokenDao, eng)
+	walletService := services.NewWalletService(walletDao)
 	cronService := crons.NewCronService(ohlcvService)
-	// walletService := services.NewWalletService(walletDao, balanceDao)
+
+	// get exchange contract instance
+	exchangeAddress := common.HexToAddress(app.Config.Ethereum["exchange_address"])
+	exchange, err := contracts.NewExchange(
+		walletService,
+		exchangeAddress,
+		provider.Client,
+	)
+
+	if err != nil {
+		panic(err)
+	}
+
+	// deploy operator
+	op, err := operator.NewOperator(
+		walletService,
+		tradeService,
+		orderService,
+		provider,
+		exchange,
+	)
+
+	if err != nil {
+		panic(err)
+	}
 
 	endpoints.ServeAccountResource(rg, accountService)
 	endpoints.ServeTokenResource(rg, tokenService)
@@ -121,7 +150,8 @@ func NewRouter() *routing.Router {
 	endpoints.ServeOrderResource(rg, orderService, eng)
 
 	//initialize rabbitmq subscriptions
-	orderService.SubscribeQueue(eng.HandleOrders)
+	orderService.SubscribeOrders(eng.HandleOrders)
+	orderService.SubscribeTrades(op.HandleTrades)
 	eng.SubscribeResponseQueue(orderService.HandleEngineResponse)
 
 	// fmt.Printf("\n%+v\n", app.Config.TickDuration)

@@ -13,14 +13,7 @@ var cfgDir string
 var env string
 
 // rootCmd represents the base command when called without any subcommands
-var rootCmd = &cobra.Command{
-	Use:   "amp-matching-engine",
-	Short: "Decentralised cryptocurrency matching engine",
-	Long:  `Decentralised cryptocurrency matching engine`,
-	// Uncomment the following line if your bare application
-	// has an action associated with it:
-	//	Run: func(cmd *cobra.Command, args []string) { },
-}
+var rootCmd = &cobra.Command{}
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.

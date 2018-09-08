@@ -45,11 +45,12 @@ type Client struct {
 // allow the client log message to take in a lot of different types of messages
 // An error id of -1 means that there was no error.
 type ClientLogMessage struct {
-	MessageType string         `json:"messageType"`
-	Orders      []*types.Order `json:"order"`
-	Trades      []*types.Trade `json:"trade"`
-	Tx          *common.Hash   `json:"tx"`
-	ErrorID     int8           `json:"errorID"`
+	MessageType string                  `json:"messageType"`
+	Orders      []*types.Order          `json:"order"`
+	Trades      []*types.Trade          `json:"trade"`
+	Matches     []*types.OrderTradePair `json:"matches"`
+	Tx          *common.Hash            `json:"tx"`
+	ErrorID     int8                    `json:"errorID"`
 }
 
 type Server interface {
@@ -251,7 +252,6 @@ func (c *Client) handleOrderCancelled(p types.WebSocketPayload) {
 
 func (c *Client) handleSignatureRequested(p types.WebSocketPayload) {
 	data := &types.SignaturePayload{}
-
 	bytes, err := json.Marshal(p.Data)
 	if err != nil {
 		log.Print(err)
@@ -262,19 +262,19 @@ func (c *Client) handleSignatureRequested(p types.WebSocketPayload) {
 		log.Print(err)
 	}
 
-	for _, t := range data.Trades {
-		err = c.Wallet.SignTrade(t)
+	for _, m := range data.Matches {
+		t := m.Trade
+		c.SetTradeNonce(t)
+
+		err := c.Wallet.SignTrade(t)
 		if err != nil {
 			log.Print(err)
 		}
 	}
 
-	if data.Order != nil {
-		c.SetNonce(data.Order)
-	}
-
 	//sign and return the remaining part of the previous order.
 	if data.Order != nil {
+		c.SetNonce(data.Order)
 		err = c.Wallet.SignOrder(data.Order)
 		if err != nil {
 			log.Print(err)
@@ -284,11 +284,11 @@ func (c *Client) handleSignatureRequested(p types.WebSocketPayload) {
 	l := &ClientLogMessage{
 		MessageType: "REQUEST_SIGNATURE",
 		Orders:      []*types.Order{data.Order},
-		Trades:      data.Trades,
+		Matches:     data.Matches,
 	}
 
 	c.Logs <- l
-	req := types.NewSubmitSignatureWebsocketMessage(p.Hash, data.Trades, data.Order)
+	req := types.NewSubmitSignatureWebsocketMessage(p.Hash, data.Matches, data.Order)
 	c.Requests <- req
 }
 
@@ -330,6 +330,10 @@ func (c *Client) handleOHLCVUpdate(p types.WebSocketPayload) {
 
 func (c *Client) SetNonce(o *types.Order) {
 	o.Nonce = big.NewInt(int64(c.NonceGenerator.Intn(1e8)))
+}
+
+func (c *Client) SetTradeNonce(t *types.Trade) {
+	t.TradeNonce = big.NewInt(int64(c.NonceGenerator.Intn(1e8)))
 }
 
 func (c *ClientLogMessage) Print() {

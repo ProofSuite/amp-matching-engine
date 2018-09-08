@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math/big"
 
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/Proofsuite/amp-matching-engine/utils/math"
@@ -34,45 +35,41 @@ const (
 // execute function is responsible for executing of matched orders
 // i.e it deletes/updates orders in case of order matching and responds
 // with trade instance and fillOrder
-func (e *Engine) execute(order *types.Order, bookEntry *types.Order) (*types.Trade, *types.FillOrder, error) {
-	fillOrder := &types.FillOrder{}
+func (e *Engine) execute(order *types.Order, bookEntry *types.Order) (*types.Trade, error) {
+	// fillOrder := &types.FillOrder{}
 	trade := &types.Trade{}
-
+	tradeAmount := big.NewInt(0)
 	bookEntryAvailableAmount := math.Sub(bookEntry.Amount, bookEntry.FilledAmount)
 	orderAvailableAmount := math.Sub(order.Amount, order.FilledAmount)
 
 	if math.IsGreaterThan(bookEntryAvailableAmount, orderAvailableAmount) {
-		fillOrder.Amount = orderAvailableAmount
+		tradeAmount = orderAvailableAmount
 		bookEntry.FilledAmount = math.Add(bookEntry.FilledAmount, orderAvailableAmount)
 		bookEntry.Status = "PARTIAL_FILLED"
-		fillOrder.Order = bookEntry
 
-		err := e.updateOrder(bookEntry, fillOrder.Amount)
+		err := e.updateOrder(bookEntry, tradeAmount)
 		if err != nil {
 			log.Print(err)
-			return nil, nil, err
+			return nil, err
 		}
 
 	} else {
-		fillOrder.Amount = bookEntryAvailableAmount
+		tradeAmount = bookEntryAvailableAmount
 		bookEntry.FilledAmount = math.Add(bookEntry.FilledAmount, bookEntryAvailableAmount)
 		bookEntry.Status = "FILLED"
-		fillOrder.Order = bookEntry
 
-		err := e.deleteOrder(bookEntry, fillOrder.Amount)
+		err := e.deleteOrder(bookEntry, tradeAmount)
 		if err != nil {
 			log.Print(err)
-			return nil, nil, err
+			return nil, err
 		}
 	}
 
-	order.FilledAmount = math.Add(order.FilledAmount, fillOrder.Amount)
-
+	order.FilledAmount = math.Add(order.FilledAmount, tradeAmount)
 	trade = &types.Trade{
-		Amount:     fillOrder.Amount,
+		Amount:     tradeAmount,
 		Price:      order.PricePoint,
 		PricePoint: order.PricePoint,
-		//NOTE: I don't think these are publicly needed but leaving this until confirmation
 		BaseToken:  order.BaseToken,
 		QuoteToken: order.QuoteToken,
 		OrderHash:  bookEntry.Hash,
@@ -82,7 +79,7 @@ func (e *Engine) execute(order *types.Order, bookEntry *types.Order) (*types.Tra
 		Maker:      bookEntry.UserAddress,
 	}
 
-	return trade, fillOrder, nil
+	return trade, nil
 }
 
 func (resp *Response) Print() {

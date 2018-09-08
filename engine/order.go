@@ -74,8 +74,8 @@ func (e *Engine) newOrder(order *types.Order) (err error) {
 // are fetched and trade is executed
 func (e *Engine) buyOrder(order *types.Order) (*types.EngineResponse, error) {
 	res := &types.EngineResponse{
-		Order:      order,
-		FillStatus: "NOMATCH",
+		Order:  order,
+		Status: "NOMATCH",
 	}
 
 	remainingOrder := *order
@@ -90,7 +90,7 @@ func (e *Engine) buyOrder(order *types.Order) (*types.EngineResponse, error) {
 	}
 
 	if len(pps) == 0 {
-		res.FillStatus = "NOMATCH"
+		res.Status = "NOMATCH"
 		res.RemainingOrder = nil
 		order.Status = "OPEN"
 		e.addOrder(order)
@@ -107,24 +107,26 @@ func (e *Engine) buyOrder(order *types.Order) (*types.EngineResponse, error) {
 		for _, bookEntry := range entries {
 			entry := &types.Order{}
 			err = json.Unmarshal(bookEntry, &entry)
-			fmt.Printf("\n\n>>>>>  %s  <<<<<\n\n", string(bookEntry))
 			if err != nil {
 				log.Print(err)
 				return nil, err
 			}
 
-			trade, fillOrder, err := e.execute(order, entry)
+			trade, err := e.execute(order, entry)
 			if err != nil {
 				log.Print(err)
 				return nil, err
 			}
 
-			res.Trades = append(res.Trades, trade)
-			res.MatchingOrders = append(res.MatchingOrders, fillOrder)
-			res.RemainingOrder.Amount = math.Sub(res.RemainingOrder.Amount, fillOrder.Amount)
+			match := &types.OrderTradePair{entry, trade}
+			res.Matches = append(res.Matches, match)
+
+			// res.Trades = append(res.Trades, trade)
+			// res.MatchingOrders = append(res.MatchingOrders, fillOrder)
+			res.RemainingOrder.Amount = math.Sub(res.RemainingOrder.Amount, trade.Amount)
 
 			if math.IsZero(res.RemainingOrder.Amount) {
-				res.FillStatus = "FULL"
+				res.Status = "FULL"
 				res.Order.Status = "FILLED"
 				res.RemainingOrder = nil
 				return res, nil
@@ -134,7 +136,7 @@ func (e *Engine) buyOrder(order *types.Order) (*types.EngineResponse, error) {
 
 	//TODO refactor this in a different function (make above function more clear in general)
 	res.Order.Status = "PARTIAL_FILLED"
-	res.FillStatus = "PARTIAL"
+	res.Status = "PARTIAL"
 	res.RemainingOrder.Signature = nil
 	res.RemainingOrder.Nonce = nil
 	res.RemainingOrder.Hash = common.HexToHash("")
@@ -153,8 +155,8 @@ func (e *Engine) buyOrder(order *types.Order) (*types.EngineResponse, error) {
 // are fetched and trade is executed
 func (e *Engine) sellOrder(order *types.Order) (*types.EngineResponse, error) {
 	res := &types.EngineResponse{
-		Order:      order,
-		FillStatus: "NOMATCH",
+		Status: "NOMATCH",
+		Order:  order,
 	}
 
 	remOrder := *order
@@ -169,7 +171,7 @@ func (e *Engine) sellOrder(order *types.Order) (*types.EngineResponse, error) {
 	}
 
 	if len(pps) == 0 {
-		res.FillStatus = "NOMATCH"
+		res.Status = "NOMATCH"
 		res.RemainingOrder = nil
 		e.addOrder(order)
 		order.Status = "OPEN"
@@ -192,20 +194,22 @@ func (e *Engine) sellOrder(order *types.Order) (*types.EngineResponse, error) {
 				return nil, err
 			}
 
-			trade, fillOrder, err := e.execute(order, entry)
+			trade, err := e.execute(order, entry)
 			if err != nil {
 				log.Print(err)
 				return nil, err
 			}
 
 			order.Status = "PARTIAL_FILLED"
-			res.FillStatus = "PARTIAL"
-			res.Trades = append(res.Trades, trade)
-			res.MatchingOrders = append(res.MatchingOrders, fillOrder)
-			res.RemainingOrder.Amount = math.Sub(res.RemainingOrder.Amount, fillOrder.Amount)
+			res.Status = "PARTIAL"
+
+			match := &types.OrderTradePair{entry, trade}
+
+			res.Matches = append(res.Matches, match)
+			res.RemainingOrder.Amount = math.Sub(res.RemainingOrder.Amount, trade.Amount)
 
 			if math.IsZero(res.RemainingOrder.Amount) {
-				res.FillStatus = "FULL"
+				res.Status = "FULL"
 				res.Order.Status = "FILLED"
 				res.RemainingOrder = nil
 				return res, nil
@@ -215,7 +219,7 @@ func (e *Engine) sellOrder(order *types.Order) (*types.EngineResponse, error) {
 
 	//TODO refactor this in a different function (make above function more clear in general)
 	res.Order.Status = "PARTIAL_FILLED"
-	res.FillStatus = "PARTIAL"
+	res.Status = "PARTIAL"
 	res.RemainingOrder.Signature = nil
 	res.RemainingOrder.Nonce = nil
 	res.RemainingOrder.Hash = common.HexToHash("")
@@ -401,25 +405,28 @@ func (e *Engine) deleteOrder(order *types.Order, tradeAmount *big.Int) (err erro
 
 // RecoverOrders is responsible for recovering the orders that failed to execute after matching
 // Orders are updated or added to orderbook based on whether that order exists in orderbook or not.
-func (e *Engine) RecoverOrders(orders []*types.FillOrder) error {
+func (e *Engine) RecoverOrders(matches []*types.OrderTradePair) error {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
-	for _, o := range orders {
 
-		// update order's filled amount and status before updating in redis
-		o.Order.Status = "PARTIAL_FILLED"
-		o.Order.FilledAmount = math.Sub(o.Order.FilledAmount, o.Amount)
-		if math.IsZero(o.Order.FilledAmount) {
-			o.Order.Status = "OPEN"
+	for _, m := range matches {
+		t := m.Trade
+		o := m.Order
+
+		o.Status = "PARTIAL_FILLED"
+		o.FilledAmount = math.Sub(o.FilledAmount, t.Amount)
+		if math.IsZero(o.FilledAmount) {
+			o.Status = "OPEN"
 		}
-		_, obListKey := o.Order.GetOBKeys()
-		if !e.redisConn.Exists(obListKey + "::orders::" + o.Order.Hash.Hex()) {
-			if err := e.addOrder(o.Order); err != nil {
+
+		_, obListKey := o.GetOBKeys()
+		if !e.redisConn.Exists(obListKey + "::orders::" + o.Hash.Hex()) {
+			if err := e.addOrder(o); err != nil {
 				log.Print(err)
 				return err
 			}
 		} else {
-			if err := e.updateOrder(o.Order, math.Neg(o.Amount)); err != nil {
+			if err := e.updateOrder(o, math.Neg(t.Amount)); err != nil {
 				log.Print(err)
 				return err
 			}
@@ -474,16 +481,14 @@ func (e *Engine) CancelOrder(order *types.Order) (*types.EngineResponse, error) 
 	}
 
 	stored.Status = "CANCELLED"
-
-	engineResponse := &types.EngineResponse{
-		FillStatus:     "CANCELLED",
+	res := &types.EngineResponse{
+		Status:         "CANCELLED",
 		Order:          stored,
 		RemainingOrder: nil,
-		Trades:         nil,
-		MatchingOrders: nil,
+		Matches:        nil,
 	}
 
-	return engineResponse, nil
+	return res, nil
 }
 
 // GetPricePoints returns the pricepoints matching a certain (pair, pricepoint)

@@ -27,6 +27,7 @@ func testWS(t *testing.T, pairs []types.Pair, accounts map[*ecdsa.PrivateKey]typ
 	wallets := make([]*types.Wallet, 0)
 	clients := make([]*testutils.Client, 0)
 	factories := make([]*testutils.OrderFactory, 0)
+
 	for key := range accounts {
 		w := types.NewWalletFromPrivateKey(hex.EncodeToString(crypto.FromECDSA(key)))
 		c := testutils.NewClient(w, http.HandlerFunc(ws.ConnectionEndpoint))
@@ -39,6 +40,7 @@ func testWS(t *testing.T, pairs []types.Pair, accounts map[*ecdsa.PrivateKey]typ
 		factories = append(factories, f)
 		c.Start()
 	}
+
 	obClient := newObClient(t, baseToken, quoteToken, nil)
 	tradeClient := newTradeClient(t, baseToken, quoteToken, nil)
 
@@ -58,77 +60,9 @@ func testWS(t *testing.T, pairs []types.Pair, accounts map[*ecdsa.PrivateKey]typ
 	clients = append(clients, tradeClient)
 
 	NewRouter()
-
-	testAddOrder(t, clients[0], factories[0], obClient, baseToken, quoteToken)
-	testOrderMatch(t, clients[1], factories[1], obClient, tradeClient, baseToken, quoteToken)
-	testCancelOrder(t, clients[0], factories[0], obClient, baseToken, quoteToken)
 	testInitSubscription(t, clients[0], factories[0], clients[1], factories[1], tradeClient, baseToken, quoteToken)
 
 	wg.Wait()
-}
-
-func testAddOrder(t *testing.T, client *testutils.Client, factory *testutils.OrderFactory, obClient *testutils.Client, baseToken, quoteToken common.Address) {
-	fmt.Printf("\t== testAddOrder ==\n")
-	// send order
-	orderMsg, _, err := factory.NewBuyOrderMessage(1e5, 1e6)
-	if err != nil {
-		panic(err)
-	}
-	client.Requests <- orderMsg
-	time.Sleep(time.Second)
-	assert.Equal(t, "ORDER_ADDED", client.ResponseLogs[0].Payload.Type)
-	assert.Equal(t, "UPDATE", getLatestRLog(obClient.ResponseLogs).Payload.Type)
-}
-
-func testOrderMatch(t *testing.T, client *testutils.Client, factory *testutils.OrderFactory, obClient *testutils.Client, tradeClient *testutils.Client, baseToken, quoteToken common.Address) {
-	fmt.Printf("\t== testOrderMatch ==\n")
-
-	// send order
-	orderMsg, _, err := factory.NewSellOrderMessage(1e5, 1e6)
-	if err != nil {
-		panic(err)
-	}
-	client.Requests <- orderMsg
-	time.Sleep(time.Second)
-	orderRes := getLatestRLog(client.ResponseLogs)
-
-	// If payload type is REQUEST_SIGNATURE submit the trades after signing
-	if assert.Equal(t, "REQUEST_SIGNATURE", orderRes.Payload.Type) {
-
-		dab, _ := json.Marshal(orderRes.Payload.Data)
-		var signatureReq *types.SignaturePayload
-		err := json.Unmarshal(dab, &signatureReq)
-		if err != nil {
-			panic(err)
-		}
-		signTrades(signatureReq.Trades, client.Wallet)
-		req := getWebsocketMessage(ws.OrderChannel, "SUBMIT_SIGNATURE", orderRes.Payload.Hash, signatureReq)
-		client.Requests <- &req
-		time.Sleep(time.Second)
-
-	}
-	assert.Equal(t, "UPDATE", getLatestRLog(tradeClient.ResponseLogs).Payload.Type)
-}
-
-func testCancelOrder(t *testing.T, client *testutils.Client, factory *testutils.OrderFactory, obClient *testutils.Client, baseToken, quoteToken common.Address) {
-	fmt.Printf("\t== testCancelOrder ==\n")
-	// send order
-	orderMsg, order, err := factory.NewBuyOrderMessage(1e5, 1e6)
-	if err != nil {
-		panic(err)
-	}
-	client.Requests <- orderMsg
-	time.Sleep(time.Second)
-	assert.Equal(t, "ORDER_ADDED", getLatestRLog(client.ResponseLogs).Payload.Type)
-
-	cancelMsg, _, err := factory.NewCancelOrderMessage(order)
-	if err != nil {
-		panic(err)
-	}
-	client.Requests <- cancelMsg
-	time.Sleep(time.Second)
-	assert.Equal(t, "ORDER_CANCELLED", getLatestRLog(client.ResponseLogs).Payload.Type)
-	assert.Equal(t, "UPDATE", obClient.ResponseLogs[len(obClient.ResponseLogs)-1].Payload.Type)
 }
 
 func testInitSubscription(t *testing.T, client1 *testutils.Client, factory1 *testutils.OrderFactory, client2 *testutils.Client, factory2 *testutils.OrderFactory, tradeClient *testutils.Client, baseToken, quoteToken common.Address) {
@@ -150,13 +84,6 @@ func testInitSubscription(t *testing.T, client1 *testutils.Client, factory1 *tes
 	client2.Requests <- sellOrderMsg
 	time.Sleep(time.Second)
 	assert.Equal(t, "ORDER_ADDED", getLatestRLog(client2.ResponseLogs).Payload.Type)
-
-	// Note: Seems there is some issue with amount/price calculation in the order type. Not working for now
-	// orderbook := map[string]interface{}{
-	// 	"asks": []interface{}{map[string]interface{}{"volume": 1e6, "price": 1e5 + 10}},
-	// 	"bids": []interface{}{map[string]interface{}{"volume": 1e6, "price": 1e5}},
-	// }
-	// newObClient(t, baseToken, quoteToken, orderbook)
 
 	newTradeClient(t, baseToken, quoteToken, getLatestRLog(tradeClient.ResponseLogs).Payload.Data)
 }

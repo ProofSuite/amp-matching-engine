@@ -37,7 +37,6 @@ type ethereumClientInterface interface {
 // TxOptions are options for making write txs to the connected backend
 type Exchange struct {
 	WalletService interfaces.WalletService
-	TxService     interfaces.TxService
 	Interface     *contractsinterfaces.Exchange
 	Client        ethereumClientInterface
 }
@@ -47,7 +46,6 @@ type Exchange struct {
 // be used by default when sending transactions with this object.
 func NewExchange(
 	w interfaces.WalletService,
-	tx interfaces.TxService,
 	contractAddress common.Address,
 	backend ethereumClientInterface,
 ) (*Exchange, error) {
@@ -58,34 +56,19 @@ func NewExchange(
 
 	return &Exchange{
 		WalletService: w,
-		TxService:     tx,
 		Interface:     instance,
 		Client:        backend,
 	}, nil
 }
 
-func (e *Exchange) SetTxSender(w *types.Wallet) {
-	e.TxService.SetTxSender(w)
-}
-
 func (e *Exchange) GetTxCallOptions() *bind.CallOpts {
-	return e.TxService.GetTxCallOptions()
-}
-
-func (e *Exchange) GetTxSendOptions() (*bind.TransactOpts, error) {
-	return e.TxService.GetTxSendOptions()
-}
-
-func (e *Exchange) GetCustomTxSendOptions(w *types.Wallet) *bind.TransactOpts {
-	return e.TxService.GetCustomTxSendOptions(w)
+	return &bind.CallOpts{Pending: true}
 }
 
 // SetFeeAccount sets the fee account of the exchange contract. The fee account receives
 // the trading fees whenever a trade is settled.
-func (e *Exchange) SetFeeAccount(a common.Address) (*eth.Transaction, error) {
-	txOptions, _ := e.GetTxSendOptions()
-
-	tx, err := e.Interface.SetFeeAccount(txOptions, a)
+func (e *Exchange) SetFeeAccount(a common.Address, txOpts *bind.TransactOpts) (*eth.Transaction, error) {
+	tx, err := e.Interface.SetFeeAccount(txOpts, a)
 	if err != nil {
 		return nil, err
 	}
@@ -95,10 +78,8 @@ func (e *Exchange) SetFeeAccount(a common.Address) (*eth.Transaction, error) {
 
 // SetOperator updates the operator settings of the given address. Only addresses with an
 // operator access can execute Withdraw and Trade transactions to the Exchange smart contract
-func (e *Exchange) SetOperator(a common.Address, isOperator bool) (*eth.Transaction, error) {
-	txOptions, _ := e.GetTxSendOptions()
-
-	tx, err := e.Interface.SetOperator(txOptions, a, isOperator)
+func (e *Exchange) SetOperator(a common.Address, isOperator bool, txOpts *bind.TransactOpts) (*eth.Transaction, error) {
+	tx, err := e.Interface.SetOperator(txOpts, a, isOperator)
 	if err != nil {
 		return nil, err
 	}
