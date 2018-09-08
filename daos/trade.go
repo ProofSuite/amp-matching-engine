@@ -1,6 +1,7 @@
 package daos
 
 import (
+	"log"
 	"time"
 
 	"github.com/Proofsuite/amp-matching-engine/app"
@@ -24,7 +25,7 @@ func NewTradeDao() *TradeDao {
 	collection := "trades"
 	index := mgo.Index{
 		Key:    []string{"hash"},
-		Unique: true,
+		Sparse: true,
 	}
 
 	err := db.Session.DB(dbName).C(collection).EnsureIndex(index)
@@ -37,7 +38,7 @@ func NewTradeDao() *TradeDao {
 // Create function performs the DB insertion task for trade collection
 // It accepts 1 or more trades as input.
 // All the trades are inserted in one query itself.
-func (dao *TradeDao) Create(trades ...*types.Trade) (err error) {
+func (dao *TradeDao) Create(trades ...*types.Trade) error {
 	y := make([]interface{}, len(trades))
 
 	for _, trade := range trades {
@@ -47,8 +48,13 @@ func (dao *TradeDao) Create(trades ...*types.Trade) (err error) {
 		y = append(y, trade)
 	}
 
-	err = db.Create(dao.dbName, dao.collectionName, y...)
-	return
+	err := db.Create(dao.dbName, dao.collectionName, y...)
+	if err != nil {
+		log.Print(err)
+		return err
+	}
+
+	return nil
 }
 
 func (dao *TradeDao) Update(trade *types.Trade) (err error) {
@@ -104,10 +110,12 @@ func (dao *TradeDao) GetByPairName(name string) (response []*types.Trade, err er
 		Pattern: name,
 		Options: "i",
 	}}
+
 	err = db.Get(dao.dbName, dao.collectionName, q, 0, 0, &response)
 	if err != nil {
 		return
 	}
+
 	return
 }
 

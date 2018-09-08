@@ -50,8 +50,8 @@ type Params struct {
 }
 
 type SignaturePayload struct {
-	Order  *Order   `json:"order"`
-	Trades []*Trade `json:"trade"`
+	Order   *Order            `json:"order"`
+	Matches []*OrderTradePair `json:"matches"`
 }
 
 func NewOrderWebsocketMessage(o *Order) *WebSocketMessage {
@@ -90,24 +90,24 @@ func NewOrderCancelWebsocketMessage(oc *OrderCancel) *WebSocketMessage {
 	}
 }
 
-func NewRequestSignaturesWebsocketMessage(hash common.Hash, t []*Trade, o *Order) *WebSocketMessage {
+func NewRequestSignaturesWebsocketMessage(hash common.Hash, m []*OrderTradePair, o *Order) *WebSocketMessage {
 	return &WebSocketMessage{
 		Channel: "orders",
 		Payload: WebSocketPayload{
 			Type: "REQUEST_SIGNATURE",
 			Hash: hash.Hex(),
-			Data: SignaturePayload{o, t},
+			Data: SignaturePayload{o, m},
 		},
 	}
 }
 
-func NewSubmitSignatureWebsocketMessage(hash string, t []*Trade, o *Order) *WebSocketMessage {
+func NewSubmitSignatureWebsocketMessage(hash string, m []*OrderTradePair, o *Order) *WebSocketMessage {
 	return &WebSocketMessage{
 		Channel: "orders",
 		Payload: WebSocketPayload{
 			Type: "SUBMIT_SIGNATURE",
 			Hash: hash,
-			Data: SignaturePayload{o, t},
+			Data: SignaturePayload{o, m},
 		},
 	}
 }

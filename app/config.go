@@ -55,6 +55,7 @@ func LoadConfig(configPath string, env string) error {
 	if env != "" {
 		v.SetConfigName("config." + env)
 	}
+
 	v.SetConfigType("yaml")
 	v.SetEnvPrefix("restful")
 	v.AutomaticEnv()
@@ -66,8 +67,10 @@ func LoadConfig(configPath string, env string) error {
 	if err := v.ReadInConfig(); err != nil {
 		return fmt.Errorf("Failed to read the configuration file: %s", err)
 	}
+
 	if err := v.Unmarshal(&Config); err != nil {
 		return err
 	}
+
 	return Config.Validate()
 }

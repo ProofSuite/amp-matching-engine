@@ -10,6 +10,8 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/Proofsuite/amp-matching-engine/rabbitmq"
 	"github.com/Proofsuite/amp-matching-engine/types"
+	"github.com/Proofsuite/amp-matching-engine/utils"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	eth "github.com/ethereum/go-ethereum/core/types"
 	"github.com/streadway/amqp"
@@ -51,7 +53,6 @@ func NewOperator(
 	provider interfaces.EthereumProvider,
 	exchange interfaces.Exchange,
 ) (*Operator, error) {
-
 	txqueues := []*TxQueue{}
 	addressIndex := make(map[common.Address]*TxQueue)
 
@@ -62,6 +63,12 @@ func NewOperator(
 
 	for i, w := range wallets {
 		name := strconv.Itoa(i) + w.Address.Hex()
+		ch := rabbitmq.GetChannel("TX_QUEUES:" + name)
+		err := rabbitmq.DeclareQueue(ch, "TX_QUEUES:"+name)
+		if err != nil {
+			panic(err)
+		}
+
 		txq := &TxQueue{
 			Name:             name,
 			Wallet:           w,
@@ -83,8 +90,13 @@ func NewOperator(
 		QueueAddressIndex: addressIndex,
 	}
 
-	go op.HandleEvents()
+	err = op.PurgeQueues()
+	if err != nil {
+		log.Print(err)
+		return nil, err
+	}
 
+	go op.HandleEvents()
 	return op, nil
 }
 
@@ -152,6 +164,8 @@ func (op *Operator) HandleEvents() error {
 			tradeHash := event.TradeHash
 			errID := int(event.ErrorId)
 
+			log.Print("The error ID is: ", errID)
+
 			tr, err := op.TradeService.GetByHash(tradeHash)
 			if err != nil {
 				log.Print(err)
@@ -192,6 +206,7 @@ func (op *Operator) HandleEvents() error {
 				if err != nil {
 					log.Print(err)
 				}
+
 				fmt.Println("TRADE_MINED IN HANDLE EVENTS: ", tr.Hash.Hex())
 
 				err = op.PublishTradeSuccessMessage(or, tr)
@@ -201,6 +216,20 @@ func (op *Operator) HandleEvents() error {
 			}()
 		}
 	}
+}
+
+func (op *Operator) HandleTrades(msg *types.OperatorMessage) error {
+
+	log.Print("Handling trade")
+	utils.PrintJSON(msg)
+
+	err := op.QueueTrade(msg.Order, msg.Trade)
+	if err != nil {
+		log.Print(err)
+		return err
+	}
+
+	return nil
 }
 
 // PublishTxErrorMessage publishes a messages when a trade execution fails
@@ -297,39 +326,6 @@ func (op *Operator) Publish(ch *amqp.Channel, q *amqp.Queue, bytes []byte) error
 
 // QueueTrade
 func (op *Operator) QueueTrade(o *types.Order, t *types.Trade) error {
-	// addressindex := op.QueueAddressIndex
-	// maker := o.UserAddress
-	// taker := t.Taker
-
-	// txq, ok := addressindex[maker]
-	// if ok {
-	// 	if txq.Length() < 10 {
-	// 		err := txq.QueueTrade(o, t)
-	// 		if err != nil {
-	// 			log.Print(err)
-	// 			return err
-	// 		}
-	// 		return nil
-	// 	} else {
-	// 		return errors.New("User transaction queue full")
-	// 	}
-	// }
-
-	// txq, ok = addressindex[taker]
-	// if ok {
-	// 	if txq.Length() < 10 {
-	// 		err := txq.QueueTrade(o, t)
-	// 		if err != nil {
-	// 			log.Print(err)
-	// 			return err
-	// 		}
-	// 		return nil
-	// 	} else {
-	// 		log.Print("Transaction queue is full")
-	// 		return errors.New("User transaction queue full")
-	// 	}
-	// }
-
 	txq, len, err := op.GetShortestQueue()
 	if err != nil {
 		log.Print(err)
@@ -356,8 +352,6 @@ func (op *Operator) GetShortestQueue() (*TxQueue, int, error) {
 	shortest := &TxQueue{}
 	min := 1000
 
-	// log.Print(min)
-
 	for _, txq := range op.TxQueues {
 		if shortest == nil {
 			shortest = txq
@@ -377,7 +371,12 @@ func (op *Operator) GetShortestQueue() (*TxQueue, int, error) {
 // SetFeeAccount sets the fee account of the exchange contract. The fee account receives
 // the trading fees whenever a trade is settled.
 func (op *Operator) SetFeeAccount(account common.Address) (*eth.Transaction, error) {
-	tx, err := op.Exchange.SetFeeAccount(account)
+	txOpts, err := op.GetTxSendOptions()
+	if err != nil {
+		return nil, err
+	}
+
+	tx, err := op.Exchange.SetFeeAccount(account, txOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -388,7 +387,12 @@ func (op *Operator) SetFeeAccount(account common.Address) (*eth.Transaction, err
 // SetOperator updates the operator settings of the given address. Only addresses with an
 // operator access can execute Withdraw and Trade transactions to the Exchange smart contract
 func (op *Operator) SetOperator(account common.Address, isOperator bool) (*eth.Transaction, error) {
-	tx, err := op.Exchange.SetOperator(account, isOperator)
+	txOpts, err := op.GetTxSendOptions()
+	if err != nil {
+		return nil, err
+	}
+
+	tx, err := op.Exchange.SetOperator(account, isOperator, txOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -427,181 +431,92 @@ func (op *Operator) PurgeQueues() error {
 	return nil
 }
 
-// 	// err := t.Validate()
-// 	// if err != nil {
-// 	// 	return err
-// 	// }
+func (op *Operator) GetTxSendOptions() (*bind.TransactOpts, error) {
+	wallet, err := op.WalletService.GetDefaultAdminWallet()
+	if err != nil {
+		return nil, err
+	}
 
-// 	ch := getChannel("tradeTxs")
-// 	q := getQueue(ch, "tradeTxs")
+	return bind.NewKeyedTransactor(wallet.PrivateKey), nil
+}
 
-// 	bytes, err := json.Marshal(t)
-// 	if err != nil {
-// 		return errors.New("Failed to marshal trade object")
+// addressindex := op.QueueAddressIndex
+// maker := o.UserAddress
+// taker := t.Taker
+
+// txq, ok := addressindex[maker]
+// if ok {
+// 	if txq.Length() < 10 {
+// 		err := txq.QueueTrade(o, t)
+// 		if err != nil {
+// 			log.Print(err)
+// 			return err
+// 		}
+// 		return nil
+// 	} else {
+// 		return errors.New("User transaction queue full")
 // 	}
-
-// 	err = ch.Publish(
-// 		"",
-// 		q.Name,
-// 		false,
-// 		false,
-// 		amqp.Publishing{
-// 			ContentType: "text/json",
-// 			Body:        bytes,
-// 		})
-
-// 	length := q.Messages
-// 	if length == 1 {
-// 		op.ExecuteTrade(o, t)
-// 	}
-
-// 	if length == 10 {
-// 		return errors.New("Transaction queue is full")
-// 	}
-
-// 	return nil
 // }
 
-// Trade executes a settlements transaction. The order and trade payloads need to be signed respectively
-// // by the Maker and the Taker of the trade. Only the operator account can send a Trade function to the
-// // Exchange smart contract.
-// func (op *Operator) ExecuteTrade(o *types.Order, tr *types.Trade) (*eth.Transaction, error) {
-// 	tx, err := op.Exchange.Trade(o, tr)
+// txq, ok = addressindex[taker]
+// if ok {
+// 	if txq.Length() < 10 {
+// 		err := txq.QueueTrade(o, t)
+// 		if err != nil {
+// 			log.Print(err)
+// 			return err
+// 		}
+// 		return nil
+// 	} else {
+// 		log.Print("Transaction queue is full")
+// 		return errors.New("User transaction queue full")
+// 	}
+// }
+
+// func NewDefaultOperator(
+// 	walletService interfaces.WalletService,
+// 	tradeService interfaces.TradeService,
+// 	orderService interfaces.OrderService,
+// 	provider interfaces.EthereumProvider,
+// ) (*Operator, error) {
+// 	exchangeAddress := common.HexToAddress(app.Config.Ethereum["exchange_address"])
+// 	txqueues := []*TxQueue{}
+// 	addressIndex := make(map[common.Address]*TxQueue)
+
+// 	wallets, err := walletService.GetOperatorWallets()
+// 	if err != nil {
+// 		panic(err)
+// 	}
+
+// 	exchange, err := contractsinterfaces.NewExchange(exchangeAddress, provider)
 // 	if err != nil {
 // 		return nil, err
 // 	}
 
-// 	err = op.TradeService.UpdateTradeTx(tr, tx)
-// 	if err != nil {
-// 		return nil, errors.New("Could not update trade tx attribute")
-// 	}
-
-// 	err = op.PublishTradeExecutedMessage(tr)
-// 	if err != nil {
-// 		return nil, errors.New("Could not publish trade executed message")
-// 	}
-
-// 	return tx, nil
-// }
-
-// // Validate checks that the operator configuration is sufficient.
-// func (op *Operator) Validate() error {
-// 	// wallet, err := op.WalletService.GetDefaultAdminWallet()
-// 	// if err != nil {
-// 	// 	return err
-// 	// }
-
-// 	// balance, err := op.Ethereum.GetPendingBalanceAt(wallet.Address)
-// 	// if err != nil {
-// 	// 	return err
-// 	// }
-
-// 	return nil
-// }
-
-// SetDefaultTxOptions resets the transaction value to 0
-// func (op *Operator) SetDefaultTxOptions() {
-// 	op.Exchange.TxOptions.Value = big.NewInt(0)
-// }
-
-// // SetTxValue sets the transaction ether value
-// func (op *Operator) SetTxValue(value *big.Int) {
-// 	op.Exchange.TxOptions.Value = value
-// }
-
-// // SetCustomSender updates the sender address address to the exchange contract
-// func (op *Operator) SetCustomSender(w *types.Wallet) {
-// 	op.Exchange.TxOptions = bind.NewKeyedTransactor(w.PrivateKey)
-// }
-
-// func getQueue(ch *amqp.Channel, queue string) *amqp.Queue {
-// 	if queues[queue] == nil {
-// 		q, err := ch.QueueDeclare(queue, false, false, false, false, nil)
-// 		if err != nil {
-// 			log.Fatalf("Failed to declare a queue: %s", err)
+// 	for i, w := range wallets {
+// 		name := strconv.Itoa(i) + w.Address.Hex()
+// 		txq := &TxQueue{
+// 			Name:             name,
+// 			Wallet:           w,
+// 			TradeService:     tradeService,
+// 			EthereumProvider: provider,
+// 			Exchange:         exchange,
 // 		}
-// 		queues[queue] = &q
+
+// 		txqueues = append(txqueues, txq)
 // 	}
-// 	return queues[queue]
+
+// 	op := &Operator{
+// 		WalletService:     walletService,
+// 		TradeService:      tradeService,
+// 		OrderService:      orderService,
+// 		EthereumProvider:  provider,
+// 		Exchange:          exchange,
+// 		TxQueues:          txqueues,
+// 		QueueAddressIndex: addressIndex,
+// 	}
+
+// 	go op.HandleEvents()
+
+// 	return op, nil
 // }
-
-// func getChannel(id string) *amqp.Channel {
-// 	if channels[id] == nil {
-// 		ch, err := rabbitmq.Conn.Channel()
-// 		if err != nil {
-// 			log.Fatalf("Failed to open a channel: %s", err)
-// 			panic(err)
-// 		}
-// 		channels[id] = ch
-// 	}
-// 	return channels[id]
-// }
-
-// go func() {
-// 	for {
-// 		select {
-// 		case event := <-errorEvents:
-// 			tradeHash := event.TradeHash
-// 			errID := int(event.ErrorId)
-// 			//TODO add this function in the trade service
-// 			tr, err := op.TradeService.GetByHash(tradeHash)
-// 			if err != nil {
-// 				log.Printf("Could not retrieve hash")
-// 				return
-// 			}
-
-// 			err = op.PublishTxErrorMessage(tr, errID)
-// 			if err != nil {
-// 				log.Printf("Could not publish tx error message")
-// 			}
-
-// 			err = op.PublishTradeCancelMessage(tr)
-// 			if err != nil {
-// 				log.Printf("Could not publish cancel trade message")
-// 			}
-
-// 		case event := <-tradeEvents:
-// 			//TODO add this function in the trade service
-// 			tr, err := tradeService.GetByHash(event.TradeHash)
-// 			if err != nil {
-// 				log.Printf("Could not retrieve initial hash")
-// 				return
-// 			}
-
-// 			// only execute the next transaction in the queue when this transaction is mined
-// 			go func() {
-// 				_, err := op.Ethereum.WaitMined(tr.Tx)
-// 				if err != nil {
-// 					log.Printf("Could not execute trade: %v\n", err)
-// 				}
-
-// 				err = op.PublishTradeSuccessMessage(tr)
-// 				if err != nil {
-// 					log.Printf("Could not publish order success message")
-// 				}
-
-// 				ch := getChannel("PENDING_TRADES")
-// 				q := getQueue(ch, "PENDING_TRADES")
-
-// 				length := q.Messages
-// 				if length > 0 {
-// 					msg, _, _ := ch.Get(
-// 						q.Name,
-// 						true,
-// 					)
-
-// 					var pendingTrade PendingTradeMessage
-// 					err = json.Unmarshal(msg.Body, &pendingTrade)
-// 					if err != nil {
-// 						log.Printf("Could not executed trade: %v\n", err)
-// 					}
-
-// 					_, err = op.ExecuteTrade(pendingTrade.Order, pendingTrade.Trade)
-// 					if err != nil {
-// 						log.Printf("Could not execute trade: %v", err)
-// 					}
-// 				}
-// 			}()
-// 		}
-// 	}
-// }()

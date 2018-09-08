@@ -1,6 +1,8 @@
 package services
 
 import (
+	"log"
+
 	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/Proofsuite/amp-matching-engine/utils"
@@ -54,8 +56,9 @@ func (t *TradeService) GetByOrderHash(hash common.Hash) ([]*types.Trade, error) 
 func (t *TradeService) UpdateTradeTx(tr *types.Trade, tx *eth.Transaction) error {
 	tr.Tx = tx
 
-	err := t.tradeDao.Update(tr)
+	err := t.tradeDao.UpdateByHash(tr.Hash, tr)
 	if err != nil {
+		log.Print(err)
 		return err
 	}
 

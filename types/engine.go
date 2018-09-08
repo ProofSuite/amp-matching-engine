@@ -8,13 +8,13 @@ import (
 type FillStatus int
 
 // Response is the structure of message response sent by engine
-type EngineResponse struct {
-	FillStatus     string       `json:"fillStatus,omitempty"`
-	Order          *Order       `json:"order,omitempty"`
-	RemainingOrder *Order       `json:"remainingOrder,omitempty"`
-	MatchingOrders []*FillOrder `json:"matchingOrders,omitempty"`
-	Trades         []*Trade     `json:"trades,omitempty"`
-}
+// type EngineResponse struct {
+// 	FillStatus     string       `json:"fillStatus,omitempty"`
+// 	Order          *Order       `json:"order,omitempty"`
+// 	RemainingOrder *Order       `json:"remainingOrder,omitempty"`
+// 	MatchingOrders []*FillOrder `json:"matchingOrders,omitempty"`
+// 	Trades         []*Trade     `json:"trades,omitempty"`
+// }
 
 // this const block holds the possible valued of FillStatus
 // const (
@@ -31,4 +31,16 @@ type EngineResponse struct {
 type FillOrder struct {
 	Amount *big.Int
 	Order  *Order
+}
+
+type OrderTradePair struct {
+	Order *Order
+	Trade *Trade
+}
+
+type EngineResponse struct {
+	Status         string            `json:"fillStatus,omitempty"`
+	Order          *Order            `json:"order,omitempty"`
+	RemainingOrder *Order            `json:"remainingOrder,omitempty"`
+	Matches        []*OrderTradePair `json:"matches,omitempty"`
 }

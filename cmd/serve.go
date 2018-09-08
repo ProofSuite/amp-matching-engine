@@ -6,15 +6,18 @@ import (
 	"net/http"
 
 	"github.com/Proofsuite/amp-matching-engine/app"
+	"github.com/Proofsuite/amp-matching-engine/contracts"
 	"github.com/Proofsuite/amp-matching-engine/crons"
 	"github.com/Proofsuite/amp-matching-engine/daos"
 	"github.com/Proofsuite/amp-matching-engine/endpoints"
 	"github.com/Proofsuite/amp-matching-engine/ethereum"
+	"github.com/Proofsuite/amp-matching-engine/operator"
 	"github.com/Proofsuite/amp-matching-engine/rabbitmq"
 	"github.com/Proofsuite/amp-matching-engine/redis"
 	"github.com/Proofsuite/amp-matching-engine/services"
 	"github.com/Proofsuite/amp-matching-engine/ws"
 	"github.com/Sirupsen/logrus"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/spf13/cobra"
 
 	"github.com/Proofsuite/amp-matching-engine/engine"
@@ -39,14 +42,19 @@ func init() {
 func run(cmd *cobra.Command, args []string) {
 	log.SetFlags(log.LstdFlags | log.Llongfile)
 	log.SetPrefix("\nLOG: ")
-	logger := logrus.New()
 
 	// connect to the database
-	if _, err := daos.InitSession(nil); err != nil {
+	_, err := daos.InitSession(nil)
+	if err != nil {
 		panic(err)
 	}
 
-	http.Handle("/", NewRouter(logger))
+	logger := logrus.New()
+	rabbitmq.InitConnection(app.Config.Rabbitmq)
+	redisConn := redis.NewRedisConnection(app.Config.Redis)
+	provider := ethereum.NewWebsocketProvider()
+
+	http.Handle("/", NewRouter(provider, redisConn, logger))
 	http.HandleFunc("/socket", ws.ConnectionEndpoint)
 
 	// start the server
@@ -55,7 +63,11 @@ func run(cmd *cobra.Command, args []string) {
 	panic(http.ListenAndServe(address, nil))
 }
 
-func NewRouter(logger *logrus.Logger) *routing.Router {
+func NewRouter(
+	provider *ethereum.EthereumProvider,
+	redisConn *redis.RedisConnection,
+	logger *logrus.Logger,
+) *routing.Router {
 	router := routing.New()
 
 	router.To("GET,HEAD", "/ping", func(c *routing.Context) error {
@@ -75,12 +87,8 @@ func NewRouter(logger *logrus.Logger) *routing.Router {
 
 	rg := router.Group("")
 
-	rabbitmq.InitConnection(app.Config.Rabbitmq)
-	provider := ethereum.NewDefaultEthereumProvider()
-	redisClient := redis.NewRedisConnection(app.Config.Redis)
-
 	// instantiate engine
-	eng, err := engine.InitEngine(redisClient)
+	eng, err := engine.InitEngine(redisConn)
 	if err != nil {
 		panic(err)
 	}
@@ -91,6 +99,7 @@ func NewRouter(logger *logrus.Logger) *routing.Router {
 	pairDao := daos.NewPairDao()
 	tradeDao := daos.NewTradeDao()
 	accountDao := daos.NewAccountDao()
+	walletDao := daos.NewWalletDao()
 
 	// get services for injection
 	accountService := services.NewAccountService(accountDao, tokenDao)
@@ -100,9 +109,35 @@ func NewRouter(logger *logrus.Logger) *routing.Router {
 	pairService := services.NewPairService(pairDao, tokenDao, eng, tradeService)
 	orderService := services.NewOrderService(orderDao, pairDao, accountDao, tradeDao, eng, provider)
 	orderBookService := services.NewOrderBookService(pairDao, tokenDao, eng)
+	walletService := services.NewWalletService(walletDao)
 	cronService := crons.NewCronService(ohlcvService)
-	// walletService := services.NewWalletService(walletDao, balanceDao)
 
+	// get exchange contract instance
+	exchangeAddress := common.HexToAddress(app.Config.Ethereum["exchange_address"])
+	exchange, err := contracts.NewExchange(
+		walletService,
+		exchangeAddress,
+		provider.Client,
+	)
+
+	if err != nil {
+		panic(err)
+	}
+
+	// deploy operator
+	op, err := operator.NewOperator(
+		walletService,
+		tradeService,
+		orderService,
+		provider,
+		exchange,
+	)
+
+	if err != nil {
+		panic(err)
+	}
+
+	// deploy http and ws endpoints
 	endpoints.ServeAccountResource(rg, accountService)
 	endpoints.ServeTokenResource(rg, tokenService)
 	endpoints.ServePairResource(rg, pairService)
@@ -112,7 +147,8 @@ func NewRouter(logger *logrus.Logger) *routing.Router {
 	endpoints.ServeOrderResource(rg, orderService, eng)
 
 	//initialize rabbitmq subscriptions
-	orderService.SubscribeQueue(eng.HandleOrders)
+	orderService.SubscribeOrders(eng.HandleOrders)
+	orderService.SubscribeTrades(op.HandleTrades)
 	eng.SubscribeResponseQueue(orderService.HandleEngineResponse)
 
 	// fmt.Printf("\n%+v\n", app.Config.TickDuration)

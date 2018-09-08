@@ -10,6 +10,7 @@ import (
 
 	"github.com/streadway/amqp"
 
+	"github.com/Proofsuite/amp-matching-engine/app"
 	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/Proofsuite/amp-matching-engine/utils/math"
@@ -88,6 +89,7 @@ func (s *OrderService) NewOrder(o *types.Order) error {
 	// Validate if the address is not blacklisted
 	acc, err := s.accountDao.GetByAddress(o.UserAddress)
 	if err != nil {
+		log.Print(err)
 		return err
 	}
 
@@ -96,6 +98,7 @@ func (s *OrderService) NewOrder(o *types.Order) error {
 	}
 
 	if err := o.Validate(); err != nil {
+		log.Print(err)
 		return err
 	}
 
@@ -103,6 +106,7 @@ func (s *OrderService) NewOrder(o *types.Order) error {
 	if err != nil {
 		return err
 	}
+
 	if !ok {
 		return errors.New("Invalid signature")
 	}
@@ -125,56 +129,75 @@ func (s *OrderService) NewOrder(o *types.Order) error {
 	}
 
 	// fee balance validation
-	wethAddress := common.HexToAddress("0x2EB24432177e82907dE24b7c5a6E0a5c03226135")
-	wethTokenBalance, err := s.accountDao.GetTokenBalance(o.UserAddress, wethAddress)
+	wethAddress := common.HexToAddress(app.Config.Ethereum["weth_address"])
+	exchangeAddress := common.HexToAddress(app.Config.Ethereum["exchange_address"])
+	balanceRecord, err := s.accountDao.GetTokenBalances(o.UserAddress)
 	if err != nil {
-		log.Printf("Error retrieving WETH balance: %v", err.Error())
+		log.Print("Error retrieving WETH balance", err)
 		return err
 	}
 
-	if wethTokenBalance.Balance.Cmp(o.MakeFee) == -1 {
+	wethBalance, err := s.ethereumProvider.BalanceOf(o.UserAddress, wethAddress)
+	if err != nil {
+		log.Print("Error", err)
+		return err
+	}
+
+	wethAllowance, err := s.ethereumProvider.Allowance(o.UserAddress, exchangeAddress, wethAddress)
+	if err != nil {
+		log.Print("Error", err)
+		return err
+	}
+
+	sellTokenBalance, err := s.ethereumProvider.BalanceOf(o.UserAddress, wethAddress)
+	if err != nil {
+		log.Print("Error", err)
+		return err
+	}
+
+	sellTokenAllowance, err := s.ethereumProvider.Allowance(o.UserAddress, exchangeAddress, o.SellToken)
+	if err != nil {
+		log.Print("Error", err)
+		return err
+	}
+
+	fee := math.Max(o.MakeFee, o.TakeFee)
+
+	availableWethBalance := math.Sub(wethBalance, balanceRecord[wethAddress].LockedBalance)
+	availableSellTokenBalance := math.Sub(sellTokenBalance, balanceRecord[o.SellToken].LockedBalance)
+
+	if availableWethBalance.Cmp(fee) == -1 {
 		return errors.New("Insufficient WETH Balance")
 	}
 
-	if wethTokenBalance.Balance.Cmp(o.TakeFee) == -1 {
+	if wethAllowance.Cmp(fee) == -1 {
 		return errors.New("Insufficient WETH Balance")
 	}
 
-	if wethTokenBalance.Allowance.Cmp(o.MakeFee) == -1 {
-		return errors.New("Insufficient WETH Allowance")
-	}
-
-	if wethTokenBalance.Allowance.Cmp(o.TakeFee) == -1 {
-		return errors.New("Insufficient WETH Allowance")
-	}
-
-	wethTokenBalance.Balance.Sub(wethTokenBalance.Balance, o.MakeFee)
-	wethTokenBalance.LockedBalance.Add(wethTokenBalance.LockedBalance, o.TakeFee)
-
-	err = s.accountDao.UpdateTokenBalance(o.UserAddress, wethAddress, wethTokenBalance)
-	if err != nil {
-		log.Print(err)
-		return err
-	}
-
-	// balance validation
-	sellTokenBalance, err := s.accountDao.GetTokenBalance(o.UserAddress, o.SellToken)
-	if err != nil {
-		log.Print(err)
-		return err
-	}
-
-	if sellTokenBalance.Balance.Cmp(o.SellAmount) != 1 {
+	if availableSellTokenBalance.Cmp(o.SellAmount) != 1 {
 		return errors.New("Insufficient Balance")
 	}
 
-	if sellTokenBalance.Allowance.Cmp(o.SellAmount) != 1 {
+	if sellTokenAllowance.Cmp(o.SellAmount) != 1 {
 		return errors.New("Insufficient Allowance")
 	}
 
-	sellTokenBalance.Balance.Sub(sellTokenBalance.Balance, o.SellAmount)
-	sellTokenBalance.LockedBalance.Add(sellTokenBalance.Balance, o.SellAmount)
-	err = s.accountDao.UpdateTokenBalance(o.UserAddress, o.SellToken, sellTokenBalance)
+	sellTokenBalanceRecord := balanceRecord[o.SellToken]
+	sellTokenBalanceRecord.Balance.Set(sellTokenBalance)
+	sellTokenBalanceRecord.Allowance.Set(sellTokenAllowance)
+	sellTokenBalanceRecord.LockedBalance = math.Add(sellTokenBalanceRecord.LockedBalance, o.SellAmount)
+	wethTokenBalanceRecord := balanceRecord[wethAddress]
+	wethTokenBalanceRecord.Balance.Set(wethBalance)
+	wethTokenBalanceRecord.Allowance.Set(wethAllowance)
+	wethTokenBalanceRecord.LockedBalance = math.Add(wethTokenBalanceRecord.LockedBalance, fee)
+
+	err = s.accountDao.UpdateTokenBalance(o.UserAddress, wethAddress, wethTokenBalanceRecord)
+	if err != nil {
+		log.Print(err)
+		return err
+	}
+
+	err = s.accountDao.UpdateTokenBalance(o.UserAddress, o.SellToken, sellTokenBalanceRecord)
 	if err != nil {
 		log.Print(err)
 		return err
@@ -185,7 +208,6 @@ func (s *OrderService) NewOrder(o *types.Order) error {
 		return err
 	}
 
-	// Push o to queue
 	bytes, _ := json.Marshal(o)
 	s.PublishOrder(&rabbitmq.Message{Type: "NEW_ORDER", Data: bytes})
 	return nil
@@ -219,7 +241,7 @@ func (s *OrderService) CancelOrder(oc *types.OrderCancel) error {
 		}
 
 		s.orderDao.UpdateByHash(res.Order.Hash, res.Order)
-		if err := s.cancelOrderUnlockAmount(res.Order); err != nil {
+		if err := s.UnlockBalances(res.Order); err != nil {
 			log.Print(err)
 			return err
 		}
@@ -235,7 +257,7 @@ func (s *OrderService) CancelOrder(oc *types.OrderCancel) error {
 // HandleEngineResponse listens to messages incoming from the engine and handles websocket
 // responses and database updates accordingly
 func (s *OrderService) HandleEngineResponse(res *types.EngineResponse) error {
-	switch res.FillStatus {
+	switch res.Status {
 	case "ERROR":
 		s.handleEngineError(res)
 	case "NOMATCH":
@@ -277,26 +299,17 @@ func (s *OrderService) handleEngineOrderMatched(res *types.EngineResponse) {
 
 	s.transferAmount(res.Order, res.Order.FilledAmount)
 
-	for _, mo := range res.MatchingOrders {
-		err := s.orderDao.UpdateByHash(mo.Order.Hash, mo.Order)
+	for _, m := range res.Matches {
+		err := s.orderDao.UpdateByHash(m.Order.Hash, m.Order)
 		if err != nil {
 			log.Print(err)
 		}
 
-		s.transferAmount(mo.Order, mo.Amount)
-	}
-
-	utils.PrintJSON(res)
-
-	if len(res.Trades) != 0 {
-		err := s.tradeDao.Create(res.Trades...)
-		if err != nil {
-			log.Fatal(err)
-		}
+		s.transferAmount(m.Order, m.Trade.Amount)
 	}
 
 	go s.handleSubmitSignatures(res)
-	s.SendMessage("REQUEST_SIGNATURE", res.Order.Hash, types.SignaturePayload{res.RemainingOrder, res.Trades})
+	s.SendMessage("REQUEST_SIGNATURE", res.Order.Hash, types.SignaturePayload{res.RemainingOrder, res.Matches})
 }
 
 // handleSubmitSignatures wait for a submit signature message that provides the matching engine with orders
@@ -308,11 +321,9 @@ func (s *OrderService) handleSubmitSignatures(res *types.EngineResponse) {
 	select {
 	case msg := <-ch:
 		if msg != nil && msg.Type == "SUBMIT_SIGNATURE" {
-
-			log.Print("SUBMITTING SIGNATURES")
-
 			bytes, err := json.Marshal(msg.Data)
 			if err != nil {
+				log.Print(err)
 				s.RecoverOrders(res)
 				ws.SendOrderErrorMessage(ws.GetOrderConnection(res.Order.Hash), err.Error(), res.Order.Hash)
 			}
@@ -332,19 +343,35 @@ func (s *OrderService) handleSubmitSignatures(res *types.EngineResponse) {
 					ws.SendOrderErrorMessage(ws.GetOrderConnection(res.Order.Hash), err.Error(), res.Order.Hash)
 				}
 
-				log.Print("ADDING NEW ORDER")
 				s.PublishOrder(&rabbitmq.Message{Type: "ADD_ORDER", Data: bytes})
 			}
 
-			if data.Trades != nil {
-				_, err := json.Marshal(res.Order)
+			if data.Matches != nil {
+				trades := []*types.Trade{}
+				for _, m := range data.Matches {
+					trades = append(trades, m.Trade)
+				}
+
+				err := s.tradeDao.Create(trades...)
+				if err != nil {
+					log.Print(err)
+				}
+
+				_, err = json.Marshal(res.Order)
 				if err != nil {
 					log.Print(err)
 					ws.SendOrderErrorMessage(ws.GetOrderConnection(res.Order.Hash), err.Error(), res.Order.Hash)
 				}
+
+				for _, m := range data.Matches {
+					err := s.PublishTrade(m.Order, m.Trade)
+					if err != nil {
+						log.Print(err)
+						ws.SendOrderErrorMessage(ws.GetOrderConnection(res.Order.Hash), err.Error(), res.Order.Hash)
+					}
+				}
 			}
 		}
-
 	case <-t.C:
 		s.RecoverOrders(res)
 		t.Stop()
@@ -361,15 +388,15 @@ func (s *OrderService) handleEngineUnknownMessage(res *types.EngineResponse) {
 // RecoverOrders recovers orders i.e puts back matched orders to orderbook
 // in case of failure of trade signing by the maker
 func (s *OrderService) RecoverOrders(res *types.EngineResponse) {
-	if err := s.engine.RecoverOrders(res.MatchingOrders); err != nil {
+	err := s.engine.RecoverOrders(res.Matches)
+	if err != nil {
 		panic(err)
 	}
 
-	res.FillStatus = "ERROR"
+	res.Status = "ERROR"
 	res.Order.Status = "ERROR"
-	res.Trades = nil
+	res.Matches = nil
 	res.RemainingOrder = nil
-	res.MatchingOrders = nil
 }
 
 func (s *OrderService) CancelTrades(trades []*types.Trade) error {
@@ -412,12 +439,17 @@ func (s *OrderService) RelayOrderUpdate(res *types.EngineResponse) {
 
 // RelayTradeUpdate is resonsible for notifying listening clients about new trades
 func (s *OrderService) RelayTradeUpdate(res *types.EngineResponse) {
-
-	if len(res.Trades) == 0 {
+	if len(res.Matches) == 0 {
 		return
 	}
+
+	trades := []*types.Trade{}
+	for _, m := range res.Matches {
+		trades = append(trades, m.Trade)
+	}
+
 	// broadcast trades
-	go broadcastTradeUpdate(res.Trades)
+	go broadcastTradeUpdate(trades)
 }
 
 func broadcastLiteOBUpdate(baseToken, quoteToken common.Address, data interface{}) {
@@ -436,7 +468,6 @@ func broadcastTradeUpdate(trades []*types.Trade) {
 }
 
 func getLightOBPayload(res *types.EngineResponse) interface{} {
-
 	orderSide := make(map[string]string)
 	matchSide := make([]map[string]string, 0)
 
@@ -447,15 +478,17 @@ func getLightOBPayload(res *types.EngineResponse) interface{} {
 		orderSide["amount"] = math.Sub(res.Order.Amount, res.Order.FilledAmount).String()
 	}
 
-	if len(res.MatchingOrders) > 0 {
-		for _, mo := range res.MatchingOrders {
+	if len(res.Matches) > 0 {
+		for _, mo := range res.Matches {
 			pp := mo.Order.PricePoint.String()
 			if matchSideMap[pp] == nil {
 				matchSideMap[pp] = big.NewInt(0)
 			}
-			matchSideMap[pp] = math.Add(matchSideMap[pp], mo.Amount)
+
+			matchSideMap[pp] = math.Add(matchSideMap[pp], mo.Trade.Amount)
 		}
 	}
+
 	for price, amount := range matchSideMap {
 		temp := map[string]string{
 			"price":  price,
@@ -483,6 +516,40 @@ func getLightOBPayload(res *types.EngineResponse) interface{} {
 // SendMessage is resonsible for sending message to socket linked to a particular order
 func (s *OrderService) SendMessage(msgType string, hash common.Hash, data interface{}) {
 	ws.SendOrderMessage(ws.GetOrderConnection(hash), msgType, data, hash)
+}
+
+// UnlockBalances unlocks balances in case an order is canceled for examples. It unlocks both
+// the token sell balance as well as the weth balance for fees.
+func (s *OrderService) UnlockBalances(o *types.Order) error {
+	balanceRecord, err := s.accountDao.GetTokenBalances(o.UserAddress)
+	if err != nil {
+		log.Fatal(err)
+		return err
+	}
+
+	wethAddress := common.HexToAddress(app.Config.Ethereum["weth_address"])
+
+	fee := math.Max(o.MakeFee, o.TakeFee)
+	sellTokenBalanceRecord := balanceRecord[o.SellToken]
+	sellTokenBalanceRecord.LockedBalance = math.Sub(sellTokenBalanceRecord.LockedBalance, o.SellAmount)
+	wethTokenBalanceRecord := balanceRecord[wethAddress]
+	wethTokenBalanceRecord.LockedBalance = math.Sub(wethTokenBalanceRecord.LockedBalance, fee)
+
+	utils.PrintJSON(sellTokenBalanceRecord)
+
+	err = s.accountDao.UpdateTokenBalance(o.UserAddress, wethAddress, wethTokenBalanceRecord)
+	if err != nil {
+		log.Print(err)
+		return err
+	}
+
+	err = s.accountDao.UpdateTokenBalance(o.UserAddress, o.SellToken, sellTokenBalanceRecord)
+	if err != nil {
+		log.Print(err)
+		return err
+	}
+
+	return nil
 }
 
 // this function is resonsible for unlocking of maker's amount in balance document
@@ -563,7 +630,7 @@ func (s *OrderService) transferAmount(o *types.Order, filledAmount *big.Int) {
 	}
 }
 
-func (s *OrderService) SubscribeQueue(fn func(*rabbitmq.Message) error) error {
+func (s *OrderService) SubscribeOrders(fn func(*rabbitmq.Message) error) error {
 	ch := rabbitmq.GetChannel("orderSubscribe")
 	q := rabbitmq.GetQueue(ch, "order")
 
@@ -599,6 +666,70 @@ func (s *OrderService) SubscribeQueue(fn func(*rabbitmq.Message) error) error {
 
 		<-forever
 	}()
+	return nil
+}
+
+func (s *OrderService) SubscribeTrades(fn func(*types.OperatorMessage) error) error {
+	ch := rabbitmq.GetChannel("tradeSubscribe")
+	q := rabbitmq.GetQueue(ch, "trades")
+
+	go func() {
+		msgs, err := ch.Consume(
+			q.Name, // queue
+			"",     // consumer
+			true,   // auto-ack
+			false,  // exclusive
+			false,  // no-local
+			false,  // no-wait
+			nil,    // args
+		)
+
+		if err != nil {
+			log.Print(err)
+		}
+
+		forever := make(chan bool)
+
+		go func() {
+			for d := range msgs {
+				msg := &types.OperatorMessage{}
+				err := json.Unmarshal(d.Body, msg)
+				if err != nil {
+					log.Print(err)
+					continue
+				}
+
+				go fn(msg)
+			}
+		}()
+
+		<-forever
+	}()
+	return nil
+}
+
+func (s *OrderService) PublishTrade(o *types.Order, t *types.Trade) error {
+	ch := rabbitmq.GetChannel("tradePublish")
+	q := rabbitmq.GetQueue(ch, "trades")
+
+	msg := &types.OperatorMessage{
+		MessageType: "NEW_ORDER",
+		Order:       o,
+		Trade:       t,
+	}
+
+	bytes, err := json.Marshal(msg)
+	if err != nil {
+		log.Print(err)
+		return err
+	}
+
+	err = rabbitmq.Publish(ch, q, bytes)
+	if err != nil {
+		log.Print(err)
+		return err
+	}
+
 	return nil
 }
 
