@@ -8,11 +8,11 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/app"
 	"github.com/Proofsuite/amp-matching-engine/contracts/contractsinterfaces"
 	"github.com/Proofsuite/amp-matching-engine/daos"
+	"github.com/Proofsuite/amp-matching-engine/ethereum"
 	"github.com/Proofsuite/amp-matching-engine/services"
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/Proofsuite/amp-matching-engine/utils/testutils"
 	"github.com/Proofsuite/amp-matching-engine/utils/testutils/mocks"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind/backends"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -37,10 +37,8 @@ func SetupTokenTest() (*testutils.Deployer, *types.Wallet) {
 	walletService := services.NewWalletService(walletDao)
 	txService := services.NewTxService(walletDao, wallet)
 
-	deployer, err := testutils.NewSimulator(walletService, txService, []common.Address{wallet.Address})
-	if err != nil {
-		panic(err)
-	}
+	client := ethereum.NewSimulatedClient([]common.Address{wallet.Address})
+	deployer := testutils.NewDeployer(walletService, txService, client)
 
 	return deployer, wallet
 }
@@ -56,7 +54,7 @@ func TestBalanceOf(t *testing.T) {
 		t.Errorf("Could not deploy token: %v", err)
 	}
 
-	simulator := deployer.Backend.(*backends.SimulatedBackend)
+	simulator := deployer.Client.(*ethereum.SimulatedClient)
 	simulator.Commit()
 
 	balance, err := token.BalanceOf(receiver)
@@ -80,7 +78,7 @@ func TestTotalSupply(t *testing.T) {
 		t.Errorf("Could not deploy token: %v", err)
 	}
 
-	simulator := deployer.Backend.(*backends.SimulatedBackend)
+	simulator := deployer.Client.(*ethereum.SimulatedClient)
 	simulator.Commit()
 
 	supply, err := token.TotalSupply()
@@ -106,7 +104,7 @@ func TestTransfer(t *testing.T) {
 		t.Errorf("Could not deploy token: %v", err)
 	}
 
-	simulator := deployer.Backend.(*backends.SimulatedBackend)
+	simulator := deployer.Client.(*ethereum.SimulatedClient)
 	simulator.Commit()
 
 	_, err = token.Transfer(receiver, transferAmount)
@@ -137,7 +135,7 @@ func TestApprove(t *testing.T) {
 		t.Errorf("Could not deploy token: %v", err)
 	}
 
-	simulator := deployer.Backend.(*backends.SimulatedBackend)
+	simulator := deployer.Client.(*ethereum.SimulatedClient)
 	simulator.Commit()
 
 	_, err = token.Approve(spender, amount)
@@ -171,7 +169,7 @@ func TestTransferEvent(t *testing.T) {
 		t.Errorf("Could not deploy token: %v", err)
 	}
 
-	simulator := deployer.Backend.(*backends.SimulatedBackend)
+	simulator := deployer.Client.(*ethereum.SimulatedClient)
 	simulator.Commit()
 
 	events, err := token.ListenToTransferEvents()
