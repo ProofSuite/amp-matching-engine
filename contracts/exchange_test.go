@@ -6,11 +6,11 @@ import (
 	"testing"
 
 	"github.com/Proofsuite/amp-matching-engine/app"
+	"github.com/Proofsuite/amp-matching-engine/ethereum"
 	"github.com/Proofsuite/amp-matching-engine/services"
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/Proofsuite/amp-matching-engine/utils/testutils"
 	"github.com/Proofsuite/amp-matching-engine/utils/testutils/mocks"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind/backends"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -33,13 +33,14 @@ func SetupTest() (*testutils.Deployer, *types.Wallet, common.Address, common.Add
 	walletService := services.NewWalletService(walletDao)
 	txService := services.NewTxService(walletDao, wallet)
 
-	deployer, err := testutils.NewSimulator(walletService, txService, []common.Address{wallet.Address, maker.Address, taker.Address})
+	client := ethereum.NewSimulatedClient([]common.Address{wallet.Address, maker.Address, taker.Address})
+	deployer := testutils.NewDeployer(walletService, txService, client)
 	if err != nil {
 		panic(err)
 	}
 
-	feeAccount := common.HexToAddress(app.Config.FeeAccount)
-	wethToken := common.HexToAddress(app.Config.WETH)
+	feeAccount := common.HexToAddress(app.Config.Ethereum["fee_account"])
+	wethToken := common.HexToAddress(app.Config.Ethereum["weth_address"])
 
 	return deployer, wallet, feeAccount, wethToken, maker, taker
 }
@@ -51,12 +52,13 @@ func TestSetFeeAccount(t *testing.T) {
 		t.Errorf("Could not deploy exchange: %v", err)
 	}
 
-	simulator := deployer.Backend.(*backends.SimulatedBackend)
+	simulator := deployer.Client.(*ethereum.SimulatedClient)
 	simulator.Commit()
 
+	txOpts, _ := exchange.DefaultTxOptions()
 	newFeeAccount := testutils.GetTestAddress1()
 
-	_, err = exchange.SetFeeAccount(newFeeAccount)
+	_, err = exchange.SetFeeAccount(newFeeAccount, txOpts)
 	if err != nil {
 		t.Errorf("Could not see new fee account: %v", err)
 	}
@@ -81,12 +83,13 @@ func TestSetOperator(t *testing.T) {
 		t.Errorf("Could not deploy exchange")
 	}
 
-	simulator := deployer.Backend.(*backends.SimulatedBackend)
+	simulator := deployer.Client.(*ethereum.SimulatedClient)
 	simulator.Commit()
 
+	txOpts, _ := exchange.DefaultTxOptions()
 	operator := testutils.GetTestAddress1()
 
-	_, err = exchange.SetOperator(operator, true)
+	_, err = exchange.SetOperator(operator, true, txOpts)
 	if err != nil {
 		t.Errorf("Could not set operator: %v", err)
 	}
@@ -118,7 +121,8 @@ func TestTrade(t *testing.T) {
 		t.Errorf("Could not deploy exchange")
 	}
 
-	_, err = exchange.SetOperator(admin.Address, true)
+	txOpts, _ := exchange.DefaultTxOptions()
+	_, err = exchange.SetOperator(admin.Address, true, txOpts)
 	if err != nil {
 		t.Errorf("Could not set operator: %v", err)
 	}
@@ -134,7 +138,7 @@ func TestTrade(t *testing.T) {
 		t.Errorf("Error deploying token 2: %v", err)
 	}
 
-	simulator := deployer.Backend.(*backends.SimulatedBackend)
+	simulator := deployer.Client.(*ethereum.SimulatedClient)
 	simulator.Commit()
 
 	exchange.PrintErrors()
@@ -178,8 +182,7 @@ func TestTrade(t *testing.T) {
 
 	trade.Sign(taker)
 
-	exchange.SetTxSender(admin)
-	_, err = exchange.Trade(order, trade)
+	_, err = exchange.Trade(order, trade, txOpts)
 	if err != nil {
 		t.Errorf("Could not execute trade: %v", err)
 	}

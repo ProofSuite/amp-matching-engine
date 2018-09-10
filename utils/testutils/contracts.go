@@ -202,7 +202,7 @@ func (d *Deployer) WaitMined(tx *ethTypes.Transaction) (*ethTypes.Receipt, error
 }
 
 // type SimulatedBackend struct {
-// 	*backends.SimulatedBackend
+// 	*ethereum.SimulatedClient
 // }
 
 // func (b *SimulatedBackend) PendingBalanceAt(ctx context.Context, account common.Address) (*big.Int, error) {
