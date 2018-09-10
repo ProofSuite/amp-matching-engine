@@ -67,7 +67,7 @@ func CompareTrade(t *testing.T, a, b *types.Trade) {
 	assert.Equal(t, a.PairName, b.PairName)
 	assert.Equal(t, a.TradeNonce, b.TradeNonce)
 	assert.Equal(t, a.Signature, b.Signature)
-	assert.Equal(t, a.Tx, b.Tx)
+	assert.Equal(t, a.TxHash, b.TxHash)
 
 	assert.Equal(t, a.Price, b.Price)
 	assert.Equal(t, a.Side, b.Side)

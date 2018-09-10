@@ -112,13 +112,16 @@ func (txq *TxQueue) ExecuteTrade(o *types.Order, tr *types.Trade) (*eth.Transact
 	txOpts := txq.GetTxSendOptions()
 	txOpts.Nonce = big.NewInt(int64(nonce))
 
+	log.Print("NONCE IS EQUAL TO", txOpts.Nonce)
+	log.Print("QUEUE IS ", txq.Name)
+
 	tx, err := txq.Exchange.Trade(o, tr, txOpts)
 	if err != nil {
 		log.Print(err)
 		return nil, err
 	}
 
-	err = txq.TradeService.UpdateTradeTx(tr, tx)
+	err = txq.TradeService.UpdateTradeTxHash(tr, tx.Hash())
 	if err != nil {
 		log.Print(err)
 		return nil, errors.New("Could not update trade tx attribute")
@@ -132,7 +135,7 @@ func (txq *TxQueue) ExecuteTrade(o *types.Order, tr *types.Trade) (*eth.Transact
 
 	go func() {
 		fmt.Println("MINING TRADE")
-		_, err := txq.EthereumProvider.WaitMined(tx)
+		_, err := txq.EthereumProvider.WaitMined(tx.Hash())
 		if err != nil {
 			log.Print(err)
 		}
@@ -157,13 +160,9 @@ func (txq *TxQueue) ExecuteTrade(o *types.Order, tr *types.Trade) (*eth.Transact
 					return
 				}
 
-				// return
-
 				if msg == nil {
 					return
 				}
-
-				// asdfasdf
 			}
 
 			fmt.Println("NEXT_TRADE: ", msg.Trade.Hash.Hex())

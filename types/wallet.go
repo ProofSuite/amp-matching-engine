@@ -81,6 +81,7 @@ func (w *Wallet) SetBSON(raw bson.Raw) error {
 	decoded := &WalletRecord{}
 	err := raw.Unmarshal(decoded)
 	if err != nil {
+		log.Print(err)
 		return err
 	}
 

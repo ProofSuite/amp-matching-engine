@@ -10,7 +10,6 @@ import (
 
 	"github.com/Proofsuite/amp-matching-engine/utils/math"
 	"github.com/ethereum/go-ethereum/common"
-	eth "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto/sha3"
 
 	"gopkg.in/mgo.v2/bson"
@@ -20,23 +19,23 @@ import (
 // To be valid an accept by the matching engine (and ultimately the exchange smart-contract),
 // the trade signature must be made from the trader Maker account
 type Trade struct {
-	ID         bson.ObjectId    `json:"id,omitempty" bson:"_id"`
-	Taker      common.Address   `json:"taker" bson:"taker"`
-	Maker      common.Address   `json:"maker" bson:"maker"`
-	BaseToken  common.Address   `json:"baseToken" bson:"baseToken"`
-	QuoteToken common.Address   `json:"quoteToken" bson:"quoteToken"`
-	OrderHash  common.Hash      `json:"orderHash" bson:"orderHash"`
-	Hash       common.Hash      `json:"hash" bson:"hash"`
-	PairName   string           `json:"pairName" bson:"pairName"`
-	TradeNonce *big.Int         `json:"tradeNonce" bson:"tradeNonce"`
-	Signature  *Signature       `json:"signature" bson:"signature"`
-	Tx         *eth.Transaction `json:"tx" bson:"tx"`
-	CreatedAt  time.Time        `json:"createdAt" bson:"createdAt" redis:"createdAt"`
-	UpdatedAt  time.Time        `json:"updatedAt" bson:"updatedAt" redis:"updatedAt"`
-	Price      *big.Int         `json:"price" bson:"price"`
-	PricePoint *big.Int         `json:"pricepoint" bson:"pricepoint"`
-	Side       string           `json:"side" bson:"side"`
-	Amount     *big.Int         `json:"amount" bson:"amount"`
+	ID         bson.ObjectId  `json:"id,omitempty" bson:"_id"`
+	Taker      common.Address `json:"taker" bson:"taker"`
+	Maker      common.Address `json:"maker" bson:"maker"`
+	BaseToken  common.Address `json:"baseToken" bson:"baseToken"`
+	QuoteToken common.Address `json:"quoteToken" bson:"quoteToken"`
+	OrderHash  common.Hash    `json:"orderHash" bson:"orderHash"`
+	Hash       common.Hash    `json:"hash" bson:"hash"`
+	TxHash     common.Hash    `json:"txHash" bson:"txHash"`
+	PairName   string         `json:"pairName" bson:"pairName"`
+	TradeNonce *big.Int       `json:"tradeNonce" bson:"tradeNonce"`
+	Signature  *Signature     `json:"signature" bson:"signature"`
+	CreatedAt  time.Time      `json:"createdAt" bson:"createdAt" redis:"createdAt"`
+	UpdatedAt  time.Time      `json:"updatedAt" bson:"updatedAt" redis:"updatedAt"`
+	Price      *big.Int       `json:"price" bson:"price"`
+	PricePoint *big.Int       `json:"pricepoint" bson:"pricepoint"`
+	Side       string         `json:"side" bson:"side"`
+	Amount     *big.Int       `json:"amount" bson:"amount"`
 }
 
 type TradeRecord struct {
@@ -47,6 +46,7 @@ type TradeRecord struct {
 	QuoteToken string           `json:"quoteToken" bson:"quoteToken"`
 	OrderHash  string           `json:"orderHash" bson:"orderHash"`
 	Hash       string           `json:"hash" bson:"hash"`
+	TxHash     string           `json:"txHash" bson:"txHash"`
 	PairName   string           `json:"pairName" bson:"pairName"`
 	TradeNonce string           `json:"tradeNonce" bson:"tradeNonce"`
 	Signature  *SignatureRecord `json:"signature" bson:"signature"`
@@ -84,6 +84,7 @@ func (t *Trade) MarshalJSON() ([]byte, error) {
 		"orderHash":  t.OrderHash,
 		"side":       t.Side,
 		"hash":       t.Hash,
+		"txHash":     t.TxHash,
 		"pairName":   t.PairName,
 		"tradeNonce": t.TradeNonce.String(),
 		// NOTE: I don't these are publicly needed but leaving this here until confirmation
@@ -100,6 +101,10 @@ func (t *Trade) MarshalJSON() ([]byte, error) {
 
 	if (t.QuoteToken != common.Address{}) {
 		trade["quoteToken"] = t.QuoteToken.Hex()
+	}
+
+	if (t.TxHash != common.Hash{}) {
+		trade["txHash"] = t.TxHash.Hex()
 	}
 
 	// NOTE: Currently remove marshalling of IDs to simplify public API but will uncommnent
@@ -168,6 +173,10 @@ func (t *Trade) UnmarshalJSON(b []byte) error {
 		t.ID = bson.ObjectIdHex(trade["id"].(string))
 	}
 
+	if trade["txHash"] != nil {
+		t.TxHash = common.HexToHash(trade["txHash"].(string))
+	}
+
 	if trade["pairName"] != nil {
 		t.PairName = trade["pairName"].(string)
 	}
@@ -217,6 +226,7 @@ func (t *Trade) GetBSON() (interface{}, error) {
 		OrderHash:  t.OrderHash.Hex(),
 		TradeNonce: t.TradeNonce.String(),
 		Hash:       t.Hash.Hex(),
+		TxHash:     t.TxHash.Hex(),
 		CreatedAt:  t.CreatedAt,
 		UpdatedAt:  t.UpdatedAt,
 		PricePoint: t.PricePoint.String(),
@@ -246,6 +256,7 @@ func (t *Trade) SetBSON(raw bson.Raw) error {
 		QuoteToken string           `json:"quoteToken" bson:"quoteToken"`
 		OrderHash  string           `json:"orderHash" bson:"orderHash"`
 		Hash       string           `json:"hash" bson:"hash"`
+		TxHash     string           `json:"txHash" bson:"txHash"`
 		TradeNonce string           `json:"tradeNonce" bson:"tradeNonce"`
 		Signature  *SignatureRecord `json:"signature" bson:"signature"`
 		CreatedAt  time.Time        `json:"createdAt" bson:"createdAt" redis:"createdAt"`
@@ -269,6 +280,7 @@ func (t *Trade) SetBSON(raw bson.Raw) error {
 	t.QuoteToken = common.HexToAddress(decoded.QuoteToken)
 	t.OrderHash = common.HexToHash(decoded.OrderHash)
 	t.Hash = common.HexToHash(decoded.Hash)
+	t.TxHash = common.HexToHash(decoded.Hash)
 
 	t.TradeNonce = math.ToBigInt(decoded.TradeNonce)
 	t.Amount = math.ToBigInt(decoded.Amount)
