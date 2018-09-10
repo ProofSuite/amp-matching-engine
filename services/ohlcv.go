@@ -98,9 +98,9 @@ func (s *OHLCVService) GetOHLCV(pairs []types.PairSubDoc, duration int64, unit s
 	return resp, nil
 }
 
-func getMatchQuery(lt, gt time.Time, pairs ...types.PairSubDoc) (match bson.M) {
+func getMatchQuery(lt, gt time.Time, pairs ...types.PairSubDoc) bson.M {
 
-	match = bson.M{"createdAt": bson.M{"$gte": gt, "$lt": lt}}
+	match := bson.M{"createdAt": bson.M{"$gte": gt, "$lt": lt}}
 
 	if len(pairs) >= 1 {
 		or := make([]bson.M, 0)
@@ -119,11 +119,11 @@ func getMatchQuery(lt, gt time.Time, pairs ...types.PairSubDoc) (match bson.M) {
 
 		match["$or"] = or
 	}
-	return
+	return match
 }
 
-func getModTime(ts, duration int64, unit string) (modTime, interval int64) {
-
+func getModTime(ts, duration int64, unit string) (int64, int64) {
+	var modTime, interval int64
 	switch unit {
 	case "sec":
 		interval = duration
@@ -156,11 +156,14 @@ func getModTime(ts, duration int64, unit string) (modTime, interval int64) {
 		interval = duration * 60
 		modTime = ts - int64(math.Mod(float64(ts), float64(interval)))
 	}
-	return
+	return modTime, interval
 }
 
 // query for grouping of the documents and addition of required fields using aggregate pipeline
-func getGroupAddFieldBson(key, units string, duration int64) (group bson.M, addFields bson.M) {
+func getGroupAddFieldBson(key, units string, duration int64) (bson.M, bson.M) {
+
+	var group, addFields bson.M
+
 	t := time.Unix(0, 0)
 	var d interface{}
 	if key == "now" {
@@ -302,5 +305,5 @@ func getGroupAddFieldBson(key, units string, duration int64) (group bson.M, addF
 	gID["quoteToken"] = "$quoteToken"
 	group["_id"] = gID
 
-	return
+	return group, addFields
 }

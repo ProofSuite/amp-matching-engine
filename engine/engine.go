@@ -6,8 +6,6 @@ import (
 	"log"
 	"sync"
 
-	"github.com/streadway/amqp"
-
 	"github.com/Proofsuite/amp-matching-engine/rabbitmq"
 	"github.com/Proofsuite/amp-matching-engine/redis"
 	"github.com/Proofsuite/amp-matching-engine/types"
@@ -15,17 +13,18 @@ import (
 
 // Engine contains daos and redis connection required for engine to work
 type Engine struct {
-	redisConn *redis.RedisConnection
-	mutex     *sync.Mutex
+	redisConn    *redis.RedisConnection
+	rabbitMQConn *rabbitmq.Connection
+	mutex        *sync.Mutex
 }
 
 // Engine is singleton resource instance
 var engine *Engine
 
 // InitEngine initializes the engine singleton instance
-func InitEngine(redisConn *redis.RedisConnection) (*Engine, error) {
+func InitEngine(redisConn *redis.RedisConnection, rabbitMQConn *rabbitmq.Connection) (*Engine, error) {
 	if engine == nil {
-		engine = &Engine{redisConn, &sync.Mutex{}}
+		engine = &Engine{redisConn, rabbitMQConn, &sync.Mutex{}}
 	}
 
 	return engine, nil
@@ -34,8 +33,8 @@ func InitEngine(redisConn *redis.RedisConnection) (*Engine, error) {
 // publishEngineResponse is used by matching engine to publish or send response of matching engine to
 // system for further processing
 func (e *Engine) publishEngineResponse(res *types.EngineResponse) error {
-	ch := rabbitmq.GetChannel("erPub")
-	q := rabbitmq.GetQueue(ch, "engineResponse")
+	ch := e.rabbitMQConn.GetChannel("erPub")
+	q := e.rabbitMQConn.GetQueue(ch, "engineResponse")
 
 	bytes, err := json.Marshal(res)
 	if err != nil {
@@ -43,17 +42,7 @@ func (e *Engine) publishEngineResponse(res *types.EngineResponse) error {
 		return errors.New("Failed to marshal Engine Response: " + err.Error())
 	}
 
-	err = ch.Publish(
-		"",     // exchange
-		q.Name, // routing key
-		false,  // mandatory
-		false,  // immediate
-		amqp.Publishing{
-			ContentType: "text/json",
-			Body:        bytes,
-		},
-	)
-
+	err = e.rabbitMQConn.Publish(ch, q, bytes)
 	if err != nil {
 		log.Fatalf("Failed to publish order: %s", err)
 		return errors.New("Failed to publish order: " + err.Error())
@@ -65,8 +54,8 @@ func (e *Engine) publishEngineResponse(res *types.EngineResponse) error {
 // SubscribeResponseQueue subscribes to engineResponse queue and triggers the function
 // passed as arguments for each message.
 func (e *Engine) SubscribeResponseQueue(fn func(*types.EngineResponse) error) error {
-	ch := rabbitmq.GetChannel("erSub")
-	q := rabbitmq.GetQueue(ch, "engineResponse")
+	ch := e.rabbitMQConn.GetChannel("erSub")
+	q := e.rabbitMQConn.GetQueue(ch, "engineResponse")
 
 	go func() {
 		msgs, err := ch.Consume(

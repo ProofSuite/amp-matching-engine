@@ -180,7 +180,7 @@ type TradeService interface {
 	GetByUserAddress(addr common.Address) ([]*types.Trade, error)
 	GetByHash(hash common.Hash) (*types.Trade, error)
 	GetByOrderHash(hash common.Hash) ([]*types.Trade, error)
-	UpdateTradeTx(tr *types.Trade, tx *eth.Transaction) error
+	UpdateTradeTxHash(tr *types.Trade, txHash common.Hash) error
 	Subscribe(conn *ws.Conn, bt, qt common.Address)
 	Unsubscribe(conn *ws.Conn, bt, qt common.Address)
 }

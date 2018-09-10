@@ -50,11 +50,11 @@ func run(cmd *cobra.Command, args []string) {
 	}
 
 	logger := logrus.New()
-	rabbitmq.InitConnection(app.Config.Rabbitmq)
+	amqpConn := rabbitmq.InitConnection(app.Config.Rabbitmq)
 	redisConn := redis.NewRedisConnection(app.Config.Redis)
 	provider := ethereum.NewWebsocketProvider()
 
-	http.Handle("/", NewRouter(provider, redisConn, logger))
+	http.Handle("/", NewRouter(provider, redisConn, amqpConn, logger))
 	http.HandleFunc("/socket", ws.ConnectionEndpoint)
 
 	// start the server
@@ -66,6 +66,7 @@ func run(cmd *cobra.Command, args []string) {
 func NewRouter(
 	provider *ethereum.EthereumProvider,
 	redisConn *redis.RedisConnection,
+	amqpConn *rabbitmq.Connection,
 	logger *logrus.Logger,
 ) *routing.Router {
 	router := routing.New()
@@ -88,7 +89,7 @@ func NewRouter(
 	rg := router.Group("")
 
 	// instantiate engine
-	eng, err := engine.InitEngine(redisConn)
+	eng, err := engine.InitEngine(redisConn, amqpConn)
 	if err != nil {
 		panic(err)
 	}
@@ -107,7 +108,7 @@ func NewRouter(
 	tokenService := services.NewTokenService(tokenDao)
 	tradeService := services.NewTradeService(tradeDao)
 	pairService := services.NewPairService(pairDao, tokenDao, eng, tradeService)
-	orderService := services.NewOrderService(orderDao, pairDao, accountDao, tradeDao, eng, provider)
+	orderService := services.NewOrderService(orderDao, pairDao, accountDao, tradeDao, eng, provider, amqpConn)
 	orderBookService := services.NewOrderBookService(pairDao, tokenDao, eng)
 	walletService := services.NewWalletService(walletDao)
 	cronService := crons.NewCronService(ohlcvService)
@@ -131,6 +132,7 @@ func NewRouter(
 		orderService,
 		provider,
 		exchange,
+		amqpConn,
 	)
 
 	if err != nil {
@@ -151,7 +153,6 @@ func NewRouter(
 	orderService.SubscribeTrades(op.HandleTrades)
 	eng.SubscribeResponseQueue(orderService.HandleEngineResponse)
 
-	// fmt.Printf("\n%+v\n", app.Config.TickDuration)
 	cronService.InitCrons()
 	return router
 }

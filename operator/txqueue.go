@@ -6,14 +6,12 @@ import (
 	"fmt"
 	"log"
 	"math/big"
-	"sync"
 
 	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/Proofsuite/amp-matching-engine/rabbitmq"
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	eth "github.com/ethereum/go-ethereum/core/types"
-	"github.com/streadway/amqp"
 )
 
 type TxQueue struct {
@@ -23,6 +21,7 @@ type TxQueue struct {
 	OrderService     interfaces.OrderService
 	EthereumProvider interfaces.EthereumProvider
 	Exchange         interfaces.Exchange
+	RabbitMQConn     *rabbitmq.Connection
 }
 
 // NewTxQueue
@@ -47,14 +46,6 @@ func NewTxQueue(
 	return txq, nil
 }
 
-// GetTxQueue returns the corresponding ampq queue
-func GetTxQueue(name string) *amqp.Queue {
-	ch := rabbitmq.GetChannel(name)
-	q := rabbitmq.GetQueue(ch, name)
-
-	return q
-}
-
 func (txq *TxQueue) GetTxSendOptions() *bind.TransactOpts {
 	return bind.NewKeyedTransactor(txq.Wallet.PrivateKey)
 }
@@ -62,7 +53,7 @@ func (txq *TxQueue) GetTxSendOptions() *bind.TransactOpts {
 // Length
 func (txq *TxQueue) Length() int {
 	name := "TX_QUEUES:" + txq.Name
-	ch := rabbitmq.GetChannel(name)
+	ch := txq.RabbitMQConn.GetChannel(name)
 	q, err := ch.QueueInspect(name)
 	if err != nil {
 		log.Print(err)
@@ -70,8 +61,6 @@ func (txq *TxQueue) Length() int {
 
 	return q.Messages
 }
-
-var mutex = &sync.Mutex{}
 
 // AddTradeToExecutionList adds a new trade to the execution list. If the execution list is empty (= contains 1 element
 // after adding the transaction hash), the given order/trade pair gets executed. If the tranasction queue is full,
@@ -112,13 +101,16 @@ func (txq *TxQueue) ExecuteTrade(o *types.Order, tr *types.Trade) (*eth.Transact
 	txOpts := txq.GetTxSendOptions()
 	txOpts.Nonce = big.NewInt(int64(nonce))
 
+	log.Print("NONCE IS EQUAL TO", txOpts.Nonce)
+	log.Print("QUEUE IS ", txq.Name)
+
 	tx, err := txq.Exchange.Trade(o, tr, txOpts)
 	if err != nil {
 		log.Print(err)
 		return nil, err
 	}
 
-	err = txq.TradeService.UpdateTradeTx(tr, tx)
+	err = txq.TradeService.UpdateTradeTxHash(tr, tx.Hash())
 	if err != nil {
 		log.Print(err)
 		return nil, errors.New("Could not update trade tx attribute")
@@ -132,7 +124,7 @@ func (txq *TxQueue) ExecuteTrade(o *types.Order, tr *types.Trade) (*eth.Transact
 
 	go func() {
 		fmt.Println("MINING TRADE")
-		_, err := txq.EthereumProvider.WaitMined(tx)
+		_, err := txq.EthereumProvider.WaitMined(tx.Hash())
 		if err != nil {
 			log.Print(err)
 		}
@@ -157,13 +149,9 @@ func (txq *TxQueue) ExecuteTrade(o *types.Order, tr *types.Trade) (*eth.Transact
 					return
 				}
 
-				// return
-
 				if msg == nil {
 					return
 				}
-
-				// asdfasdf
 			}
 
 			fmt.Println("NEXT_TRADE: ", msg.Trade.Hash.Hex())
@@ -176,8 +164,8 @@ func (txq *TxQueue) ExecuteTrade(o *types.Order, tr *types.Trade) (*eth.Transact
 
 func (txq *TxQueue) PublishPendingTrade(o *types.Order, t *types.Trade) error {
 	name := "TX_QUEUES:" + txq.Name
-	ch := rabbitmq.GetChannel(name)
-	q := rabbitmq.GetQueue(ch, name)
+	ch := txq.RabbitMQConn.GetChannel(name)
+	q := txq.RabbitMQConn.GetQueue(ch, name)
 	msg := &types.PendingTradeMessage{o, t}
 
 	bytes, err := json.Marshal(msg)
@@ -185,7 +173,7 @@ func (txq *TxQueue) PublishPendingTrade(o *types.Order, t *types.Trade) error {
 		return errors.New("Failed to marshal trade object")
 	}
 
-	err = rabbitmq.Publish(ch, q, bytes)
+	err = txq.RabbitMQConn.Publish(ch, q, bytes)
 	if err != nil {
 		log.Print(err)
 		return err
@@ -196,8 +184,9 @@ func (txq *TxQueue) PublishPendingTrade(o *types.Order, t *types.Trade) error {
 
 func (txq *TxQueue) PublishTradeSentMessage(or *types.Order, tr *types.Trade) error {
 	fmt.Println("PUBLISHING TRADE SENT MESSAGE")
-	ch := rabbitmq.GetChannel("OPERATOR_PUB")
-	q := rabbitmq.GetQueue(ch, "TX_MESSAGES")
+
+	ch := txq.RabbitMQConn.GetChannel("OPERATOR_PUB")
+	q := txq.RabbitMQConn.GetQueue(ch, "TX_MESSAGES")
 	msg := &types.OperatorMessage{
 		MessageType: "TRADE_SENT_MESSAGE",
 		Trade:       tr,
@@ -210,7 +199,7 @@ func (txq *TxQueue) PublishTradeSentMessage(or *types.Order, tr *types.Trade) er
 		return err
 	}
 
-	err = rabbitmq.Publish(ch, q, bytes)
+	err = txq.RabbitMQConn.Publish(ch, q, bytes)
 	if err != nil {
 		log.Print(err)
 		return err
@@ -223,9 +212,9 @@ func (txq *TxQueue) PublishTradeSentMessage(or *types.Order, tr *types.Trade) er
 func (txq *TxQueue) PurgePendingTrades() error {
 	fmt.Println("PURGING PENDING TRADES")
 	name := "TX_QUEUES:" + txq.Name
-	ch := rabbitmq.GetChannel(name)
+	ch := txq.RabbitMQConn.GetChannel(name)
 
-	err := rabbitmq.Purge(ch, name)
+	err := txq.RabbitMQConn.Purge(ch, name)
 	if err != nil {
 		log.Print(err)
 		return err
@@ -239,8 +228,8 @@ func (txq *TxQueue) PurgePendingTrades() error {
 func (txq *TxQueue) PopPendingTrade() (*types.PendingTradeMessage, error) {
 	fmt.Println("POPPING PENDING TRADE")
 	name := "TX_QUEUES:" + txq.Name
-	ch := rabbitmq.GetChannel(name)
-	q := rabbitmq.GetQueue(ch, name)
+	ch := txq.RabbitMQConn.GetChannel(name)
+	q := txq.RabbitMQConn.GetQueue(ch, name)
 
 	msg, _, _ := ch.Get(
 		q.Name,

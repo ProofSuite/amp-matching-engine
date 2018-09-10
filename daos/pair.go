@@ -36,25 +36,27 @@ func NewPairDao() *PairDao {
 }
 
 // Create function performs the DB insertion task for pair collection
-func (dao *PairDao) Create(pair *types.Pair) (err error) {
+func (dao *PairDao) Create(pair *types.Pair) error {
 	pair.ID = bson.NewObjectId()
 	pair.CreatedAt = time.Now()
 	pair.UpdatedAt = time.Now()
 
-	err = db.Create(dao.dbName, dao.collectionName, pair)
-	return
+	err := db.Create(dao.dbName, dao.collectionName, pair)
+	return err
 }
 
 // GetAll function fetches all the pairs in the pair collection of mongodb.
-func (dao *PairDao) GetAll() (response []types.Pair, err error) {
-	err = db.Get(dao.dbName, dao.collectionName, bson.M{}, 0, 0, &response)
-	return
+func (dao *PairDao) GetAll() ([]types.Pair, error) {
+	var response []types.Pair
+	err := db.Get(dao.dbName, dao.collectionName, bson.M{}, 0, 0, &response)
+	return response, err
 }
 
 // GetByID function fetches details of a pair using pair's mongo ID.
-func (dao *PairDao) GetByID(id bson.ObjectId) (response *types.Pair, err error) {
-	err = db.GetByID(dao.dbName, dao.collectionName, id, &response)
-	return
+func (dao *PairDao) GetByID(id bson.ObjectId) (*types.Pair, error) {
+	var response *types.Pair
+	err := db.GetByID(dao.dbName, dao.collectionName, id, &response)
+	return response, err
 }
 
 // GetByName function fetches details of a pair using pair's name.
