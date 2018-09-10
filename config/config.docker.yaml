@@ -14,6 +14,11 @@ ethereum:
   fee_account: "0xe8e84ee367bc63ddb38d3d01bccef106c194dc47"
   decimal: 8
 
+logs:
+  main: './main.log'
+  engine: './engine.log'
+  operator: './operator.log'
+
 tick_duration:
     sec: [5, 30]
     min: [1, 5, 15]

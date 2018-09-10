@@ -46,7 +46,8 @@ func (r *pairEndpoint) create(c *routing.Context) error {
 func (r *pairEndpoint) query(c *routing.Context) error {
 	res, err := r.pairService.GetAll()
 	if err != nil {
-		return err
+		logger.Error(err)
+		return errors.NewAPIError(500, "INTERNAL_SERVER_ERROR", nil)
 	}
 
 	return c.Write(res)
@@ -68,7 +69,8 @@ func (r *pairEndpoint) get(c *routing.Context) error {
 
 	res, err := r.pairService.GetByTokenAddress(baseTokenAddress, quoteTokenAddress)
 	if err != nil {
-		return err
+		logger.Error(err)
+		return errors.NewAPIError(500, "INTERNAL_SERVER_ERROR", nil)
 	}
 
 	return c.Write(res)

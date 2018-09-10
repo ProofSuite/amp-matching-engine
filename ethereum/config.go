@@ -1,6 +1,11 @@
 package ethereum
 
-import "github.com/ethereum/go-ethereum/common"
+import (
+	"github.com/Proofsuite/amp-matching-engine/utils"
+	"github.com/ethereum/go-ethereum/common"
+)
+
+var logger = utils.Logger
 
 type EthereumConfig struct {
 	url             string

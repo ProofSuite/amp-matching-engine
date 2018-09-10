@@ -2,7 +2,6 @@ package ethereum
 
 import (
 	"context"
-	"log"
 	"math/big"
 	"time"
 
@@ -97,7 +96,7 @@ func (e *EthereumProvider) WaitMined(hash common.Hash) (*eth.Receipt, error) {
 		}
 
 		// if err != nil {
-		// 	log.Print(err)
+		// 	logger.Error(err)
 		// 	// return nil, err
 		// }
 
@@ -113,7 +112,7 @@ func (e *EthereumProvider) GetBalanceAt(a common.Address) (*big.Int, error) {
 	ctx := context.Background()
 	nonce, err := e.Client.BalanceAt(ctx, a, nil)
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return big.NewInt(0), err
 	}
 
@@ -124,7 +123,7 @@ func (e *EthereumProvider) GetPendingNonceAt(a common.Address) (uint64, error) {
 	ctx := context.Background()
 	nonce, err := e.Client.PendingNonceAt(ctx, a)
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return 0, err
 	}
 
@@ -134,14 +133,14 @@ func (e *EthereumProvider) GetPendingNonceAt(a common.Address) (uint64, error) {
 func (e *EthereumProvider) BalanceOf(owner common.Address, token common.Address) (*big.Int, error) {
 	tokenInterface, err := contractsinterfaces.NewToken(token, e.Client)
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return nil, err
 	}
 
 	opts := &bind.CallOpts{Pending: true}
 	b, err := tokenInterface.BalanceOf(opts, owner)
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return nil, err
 	}
 
@@ -157,7 +156,7 @@ func (e *EthereumProvider) Allowance(owner, spender, token common.Address) (*big
 	opts := &bind.CallOpts{Pending: true}
 	a, err := tokenInterface.Allowance(opts, owner, spender)
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return nil, err
 	}
 
@@ -167,7 +166,7 @@ func (e *EthereumProvider) Allowance(owner, spender, token common.Address) (*big
 func (e *EthereumProvider) ExchangeAllowance(owner, token common.Address) (*big.Int, error) {
 	tokenInterface, err := contractsinterfaces.NewToken(token, e.Client)
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return nil, err
 	}
 
@@ -175,7 +174,7 @@ func (e *EthereumProvider) ExchangeAllowance(owner, token common.Address) (*big.
 	opts := &bind.CallOpts{Pending: true}
 	a, err := tokenInterface.Allowance(opts, owner, exchange)
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return nil, err
 	}
 
@@ -189,7 +188,7 @@ func (e *EthereumProvider) ExchangeAllowance(owner, token common.Address) (*big.
 // ) (*contractsinterfaces.Token, error) {
 // 	tokenInterface, err := contractsinterfaces.NewToken(token, e.Client)
 // 	if err != nil {
-// 		log.Print(err)
+// 		logger.Error(err)
 // 		return nil, err
 // 	}
 
@@ -208,7 +207,7 @@ func (e *EthereumProvider) ExchangeAllowance(owner, token common.Address) (*big.
 
 // 	exchangeInterface, err := contractsinterfaces.NewExchange(exchangeAddress, e.Client)
 // 	if err != nil {
-// 		log.Print(err)
+// 		logger.Error(err)
 // 		return nil, err
 // 	}
 

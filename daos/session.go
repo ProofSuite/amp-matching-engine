@@ -4,6 +4,7 @@ import (
 	"reflect"
 
 	"github.com/Proofsuite/amp-matching-engine/app"
+	"github.com/Proofsuite/amp-matching-engine/utils"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -16,6 +17,7 @@ type Database struct {
 
 // Global instance of Database struct for singleton use
 var db *Database
+var logger = utils.Logger
 
 // InitSession initializes a new session with mongodb
 func InitSession(session *mgo.Session) (*mgo.Session, error) {
@@ -23,10 +25,13 @@ func InitSession(session *mgo.Session) (*mgo.Session, error) {
 		if session == nil {
 			db1, err := mgo.Dial(app.Config.DSN)
 			if err != nil {
+				logger.Error(err)
 				return nil, err
 			}
+
 			session = db1
 		}
+
 		db = &Database{session}
 	}
 	return db.Session, nil
@@ -97,6 +102,7 @@ func (d *Database) Update(dbName, collection string, query interface{}, update i
 
 	err := sc.DB(dbName).C(collection).Update(query, update)
 	if err != nil {
+		logger.Error(err)
 		return err
 	}
 
@@ -114,6 +120,7 @@ func (d *Database) Aggregate(dbName, collection string, query []bson.M, response
 	result := reflect.ValueOf(response).Interface()
 	err := sc.DB(dbName).C(collection).Pipe(query).All(result)
 	if err != nil {
+		logger.Error(err)
 		return err
 	}
 
@@ -127,6 +134,7 @@ func (d *Database) Remove(dbName, collection string, query []bson.M) error {
 
 	err := sc.DB(dbName).C(collection).Remove(query)
 	if err != nil {
+		logger.Error(err)
 		return err
 	}
 
@@ -140,6 +148,7 @@ func (d *Database) RemoveAll(dbName, collection string, query []bson.M) error {
 
 	_, err := sc.DB(dbName).C(collection).RemoveAll(query)
 	if err != nil {
+		logger.Error(err)
 		return err
 	}
 
@@ -153,6 +162,7 @@ func (d *Database) DropCollection(dbName, collection string) error {
 
 	err := sc.DB(dbName).C(collection).DropCollection()
 	if err != nil {
+		logger.Error(err)
 		return err
 	}
 

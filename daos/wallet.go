@@ -1,8 +1,6 @@
 package daos
 
 import (
-	"log"
-
 	"github.com/Proofsuite/amp-matching-engine/app"
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/ethereum/go-ethereum/common"
@@ -21,57 +19,80 @@ func NewWalletDao() *WalletDao {
 	return &WalletDao{"wallets", app.Config.DBName}
 }
 
-func (dao *WalletDao) Create(wallet *types.Wallet) (err error) {
-	err = wallet.Validate()
+func (dao *WalletDao) Create(wallet *types.Wallet) error {
+	err := wallet.Validate()
 	if err != nil {
+		logger.Error(err)
 		return err
 	}
 
 	wallet.ID = bson.NewObjectId()
 	err = db.Create(dao.dbName, dao.collectionName, wallet)
 	if err != nil {
+		logger.Error(err)
 		return err
 	}
 
-	return
+	return nil
 }
 
-func (dao *WalletDao) GetAll() (response []types.Wallet, err error) {
-	err = db.Get(dao.dbName, dao.collectionName, bson.M{}, 0, 0, &response)
-	return
+func (dao *WalletDao) GetAll() ([]types.Wallet, error) {
+	var response []types.Wallet
+
+	err := db.Get(dao.dbName, dao.collectionName, bson.M{}, 0, 0, &response)
+	if err != nil {
+		logger.Error(err)
+		return nil, err
+	}
+
+	return response, nil
 }
 
 // GetByID function fetches details of a token based on its mongo id
-func (dao *WalletDao) GetByID(id bson.ObjectId) (response *types.Wallet, err error) {
-	err = db.GetByID(dao.dbName, dao.collectionName, id, &response)
-	return
+func (dao *WalletDao) GetByID(id bson.ObjectId) (*types.Wallet, error) {
+	var response *types.Wallet
+
+	err := db.GetByID(dao.dbName, dao.collectionName, id, &response)
+	if err != nil {
+		logger.Error(err)
+		return nil, err
+	}
+
+	return response, nil
 }
 
 // GetByAddress function fetches details of a token based on its contract address
-func (dao *WalletDao) GetByAddress(a common.Address) (response *types.Wallet, err error) {
+func (dao *WalletDao) GetByAddress(a common.Address) (*types.Wallet, error) {
 	q := bson.M{"address": a.Hex()}
 	var resp []types.Wallet
-	err = db.Get(dao.dbName, dao.collectionName, q, 0, 1, &resp)
+
+	err := db.Get(dao.dbName, dao.collectionName, q, 0, 1, &resp)
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return nil, err
 	}
 
 	if len(resp) == 0 {
-		log.Print("Not wallets found")
-		return
+		logger.Info("No wallets found")
+		return nil, nil
 	}
 
 	return &resp[0], nil
 }
 
-func (dao *WalletDao) GetDefaultAdminWallet() (response *types.Wallet, err error) {
+func (dao *WalletDao) GetDefaultAdminWallet() (*types.Wallet, error) {
 	q := bson.M{"admin": true}
 	var resp []types.Wallet
-	err = db.Get(dao.dbName, dao.collectionName, q, 0, 1, &resp)
-	if err != nil || len(resp) == 0 {
-		log.Print("Error retrieving admin wallet")
-		return
+
+	err := db.Get(dao.dbName, dao.collectionName, q, 0, 1, &resp)
+	if err != nil {
+		logger.Error(err)
+		return nil, err
+	}
+
+	if len(resp) == 0 {
+		logger.Info("No default admin wallet")
+		return nil, nil
 	}
 
 	return &resp[0], nil
@@ -83,7 +104,7 @@ func (dao *WalletDao) GetOperatorWallets() ([]*types.Wallet, error) {
 
 	err := db.Get(dao.dbName, dao.collectionName, q, 0, 1, &res)
 	if err != nil || len(res) == 0 {
-		log.Print(err)
+		logger.Error(err)
 		return nil, err
 	}
 

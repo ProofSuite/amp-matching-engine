@@ -78,7 +78,7 @@ func NewClient(w *types.Wallet, s Server) *Client {
 	ng := rand.New(source)
 
 	return &Client{
-		connection:     ws.ToWsConn(c),
+		connection:     ws.NewConnection(c),
 		Wallet:         w,
 		Requests:       reqs,
 		Responses:      resps,
