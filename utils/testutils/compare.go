@@ -67,7 +67,7 @@ func CompareTrade(t *testing.T, a, b *types.Trade) {
 	assert.Equal(t, a.PairName, b.PairName)
 	assert.Equal(t, a.TradeNonce, b.TradeNonce)
 	assert.Equal(t, a.Signature, b.Signature)
-	assert.Equal(t, a.Tx, b.Tx)
+	assert.Equal(t, a.TxHash, b.TxHash)
 
 	assert.Equal(t, a.Price, b.Price)
 	assert.Equal(t, a.Side, b.Side)
@@ -75,10 +75,18 @@ func CompareTrade(t *testing.T, a, b *types.Trade) {
 }
 
 func CompareAccount(t *testing.T, a, b *types.Account) {
+	assert.Equal(t, a.Address, b.Address)
+	assert.Equal(t, a.TokenBalances, b.TokenBalances)
+	assert.Equal(t, a.IsBlocked, b.IsBlocked)
+}
+
+func CompareAccountStrict(t *testing.T, a, b *types.Account) {
 	assert.Equal(t, a.ID, b.ID)
 	assert.Equal(t, a.Address, b.Address)
 	assert.Equal(t, a.TokenBalances, b.TokenBalances)
 	assert.Equal(t, a.IsBlocked, b.IsBlocked)
+	assert.Equal(t, a.UpdatedAt, b.UpdatedAt)
+	assert.Equal(t, a.CreatedAt, b.CreatedAt)
 }
 
 func Compare(t *testing.T, expected interface{}, value interface{}) {

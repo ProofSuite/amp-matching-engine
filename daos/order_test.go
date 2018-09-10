@@ -71,6 +71,7 @@ func TestUpdateOrderByHash(t *testing.T) {
 		BuyAmount:       big.NewInt(1000),
 		SellAmount:      big.NewInt(100),
 		Price:           big.NewInt(4000),
+		PricePoint:      big.NewInt(4000),
 		Amount:          big.NewInt(4000),
 		FilledAmount:    big.NewInt(200),
 		Status:          "FILLED",
@@ -100,7 +101,7 @@ func TestUpdateOrderByHash(t *testing.T) {
 		t.Errorf("Could not get order by hash")
 	}
 
-	testutils.CompareOrder(t, queried, updated)
+	testutils.CompareOrder(t, updated, queried)
 }
 
 func TestOrderUpdate(t *testing.T) {
@@ -121,6 +122,7 @@ func TestOrderUpdate(t *testing.T) {
 		BuyAmount:       big.NewInt(1000),
 		SellAmount:      big.NewInt(100),
 		Price:           big.NewInt(1000),
+		PricePoint:      big.NewInt(1000),
 		Amount:          big.NewInt(1000),
 		FilledAmount:    big.NewInt(100),
 		Status:          "NEW",
@@ -156,6 +158,7 @@ func TestOrderUpdate(t *testing.T) {
 		BuyAmount:       big.NewInt(1000),
 		SellAmount:      big.NewInt(100),
 		Price:           big.NewInt(4000),
+		PricePoint:      big.NewInt(4000),
 		Amount:          big.NewInt(4000),
 		FilledAmount:    big.NewInt(200),
 		Status:          "FILLED",
@@ -188,7 +191,7 @@ func TestOrderUpdate(t *testing.T) {
 	testutils.CompareOrder(t, queried, updated)
 }
 
-func TestOrderDao(t *testing.T) {
+func TestOrderDao1(t *testing.T) {
 	dao := NewOrderDao()
 	err := dao.Drop()
 	if err != nil {

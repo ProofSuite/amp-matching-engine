@@ -228,19 +228,21 @@ func TestMatchPartialOrder1(t *testing.T) {
 		for {
 			select {
 			case l := <-client1.Logs:
+				log.Print(l)
 				switch l.MessageType {
 				case "ORDER_ADDDED":
 					wg.Done()
-				case "ORDER_MATCHED":
+				case "REQUEST_SIGNATURE":
 					wg.Done()
 				case "ERROR":
 					t.Errorf("Received an error")
 				}
 			case l := <-client2.Logs:
+				log.Print(l)
 				switch l.MessageType {
 				case "ORDER_ADDED":
 					wg.Done()
-				case "ORDER_MATCHED":
+				case "REQUEST_SIGNATURE":
 					wg.Done()
 				case "ERROR":
 					t.Errorf("Received an error")
@@ -271,6 +273,7 @@ func TestMatchPartialOrder2(t *testing.T) {
 		for {
 			select {
 			case l1 := <-client1.Logs:
+				log.Print(l1)
 				switch l1.MessageType {
 				case "ORDER_ADDED":
 					wg.Done()
@@ -280,6 +283,7 @@ func TestMatchPartialOrder2(t *testing.T) {
 					t.Errorf("Received an error")
 				}
 			case l2 := <-client2.Logs:
+				log.Print(l2)
 				switch l2.MessageType {
 				case "ORDER_ADDED":
 					wg.Done()
@@ -430,18 +434,19 @@ func TestMatchPartialOrder4(t *testing.T) {
 	m3, o3, _ := factory2.NewOrderMessage(ZRX, 3e18, WETH, 3e18)
 
 	client1.Requests <- m1
-	time.Sleep(500 * time.Millisecond)
+	time.Sleep(1000 * time.Millisecond)
 	client1.Requests <- m2
-	time.Sleep(500 * time.Millisecond)
+	time.Sleep(1000 * time.Millisecond)
 	client2.Requests <- m3
 
 	wg := sync.WaitGroup{}
-	wg.Add(3)
+	wg.Add(4)
 
 	go func() {
 		for {
 			select {
 			case l1 := <-client1.Logs:
+				log.Print(l1)
 				switch l1.MessageType {
 				case "ORDER_ADDED":
 					wg.Done()
@@ -451,6 +456,7 @@ func TestMatchPartialOrder4(t *testing.T) {
 					t.Errorf("Received an error")
 				}
 			case l2 := <-client2.Logs:
+				log.Print(l2)
 				switch l2.MessageType {
 				case "ORDER_ADDED":
 					wg.Done()
@@ -537,12 +543,13 @@ func TestMatchPartialOrder5(t *testing.T) {
 	time.Sleep(200 * time.Millisecond)
 
 	wg := sync.WaitGroup{}
-	wg.Add(2)
+	wg.Add(4)
 
 	go func() {
 		for {
 			select {
 			case l1 := <-client1.Logs:
+				log.Print(l1)
 				switch l1.MessageType {
 				case "ORDER_ADDED":
 					wg.Done()
@@ -552,6 +559,7 @@ func TestMatchPartialOrder5(t *testing.T) {
 					t.Errorf("Received an error")
 				}
 			case l2 := <-client2.Logs:
+				log.Print(l2)
 				switch l2.MessageType {
 				case "ORDER_ADDED":
 					wg.Done()
@@ -592,8 +600,8 @@ func TestMatchPartialOrder5(t *testing.T) {
 
 func TestMatchPartialOrder6(t *testing.T) {
 	_, _, client1, client2, factory1, factory2, pair, _, _ := SetupTest()
-	m1, o1, _ := factory1.NewBuyOrderMessage(49, 1e18)  // buy 1e18 ZRX at 1ZRX = 49WETH
-	m2, o2, _ := factory2.NewSellOrderMessage(51, 1e18) // sell 1e18 ZRX at 1ZRX = 51WETH
+	m1, o1, _ := factory1.NewSellOrderMessage(51, 1e16) // buy 1e18 ZRX at 1ZRX = 49WETH
+	m2, o2, _ := factory2.NewBuyOrderMessage(49, 1e16)  // sell 1e18 ZRX at 1ZRX = 51WETH
 
 	client1.Requests <- m1
 	time.Sleep(200 * time.Millisecond)
@@ -601,7 +609,7 @@ func TestMatchPartialOrder6(t *testing.T) {
 	time.Sleep(200 * time.Millisecond)
 
 	wg := sync.WaitGroup{}
-	wg.Add(2)
+	wg.Add(4)
 
 	go func() {
 		for {

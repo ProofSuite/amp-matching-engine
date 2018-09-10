@@ -133,6 +133,7 @@ func (e *orderEndpoint) handleNewOrder(msg *types.WebSocketPayload, conn *ws.Con
 
 	err = e.orderService.NewOrder(o)
 	if err != nil {
+		log.Print(err)
 		ws.SendOrderErrorMessage(conn, err.Error(), o.Hash)
 		return
 	}

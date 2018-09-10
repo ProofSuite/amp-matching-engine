@@ -8,8 +8,6 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/streadway/amqp"
-
 	"github.com/Proofsuite/amp-matching-engine/app"
 	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/Proofsuite/amp-matching-engine/utils"
@@ -32,6 +30,7 @@ type OrderService struct {
 	tradeDao         interfaces.TradeDao
 	engine           interfaces.Engine
 	ethereumProvider interfaces.EthereumProvider
+	rabbitMQConn     *rabbitmq.Connection
 }
 
 // NewOrderService returns a new instance of orderservice
@@ -42,6 +41,7 @@ func NewOrderService(
 	tradeDao interfaces.TradeDao,
 	engine interfaces.Engine,
 	ethereumProvider interfaces.EthereumProvider,
+	rabbitMQConn *rabbitmq.Connection,
 ) *OrderService {
 	return &OrderService{
 		orderDao,
@@ -50,6 +50,7 @@ func NewOrderService(
 		tradeDao,
 		engine,
 		ethereumProvider,
+		rabbitMQConn,
 	}
 }
 
@@ -631,20 +632,11 @@ func (s *OrderService) transferAmount(o *types.Order, filledAmount *big.Int) {
 }
 
 func (s *OrderService) SubscribeOrders(fn func(*rabbitmq.Message) error) error {
-	ch := rabbitmq.GetChannel("orderSubscribe")
-	q := rabbitmq.GetQueue(ch, "order")
+	ch := s.rabbitMQConn.GetChannel("orderSubscribe")
+	q := s.rabbitMQConn.GetQueue(ch, "order")
 
 	go func() {
-		msgs, err := ch.Consume(
-			q.Name, // queue
-			"",     // consumer
-			true,   // auto-ack
-			false,  // exclusive
-			false,  // no-local
-			false,  // no-wait
-			nil,    // args
-		)
-
+		msgs, err := s.rabbitMQConn.Consume(ch, q)
 		if err != nil {
 			log.Print(err)
 		}
@@ -670,20 +662,11 @@ func (s *OrderService) SubscribeOrders(fn func(*rabbitmq.Message) error) error {
 }
 
 func (s *OrderService) SubscribeTrades(fn func(*types.OperatorMessage) error) error {
-	ch := rabbitmq.GetChannel("tradeSubscribe")
-	q := rabbitmq.GetQueue(ch, "trades")
+	ch := s.rabbitMQConn.GetChannel("tradeSubscribe")
+	q := s.rabbitMQConn.GetQueue(ch, "trades")
 
 	go func() {
-		msgs, err := ch.Consume(
-			q.Name, // queue
-			"",     // consumer
-			true,   // auto-ack
-			false,  // exclusive
-			false,  // no-local
-			false,  // no-wait
-			nil,    // args
-		)
-
+		msgs, err := s.rabbitMQConn.Consume(ch, q)
 		if err != nil {
 			log.Print(err)
 		}
@@ -709,8 +692,8 @@ func (s *OrderService) SubscribeTrades(fn func(*types.OperatorMessage) error) er
 }
 
 func (s *OrderService) PublishTrade(o *types.Order, t *types.Trade) error {
-	ch := rabbitmq.GetChannel("tradePublish")
-	q := rabbitmq.GetQueue(ch, "trades")
+	ch := s.rabbitMQConn.GetChannel("tradePublish")
+	q := s.rabbitMQConn.GetQueue(ch, "trades")
 
 	msg := &types.OperatorMessage{
 		MessageType: "NEW_ORDER",
@@ -724,7 +707,7 @@ func (s *OrderService) PublishTrade(o *types.Order, t *types.Trade) error {
 		return err
 	}
 
-	err = rabbitmq.Publish(ch, q, bytes)
+	err = s.rabbitMQConn.Publish(ch, q, bytes)
 	if err != nil {
 		log.Print(err)
 		return err
@@ -734,8 +717,8 @@ func (s *OrderService) PublishTrade(o *types.Order, t *types.Trade) error {
 }
 
 func (s *OrderService) PublishOrder(order *rabbitmq.Message) error {
-	ch := rabbitmq.GetChannel("orderPublish")
-	q := rabbitmq.GetQueue(ch, "order")
+	ch := s.rabbitMQConn.GetChannel("orderPublish")
+	q := s.rabbitMQConn.GetQueue(ch, "order")
 
 	bytes, err := json.Marshal(order)
 	if err != nil {
@@ -743,19 +726,10 @@ func (s *OrderService) PublishOrder(order *rabbitmq.Message) error {
 		return errors.New("Failed to marshal order: " + err.Error())
 	}
 
-	err = ch.Publish(
-		"",
-		q.Name,
-		false,
-		false,
-		amqp.Publishing{
-			ContentType: "text/json",
-			Body:        bytes,
-		})
-
+	err = s.rabbitMQConn.Publish(ch, q, bytes)
 	if err != nil {
-		log.Fatal("Failed to publish order: ", err)
-		return errors.New("Failed to publish order: " + err.Error())
+		log.Print(err)
+		return err
 	}
 
 	return nil

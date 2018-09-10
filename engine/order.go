@@ -242,7 +242,11 @@ func (e *Engine) addOrder(order *types.Order) error {
 	}
 
 	// Currently converting amount to int64. In the future, we need to use strings instead of int64
-	amt := math.Sub(order.Amount, order.FilledAmount)
+	amt := order.Amount
+	if order.FilledAmount != nil {
+		amt = math.Sub(amt, order.FilledAmount)
+	}
+
 	err = e.IncrementPricePointVolume(pricePointSetKey, order.PricePoint.Int64(), amt.Int64())
 	if err != nil {
 		log.Print(err)
@@ -661,17 +665,3 @@ func (e *Engine) RemoveFromOrderMap(hash common.Hash) error {
 
 	return nil
 }
-
-// // RecoverOrders2 is an alternative suggestion for RecoverOrders2
-// // It would requires an alternative key system for redis where we store only the hash with the listkey prefix
-// func (e *Resource) RecoverOrders2(hashes []common.Hash, amounts []*big.Int) error {
-// 	for i, _ := range hashes {
-// 		err := e.updateOrderAmount(hashes[i], amounts[i])
-// 		if err != nil {
-// 			log.Print(err)
-// 			return err
-// 		}
-// 	}
-
-// 	return nil
-// }

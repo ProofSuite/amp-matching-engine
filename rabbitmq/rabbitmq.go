@@ -9,28 +9,31 @@ import (
 )
 
 // Conn is singleton rabbitmq connection
-var Conn *amqp.Connection
+var conn *Connection
 var channels = make(map[string]*amqp.Channel)
 var queues = make(map[string]*amqp.Queue)
 
+type Connection struct {
+	Conn *amqp.Connection
+}
 type Message struct {
 	Type string `json:"type"`
 	Data []byte `json:"data"`
 }
 
 // InitConnection Initializes single rabbitmq connection for whole system
-func InitConnection(address string) {
-	if Conn == nil {
-		conn, err := amqp.Dial(address)
+func InitConnection(address string) *Connection {
+	if conn == nil {
+		newConn, err := amqp.Dial(address)
 		if err != nil {
 			panic(err)
 		}
-
-		Conn = conn
+		conn = &Connection{newConn}
 	}
+	return conn
 }
 
-func NewConnection(address string) *amqp.Connection {
+func (c *Connection) NewConnection(address string) *amqp.Connection {
 	conn, err := amqp.Dial(address)
 	if err != nil {
 		panic(err)
@@ -39,18 +42,20 @@ func NewConnection(address string) *amqp.Connection {
 	return conn
 }
 
-func GetQueue(ch *amqp.Channel, queue string) *amqp.Queue {
+func (c *Connection) GetQueue(ch *amqp.Channel, queue string) *amqp.Queue {
 	if queues[queue] == nil {
 		q, err := ch.QueueDeclare(queue, false, false, false, false, nil)
 		if err != nil {
 			log.Fatalf("Failed to declare a queue: %s", err)
 		}
+
 		queues[queue] = &q
 	}
+
 	return queues[queue]
 }
 
-func DeclareQueue(ch *amqp.Channel, name string) error {
+func (c *Connection) DeclareQueue(ch *amqp.Channel, name string) error {
 	if queues[name] == nil {
 		q, err := ch.QueueDeclare(name, false, false, false, false, nil)
 		if err != nil {
@@ -64,20 +69,22 @@ func DeclareQueue(ch *amqp.Channel, name string) error {
 	return nil
 }
 
-func GetChannel(id string) *amqp.Channel {
+func (c *Connection) GetChannel(id string) *amqp.Channel {
 	if channels[id] == nil {
-		ch, err := Conn.Channel()
+		ch, err := c.Conn.Channel()
 		if err != nil {
 			log.Fatalf("Failed to open a channel: %s", err)
 			panic(err)
 		}
+
 		channels[id] = ch
 	}
+
 	return channels[id]
 }
 
 // Publish
-func Publish(ch *amqp.Channel, q *amqp.Queue, bytes []byte) error {
+func (c *Connection) Publish(ch *amqp.Channel, q *amqp.Queue, bytes []byte) error {
 	err := ch.Publish(
 		"",
 		q.Name,
@@ -97,9 +104,28 @@ func Publish(ch *amqp.Channel, q *amqp.Queue, bytes []byte) error {
 	return nil
 }
 
-func SubscribeOperator(fn func(*types.OperatorMessage) error) error {
-	ch := GetChannel("OPERATOR_SUB")
-	q := GetQueue(ch, "TX_MESSAGES")
+func (c *Connection) Consume(ch *amqp.Channel, q *amqp.Queue) (<-chan amqp.Delivery, error) {
+	msgs, err := ch.Consume(
+		q.Name, // queue
+		"",     // consumer
+		true,   // auto-ack
+		false,  // exclusive
+		false,  // no-local
+		false,  // no-wait
+		nil,    // args
+	)
+
+	if err != nil {
+		log.Print(err)
+		return nil, err
+	}
+
+	return msgs, nil
+}
+
+func (c *Connection) SubscribeOperator(fn func(*types.OperatorMessage) error) error {
+	ch := c.GetChannel("OPERATOR_SUB")
+	q := c.GetQueue(ch, "TX_MESSAGES")
 
 	go func() {
 		msgs, err := ch.Consume(
@@ -137,9 +163,9 @@ func SubscribeOperator(fn func(*types.OperatorMessage) error) error {
 	return nil
 }
 
-func UnSubscribeOperator() error {
-	ch := GetChannel("OPERATOR_SUB")
-	q := GetQueue(ch, "TX_MESSAGES")
+func (c *Connection) UnSubscribeOperator() error {
+	ch := c.GetChannel("OPERATOR_SUB")
+	q := c.GetQueue(ch, "TX_MESSAGES")
 
 	err := ch.Cancel(q.Name, false)
 	if err != nil {
@@ -150,8 +176,8 @@ func UnSubscribeOperator() error {
 	return nil
 }
 
-func PurgeOperatorQueue() error {
-	ch := GetChannel("OPERATOR_SUB")
+func (c *Connection) PurgeOperatorQueue() error {
+	ch := c.GetChannel("OPERATOR_SUB")
 
 	_, err := ch.QueuePurge("TX_MESSAGES", false)
 	if err != nil {
@@ -162,7 +188,7 @@ func PurgeOperatorQueue() error {
 	return nil
 }
 
-func Purge(ch *amqp.Channel, name string) error {
+func (c *Connection) Purge(ch *amqp.Channel, name string) error {
 	_, err := ch.QueueInspect(name)
 	if err != nil {
 		return nil

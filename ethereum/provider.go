@@ -9,10 +9,10 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/app"
 	"github.com/Proofsuite/amp-matching-engine/contracts/contractsinterfaces"
 	"github.com/Proofsuite/amp-matching-engine/interfaces"
-	"github.com/Proofsuite/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	eth "github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/rpc"
 )
 
@@ -91,15 +91,15 @@ func (e *EthereumProvider) WaitMined(hash common.Hash) (*eth.Receipt, error) {
 	defer ticker.Stop()
 
 	for {
-		receipt, err := e.Client.TransactionReceipt(ctx, hash)
+		receipt, _ := e.Client.TransactionReceipt(ctx, hash)
 		if receipt != nil {
 			return receipt, nil
 		}
 
-		if err != nil {
-			log.Print(err)
-			return nil, err
-		}
+		// if err != nil {
+		// 	log.Print(err)
+		// 	// return nil, err
+		// }
 
 		select {
 		case <-ctx.Done():

@@ -5,7 +5,6 @@ import (
 
 	"github.com/Proofsuite/amp-matching-engine/app"
 	"github.com/Proofsuite/amp-matching-engine/types"
-	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/ethereum/go-ethereum/common"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -53,9 +52,16 @@ func (dao *WalletDao) GetByAddress(a common.Address) (response *types.Wallet, er
 	q := bson.M{"address": a.Hex()}
 	var resp []types.Wallet
 	err = db.Get(dao.dbName, dao.collectionName, q, 0, 1, &resp)
-	if err != nil || len(resp) == 0 {
+	if err != nil {
+		log.Print(err)
+		return nil, err
+	}
+
+	if len(resp) == 0 {
+		log.Print("Not wallets found")
 		return
 	}
+
 	return &resp[0], nil
 }
 
@@ -64,6 +70,7 @@ func (dao *WalletDao) GetDefaultAdminWallet() (response *types.Wallet, err error
 	var resp []types.Wallet
 	err = db.Get(dao.dbName, dao.collectionName, q, 0, 1, &resp)
 	if err != nil || len(resp) == 0 {
+		log.Print("Error retrieving admin wallet")
 		return
 	}
 
@@ -79,8 +86,6 @@ func (dao *WalletDao) GetOperatorWallets() ([]*types.Wallet, error) {
 		log.Print(err)
 		return nil, err
 	}
-
-	utils.PrintJSON(res)
 
 	return res, nil
 }

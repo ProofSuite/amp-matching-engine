@@ -57,14 +57,10 @@ func (dao *TradeDao) Create(trades ...*types.Trade) error {
 	return nil
 }
 
-func (dao *TradeDao) Update(trade *types.Trade) (err error) {
+func (dao *TradeDao) Update(trade *types.Trade) error {
 	trade.UpdatedAt = time.Now()
-	err = db.Update(dao.dbName, dao.collectionName, bson.M{"_id": trade.ID}, trade)
-	if err != nil {
-		return err
-	}
-
-	return
+	err := db.Update(dao.dbName, dao.collectionName, bson.M{"_id": trade.ID}, trade)
+	return err
 }
 
 // UpdateByHash updates the fields that can be normally updated in a structure. For a
@@ -76,6 +72,7 @@ func (dao *TradeDao) UpdateByHash(hash common.Hash, t *types.Trade) error {
 		"price":      t.Price.String(),
 		"pricepoint": t.PricePoint.String(),
 		"tradeNonce": t.TradeNonce.String(),
+		"txHash":     t.TxHash.String(),
 		"signature": &types.SignatureRecord{
 			V: t.Signature.V,
 			R: t.Signature.R.Hex(),
@@ -93,30 +90,33 @@ func (dao *TradeDao) UpdateByHash(hash common.Hash, t *types.Trade) error {
 }
 
 // GetAll function fetches all the trades in mongodb
-func (dao *TradeDao) GetAll() (response []types.Trade, err error) {
-	err = db.Get(dao.dbName, dao.collectionName, bson.M{}, 0, 0, &response)
-	return
+func (dao *TradeDao) GetAll() ([]types.Trade, error) {
+	var response []types.Trade
+	err := db.Get(dao.dbName, dao.collectionName, bson.M{}, 0, 0, &response)
+	return response, err
 }
 
 // Aggregate function calls the aggregate pipeline of mongodb
-func (dao *TradeDao) Aggregate(q []bson.M) (response []*types.Tick, err error) {
-	err = db.Aggregate(dao.dbName, dao.collectionName, q, &response)
-	return
+func (dao *TradeDao) Aggregate(q []bson.M) ([]*types.Tick, error) {
+	var response []*types.Tick
+	err := db.Aggregate(dao.dbName, dao.collectionName, q, &response)
+	return response, err
 }
 
 // GetByPairName fetches all the trades corresponding to a particular pair name.
-func (dao *TradeDao) GetByPairName(name string) (response []*types.Trade, err error) {
+func (dao *TradeDao) GetByPairName(name string) ([]*types.Trade, error) {
+	var response []*types.Trade
 	q := bson.M{"pairName": bson.RegEx{
 		Pattern: name,
 		Options: "i",
 	}}
 
-	err = db.Get(dao.dbName, dao.collectionName, q, 0, 0, &response)
+	err := db.Get(dao.dbName, dao.collectionName, q, 0, 0, &response)
 	if err != nil {
-		return
+		return nil, err
 	}
 
-	return
+	return response, nil
 }
 
 // GetByHash fetches the first record that matches a certain hash
@@ -146,25 +146,22 @@ func (dao *TradeDao) GetByOrderHash(hash common.Hash) ([]*types.Trade, error) {
 }
 
 // GetByPairAddress fetches all the trades corresponding to a particular pair token address.
-func (dao *TradeDao) GetByPairAddress(baseToken, quoteToken common.Address) (response []*types.Trade, err error) {
+func (dao *TradeDao) GetByPairAddress(baseToken, quoteToken common.Address) ([]*types.Trade, error) {
+	var response []*types.Trade
+
 	q := bson.M{"baseToken": baseToken.Hex(), "quoteToken": quoteToken.Hex()}
-	err = db.Get(dao.dbName, dao.collectionName, q, 0, 0, &response)
-	if err != nil {
-		return
-	}
-	return
+	err := db.Get(dao.dbName, dao.collectionName, q, 0, 0, &response)
+	return response, err
 }
 
 // GetByUserAddress fetches all the trades corresponding to a particular user address.
-func (dao *TradeDao) GetByUserAddress(addr common.Address) (response []*types.Trade, err error) {
+func (dao *TradeDao) GetByUserAddress(addr common.Address) ([]*types.Trade, error) {
+	var response []*types.Trade
 	q := bson.M{"$or": []bson.M{
 		{"maker": addr.Hex()}, {"taker": addr.Hex()},
 	}}
-	err = db.Get(dao.dbName, dao.collectionName, q, 0, 1, &response)
-	if err != nil {
-		return
-	}
-	return
+	err := db.Get(dao.dbName, dao.collectionName, q, 0, 1, &response)
+	return response, err
 }
 
 // Drop drops all the order documents in the current database

@@ -4,6 +4,8 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/Proofsuite/amp-matching-engine/rabbitmq"
+
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/Proofsuite/amp-matching-engine/utils/testutils"
 	"github.com/Proofsuite/amp-matching-engine/utils/testutils/mocks"
@@ -16,8 +18,9 @@ func TestCancelTrades(t *testing.T) {
 	accountDao := new(mocks.AccountDao)
 	tradeDao := new(mocks.TradeDao)
 	engine := new(mocks.Engine)
-	ethereum := new(mocks.Ethereum)
+	ethereum := new(mocks.EthereumProvider)
 
+	amqp := rabbitmq.InitConnection("amqp://guest:guest@localhost:5672/")
 	orderService := NewOrderService(
 		orderDao,
 		pairDao,
@@ -25,6 +28,7 @@ func TestCancelTrades(t *testing.T) {
 		tradeDao,
 		engine,
 		ethereum,
+		amqp,
 	)
 
 	t1 := testutils.GetTestTrade1()
