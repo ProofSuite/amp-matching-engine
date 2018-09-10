@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"math/big"
 	"time"
 
@@ -346,10 +345,10 @@ func (t *Trade) Sign(w *Wallet) error {
 func (t *Trade) Print() {
 	b, err := json.MarshalIndent(t, "", "  ")
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 	}
 
-	fmt.Print(string(b))
+	logger.Info(string(b))
 }
 
 // NewTrade returns a new trade with the given params. The trade is signed by the factory wallet.

@@ -1,35 +1,10 @@
 package engine
 
 import (
-	"encoding/json"
-	"fmt"
-	"log"
 	"math/big"
 
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/Proofsuite/amp-matching-engine/utils/math"
-)
-
-// FillStatus is enum used to signify the filled status of order in engineResponse
-type FillStatus int
-
-// Response is the structure of message response sent by engine
-type Response struct {
-	FillStatus     types.FillStatus   `json:"fillStatus,omitempty"`
-	Order          *types.Order       `json:"order,omitempty"`
-	RemainingOrder *types.Order       `json:"remainingOrder,omitempty"`
-	MatchingOrders []*types.FillOrder `json:"matchingOrders,omitempty"`
-	Trades         []*types.Trade     `json:"trades,omitempty"`
-}
-
-// this const block holds the possible valued of FillStatus
-const (
-	_ FillStatus = iota
-	NOMATCH
-	PARTIAL
-	FULL
-	ERROR
-	CANCELLED
 )
 
 // execute function is responsible for executing of matched orders
@@ -49,7 +24,7 @@ func (e *Engine) execute(order *types.Order, bookEntry *types.Order) (*types.Tra
 
 		err := e.updateOrder(bookEntry, tradeAmount)
 		if err != nil {
-			log.Print(err)
+			logger.Error(err)
 			return nil, err
 		}
 
@@ -60,7 +35,7 @@ func (e *Engine) execute(order *types.Order, bookEntry *types.Order) (*types.Tra
 
 		err := e.deleteOrder(bookEntry, tradeAmount)
 		if err != nil {
-			log.Print(err)
+			logger.Error(err)
 			return nil, err
 		}
 	}
@@ -80,13 +55,4 @@ func (e *Engine) execute(order *types.Order, bookEntry *types.Order) (*types.Tra
 	}
 
 	return trade, nil
-}
-
-func (resp *Response) Print() {
-	b, err := json.MarshalIndent(resp, "", "  ")
-	if err != nil {
-		log.Print(err)
-	}
-
-	fmt.Print("\n", string(b))
 }

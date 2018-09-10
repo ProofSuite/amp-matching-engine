@@ -1,8 +1,6 @@
 package endpoints
 
 import (
-	"log"
-
 	"github.com/Proofsuite/amp-matching-engine/errors"
 	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/Proofsuite/amp-matching-engine/types"
@@ -27,14 +25,14 @@ func ServeTokenResource(rg *routing.RouteGroup, tokenService interfaces.TokenSer
 func (r *tokenEndpoint) create(c *routing.Context) error {
 	var model types.Token
 	if err := c.Read(&model); err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return err
 	}
 
 	err := r.tokenService.Create(&model)
 	if err != nil {
-		log.Print(err)
-		return err
+		logger.Error(err)
+		return errors.NewAPIError(500, "INTERNAL_SERVER_ERROR", nil)
 	}
 
 	return c.Write(model)
@@ -43,8 +41,7 @@ func (r *tokenEndpoint) create(c *routing.Context) error {
 func (r *tokenEndpoint) query(c *routing.Context) error {
 	response, err := r.tokenService.GetAll()
 	if err != nil {
-		log.Print(err)
-		return err
+		return errors.NewAPIError(500, "INTERNAL_SERVER_ERROR", nil)
 	}
 
 	return c.Write(response)
@@ -53,8 +50,8 @@ func (r *tokenEndpoint) query(c *routing.Context) error {
 func (r *tokenEndpoint) queryQuote(c *routing.Context) error {
 	response, err := r.tokenService.GetQuote()
 	if err != nil {
-		log.Print(err)
-		return err
+		logger.Error(err)
+		return errors.NewAPIError(500, "INTERNAL_SERVER_ERROR", nil)
 	}
 
 	return c.Write(response)
@@ -63,8 +60,8 @@ func (r *tokenEndpoint) queryQuote(c *routing.Context) error {
 func (r *tokenEndpoint) queryBase(c *routing.Context) error {
 	response, err := r.tokenService.GetBase()
 	if err != nil {
-		log.Print(err)
-		return err
+		logger.Error(err)
+		return errors.NewAPIError(500, "INTERNAL_SERVER_ERROR", nil)
 	}
 
 	return c.Write(response)
@@ -79,8 +76,8 @@ func (r *tokenEndpoint) get(c *routing.Context) error {
 	tokenAddress := common.HexToAddress(a)
 	response, err := r.tokenService.GetByAddress(tokenAddress)
 	if err != nil {
-		log.Print(err)
-		return err
+		logger.Error(err)
+		return errors.NewAPIError(500, "INTERNAL_SERVER_ERROR", nil)
 	}
 
 	return c.Write(response)

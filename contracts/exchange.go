@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
-	"log"
 	"math/big"
 
 	"github.com/Proofsuite/amp-matching-engine/contracts/contractsinterfaces"
@@ -51,6 +50,7 @@ func NewExchange(
 ) (*Exchange, error) {
 	instance, err := contractsinterfaces.NewExchange(contractAddress, backend)
 	if err != nil {
+		logger.Error(err)
 		return nil, err
 	}
 
@@ -64,7 +64,7 @@ func NewExchange(
 func (e *Exchange) DefaultTxOptions() (*bind.TransactOpts, error) {
 	wallet, err := e.WalletService.GetDefaultAdminWallet()
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return nil, err
 	}
 
@@ -81,6 +81,7 @@ func (e *Exchange) GetTxCallOptions() *bind.CallOpts {
 func (e *Exchange) SetFeeAccount(a common.Address, txOpts *bind.TransactOpts) (*eth.Transaction, error) {
 	tx, err := e.Interface.SetFeeAccount(txOpts, a)
 	if err != nil {
+		logger.Error(err)
 		return nil, err
 	}
 
@@ -92,6 +93,7 @@ func (e *Exchange) SetFeeAccount(a common.Address, txOpts *bind.TransactOpts) (*
 func (e *Exchange) SetOperator(a common.Address, isOperator bool, txOpts *bind.TransactOpts) (*eth.Transaction, error) {
 	tx, err := e.Interface.SetOperator(txOpts, a, isOperator)
 	if err != nil {
+		logger.Error(err)
 		return nil, err
 	}
 
@@ -104,6 +106,7 @@ func (e *Exchange) FeeAccount() (common.Address, error) {
 
 	account, err := e.Interface.FeeAccount(callOptions)
 	if err != nil {
+		logger.Error(err)
 		return common.Address{}, err
 	}
 
@@ -115,6 +118,7 @@ func (e *Exchange) Operator(a common.Address) (bool, error) {
 	// Operator returns true if the given address is an operator of the exchange and returns false otherwise
 	isOperator, err := e.Interface.Operators(callOptions, a)
 	if err != nil {
+		logger.Error(err)
 		return false, err
 	}
 
@@ -132,6 +136,7 @@ func (e *Exchange) Trade(o *types.Order, t *types.Trade, txOpts *bind.TransactOp
 
 	tx, err := e.Interface.ExecuteTrade(txOpts, orderValues, orderAddresses, vValues, rsValues)
 	if err != nil {
+		logger.Error(err)
 		return nil, err
 	}
 
@@ -157,6 +162,7 @@ func (e *Exchange) ListenToErrors() (chan *contractsinterfaces.ExchangeLogError,
 
 	_, err := e.Interface.WatchLogError(opts, events)
 	if err != nil {
+		logger.Error(err)
 		return nil, err
 	}
 
@@ -170,6 +176,7 @@ func (e *Exchange) ListenToTrades() (chan *contractsinterfaces.ExchangeLogTrade,
 
 	_, err := e.Interface.WatchLogTrade(opts, events, nil, nil, nil)
 	if err != nil {
+		logger.Error(err)
 		return nil, err
 	}
 
@@ -181,6 +188,7 @@ func (e *Exchange) GetErrorEvents(logs chan *contractsinterfaces.ExchangeLogErro
 
 	_, err := e.Interface.WatchLogError(opts, logs)
 	if err != nil {
+		logger.Error(err)
 		return err
 	}
 
@@ -192,6 +200,7 @@ func (e *Exchange) GetTrades(logs chan *contractsinterfaces.ExchangeLogTrade) er
 
 	_, err := e.Interface.WatchLogTrade(opts, logs, nil, nil, nil)
 	if err != nil {
+		logger.Error(err)
 		return err
 	}
 
@@ -204,13 +213,14 @@ func (e *Exchange) PrintTrades() error {
 
 	_, err := e.Interface.WatchLogTrade(opts, events, nil, nil, nil)
 	if err != nil {
+		logger.Error(err)
 		return err
 	}
 
 	go func() {
 		for {
 			event := <-events
-			fmt.Printf("New event: %v", event)
+			logger.Infof("New event: %v", event)
 		}
 	}()
 
@@ -229,7 +239,7 @@ func (e *Exchange) PrintErrors() error {
 	go func() {
 		for {
 			event := <-events
-			log.Printf("New Error Event. Id: %v, Hash: %v\n\n", event.ErrorId, hex.EncodeToString(event.TradeHash[:]))
+			logger.Warningf("New Error Event. Id: %v, Hash: %v\n\n", event.ErrorId, hex.EncodeToString(event.TradeHash[:]))
 		}
 	}()
 

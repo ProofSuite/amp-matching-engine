@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"log"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -37,7 +36,7 @@ func NewWallet() *Wallet {
 func NewWalletFromPrivateKey(key string) *Wallet {
 	privateKey, err := crypto.HexToECDSA(key)
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 	}
 
 	return &Wallet{
@@ -81,7 +80,7 @@ func (w *Wallet) SetBSON(raw bson.Raw) error {
 	decoded := &WalletRecord{}
 	err := raw.Unmarshal(decoded)
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return err
 	}
 
@@ -89,7 +88,7 @@ func (w *Wallet) SetBSON(raw bson.Raw) error {
 	w.Address = common.HexToAddress(decoded.Address)
 	w.PrivateKey, err = crypto.HexToECDSA(decoded.PrivateKey)
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return err
 	}
 

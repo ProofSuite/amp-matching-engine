@@ -2,7 +2,6 @@ package engine
 
 import (
 	"encoding/json"
-	"log"
 
 	"github.com/gomodule/redigo/redis"
 
@@ -14,7 +13,7 @@ func (e *Engine) GetOrderBook(pair *types.Pair) (sellBook, buyBook []*map[string
 	sKey, bKey := pair.GetOrderBookKeys()
 	res, err := redis.Int64s(e.redisConn.Do("SORT", sKey, "GET", sKey+"::book::*", "GET", "#")) // Add price point to order book
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 	}
 
 	for i := 0; i < len(res); i = i + 2 {
@@ -27,7 +26,7 @@ func (e *Engine) GetOrderBook(pair *types.Pair) (sellBook, buyBook []*map[string
 
 	res, err = redis.Int64s(e.redisConn.Do("SORT", bKey, "GET", bKey+"::book::*", "GET", "#", "DESC"))
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 	}
 
 	for i := 0; i < len(res); i = i + 2 {
@@ -50,7 +49,7 @@ func (e *Engine) GetFullOrderBook(pair *types.Pair) (book [][]types.Order) {
 	book = make([][]types.Order, 0)
 	keys, err := e.redisConn.Keys(pattern)
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return
 	}
 
@@ -63,7 +62,7 @@ func (e *Engine) GetFullOrderBook(pair *types.Pair) (book [][]types.Order) {
 		}
 		res, err := e.redisConn.MGet(keys[start:end]...)
 		if err != nil {
-			log.Print(err)
+			logger.Error(err)
 			return
 		}
 		for _, r := range res {

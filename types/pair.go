@@ -2,8 +2,6 @@ package types
 
 import (
 	"encoding/json"
-	"fmt"
-	"log"
 	"math/big"
 	"time"
 
@@ -141,8 +139,8 @@ func (p *Pair) GetKVPrefix() string {
 func (p *Pair) Print() {
 	b, err := json.MarshalIndent(p, "", "  ")
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 	}
 
-	fmt.Print(string(b))
+	logger.Info(string(b))
 }

@@ -3,7 +3,6 @@ package operator
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log"
 	"math/big"
 
@@ -56,7 +55,7 @@ func (txq *TxQueue) Length() int {
 	ch := txq.RabbitMQConn.GetChannel(name)
 	q, err := ch.QueueInspect(name)
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 	}
 
 	return q.Messages
@@ -69,18 +68,18 @@ func (txq *TxQueue) Length() int {
 // TODO: Currently doesn't seem thread safe and fails unless called with a sleep time between each call.
 func (txq *TxQueue) QueueTrade(o *types.Order, t *types.Trade) error {
 
-	fmt.Println("Length of the queue is ", txq.Length())
+	logger.Info("Length of the queue is ", txq.Length())
 	if txq.Length() == 0 {
 		_, err := txq.ExecuteTrade(o, t)
 		if err != nil {
-			log.Print(err)
+			logger.Error(err)
 			return err
 		}
 	}
 
 	err := txq.PublishPendingTrade(o, t)
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return err
 	}
 
@@ -91,10 +90,10 @@ func (txq *TxQueue) QueueTrade(o *types.Order, t *types.Trade) error {
 // trade message, the trade is updated on the database and is published to the operator subscribers
 // (order service)
 func (txq *TxQueue) ExecuteTrade(o *types.Order, tr *types.Trade) (*eth.Transaction, error) {
-	fmt.Println("EXECUTE_TRADE: ", tr.Hash.Hex())
+	logger.Info("EXECUTE_TRADE: ", tr.Hash.Hex())
 	nonce, err := txq.EthereumProvider.GetPendingNonceAt(txq.Wallet.Address)
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return nil, err
 	}
 
@@ -106,46 +105,46 @@ func (txq *TxQueue) ExecuteTrade(o *types.Order, tr *types.Trade) (*eth.Transact
 
 	tx, err := txq.Exchange.Trade(o, tr, txOpts)
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return nil, err
 	}
 
 	err = txq.TradeService.UpdateTradeTxHash(tr, tx.Hash())
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return nil, errors.New("Could not update trade tx attribute")
 	}
 
 	err = txq.PublishTradeSentMessage(o, tr)
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return nil, errors.New("Could not update")
 	}
 
 	go func() {
-		fmt.Println("MINING TRADE")
+		logger.Info("MINING TRADE")
 		_, err := txq.EthereumProvider.WaitMined(tx.Hash())
 		if err != nil {
-			log.Print(err)
+			logger.Error(err)
 		}
 
-		fmt.Println("TRADE_MINED IN EXECUTE TRADE: ", tr.Hash.Hex())
+		logger.Info("TRADE_MINED IN EXECUTE TRADE: ", tr.Hash.Hex())
 
 		len := txq.Length()
-		fmt.Println("LENGTH of the queue is ", len)
+		logger.Info("LENGTH of the queue is ", len)
 		if len > 0 {
 			msg, err := txq.PopPendingTrade()
 			if err != nil {
-				log.Print(err)
+				logger.Error(err)
 				return
 			}
 
 			// very hacky
 			if msg.Trade.Hash == tr.Hash {
-				fmt.Println("HACKY POP PENDING TRADE: ", tr.Hash.Hex())
+				logger.Info("HACKY POP PENDING TRADE: ", tr.Hash.Hex())
 				msg, err = txq.PopPendingTrade()
 				if err != nil {
-					log.Print(err)
+					logger.Error(err)
 					return
 				}
 
@@ -154,7 +153,7 @@ func (txq *TxQueue) ExecuteTrade(o *types.Order, tr *types.Trade) (*eth.Transact
 				}
 			}
 
-			fmt.Println("NEXT_TRADE: ", msg.Trade.Hash.Hex())
+			logger.Info("NEXT_TRADE: ", msg.Trade.Hash.Hex())
 			go txq.ExecuteTrade(msg.Order, msg.Trade)
 		}
 	}()
@@ -175,7 +174,7 @@ func (txq *TxQueue) PublishPendingTrade(o *types.Order, t *types.Trade) error {
 
 	err = txq.RabbitMQConn.Publish(ch, q, bytes)
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return err
 	}
 
@@ -183,7 +182,7 @@ func (txq *TxQueue) PublishPendingTrade(o *types.Order, t *types.Trade) error {
 }
 
 func (txq *TxQueue) PublishTradeSentMessage(or *types.Order, tr *types.Trade) error {
-	fmt.Println("PUBLISHING TRADE SENT MESSAGE")
+	logger.Info("PUBLISHING TRADE SENT MESSAGE")
 
 	ch := txq.RabbitMQConn.GetChannel("OPERATOR_PUB")
 	q := txq.RabbitMQConn.GetQueue(ch, "TX_MESSAGES")
@@ -195,38 +194,38 @@ func (txq *TxQueue) PublishTradeSentMessage(or *types.Order, tr *types.Trade) er
 
 	bytes, err := json.Marshal(msg)
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return err
 	}
 
 	err = txq.RabbitMQConn.Publish(ch, q, bytes)
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return err
 	}
 
-	fmt.Println("PUBLISHED TRADE SENT MESSAGE")
+	logger.Info("PUBLISHED TRADE SENT MESSAGE")
 	return nil
 }
 
 func (txq *TxQueue) PurgePendingTrades() error {
-	fmt.Println("PURGING PENDING TRADES")
+	logger.Info("PURGING PENDING TRADES")
 	name := "TX_QUEUES:" + txq.Name
 	ch := txq.RabbitMQConn.GetChannel(name)
 
 	err := txq.RabbitMQConn.Purge(ch, name)
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return err
 	}
 
-	fmt.Println("PURGED PENDING TRADES")
+	logger.Info("PURGED PENDING TRADES")
 	return nil
 }
 
 // PopPendingTrade
 func (txq *TxQueue) PopPendingTrade() (*types.PendingTradeMessage, error) {
-	fmt.Println("POPPING PENDING TRADE")
+	logger.Info("POPPING PENDING TRADE")
 	name := "TX_QUEUES:" + txq.Name
 	ch := txq.RabbitMQConn.GetChannel(name)
 	q := txq.RabbitMQConn.GetQueue(ch, name)
@@ -243,10 +242,10 @@ func (txq *TxQueue) PopPendingTrade() (*types.PendingTradeMessage, error) {
 	pding := &types.PendingTradeMessage{}
 	err := json.Unmarshal(msg.Body, &pding)
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return nil, err
 	}
 
-	fmt.Println("POPPED PENDING TRADE", pding.Trade.Hash.Hex())
+	logger.Info("POPPED PENDING TRADE", pding.Trade.Hash.Hex())
 	return pding, nil
 }

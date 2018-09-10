@@ -25,7 +25,6 @@ package engine
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"math/big"
 	"time"
 
@@ -46,14 +45,14 @@ func (e *Engine) newOrder(order *types.Order) (err error) {
 	if order.Side == "SELL" {
 		resp, err = e.sellOrder(order)
 		if err != nil {
-			log.Print(err)
+			logger.Error(err)
 			return err
 		}
 
 	} else if order.Side == "BUY" {
 		resp, err = e.buyOrder(order)
 		if err != nil {
-			log.Print(err)
+			logger.Error(err)
 			return err
 		}
 	}
@@ -61,7 +60,7 @@ func (e *Engine) newOrder(order *types.Order) (err error) {
 	// Note: Plug the option for orders like FOC, Limit here (if needed)
 	err = e.publishEngineResponse(resp)
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return err
 	}
 
@@ -85,7 +84,7 @@ func (e *Engine) buyOrder(order *types.Order) (*types.EngineResponse, error) {
 	// GET Range of sellOrder between minimum Sell order and order.Price
 	pps, err := e.GetMatchingBuyPricePoints(oskv, order.PricePoint.Int64())
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return nil, err
 	}
 
@@ -97,10 +96,12 @@ func (e *Engine) buyOrder(order *types.Order) (*types.EngineResponse, error) {
 		return res, nil
 	}
 
+	logger.Error("wowowowowowowo")
+
 	for _, pp := range pps {
 		entries, err := e.GetMatchingOrders(oskv, pp)
 		if err != nil {
-			log.Print(err)
+			logger.Error(err)
 			return nil, err
 		}
 
@@ -108,13 +109,12 @@ func (e *Engine) buyOrder(order *types.Order) (*types.EngineResponse, error) {
 			entry := &types.Order{}
 			err = json.Unmarshal(bookEntry, &entry)
 			if err != nil {
-				log.Print(err)
 				return nil, err
 			}
 
 			trade, err := e.execute(order, entry)
 			if err != nil {
-				log.Print(err)
+				logger.Error(err)
 				return nil, err
 			}
 
@@ -163,10 +163,9 @@ func (e *Engine) sellOrder(order *types.Order) (*types.EngineResponse, error) {
 	res.RemainingOrder = &remOrder
 	obkv := order.GetOBMatchKey()
 
-	// // GET Range of sellOrder between minimum Sell order and order.Price
 	pps, err := e.GetMatchingSellPricePoints(obkv, order.PricePoint.Int64())
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return nil, err
 	}
 
@@ -181,7 +180,7 @@ func (e *Engine) sellOrder(order *types.Order) (*types.EngineResponse, error) {
 	for _, pp := range pps {
 		entries, err := e.GetMatchingOrders(obkv, pp)
 		if err != nil {
-			log.Print(err)
+			logger.Error(err)
 			return nil, err
 		}
 
@@ -190,13 +189,13 @@ func (e *Engine) sellOrder(order *types.Order) (*types.EngineResponse, error) {
 			err = json.Unmarshal(o, &entry)
 
 			if err != nil {
-				log.Print(err)
+				logger.Error(err)
 				return nil, err
 			}
 
 			trade, err := e.execute(order, entry)
 			if err != nil {
-				log.Print(err)
+				logger.Error(err)
 				return nil, err
 			}
 
@@ -237,7 +236,7 @@ func (e *Engine) addOrder(order *types.Order) error {
 	pricePointSetKey, orderHashListKey := order.GetOBKeys()
 	err := e.AddToPricePointSet(pricePointSetKey, order.PricePoint.Int64())
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return err
 	}
 
@@ -249,19 +248,19 @@ func (e *Engine) addOrder(order *types.Order) error {
 
 	err = e.IncrementPricePointVolume(pricePointSetKey, order.PricePoint.Int64(), amt.Int64())
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return err
 	}
 
 	err = e.AddToOrderMap(order)
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return err
 	}
 
 	err = e.AddToPricePointHashesSet(orderHashListKey, order.CreatedAt, order.Hash)
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return err
 	}
 
@@ -275,7 +274,7 @@ func (e *Engine) updateOrder(order *types.Order, tradeAmount *big.Int) error {
 	pricePointSetKey, _ := order.GetOBKeys()
 	stored, err := e.GetFromOrderMap(order.Hash)
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return err
 	}
 
@@ -290,14 +289,14 @@ func (e *Engine) updateOrder(order *types.Order, tradeAmount *big.Int) error {
 
 	err = e.AddToOrderMap(stored)
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return err
 	}
 
 	// Currently converting amount to int64. In the future, we need to use strings instead of int64
 	err = e.IncrementPricePointVolume(pricePointSetKey, order.PricePoint.Int64(), math.Neg(tradeAmount).Int64())
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return err
 	}
 
@@ -312,7 +311,7 @@ func (e *Engine) updateOrderAmount(hash common.Hash, amount *big.Int) error {
 
 	stored, err := e.GetFromOrderMap(hash)
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return err
 	}
 
@@ -327,7 +326,7 @@ func (e *Engine) updateOrderAmount(hash common.Hash, amount *big.Int) error {
 
 	err = e.AddToOrderMap(stored)
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return err
 	}
 
@@ -336,7 +335,7 @@ func (e *Engine) updateOrderAmount(hash common.Hash, amount *big.Int) error {
 	// Currently converting amount to int64. In the future, we need to use strings instead of int64
 	err = e.IncrementPricePointVolume(pricePointSetKey, stored.PricePoint.Int64(), math.Neg(amount).Int64())
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return err
 	}
 
@@ -349,58 +348,58 @@ func (e *Engine) deleteOrder(order *types.Order, tradeAmount *big.Int) (err erro
 
 	vol, err := e.GetPricePointVolume(pricePointSetKey, order.PricePoint.Int64())
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return
 	}
 
 	if math.IsEqual(math.ToBigInt(vol), tradeAmount) {
 		err := e.RemoveFromPricePointSet(pricePointSetKey, order.PricePoint.Int64())
 		if err != nil {
-			log.Print(err)
+			logger.Error(err)
 			return err
 		}
 
 		err = e.RemoveFromPricePointHashesSet(orderHashListKey, order.Hash)
 		if err != nil {
-			log.Print(err)
+			logger.Error(err)
 			return err
 		}
 
 		err = e.DeletePricePointVolume(pricePointSetKey, order.PricePoint.Int64())
 		if err != nil {
-			log.Print(err)
+			logger.Error(err)
 			return err
 		}
 
 		err = e.RemoveFromOrderMap(order.Hash)
 		if err != nil {
-			log.Print(err)
+			logger.Error(err)
 			return err
 		}
 
 	} else {
 		err := e.AddToPricePointSet(pricePointSetKey, order.PricePoint.Int64())
 		if err != nil {
-			log.Print(err)
+			logger.Error(err)
 			return err
 		}
 
 		// Currently converting amount to int64. In the future, we need to use strings instead of int64
 		err = e.DecrementPricePointVolume(pricePointSetKey, order.PricePoint.Int64(), tradeAmount.Int64())
 		if err != nil {
-			log.Print(err)
+			logger.Error(err)
 			return err
 		}
 
 		err = e.RemoveFromOrderMap(order.Hash)
 		if err != nil {
-			log.Print(err)
+			logger.Error(err)
 			return err
 		}
 
 		err = e.RemoveFromPricePointHashesSet(orderHashListKey, order.Hash)
 		if err != nil {
-			log.Print(err)
+			logger.Error(err)
 			return err
 		}
 	}
@@ -426,12 +425,12 @@ func (e *Engine) RecoverOrders(matches []*types.OrderTradePair) error {
 		_, obListKey := o.GetOBKeys()
 		if !e.redisConn.Exists(obListKey + "::orders::" + o.Hash.Hex()) {
 			if err := e.addOrder(o); err != nil {
-				log.Print(err)
+				logger.Error(err)
 				return err
 			}
 		} else {
 			if err := e.updateOrder(o, math.Neg(t.Amount)); err != nil {
-				log.Print(err)
+				logger.Error(err)
 				return err
 			}
 		}
@@ -452,13 +451,13 @@ func (e *Engine) CancelTrades(orders []*types.Order, amount []*big.Int) error {
 		_, obListKey := o.GetOBKeys()
 		if !e.redisConn.Exists(obListKey + "::orders::" + o.Hash.Hex()) {
 			if err := e.addOrder(o); err != nil {
-				log.Print(err)
+				logger.Error(err)
 				return err
 			}
 		} else {
 			err := e.updateOrder(o, math.Neg(o.Amount))
 			if err != nil {
-				log.Print(err)
+				logger.Error(err)
 				return err
 			}
 		}
@@ -474,13 +473,13 @@ func (e *Engine) CancelOrder(order *types.Order) (*types.EngineResponse, error) 
 
 	stored, err := e.GetFromOrderMap(order.Hash)
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return nil, err
 	}
 
 	amt := math.Sub(stored.Amount, stored.FilledAmount)
 	if err := e.deleteOrder(order, amt); err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return nil, err
 	}
 
@@ -499,7 +498,7 @@ func (e *Engine) CancelOrder(order *types.Order) (*types.EngineResponse, error) 
 func (e *Engine) GetMatchingBuyPricePoints(obKey string, pricePoint int64) ([]int64, error) {
 	pps, err := e.redisConn.ZRangeByLexInt(obKey, "-", "["+utils.UintToPaddedString(pricePoint))
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return nil, err
 	}
 
@@ -509,7 +508,7 @@ func (e *Engine) GetMatchingBuyPricePoints(obKey string, pricePoint int64) ([]in
 func (e *Engine) GetMatchingSellPricePoints(obkv string, pricePoint int64) ([]int64, error) {
 	pps, err := e.redisConn.ZRevRangeByLexInt(obkv, "+", "["+utils.UintToPaddedString(pricePoint))
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return nil, err
 	}
 
@@ -519,7 +518,7 @@ func (e *Engine) GetMatchingSellPricePoints(obkv string, pricePoint int64) ([]in
 func (e *Engine) GetPricePointVolume(pricePointSetKey string, pricePoint int64) (string, error) {
 	vol, err := e.redisConn.GetValue(pricePointSetKey + "::book::" + utils.UintToPaddedString(pricePoint))
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return "", err
 	}
 
@@ -536,7 +535,7 @@ func (e *Engine) GetFromOrderMap(hash common.Hash) (*types.Order, error) {
 	}
 	serialized, err := e.redisConn.GetValue(keys[0])
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return nil, err
 	}
 
@@ -563,7 +562,7 @@ func (e *Engine) GetMatchingOrders(obKey string, pricePoint int64) ([][]byte, er
 func (e *Engine) AddToPricePointSet(pricePointSetKey string, pricePoint int64) error {
 	err := e.redisConn.ZAdd(pricePointSetKey, 0, utils.UintToPaddedString(pricePoint))
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return err
 	}
 
@@ -574,7 +573,7 @@ func (e *Engine) AddToPricePointSet(pricePointSetKey string, pricePoint int64) e
 func (e *Engine) RemoveFromPricePointSet(pricePointSetKey string, pricePoint int64) error {
 	err := e.redisConn.ZRem(pricePointSetKey, utils.UintToPaddedString(pricePoint))
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return err
 	}
 
@@ -605,7 +604,7 @@ func (e *Engine) RemoveFromPricePointHashesSet(orderHashListKey string, hash com
 func (e *Engine) IncrementPricePointVolume(pricePointSetKey string, pricePoint int64, amount int64) error {
 	_, err := e.redisConn.IncrBy(pricePointSetKey+"::book::"+utils.UintToPaddedString(pricePoint), amount)
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return err
 	}
 
@@ -616,7 +615,7 @@ func (e *Engine) IncrementPricePointVolume(pricePointSetKey string, pricePoint i
 func (e *Engine) DecrementPricePointVolume(pricePointSetKey string, pricePoint int64, amount int64) error {
 	_, err := e.redisConn.IncrBy(pricePointSetKey+"::book::"+utils.UintToPaddedString(pricePoint), -amount)
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return err
 	}
 
@@ -627,7 +626,7 @@ func (e *Engine) DecrementPricePointVolume(pricePointSetKey string, pricePoint i
 func (e *Engine) DeletePricePointVolume(pricePointSetKey string, pricePoint int64) error {
 	err := e.redisConn.Del(pricePointSetKey + "::book::" + utils.UintToPaddedString(pricePoint))
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return err
 	}
 
@@ -638,7 +637,7 @@ func (e *Engine) DeletePricePointVolume(pricePointSetKey string, pricePoint int6
 func (e *Engine) AddToOrderMap(o *types.Order) error {
 	bytes, err := json.Marshal(o)
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return err
 	}
 
@@ -647,7 +646,7 @@ func (e *Engine) AddToOrderMap(o *types.Order) error {
 	_, orderHashListKey := o.GetOBKeys()
 	err = e.redisConn.Set(orderHashListKey+"::orders::"+o.Hash.Hex(), string(bytes))
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return err
 	}
 
@@ -659,7 +658,7 @@ func (e *Engine) RemoveFromOrderMap(hash common.Hash) error {
 	keys, _ := e.redisConn.Keys("*::" + hash.Hex())
 	err := e.redisConn.Del(keys[0])
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return err
 	}
 
