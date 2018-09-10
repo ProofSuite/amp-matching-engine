@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+	"sync"
 
 	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/Proofsuite/amp-matching-engine/rabbitmq"
 	"github.com/Proofsuite/amp-matching-engine/types"
-	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	eth "github.com/ethereum/go-ethereum/core/types"
@@ -29,6 +29,7 @@ type Operator struct {
 	Exchange          interfaces.Exchange
 	TxQueues          []*TxQueue
 	QueueAddressIndex map[common.Address]*TxQueue
+	mutex             *sync.Mutex
 }
 
 type OperatorInterface interface {
@@ -88,6 +89,7 @@ func NewOperator(
 		Exchange:          exchange,
 		TxQueues:          txqueues,
 		QueueAddressIndex: addressIndex,
+		mutex:             &sync.Mutex{},
 	}
 
 	err = op.PurgeQueues()
@@ -202,7 +204,7 @@ func (op *Operator) HandleEvents() error {
 			}
 
 			go func() {
-				_, err := op.EthereumProvider.WaitMined(tr.Tx)
+				_, err := op.EthereumProvider.WaitMined(tr.TxHash)
 				if err != nil {
 					log.Print(err)
 				}
@@ -219,10 +221,6 @@ func (op *Operator) HandleEvents() error {
 }
 
 func (op *Operator) HandleTrades(msg *types.OperatorMessage) error {
-
-	log.Print("Handling trade")
-	utils.PrintJSON(msg)
-
 	err := op.QueueTrade(msg.Order, msg.Trade)
 	if err != nil {
 		log.Print(err)
@@ -326,6 +324,9 @@ func (op *Operator) Publish(ch *amqp.Channel, q *amqp.Queue, bytes []byte) error
 
 // QueueTrade
 func (op *Operator) QueueTrade(o *types.Order, t *types.Trade) error {
+	op.mutex.Lock()
+	defer op.mutex.Unlock()
+
 	txq, len, err := op.GetShortestQueue()
 	if err != nil {
 		log.Print(err)

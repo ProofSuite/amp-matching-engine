@@ -9,7 +9,6 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/ws"
 
 	"github.com/ethereum/go-ethereum/common"
-	eth "github.com/ethereum/go-ethereum/core/types"
 )
 
 // TradeService struct with daos required, responsible for communicating with daos.
@@ -53,8 +52,10 @@ func (t *TradeService) GetByOrderHash(hash common.Hash) ([]*types.Trade, error) 
 	return t.tradeDao.GetByOrderHash(hash)
 }
 
-func (t *TradeService) UpdateTradeTx(tr *types.Trade, tx *eth.Transaction) error {
-	tr.Tx = tx
+func (t *TradeService) UpdateTradeTxHash(tr *types.Trade, txHash common.Hash) error {
+	tr.TxHash = txHash
+
+	utils.PrintJSON(tr)
 
 	err := t.tradeDao.UpdateByHash(tr.Hash, tr)
 	if err != nil {

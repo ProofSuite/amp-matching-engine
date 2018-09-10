@@ -6,6 +6,7 @@ import (
 
 	"github.com/Proofsuite/amp-matching-engine/app"
 	"github.com/Proofsuite/amp-matching-engine/types"
+	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/ethereum/go-ethereum/common"
 	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -42,6 +43,9 @@ func (dao *TradeDao) Create(trades ...*types.Trade) error {
 	y := make([]interface{}, len(trades))
 
 	for _, trade := range trades {
+		log.Print("CREATING TRADE RECORD")
+		utils.PrintJSON(trade)
+
 		trade.ID = bson.NewObjectId()
 		trade.CreatedAt = time.Now()
 		trade.UpdatedAt = time.Now()
