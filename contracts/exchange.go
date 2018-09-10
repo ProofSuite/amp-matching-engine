@@ -61,6 +61,17 @@ func NewExchange(
 	}, nil
 }
 
+func (e *Exchange) DefaultTxOptions() (*bind.TransactOpts, error) {
+	wallet, err := e.WalletService.GetDefaultAdminWallet()
+	if err != nil {
+		log.Print(err)
+		return nil, err
+	}
+
+	opts := bind.NewKeyedTransactor(wallet.PrivateKey)
+	return opts, nil
+}
+
 func (e *Exchange) GetTxCallOptions() *bind.CallOpts {
 	return &bind.CallOpts{Pending: true}
 }
