@@ -88,11 +88,11 @@ func NewRouter() *routing.Router {
 	rg := router.Group("")
 
 	provider := ethereum.NewWebsocketProvider()
-	amqp := rabbitmq.InitConnection(app.Config.Rabbitmq)
-	redisClient := redis.NewRedisConnection(app.Config.Redis)
-	redisClient.FlushAll()
+	rabbitConn := rabbitmq.InitConnection(app.Config.Rabbitmq)
+	redisConn := redis.NewRedisConnection(app.Config.Redis)
+	redisConn.FlushAll()
 
-	eng, err := engine.InitEngine(redisClient, amqp)
+	eng, err := engine.InitEngine(redisConn, rabbitConn)
 	if err != nil {
 		panic(err)
 	}
@@ -111,7 +111,7 @@ func NewRouter() *routing.Router {
 	tokenService := services.NewTokenService(tokenDao)
 	tradeService := services.NewTradeService(tradeDao)
 	pairService := services.NewPairService(pairDao, tokenDao, eng, tradeService)
-	orderService := services.NewOrderService(orderDao, pairDao, accountDao, tradeDao, eng, provider, amqp)
+	orderService := services.NewOrderService(orderDao, pairDao, accountDao, tradeDao, eng, provider, rabbitConn)
 	orderBookService := services.NewOrderBookService(pairDao, tokenDao, eng)
 	walletService := services.NewWalletService(walletDao)
 	cronService := crons.NewCronService(ohlcvService)
@@ -135,6 +135,7 @@ func NewRouter() *routing.Router {
 		orderService,
 		provider,
 		exchange,
+		rabbitConn,
 	)
 
 	if err != nil {

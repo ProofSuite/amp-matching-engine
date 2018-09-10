@@ -78,6 +78,7 @@ func NewOperator(
 			TradeService:     tradeService,
 			EthereumProvider: provider,
 			Exchange:         exchange,
+			RabbitMQConn:     conn,
 		}
 
 		txqueues = append(txqueues, txq)
