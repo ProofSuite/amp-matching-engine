@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"math/big"
 	"time"
 
@@ -545,7 +544,7 @@ func (o *Order) SetBSON(raw bson.Raw) error {
 
 	err := raw.Unmarshal(decoded)
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return err
 	}
 

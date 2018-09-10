@@ -1,8 +1,6 @@
 package endpoints
 
 import (
-	"fmt"
-
 	"github.com/Proofsuite/amp-matching-engine/errors"
 	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/Proofsuite/amp-matching-engine/types"
@@ -24,19 +22,23 @@ func ServeAccountResource(
 }
 
 func (e *accountEndpoint) create(c *routing.Context) error {
-
 	account := &types.Account{}
-	if err := c.Read(&account); err != nil {
+	err := c.Read(&account)
+	if err != nil {
 		return errors.NewAPIError(400, "INVALID_DATA", map[string]interface{}{
 			"details": err.Error(),
 		})
 	}
-	if err := account.Validate(); err != nil {
+
+	err = account.Validate()
+	if err != nil {
+		logger.Error(err)
 		return err
 	}
 
-	if err := e.accountService.Create(account); err != nil {
-		fmt.Println(err)
+	err = e.accountService.Create(account)
+	if err != nil {
+		logger.Error(err)
 		return errors.NewAPIError(400, "CREATE_ACCOUNT_FAIL", map[string]interface{}{
 			"details": err.Error(),
 		})
@@ -52,9 +54,9 @@ func (e *accountEndpoint) get(c *routing.Context) error {
 	}
 
 	address := common.HexToAddress(a)
-
 	account, err := e.accountService.GetByAddress(address)
 	if err != nil {
+		logger.Error(err)
 		return errors.NewAPIError(400, "ACCOUNT_ERROR", nil)
 	}
 
@@ -77,6 +79,7 @@ func (e *accountEndpoint) getBalance(c *routing.Context) error {
 
 	balance, err := e.accountService.GetTokenBalance(addr, tokenAddr)
 	if err != nil {
+		logger.Error(err)
 		return errors.NewAPIError(400, "ERROR_GETBALANCE", nil)
 	}
 

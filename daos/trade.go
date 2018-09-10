@@ -1,7 +1,6 @@
 package daos
 
 import (
-	"log"
 	"time"
 
 	"github.com/Proofsuite/amp-matching-engine/app"
@@ -50,7 +49,7 @@ func (dao *TradeDao) Create(trades ...*types.Trade) error {
 
 	err := db.Create(dao.dbName, dao.collectionName, y...)
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return err
 	}
 
@@ -60,7 +59,12 @@ func (dao *TradeDao) Create(trades ...*types.Trade) error {
 func (dao *TradeDao) Update(trade *types.Trade) error {
 	trade.UpdatedAt = time.Now()
 	err := db.Update(dao.dbName, dao.collectionName, bson.M{"_id": trade.ID}, trade)
-	return err
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	return nil
 }
 
 // UpdateByHash updates the fields that can be normally updated in a structure. For a
@@ -83,6 +87,7 @@ func (dao *TradeDao) UpdateByHash(hash common.Hash, t *types.Trade) error {
 
 	err := db.Update(dao.dbName, dao.collectionName, query, update)
 	if err != nil {
+		logger.Error(err)
 		return err
 	}
 
@@ -93,14 +98,24 @@ func (dao *TradeDao) UpdateByHash(hash common.Hash, t *types.Trade) error {
 func (dao *TradeDao) GetAll() ([]types.Trade, error) {
 	var response []types.Trade
 	err := db.Get(dao.dbName, dao.collectionName, bson.M{}, 0, 0, &response)
-	return response, err
+	if err != nil {
+		logger.Error(err)
+		return nil, err
+	}
+
+	return response, nil
 }
 
 // Aggregate function calls the aggregate pipeline of mongodb
 func (dao *TradeDao) Aggregate(q []bson.M) ([]*types.Tick, error) {
 	var response []*types.Tick
 	err := db.Aggregate(dao.dbName, dao.collectionName, q, &response)
-	return response, err
+	if err != nil {
+		logger.Error(err)
+		return nil, err
+	}
+
+	return response, nil
 }
 
 // GetByPairName fetches all the trades corresponding to a particular pair name.
@@ -113,6 +128,7 @@ func (dao *TradeDao) GetByPairName(name string) ([]*types.Trade, error) {
 
 	err := db.Get(dao.dbName, dao.collectionName, q, 0, 0, &response)
 	if err != nil {
+		logger.Error(err)
 		return nil, err
 	}
 
@@ -126,6 +142,7 @@ func (dao *TradeDao) GetByHash(hash common.Hash) (*types.Trade, error) {
 	response := []*types.Trade{}
 	err := db.Get(dao.dbName, dao.collectionName, q, 0, 0, &response)
 	if err != nil {
+		logger.Error(err)
 		return nil, err
 	}
 
@@ -139,6 +156,7 @@ func (dao *TradeDao) GetByOrderHash(hash common.Hash) ([]*types.Trade, error) {
 	response := []*types.Trade{}
 	err := db.Get(dao.dbName, dao.collectionName, q, 0, 0, &response)
 	if err != nil {
+		logger.Error(err)
 		return nil, err
 	}
 
@@ -151,7 +169,12 @@ func (dao *TradeDao) GetByPairAddress(baseToken, quoteToken common.Address) ([]*
 
 	q := bson.M{"baseToken": baseToken.Hex(), "quoteToken": quoteToken.Hex()}
 	err := db.Get(dao.dbName, dao.collectionName, q, 0, 0, &response)
-	return response, err
+	if err != nil {
+		logger.Error(err)
+		return nil, err
+	}
+
+	return response, nil
 }
 
 // GetByUserAddress fetches all the trades corresponding to a particular user address.
@@ -160,8 +183,14 @@ func (dao *TradeDao) GetByUserAddress(addr common.Address) ([]*types.Trade, erro
 	q := bson.M{"$or": []bson.M{
 		{"maker": addr.Hex()}, {"taker": addr.Hex()},
 	}}
+
 	err := db.Get(dao.dbName, dao.collectionName, q, 0, 1, &response)
-	return response, err
+	if err != nil {
+		logger.Error(err)
+		return nil, err
+	}
+
+	return response, nil
 }
 
 // Drop drops all the order documents in the current database

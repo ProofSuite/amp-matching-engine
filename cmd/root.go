@@ -37,10 +37,10 @@ func init() {
 
 func initConfig() {
 	if err := app.LoadConfig(cfgDir, env); err != nil {
-		panic(fmt.Errorf("Invalid application configuration: %s", err))
+		panic(err)
 	}
 
 	if err := errors.LoadMessages(app.Config.ErrorFile); err != nil {
-		panic(fmt.Errorf("Failed to read the error message file: %s", err))
+		panic(err)
 	}
 }

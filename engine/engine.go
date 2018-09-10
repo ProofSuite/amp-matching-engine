@@ -3,12 +3,12 @@ package engine
 import (
 	"encoding/json"
 	"errors"
-	"log"
 	"sync"
 
 	"github.com/Proofsuite/amp-matching-engine/rabbitmq"
 	"github.com/Proofsuite/amp-matching-engine/redis"
 	"github.com/Proofsuite/amp-matching-engine/types"
+	"github.com/Proofsuite/amp-matching-engine/utils"
 )
 
 // Engine contains daos and redis connection required for engine to work
@@ -18,15 +18,11 @@ type Engine struct {
 	mutex        *sync.Mutex
 }
 
-// Engine is singleton resource instance
-var engine *Engine
+var logger = utils.EngineLogger
 
 // InitEngine initializes the engine singleton instance
 func InitEngine(redisConn *redis.RedisConnection, rabbitMQConn *rabbitmq.Connection) (*Engine, error) {
-	if engine == nil {
-		engine = &Engine{redisConn, rabbitMQConn, &sync.Mutex{}}
-	}
-
+	engine := &Engine{redisConn, rabbitMQConn, &sync.Mutex{}}
 	return engine, nil
 }
 
@@ -38,13 +34,13 @@ func (e *Engine) publishEngineResponse(res *types.EngineResponse) error {
 
 	bytes, err := json.Marshal(res)
 	if err != nil {
-		log.Fatalf("Failed to marshal Engine Response: %s", err)
+		logger.Error("Failed to marshal engine response: ", err)
 		return errors.New("Failed to marshal Engine Response: " + err.Error())
 	}
 
 	err = e.rabbitMQConn.Publish(ch, q, bytes)
 	if err != nil {
-		log.Fatalf("Failed to publish order: %s", err)
+		logger.Error("Failed to publish order: ", err)
 		return errors.New("Failed to publish order: " + err.Error())
 	}
 
@@ -69,7 +65,7 @@ func (e *Engine) SubscribeResponseQueue(fn func(*types.EngineResponse) error) er
 		)
 
 		if err != nil {
-			log.Fatalf("Failed to register a consumer: %s", err)
+			logger.Fatal("Failed to register a consumer:", err)
 		}
 
 		forever := make(chan bool)
@@ -79,7 +75,7 @@ func (e *Engine) SubscribeResponseQueue(fn func(*types.EngineResponse) error) er
 				var res *types.EngineResponse
 				err := json.Unmarshal(d.Body, &res)
 				if err != nil {
-					log.Print(err)
+					logger.Error(err)
 					continue
 				}
 				go fn(res)
@@ -97,7 +93,7 @@ func (e *Engine) HandleOrders(msg *rabbitmq.Message) error {
 	o := &types.Order{}
 	err := json.Unmarshal(msg.Data, o)
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return err
 	}
 

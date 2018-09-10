@@ -82,7 +82,8 @@ func (e *orderEndpoint) ws(input interface{}, conn *ws.Conn) {
 
 	bytes, _ := json.Marshal(input)
 	if err := json.Unmarshal(bytes, &msg); err != nil {
-		log.Print(err)
+		logger.Error(err)
+		ws.SendOrderErrorMessage(conn, err.Error())
 	}
 
 	switch msg.Type {
@@ -115,14 +116,14 @@ func (e *orderEndpoint) handleNewOrder(msg *types.WebSocketPayload, conn *ws.Con
 
 	bytes, err := json.Marshal(msg.Data)
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		ws.SendOrderErrorMessage(conn, err.Error())
 		return
 	}
 
 	err = json.Unmarshal(bytes, &o)
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		ws.SendOrderErrorMessage(conn, err.Error())
 		return
 	}
@@ -133,7 +134,7 @@ func (e *orderEndpoint) handleNewOrder(msg *types.WebSocketPayload, conn *ws.Con
 
 	err = e.orderService.NewOrder(o)
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		ws.SendOrderErrorMessage(conn, err.Error(), o.Hash)
 		return
 	}
@@ -146,7 +147,7 @@ func (e *orderEndpoint) handleCancelOrder(p *types.WebSocketPayload, conn *ws.Co
 
 	err = oc.UnmarshalJSON(bytes)
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		ws.SendOrderErrorMessage(conn, err.Error(), oc.Hash)
 	}
 
@@ -158,7 +159,7 @@ func (e *orderEndpoint) handleCancelOrder(p *types.WebSocketPayload, conn *ws.Co
 
 	err = e.orderService.CancelOrder(oc)
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		ws.SendOrderErrorMessage(conn, err.Error(), oc.Hash)
 		return
 	}

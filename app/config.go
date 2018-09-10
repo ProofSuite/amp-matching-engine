@@ -36,6 +36,8 @@ type appConfig struct {
 	// TickDuration is user by tick streaming cron
 	TickDuration map[string][]int64 `mapstructure:"tick_duration"`
 
+	Logs map[string]string `mapstructure:"logs"`
+
 	Ethereum map[string]string `mapstructure:"ethereum"`
 }
 

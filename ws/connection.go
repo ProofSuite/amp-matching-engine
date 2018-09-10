@@ -4,25 +4,25 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"sync"
 
 	"github.com/Proofsuite/amp-matching-engine/types"
+	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/websocket"
 )
 
-// websocket channel's string
 const (
-	TradeChannel          = "trades"
-	FullOrderBookChannel  = "order_book_full"
+	TradeChannel         = "trades"
+	FullOrderBookChannel = "order_book_full"
 	LiteOrderBookChannel = "order_book_lite"
-	OrderChannel          = "orders"
-	OHLCVChannel          = "ohlcv"
+	OrderChannel         = "orders"
+	OHLCVChannel         = "ohlcv"
 )
 
-// gorilla websocket upgrader instance with configuration
+var logger = utils.Logger
+
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
@@ -45,27 +45,32 @@ var socketChannels map[string]func(interface{}, *Conn)
 func ConnectionEndpoint(w http.ResponseWriter, r *http.Request) {
 	c, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Println("==>" + err.Error())
+		logger.Error(err)
 		return
 	}
+
 	conn := &Conn{c, sync.Mutex{}}
 	initConnection(conn)
+
 	go func() {
 		// Recover in case of any panic in websocket. So that the app doesn't crash ===
 		defer func() {
 			if r := recover(); r != nil {
-				var ok bool
-				err, ok = r.(error)
-				if !ok {
-					err = fmt.Errorf("Panic in websocket: %v", r)
+				err, ok := r.(error)
+				if err != nil {
+					logger.Error(err)
 				}
-				log.Fatal(err)
+
+				if !ok {
+					logger.Error("Failed attempt at recovering websocket panic")
+				}
 			}
 		}()
 
 		for {
 			messageType, p, err := conn.ReadMessage()
 			if err != nil {
+				logger.Error(err)
 				conn.Close()
 			}
 
@@ -75,22 +80,23 @@ func ConnectionEndpoint(w http.ResponseWriter, r *http.Request) {
 
 			msg := types.WebSocketMessage{}
 			if err := json.Unmarshal(p, &msg); err != nil {
-				log.Println("unmarshal to channelMessage <==>" + err.Error())
+				logger.Error(err)
 				SendMessage(conn, msg.Channel, "ERROR", err.Error())
 				return
 			}
 
 			conn.SetCloseHandler(wsCloseHandler(conn))
-			if socketChannels[msg.Channel] != nil {
-				go socketChannels[msg.Channel](msg.Payload, conn)
-			} else {
+
+			if socketChannels[msg.Channel] == nil {
 				SendMessage(conn, msg.Channel, "ERROR", "INVALID_CHANNEL")
 			}
+
+			go socketChannels[msg.Channel](msg.Payload, conn)
 		}
 	}()
 }
 
-func ToWsConn(conn *websocket.Conn) *Conn {
+func NewConnection(conn *websocket.Conn) *Conn {
 	return &Conn{conn, sync.Mutex{}}
 }
 
@@ -115,12 +121,14 @@ func RegisterChannel(channel string, fn func(interface{}, *Conn)) error {
 	}
 
 	if fn == nil {
-		return errors.New("fn can not be nil")
+		logger.Error("Handler should not be nil")
+		return errors.New("Handler should not be nil")
 	}
 
 	ch := getChannelMap()
 	if ch[channel] != nil {
-		return fmt.Errorf("channel %s already registered", channel)
+		logger.Error("Channel already registered")
+		return fmt.Errorf("Channel already registered")
 	}
 
 	ch[channel] = fn
@@ -174,6 +182,7 @@ func SendMessage(conn *Conn, channel string, msgType string, data interface{}, h
 	defer conn.mu.Unlock()
 	err := conn.WriteJSON(message)
 	if err != nil {
+		logger.Error(err)
 		conn.Close()
 	}
 }
