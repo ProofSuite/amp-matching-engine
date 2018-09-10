@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"math/big"
-	"sync"
 
 	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/Proofsuite/amp-matching-engine/rabbitmq"
@@ -62,8 +61,6 @@ func (txq *TxQueue) Length() int {
 
 	return q.Messages
 }
-
-var mutex = &sync.Mutex{}
 
 // AddTradeToExecutionList adds a new trade to the execution list. If the execution list is empty (= contains 1 element
 // after adding the transaction hash), the given order/trade pair gets executed. If the tranasction queue is full,
@@ -187,6 +184,7 @@ func (txq *TxQueue) PublishPendingTrade(o *types.Order, t *types.Trade) error {
 
 func (txq *TxQueue) PublishTradeSentMessage(or *types.Order, tr *types.Trade) error {
 	fmt.Println("PUBLISHING TRADE SENT MESSAGE")
+
 	ch := txq.RabbitMQConn.GetChannel("OPERATOR_PUB")
 	q := txq.RabbitMQConn.GetQueue(ch, "TX_MESSAGES")
 	msg := &types.OperatorMessage{

@@ -242,7 +242,11 @@ func (e *Engine) addOrder(order *types.Order) error {
 	}
 
 	// Currently converting amount to int64. In the future, we need to use strings instead of int64
-	amt := math.Sub(order.Amount, order.FilledAmount)
+	amt := order.Amount
+	if order.FilledAmount != nil {
+		amt = math.Sub(amt, order.FilledAmount)
+	}
+
 	err = e.IncrementPricePointVolume(pricePointSetKey, order.PricePoint.Int64(), amt.Int64())
 	if err != nil {
 		log.Print(err)
