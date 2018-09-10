@@ -2,7 +2,6 @@ package endpoints
 
 import (
 	"encoding/json"
-	"log"
 	"time"
 
 	"github.com/Proofsuite/amp-matching-engine/interfaces"
@@ -56,21 +55,26 @@ func (e *OHLCVEndpoint) ohlcvWebSocket(input interface{}, conn *ws.Conn) {
 
 	mab, _ := json.Marshal(input)
 	var payload *types.WebSocketPayload
-	if err := json.Unmarshal(mab, &payload); err != nil {
-		log.Println("unmarshal to wsmsg <==>" + err.Error())
+
+	err := json.Unmarshal(mab, &payload)
+	if err != nil {
+		logger.Error(err)
 	}
 
 	socket := ws.GetOHLCVSocket()
 
 	if payload.Type != "subscription" {
-		log.Println("Payload is not of subscription type")
+		logger.Error("Payload is not subscription type")
 		socket.SendErrorMessage(conn, "Payload is not of subscription type")
 		return
 	}
+
 	dab, _ := json.Marshal(payload.Data)
 	var msg *types.WebSocketSubscription
-	if err := json.Unmarshal(dab, &msg); err != nil {
-		log.Println("unmarshal to wsmsg <==>" + err.Error())
+
+	err = json.Unmarshal(dab, &msg)
+	if err != nil {
+		logger.Error(err)
 	}
 
 	if (msg.Pair.BaseToken == common.Address{}) {
@@ -78,6 +82,7 @@ func (e *OHLCVEndpoint) ohlcvWebSocket(input interface{}, conn *ws.Conn) {
 			"Code":    "Invalid_Pair_BaseToken",
 			"Message": "Invalid Pair BaseToken passed in Params",
 		}
+
 		socket.SendErrorMessage(conn, message)
 		return
 	}
@@ -87,6 +92,7 @@ func (e *OHLCVEndpoint) ohlcvWebSocket(input interface{}, conn *ws.Conn) {
 			"Code":    "Invalid_Pair_BaseToken",
 			"Message": "Invalid Pair BaseToken passed in Params",
 		}
+
 		socket.SendErrorMessage(conn, message)
 		return
 	}

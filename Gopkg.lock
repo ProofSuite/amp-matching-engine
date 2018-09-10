@@ -547,10 +547,6 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
-<<<<<<< 556f5b5c7dedd795707d27e85a3192db0f0506a4
-=======
-    "github.com/Proofsuite/go-ethereum/ethclient",
->>>>>>> amqp singleton pattern changed to DI, daos,services named returns removed
     "github.com/Sirupsen/logrus",
     "github.com/alicebob/miniredis",
     "github.com/ethereum/go-ethereum",

@@ -69,6 +69,7 @@ func NewRouter(
 	amqpConn *rabbitmq.Connection,
 	logger *logrus.Logger,
 ) *routing.Router {
+
 	router := routing.New()
 
 	router.To("GET,HEAD", "/ping", func(c *routing.Context) error {

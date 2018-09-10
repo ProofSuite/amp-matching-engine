@@ -1,7 +1,6 @@
 package types
 
 import (
-	"log"
 	"math/big"
 	"time"
 
@@ -216,35 +215,35 @@ func (a Account) Validate() error {
 func (a *Account) Print() {
 	b, err := json.MarshalIndent(a, "", "  ")
 	if err != nil {
-		log.Print("Error: ", err)
+		logger.Error(err)
 	}
 
-	log.Print(string(b))
+	logger.Info(string(b))
 }
 
 func (a *AccountRecord) Print() {
 	b, err := json.MarshalIndent(a, "", "  ")
 	if err != nil {
-		log.Print("Error: ", err)
+		logger.Error("Error: ", err)
 	}
 
-	log.Print(string(b))
+	logger.Info(string(b))
 }
 
 func (t *TokenBalance) Print() {
 	b, err := json.MarshalIndent(t, "", "  ")
 	if err != nil {
-		log.Print("Error: ", err)
+		logger.Error("Error: ", err)
 	}
 
-	log.Print(string(b))
+	logger.Info(string(b))
 }
 
 func (t *TokenBalanceRecord) Print() {
 	b, err := json.MarshalIndent(t, "", "  ")
 	if err != nil {
-		log.Print("Error: ", err)
+		logger.Error("Error: ", err)
 	}
 
-	log.Print(string(b))
+	logger.Info(string(b))
 }

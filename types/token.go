@@ -2,8 +2,6 @@ package types
 
 import (
 	"encoding/json"
-	"fmt"
-	"log"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -100,17 +98,17 @@ func (t *Token) SetBSON(raw bson.Raw) error {
 func (t *Token) Print() {
 	b, err := json.MarshalIndent(t, "", "  ")
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 	}
 
-	fmt.Print(string(b))
+	logger.Info(string(b))
 }
 
 func (t *TokenRecord) Print() {
 	b, err := json.MarshalIndent(t, "", "  ")
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 	}
 
-	fmt.Print(string(b))
+	logger.Info(string(b))
 }

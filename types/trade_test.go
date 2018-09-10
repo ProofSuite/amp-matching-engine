@@ -2,7 +2,6 @@ package types
 
 import (
 	"encoding/json"
-	"fmt"
 	"math/big"
 	"testing"
 	"time"
@@ -47,7 +46,7 @@ func TestTradeJSON(t *testing.T) {
 	}
 
 	if diff := deep.Equal(expected, trade); diff != nil {
-		fmt.Printf("Expected: \n%+v\nGot: \n%+v\n\n", expected, trade)
+		t.Errorf("Expected: \n%+v\nGot: \n%+v\n\n", expected, trade)
 	}
 }
 

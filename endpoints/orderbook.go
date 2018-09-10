@@ -46,7 +46,7 @@ func (e *OrderBookEndpoint) orderBookEndpoint(c *routing.Context) error {
 	quoteTokenAddress := common.HexToAddress(qt)
 	ob, err := e.orderBookService.GetOrderBook(baseTokenAddress, quoteTokenAddress)
 	if err != nil {
-		return err
+		return errors.NewAPIError(500, "INTERNAL_SERVER_ERROR", nil)
 	}
 
 	return c.Write(ob)
@@ -69,31 +69,39 @@ func (e *OrderBookEndpoint) fullOrderBookEndpoint(c *routing.Context) error {
 	quoteTokenAddress := common.HexToAddress(qt)
 	ob, err := e.orderBookService.GetFullOrderBook(baseTokenAddress, quoteTokenAddress)
 	if err != nil {
-		return err
+		return errors.NewAPIError(500, "INTERNAL_SERVER_ERROR", nil)
 	}
 
 	return c.Write(ob)
 }
+
 // liteOrderBookWebSocket
 func (e *OrderBookEndpoint) fullOrderBookWebSocket(input interface{}, conn *ws.Conn) {
 	mab, _ := json.Marshal(input)
 	var payload *types.WebSocketPayload
-	if err := json.Unmarshal(mab, &payload); err != nil {
-		log.Println("unmarshal to wsmsg <==>" + err.Error())
+
+	err := json.Unmarshal(mab, &payload)
+	if err != nil {
+		logger.Error(err)
+		return
 	}
 
 	socket := ws.GetLiteOrderBookSocket()
 
 	if payload.Type != "subscription" {
-		log.Println("Payload is not of subscription type")
+		logger.Error("Payload is not of subscription type")
 		socket.SendErrorMessage(conn, "Payload is not of subscription type")
 		return
 	}
+
 	dab, _ := json.Marshal(payload.Data)
 	var msg *types.WebSocketSubscription
-	if err := json.Unmarshal(dab, &msg); err != nil {
-		log.Println("unmarshal to wsmsg <==>" + err.Error())
+
+	err = json.Unmarshal(dab, &msg)
+	if err != nil {
+		logger.Error(err)
 	}
+
 	if (msg.Pair.BaseToken == common.Address{}) {
 		message := map[string]string{
 			"Code":    "Invalid_Pair_BaseToken",
@@ -125,23 +133,28 @@ func (e *OrderBookEndpoint) fullOrderBookWebSocket(input interface{}, conn *ws.C
 
 // liteOrderBookWebSocket
 func (e *OrderBookEndpoint) liteOrderBookWebSocket(input interface{}, conn *ws.Conn) {
-	mab, _ := json.Marshal(input)
+	bytes, _ := json.Marshal(input)
 	var payload *types.WebSocketPayload
-	if err := json.Unmarshal(mab, &payload); err != nil {
-		log.Println("unmarshal to wsmsg <==>" + err.Error())
+	err := json.Unmarshal(bytes, &payload)
+	if err != nil {
+		logger.Error(err)
 	}
 
 	socket := ws.GetLiteOrderBookSocket()
 	if payload.Type != "subscription" {
-		log.Println("Payload is not of subscription type")
+		logger.Error("Payload is not of subscription type")
 		socket.SendErrorMessage(conn, "Payload is not of subscription type")
 		return
 	}
-	dab, _ := json.Marshal(payload.Data)
+
+	bytes, _ = json.Marshal(payload.Data)
 	var msg *types.WebSocketSubscription
-	if err := json.Unmarshal(dab, &msg); err != nil {
+
+	err = json.Unmarshal(bytes, &msg)
+	if err != nil {
 		log.Println("unmarshal to wsmsg <==>" + err.Error())
 	}
+
 	if (msg.Pair.BaseToken == common.Address{}) {
 		message := map[string]string{
 			"Code":    "Invalid_Pair_BaseToken",

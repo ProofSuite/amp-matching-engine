@@ -1,62 +1,49 @@
 package utils
 
 import (
+	"io"
 	"os"
+	"path"
+	"runtime"
 
-	"github.com/Sirupsen/logrus"
 	logging "github.com/op/go-logging"
 )
 
-var log = logging.MustGetLogger("example")
+var Logger = NewLogger("main", "./logs/main.log")
+var OperatorLogger = NewLogger("operator", "./logs/operator.log")
+var EngineLogger = NewLogger("engine", "./logs/engine.log")
+var APILogger = NewLogger("api", "./logs/api.log")
 
-func NewOperatorLogger() {
-	logger := logrus.New()
-}
+func NewLogger(module string, logFile string) *logging.Logger {
+	_, fileName, _, _ := runtime.Caller(1)
+	mainLogFile := path.Join(path.Dir(fileName), "../logs/main.log")
+	logFile = path.Join(path.Dir(fileName), "../", logFile)
 
-func NewEngineLogger() {
+	logger, err := logging.GetLogger("api")
+	if err != nil {
+		panic(err)
+	}
 
-}
+	var format = logging.MustStringFormatter(
+		`%{level:.4s} %{time:15:04:05} at %{shortpkg}/%{shortfile} in %{shortfunc}():%{message}`,
+	)
 
-func NewLogger() {
+	mainLog, err := os.OpenFile(mainLogFile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		panic(err)
+	}
 
-}
+	log, err := os.OpenFile(logFile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		panic(err)
+	}
 
-// Example format string. Everything except the message has a custom color
-// which is dependent on the log level. Many fields have a custom output
-// formatting too, eg. the time returns the hour down to the milli second.
-var format = logging.MustStringFormatter(
-	`%{color}%{time:15:04:05.000} %{shortfunc} ▶ %{level:.4s} %{id:03x}%{color:reset} %{message}`,
-)
+	writer := io.MultiWriter(os.Stdout, mainLog, log)
+	backend := logging.NewLogBackend(writer, "", 0)
 
-// Password is just an example type implementing the Redactor interface. Any
-// time this is logged, the Redacted() function will be called.
-type Password string
+	formattedBackend := logging.NewBackendFormatter(backend, format)
+	leveledBackend := logging.AddModuleLevel(formattedBackend)
 
-func (p Password) Redacted() interface{} {
-	return logging.Redact(string(p))
-}
-
-func main() {
-	// For demo purposes, create two backend for os.Stderr.
-	backend1 := logging.NewLogBackend(os.Stderr, "", 0)
-	backend2 := logging.NewLogBackend(os.Stderr, "", 0)
-
-	// For messages written to backend2 we want to add some additional
-	// information to the output, including the used log level and the name of
-	// the function.
-	backend2Formatter := logging.NewBackendFormatter(backend2, format)
-
-	// Only errors and more severe messages should be sent to backend1
-	backend1Leveled := logging.AddModuleLevel(backend1)
-	backend1Leveled.SetLevel(logging.ERROR, "")
-
-	// Set the backends to be used.
-	logging.SetBackend(backend1Leveled, backend2Formatter)
-
-	log.Debugf("debug %s", Password("secret"))
-	log.Info("info")
-	log.Notice("notice")
-	log.Warning("warning")
-	log.Error("err")
-	log.Critical("crit")
+	logger.SetBackend(leveledBackend)
+	return logger
 }

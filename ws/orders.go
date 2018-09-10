@@ -60,6 +60,7 @@ func RegisterOrderConnection(h common.Hash, conn *OrderConnection) {
 	if orderConnections == nil {
 		orderConnections = make(map[string]*OrderConnection)
 	}
+
 	if orderConnections[hash] == nil {
 		conn.Active = true
 		orderConnections[hash] = conn
