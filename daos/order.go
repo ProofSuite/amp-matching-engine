@@ -84,7 +84,6 @@ func (dao *OrderDao) UpdateByHash(hash common.Hash, o *types.Order) error {
 	update := bson.M{"$set": bson.M{
 		"buyAmount":    o.BuyAmount.String(),
 		"sellAmount":   o.SellAmount.String(),
-		"price":        o.Price.String(),
 		"pricepoint":   o.PricePoint.String(),
 		"amount":       o.Amount.String(),
 		"status":       o.Status,

@@ -73,7 +73,6 @@ func (dao *TradeDao) UpdateByHash(hash common.Hash, t *types.Trade) error {
 	t.UpdatedAt = time.Now()
 	query := bson.M{"hash": hash.Hex()}
 	update := bson.M{"$set": bson.M{
-		"price":      t.Price.String(),
 		"pricepoint": t.PricePoint.String(),
 		"tradeNonce": t.TradeNonce.String(),
 		"txHash":     t.TxHash.String(),

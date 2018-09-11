@@ -74,7 +74,6 @@ func TestNewFactoryBuyOrder(t *testing.T) {
 		Expires:         big.NewInt(1e18),
 		MakeFee:         big.NewInt(0),
 		TakeFee:         big.NewInt(0),
-		Price:           big.NewInt(50), //multiplier from the process order function
 		PricePoint:      big.NewInt(50),
 		Amount:          units.Ethers(2),
 		Side:            "BUY",
@@ -124,7 +123,6 @@ func TestNewFactorySellOrder1(t *testing.T) {
 		Nonce:           order.Nonce,
 		Signature:       order.Signature,
 		Hash:            order.Hash,
-		Price:           big.NewInt(100),
 		PricePoint:      big.NewInt(100),
 		Amount:          units.Ethers(1),
 	}
@@ -168,7 +166,6 @@ func TestNewFactorySellOrder2(t *testing.T) {
 		Status:          "NEW",
 		PairName:        "ZRX/WETH",
 		Hash:            order.Hash,
-		Price:           big.NewInt(250),
 		PricePoint:      big.NewInt(250),
 		Amount:          units.Ethers(10),
 	}

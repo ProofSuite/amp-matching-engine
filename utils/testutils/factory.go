@@ -220,7 +220,6 @@ func (f *OrderFactory) NewBuyOrder(pricepoint int64, value float64, filled ...fl
 
 	o.PairName = f.Pair.Name()
 	o.PricePoint = big.NewInt(pricepoint)
-	o.Price = math.Div(big.NewInt(pricepoint), f.Pair.PriceMultiplier)
 	o.FilledAmount = big.NewInt(0)
 	o.CreatedAt = time.Now()
 
@@ -256,7 +255,6 @@ func (f *OrderFactory) NewSellOrder(pricepoint int64, value float64, filled ...f
 	o.Side = "SELL"
 
 	o.PricePoint = big.NewInt(pricepoint)
-	o.Price = math.Div(big.NewInt(pricepoint), f.Pair.PriceMultiplier)
 	o.CreatedAt = time.Now()
 	o.PairName = f.Pair.Name()
 

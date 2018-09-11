@@ -31,7 +31,6 @@ type Order struct {
 	Side            string         `json:"side" bson:"side"`
 	Hash            common.Hash    `json:"hash" bson:"hash"`
 	Signature       *Signature     `json:"signature,omitempty" bson:"signature"`
-	Price           *big.Int       `json:"price" bson:"price"`
 	PricePoint      *big.Int       `json:"pricepoint" bson:"pricepoint"`
 	Amount          *big.Int       `json:"amount" bson:"amount"`
 	FilledAmount    *big.Int       `json:"filledAmount" bson:"filledAmount"`
@@ -119,12 +118,10 @@ func (o *Order) Process(p *Pair) error {
 	if o.BuyToken == p.BaseTokenAddress {
 		o.Side = "BUY"
 		o.Amount = o.BuyAmount
-		o.Price = math.Div(o.SellAmount, o.BuyAmount)
 		o.PricePoint = math.Div(math.Mul(o.SellAmount, p.PriceMultiplier), o.BuyAmount)
 	} else if o.BuyToken == p.QuoteTokenAddress {
 		o.Side = "SELL"
 		o.Amount = o.SellAmount
-		o.Price = math.Div(o.BuyAmount, o.SellAmount)
 		o.PricePoint = math.Div(math.Mul(o.BuyAmount, p.PriceMultiplier), o.SellAmount)
 	} else {
 		return errors.New("Could not determine o side")
@@ -219,10 +216,6 @@ func (o *Order) MarshalJSON() ([]byte, error) {
 		order["filledAmount"] = o.FilledAmount.String()
 	}
 
-	if o.Price != nil {
-		order["price"] = o.Price.String()
-	}
-
 	if o.PricePoint != nil {
 		order["pricepoint"] = o.PricePoint.String()
 	}
@@ -284,10 +277,6 @@ func (o *Order) UnmarshalJSON(b []byte) error {
 
 	if order["quoteToken"] != nil {
 		o.QuoteToken = common.HexToAddress(order["quoteToken"].(string))
-	}
-
-	if order["price"] != nil {
-		o.Price = math.ToBigInt(order["price"].(string))
 	}
 
 	if order["pricepoint"] != nil {
@@ -374,7 +363,6 @@ type OrderRecord struct {
 	Status          string           `json:"status" bson:"status"`
 	Side            string           `json:"side" bson:"side"`
 	Hash            string           `json:"hash" bson:"hash"`
-	Price           string           `json:"price" bson:"price"`
 	PricePoint      string           `json:"pricepoint" bson:"pricepoint"`
 	Amount          string           `json:"amount" bson:"amount"`
 	FilledAmount    string           `json:"filledAmount" bson:"filledAmount"`
@@ -410,10 +398,6 @@ func (o *Order) GetBSON() (interface{}, error) {
 		TakeFee:         o.TakeFee.String(),
 		CreatedAt:       o.CreatedAt,
 		UpdatedAt:       o.UpdatedAt,
-	}
-
-	if o.Price != nil {
-		or.Price = o.Price.String()
 	}
 
 	if o.PricePoint != nil {
@@ -454,7 +438,6 @@ func (o *Order) SetBSON(raw bson.Raw) error {
 		Status          string           `json:"status" bson:"status"`
 		Side            string           `json:"side" bson:"side"`
 		Hash            string           `json:"hash" bson:"hash"`
-		Price           string           `json:"price" bson:"price"`
 		PricePoint      string           `json:"pricepoint" bson:"pricepoint"`
 		Amount          string           `json:"amount" bson:"amount"`
 		FilledAmount    string           `json:"filledAmount" bson:"filledAmount"`
@@ -506,10 +489,6 @@ func (o *Order) SetBSON(raw bson.Raw) error {
 		o.PricePoint = math.ToBigInt(decoded.PricePoint)
 	}
 
-	if decoded.Price != "" {
-		o.Price = math.ToBigInt(decoded.Price)
-	}
-
 	if decoded.Signature != nil {
 		o.Signature = &Signature{
 			V: byte(decoded.Signature.V),
@@ -532,54 +511,3 @@ func (o *Order) Print() {
 
 	fmt.Print("\n", string(b))
 }
-
-// temp := big.NewInt(0)
-// temp.Mul(o.SellAmount, big.NewInt(1e8))
-// o.Price = o.Price.Div(temp, o.BuyAmount)
-
-// o.Price = o.Price.Div(o.BuyAmount, o.SellAmount)
-// o.Amount = o.BuyAmount.Int64()
-// log.Print(o.SellAmount.Int64() * 1e8)
-// o.Price = o.SellAmount.Int64() * 1e8 / o.BuyAmount.Int64()
-// log.Println(o.SellAmount)
-// log.Println(1e8)
-// log.Println(o.SellAmount.Int64() * 1e8)
-
-// Process computes the pricepoint and the amount corresponding to a token pair
-// func (o *Order) Process(p *Pair) error {
-
-// 	utils.PrintJSON(o)
-
-// 	btPow := int64(math.Pow10(p.BaseTokenDecimal - app.Config.Decimal))
-// 	qtPow := int64(math.Pow10(p.QuoteTokenDecimal - app.Config.Decimal))
-// 	sa := new(big.Int)
-// 	ba := new(big.Int)
-
-// 	if o.BuyToken == p.BaseTokenAddress {
-// 		o.Side = "BUY"
-// 		sa.Div(o.SellAmount, o.BuyAmount)
-// 		sa.Div(o.SellAmount, big.NewInt(qtPow))
-// 		o.Amount = ba.Div(ba, big.NewInt(btPow)).Int64()
-// 		o.Price = sa.Int64()
-// 		log.Println(o.Price)
-
-// 	} else if o.BuyToken == p.QuoteTokenAddress {
-// 		o.Side = "SELL"
-// 		ba.Div(o.BuyAmount, o.SellAmount)
-// 		ba.Div(ba, big.NewInt(btPow))
-// 		o.Amount = sa.Div(sa, big.NewInt(qtPow)).Int64()
-// 		o.Price = ba.Int64()
-// 		log.Println(o.Price)
-
-// 	} else {
-// 		return errors.New("Could not determine order side")
-// 	}
-
-// 	o.BaseToken = p.BaseTokenAddress
-// 	o.QuoteToken = p.QuoteTokenAddress
-// 	o.PairName = p.Name
-
-// 	// utils.PrintJSON(o)
-
-// 	return nil
-// }
