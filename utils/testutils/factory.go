@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Proofsuite/amp-matching-engine/types"
+	"github.com/Proofsuite/amp-matching-engine/utils/math"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -151,7 +152,7 @@ func (f *OrderFactory) NewLargeOrder(buyToken common.Address, buyAmount *big.Int
 	return o, nil
 }
 
-func (f *OrderFactory) NewBuyOrderMessage(price int64, amount int64) (*types.WebSocketMessage, *types.Order, error) {
+func (f *OrderFactory) NewBuyOrderMessage(price int64, amount float64) (*types.WebSocketMessage, *types.Order, error) {
 	o, err := f.NewBuyOrder(price, amount)
 	if err != nil {
 		return nil, nil, err
@@ -162,7 +163,7 @@ func (f *OrderFactory) NewBuyOrderMessage(price int64, amount int64) (*types.Web
 	return m, &o, nil
 }
 
-func (f *OrderFactory) NewSellOrderMessage(price int64, amount int64) (*types.WebSocketMessage, *types.Order, error) {
+func (f *OrderFactory) NewSellOrderMessage(price int64, amount float64) (*types.WebSocketMessage, *types.Order, error) {
 	o, err := f.NewSellOrder(price, amount)
 	if err != nil {
 		return nil, nil, err
@@ -182,8 +183,16 @@ func (f *OrderFactory) NewCancelOrder(o *types.Order) (*types.OrderCancel, error
 }
 
 // NewBuyOrder creates a new buy order from the order factory
-func (f *OrderFactory) NewBuyOrder(pricepoint int64, amount int64, filled ...int64) (types.Order, error) {
+func (f *OrderFactory) NewBuyOrder(pricepoint int64, value float64, filled ...float64) (types.Order, error) {
 	o := types.Order{}
+
+	// Transform decimal value into rounded points value (ex: 0.01 ETH => 1 ETH)
+	amountPoints := big.NewInt(int64(value * 100))
+	etherPoints := big.NewInt(1e18)
+
+	o.Amount = math.Div(math.Mul(etherPoints, amountPoints), big.NewInt(100))
+	o.BuyAmount = o.Amount
+	o.SellAmount = math.Mul(o.Amount, big.NewInt(pricepoint))
 
 	o.UserAddress = f.Wallet.Address
 	o.ExchangeAddress = f.Params.ExchangeAddress
@@ -195,26 +204,23 @@ func (f *OrderFactory) NewBuyOrder(pricepoint int64, amount int64, filled ...int
 	o.MakeFee = f.Params.MakeFee
 	o.TakeFee = f.Params.TakeFee
 	o.Nonce = big.NewInt(int64(f.NonceGenerator.Intn(1e8)))
-	amountSell := &big.Int{}
-	o.Amount = big.NewInt(amount)
 	o.Side = "BUY"
-	amountSell.Mul(big.NewInt(int64(amount)), big.NewInt(pricepoint))
 
 	if filled == nil {
 		o.FilledAmount = big.NewInt(0)
 		o.Status = "NEW"
-	} else if amount == filled[0] {
-		o.FilledAmount = big.NewInt(filled[0])
+	} else if value == filled[0] {
+		o.FilledAmount = o.Amount
 		o.Status = "FILLED"
 	} else {
-		o.FilledAmount = big.NewInt(filled[0])
+		filledPoints := big.NewInt(int64(filled[0] * 100))
+		o.FilledAmount = math.Div(math.Mul(etherPoints, filledPoints), big.NewInt(100))
 		o.Status = "PARTIAL_FILLED"
 	}
 
-	o.SellAmount = amountSell
-	o.BuyAmount = big.NewInt(int64(amount))
+	o.PairName = f.Pair.Name()
 	o.PricePoint = big.NewInt(pricepoint)
-	o.Price = big.NewInt(pricepoint)
+	o.Price = math.Div(big.NewInt(pricepoint), f.Pair.PriceMultiplier)
 	o.FilledAmount = big.NewInt(0)
 	o.CreatedAt = time.Now()
 
@@ -227,8 +233,15 @@ func (f *OrderFactory) NewBuyOrder(pricepoint int64, amount int64, filled ...int
 // Currently, the amount, price and order type are also kept. This could be amended in the future
 // (meaning we would let the engine compute OrderBuy, Amount and Price. Ultimately this does not really
 // matter except maybe for convenience/readability purposes)
-func (f *OrderFactory) NewSellOrder(pricepoint int64, amount int64, filled ...int64) (types.Order, error) {
+func (f *OrderFactory) NewSellOrder(pricepoint int64, value float64, filled ...float64) (types.Order, error) {
 	o := types.Order{}
+
+	amountPoints := big.NewInt(int64(value * 100))
+	etherPoints := big.NewInt(1e18)
+
+	o.Amount = math.Div(math.Mul(etherPoints, amountPoints), big.NewInt(100))
+	o.SellAmount = o.Amount
+	o.BuyAmount = math.Mul(o.Amount, big.NewInt(pricepoint))
 
 	o.UserAddress = f.Wallet.Address
 	o.ExchangeAddress = f.Params.ExchangeAddress
@@ -240,26 +253,23 @@ func (f *OrderFactory) NewSellOrder(pricepoint int64, amount int64, filled ...in
 	o.MakeFee = f.Params.MakeFee
 	o.TakeFee = f.Params.TakeFee
 	o.Nonce = big.NewInt(int64(f.NonceGenerator.Intn(1e8)))
-	o.Amount = big.NewInt(amount)
 	o.Side = "SELL"
 
-	amountBuy := &big.Int{}
-	amountBuy.Mul(big.NewInt(int64(amount)), big.NewInt(pricepoint))
-
-	o.BuyAmount = amountBuy
-	o.SellAmount = big.NewInt(int64(amount))
 	o.PricePoint = big.NewInt(pricepoint)
-	o.Price = big.NewInt(pricepoint)
+	o.Price = math.Div(big.NewInt(pricepoint), f.Pair.PriceMultiplier)
 	o.CreatedAt = time.Now()
+	o.PairName = f.Pair.Name()
 
 	if filled == nil {
 		o.FilledAmount = big.NewInt(0)
 		o.Status = "NEW"
-	} else if amount == filled[0] {
-		o.FilledAmount = big.NewInt(filled[0])
+	} else if value == filled[0] {
+		o.FilledAmount = o.Amount
 		o.Status = "FILLED"
 	} else {
-		o.FilledAmount = big.NewInt(filled[0])
+		filledPoints := big.NewInt(int64(filled[0] * 100))
+		o.FilledAmount = &big.Int{}
+		o.FilledAmount.Mul(etherPoints, filledPoints)
 		o.Status = "PARTIAL_FILLED"
 	}
 

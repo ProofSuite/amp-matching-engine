@@ -1,0 +1,2 @@
+ERRO 18:55:44 at engine/engine.go:122 in addOrder():Pair name is required
+ERRO 18:55:44 at engine/store.go:39 in GetPricePointVolume():redigo: nil returned

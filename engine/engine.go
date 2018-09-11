@@ -5,6 +5,7 @@ import (
 	"errors"
 	"sync"
 
+	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/Proofsuite/amp-matching-engine/rabbitmq"
 	"github.com/Proofsuite/amp-matching-engine/redis"
 	"github.com/Proofsuite/amp-matching-engine/types"
@@ -13,38 +14,39 @@ import (
 
 // Engine contains daos and redis connection required for engine to work
 type Engine struct {
+	orderbooks   map[string]*OrderBook
 	redisConn    *redis.RedisConnection
 	rabbitMQConn *rabbitmq.Connection
-	mutex        *sync.Mutex
 }
 
 var logger = utils.EngineLogger
 
-// InitEngine initializes the engine singleton instance
-func InitEngine(redisConn *redis.RedisConnection, rabbitMQConn *rabbitmq.Connection) (*Engine, error) {
-	engine := &Engine{redisConn, rabbitMQConn, &sync.Mutex{}}
-	return engine, nil
-}
+// NewEngine initializes the engine singleton instance
+func NewEngine(
+	redisConn *redis.RedisConnection,
+	rabbitMQConn *rabbitmq.Connection,
+	pairDao interfaces.PairDao,
+) *Engine {
 
-// publishEngineResponse is used by matching engine to publish or send response of matching engine to
-// system for further processing
-func (e *Engine) publishEngineResponse(res *types.EngineResponse) error {
-	ch := e.rabbitMQConn.GetChannel("erPub")
-	q := e.rabbitMQConn.GetQueue(ch, "engineResponse")
-
-	bytes, err := json.Marshal(res)
+	pairs, err := pairDao.GetAll()
 	if err != nil {
-		logger.Error("Failed to marshal engine response: ", err)
-		return errors.New("Failed to marshal Engine Response: " + err.Error())
+		panic(err)
 	}
 
-	err = e.rabbitMQConn.Publish(ch, q, bytes)
-	if err != nil {
-		logger.Error("Failed to publish order: ", err)
-		return errors.New("Failed to publish order: " + err.Error())
+	obs := map[string]*OrderBook{}
+	for _, p := range pairs {
+		ob := &OrderBook{
+			redisConn:    redisConn,
+			rabbitMQConn: rabbitMQConn,
+			pair:         &p,
+			mutex:        &sync.Mutex{},
+		}
+
+		obs[p.Code()] = ob
 	}
 
-	return nil
+	engine := &Engine{obs, redisConn, rabbitMQConn}
+	return engine
 }
 
 // SubscribeResponseQueue subscribes to engineResponse queue and triggers the function
@@ -98,9 +100,59 @@ func (e *Engine) HandleOrders(msg *rabbitmq.Message) error {
 	}
 
 	if msg.Type == "NEW_ORDER" {
-		e.newOrder(o)
+		err := e.newOrder(o)
+		if err != nil {
+			logger.Error(err)
+			return err
+		}
 	} else if msg.Type == "ADD_ORDER" {
-		e.addOrder(o)
+		err := e.addOrder(o)
+		if err != nil {
+			logger.Error(err)
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (e *Engine) addOrder(o *types.Order) error {
+	code, err := o.PairCode()
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	ob := e.orderbooks[code]
+	if ob == nil {
+		return errors.New("Orderbook error")
+	}
+
+	err = ob.addOrder(o)
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	return nil
+}
+
+func (e *Engine) newOrder(o *types.Order) error {
+	code, err := o.PairCode()
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	ob := e.orderbooks[code]
+	if ob == nil {
+		return errors.New("Orderbook error")
+	}
+
+	err = ob.newOrder(o)
+	if err != nil {
+		logger.Error(err)
+		return err
 	}
 
 	return nil
