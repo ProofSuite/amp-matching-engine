@@ -513,7 +513,6 @@ func (ob *OrderBook) execute(order *types.Order, bookEntry *types.Order) (*types
 	order.FilledAmount = math.Add(order.FilledAmount, tradeAmount)
 	trade = &types.Trade{
 		Amount:     tradeAmount,
-		Price:      order.PricePoint,
 		PricePoint: order.PricePoint,
 		BaseToken:  order.BaseToken,
 		QuoteToken: order.QuoteToken,

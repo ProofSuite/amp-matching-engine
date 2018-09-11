@@ -31,7 +31,6 @@ type Trade struct {
 	Signature  *Signature     `json:"signature" bson:"signature"`
 	CreatedAt  time.Time      `json:"createdAt" bson:"createdAt" redis:"createdAt"`
 	UpdatedAt  time.Time      `json:"updatedAt" bson:"updatedAt" redis:"updatedAt"`
-	Price      *big.Int       `json:"price" bson:"price"`
 	PricePoint *big.Int       `json:"pricepoint" bson:"pricepoint"`
 	Side       string         `json:"side" bson:"side"`
 	Amount     *big.Int       `json:"amount" bson:"amount"`
@@ -51,7 +50,6 @@ type TradeRecord struct {
 	Signature  *SignatureRecord `json:"signature" bson:"signature"`
 	CreatedAt  time.Time        `json:"createdAt" bson:"createdAt"`
 	UpdatedAt  time.Time        `json:"updatedAt" bson:"updatedAt"`
-	Price      string           `json:"price" bson:"price"`
 	PricePoint string           `json:"pricepoint" bson:"pricepoint"`
 	Side       string           `json:"side" bson:"side"`
 	Amount     string           `json:"amount" bson:"amount"`
@@ -63,7 +61,6 @@ func NewTrade(o *Order, amount *big.Int, price *big.Int, taker common.Address) *
 		OrderHash:  o.Hash,
 		PairName:   o.PairName,
 		Amount:     amount,
-		Price:      price,
 		TradeNonce: big.NewInt(0),
 		Side:       o.Side,
 		Taker:      taker,
@@ -89,7 +86,6 @@ func (t *Trade) MarshalJSON() ([]byte, error) {
 		// NOTE: I don't these are publicly needed but leaving this here until confirmation
 		// "createdAt":    t.CreatedAt.String(),
 		// "updatedAt":    t.UpdatedAt.String(),
-		"price":      t.Price.String(),
 		"pricepoint": t.PricePoint.String(),
 		"amount":     t.Amount.String(),
 	}
@@ -184,10 +180,6 @@ func (t *Trade) UnmarshalJSON(b []byte) error {
 		t.Side = trade["side"].(string)
 	}
 
-	if trade["price"] != nil {
-		t.Price = math.ToBigInt(fmt.Sprintf("%v", trade["price"]))
-	}
-
 	if trade["pricepoint"] != nil {
 		t.PricePoint = math.ToBigInt(fmt.Sprintf("%v", trade["pricepoint"]))
 	}
@@ -229,7 +221,6 @@ func (t *Trade) GetBSON() (interface{}, error) {
 		CreatedAt:  t.CreatedAt,
 		UpdatedAt:  t.UpdatedAt,
 		PricePoint: t.PricePoint.String(),
-		Price:      t.Price.String(),
 		Side:       t.Side,
 		Amount:     t.Amount.String(),
 	}
@@ -260,7 +251,6 @@ func (t *Trade) SetBSON(raw bson.Raw) error {
 		Signature  *SignatureRecord `json:"signature" bson:"signature"`
 		CreatedAt  time.Time        `json:"createdAt" bson:"createdAt" redis:"createdAt"`
 		UpdatedAt  time.Time        `json:"updatedAt" bson:"updatedAt" redis:"updatedAt"`
-		Price      string           `json:"price" bson:"price"`
 		PricePoint string           `json:"pricepoint" bson:"pricepoint"`
 		Side       string           `json:"side" bson:"side"`
 		Amount     string           `json:"amount" bson:"amount"`
@@ -283,7 +273,6 @@ func (t *Trade) SetBSON(raw bson.Raw) error {
 
 	t.TradeNonce = math.ToBigInt(decoded.TradeNonce)
 	t.Amount = math.ToBigInt(decoded.Amount)
-	t.Price = math.ToBigInt(decoded.Price)
 	t.PricePoint = math.ToBigInt(decoded.PricePoint)
 	t.Side = decoded.Side
 
@@ -358,7 +347,6 @@ func NewUnsignedTrade(o *Order, taker common.Address, amount *big.Int) (Trade, e
 	t.Maker = o.UserAddress
 	t.BaseToken = o.BaseToken
 	t.QuoteToken = o.QuoteToken
-	t.Price = o.Price
 	t.PricePoint = o.PricePoint
 	t.OrderHash = o.Hash
 	t.Taker = taker
@@ -381,7 +369,6 @@ func NewUnsignedTrade1(maker *Order, taker *Order, amount *big.Int) (Trade, erro
 	t.Taker = taker.UserAddress
 	t.BaseToken = maker.BaseToken
 	t.QuoteToken = maker.QuoteToken
-	t.Price = taker.Price
 	t.PricePoint = taker.PricePoint
 	t.OrderHash = maker.Hash
 	t.PairName = maker.PairName

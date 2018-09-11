@@ -25,7 +25,6 @@ func GetTestTrade1() types.Trade {
 			S: common.HexToHash("0x6d9ad89548c9e3ce4c97825d027291477f2c44a8caef792095f2cabc978493ff"),
 		},
 		PricePoint: big.NewInt(10000000),
-		Price:      big.NewInt(100),
 		Side:       "BUY",
 		Amount:     big.NewInt(100),
 	}
@@ -48,7 +47,6 @@ func GetTestTrade2() types.Trade {
 			S: common.HexToHash("0x6d9ad89548c9e3ce4c97825d027291477f2c44a8caef792095f2cabc978493ff"),
 		},
 		PricePoint: big.NewInt(10000000),
-		Price:      big.NewInt(100),
 		Side:       "SELL",
 		Amount:     big.NewInt(100),
 	}
