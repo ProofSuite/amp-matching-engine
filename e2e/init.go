@@ -92,7 +92,7 @@ func NewRouter() *routing.Router {
 	redisConn := redis.NewRedisConnection(app.Config.Redis)
 	redisConn.FlushAll()
 
-	eng, err := engine.InitEngine(redisConn, rabbitConn)
+	eng, err := engine.NewEngine(redisConn, rabbitConn)
 	if err != nil {
 		panic(err)
 	}

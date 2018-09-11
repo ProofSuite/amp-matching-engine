@@ -39,26 +39,10 @@ type Order struct {
 	Expires         *big.Int       `json:"expires" bson:"expires"`
 	MakeFee         *big.Int       `json:"makeFee" bson:"makeFee"`
 	TakeFee         *big.Int       `json:"takeFee" bson:"takeFee"`
-	OrderBook       *OrderSubDoc   `json:"orderBook" bson:"orderBook"`
 	PairName        string         `json:"pairName" bson:"pairName"`
 
 	CreatedAt time.Time `json:"createdAt" bson:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt" bson:"updatedAt"`
-}
-
-// OrderSubDoc is a sub document, it is used to store the order in order book
-// It contains the amount that was kept in orderbook alongwith the signature of maker
-// It is particularly used in case of partially filled orders.
-// type OrderSubDoc struct {
-// 	Amount    int64      `json:"amount" bson:"amount"`
-// 	Signature *Signature `json:"signature,omitempty" bson:"signature" redis:"signature"`
-// }
-
-type OrderSubDoc struct {
-	BuyAmount  *big.Int   `json:"buyAmount" bson:"buyAmount"`
-	SellAmount *big.Int   `json:"sellAmount" bson:"sellAmount"`
-	Amount     *big.Int   `json:"amount" bson:"amount"`
-	Signature  *Signature `json:"signature,omitempty" bson:"signature" redis:"signature"`
 }
 
 func (o Order) Validate() error {
@@ -136,20 +120,28 @@ func (o *Order) Process(p *Pair) error {
 		o.Side = "BUY"
 		o.Amount = o.BuyAmount
 		o.Price = math.Div(o.SellAmount, o.BuyAmount)
-		o.PricePoint = math.Div(math.Mul(o.SellAmount, big.NewInt(1e8)), o.BuyAmount)
+		o.PricePoint = math.Div(math.Mul(o.SellAmount, p.PriceMultiplier), o.BuyAmount)
 	} else if o.BuyToken == p.QuoteTokenAddress {
 		o.Side = "SELL"
 		o.Amount = o.SellAmount
 		o.Price = math.Div(o.BuyAmount, o.SellAmount)
-		o.PricePoint = math.Div(math.Mul(o.BuyAmount, big.NewInt(1e8)), o.SellAmount)
+		o.PricePoint = math.Div(math.Mul(o.BuyAmount, p.PriceMultiplier), o.SellAmount)
 	} else {
 		return errors.New("Could not determine o side")
 	}
 
 	o.BaseToken = p.BaseTokenAddress
 	o.QuoteToken = p.QuoteTokenAddress
-	o.PairName = p.GetPairName()
+	o.PairName = p.Name()
 	return nil
+}
+
+func (o *Order) PairCode() (string, error) {
+	if o.PairName == "" {
+		return "", errors.New("Pair name is required")
+	}
+
+	return o.PairName + "::" + o.BaseToken.Hex() + "::" + o.QuoteToken.Hex(), nil
 }
 
 // GetKVPrefix returns the key value store(redis) prefix to be used
@@ -355,19 +347,6 @@ func (o *Order) UnmarshalJSON(b []byte) error {
 		}
 	}
 
-	if order["orderBook"] != nil {
-		subdoc := order["orderBook"].(map[string]interface{})
-		sudocsig := subdoc["signature"].(map[string]interface{})
-		o.OrderBook = &OrderSubDoc{
-			Amount: math.ToBigInt(subdoc["amount"].(string)),
-			Signature: &Signature{
-				V: byte(sudocsig["V"].(float64)),
-				R: common.HexToHash(sudocsig["R"].(string)),
-				S: common.HexToHash(sudocsig["S"].(string)),
-			},
-		}
-	}
-
 	if order["createdAt"] != nil {
 		t, _ := time.Parse(time.RFC3339Nano, order["createdAt"].(string))
 		o.CreatedAt = t
@@ -381,75 +360,33 @@ func (o *Order) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-func (o *OrderSubDoc) MarshalJSON() ([]byte, error) {
-	order := map[string]interface{}{}
-	if o.Amount != nil {
-		order["amount"] = o.Amount.String()
-	}
-
-	if o.Signature != nil {
-		order["signature"] = map[string]interface{}{
-			"V": o.Signature.V,
-			"R": o.Signature.R,
-			"S": o.Signature.S,
-		}
-	}
-
-	return json.Marshal(order)
-}
-
-func (o *OrderSubDoc) UnmarshalJSON(b []byte) error {
-	order := map[string]interface{}{}
-
-	if order["amount"] != nil {
-		o.Amount = math.ToBigInt(order["amount"].(string))
-	}
-
-	if order["signature"] != nil {
-		signature := order["signature"].(map[string]interface{})
-		o.Signature = &Signature{
-			V: byte(signature["V"].(float64)),
-			R: common.HexToHash(signature["R"].(string)),
-			S: common.HexToHash(signature["S"].(string)),
-		}
-	}
-
-	return nil
-}
-
 // OrderRecord is the object that will be saved in the database
 type OrderRecord struct {
-	ID              bson.ObjectId      `json:"id" bson:"_id"`
-	UserAddress     string             `json:"userAddress" bson:"userAddress"`
-	ExchangeAddress string             `json:"exchangeAddress" bson:"exchangeAddress"`
-	BuyToken        string             `json:"buyToken" bson:"buyToken"`
-	SellToken       string             `json:"sellToken" bson:"sellToken"`
-	BaseToken       string             `json:"baseToken" bson:"baseToken"`
-	QuoteToken      string             `json:"quoteToken" bson:"quoteToken"`
-	BuyAmount       string             `json:"buyAmount" bson:"buyAmount"`
-	SellAmount      string             `json:"sellAmount" bson:"sellAmount"`
-	Status          string             `json:"status" bson:"status"`
-	Side            string             `json:"side" bson:"side"`
-	Hash            string             `json:"hash" bson:"hash"`
-	Price           string             `json:"price" bson:"price"`
-	PricePoint      string             `json:"pricepoint" bson:"pricepoint"`
-	Amount          string             `json:"amount" bson:"amount"`
-	FilledAmount    string             `json:"filledAmount" bson:"filledAmount"`
-	Nonce           string             `json:"nonce" bson:"nonce"`
-	Expires         string             `json:"expires" bson:"expires"`
-	MakeFee         string             `json:"makeFee" bson:"makeFee"`
-	TakeFee         string             `json:"takeFee" bson:"takeFee"`
-	Signature       *SignatureRecord   `json:"signature,omitempty" bson:"signature"`
-	OrderBook       *OrderSubDocRecord `json:"orderBook" bson:"orderBook"`
+	ID              bson.ObjectId    `json:"id" bson:"_id"`
+	UserAddress     string           `json:"userAddress" bson:"userAddress"`
+	ExchangeAddress string           `json:"exchangeAddress" bson:"exchangeAddress"`
+	BuyToken        string           `json:"buyToken" bson:"buyToken"`
+	SellToken       string           `json:"sellToken" bson:"sellToken"`
+	BaseToken       string           `json:"baseToken" bson:"baseToken"`
+	QuoteToken      string           `json:"quoteToken" bson:"quoteToken"`
+	BuyAmount       string           `json:"buyAmount" bson:"buyAmount"`
+	SellAmount      string           `json:"sellAmount" bson:"sellAmount"`
+	Status          string           `json:"status" bson:"status"`
+	Side            string           `json:"side" bson:"side"`
+	Hash            string           `json:"hash" bson:"hash"`
+	Price           string           `json:"price" bson:"price"`
+	PricePoint      string           `json:"pricepoint" bson:"pricepoint"`
+	Amount          string           `json:"amount" bson:"amount"`
+	FilledAmount    string           `json:"filledAmount" bson:"filledAmount"`
+	Nonce           string           `json:"nonce" bson:"nonce"`
+	Expires         string           `json:"expires" bson:"expires"`
+	MakeFee         string           `json:"makeFee" bson:"makeFee"`
+	TakeFee         string           `json:"takeFee" bson:"takeFee"`
+	Signature       *SignatureRecord `json:"signature,omitempty" bson:"signature"`
 
 	PairName  string    `json:"pairName" bson:"pairName"`
 	CreatedAt time.Time `json:"createdAt" bson:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt" bson:"updatedAt"`
-}
-
-type OrderSubDocRecord struct {
-	Amount    string           `json:"amount" bson:"amount"`
-	Signature *SignatureRecord `json:"signature" bson:"signature"`
 }
 
 func (o *Order) GetBSON() (interface{}, error) {
@@ -499,47 +436,35 @@ func (o *Order) GetBSON() (interface{}, error) {
 		}
 	}
 
-	if o.OrderBook != nil {
-		or.OrderBook = &OrderSubDocRecord{
-			Amount: o.OrderBook.Amount.String(),
-			Signature: &SignatureRecord{
-				V: o.OrderBook.Signature.V,
-				R: o.OrderBook.Signature.R.Hex(),
-				S: o.OrderBook.Signature.S.Hex(),
-			},
-		}
-	}
-
 	return or, nil
 }
 
 func (o *Order) SetBSON(raw bson.Raw) error {
 	decoded := new(struct {
-		ID              bson.ObjectId      `json:"id,omitempty" bson:"_id"`
-		PairName        string             `json:"pairName" bson:"pairName"`
-		ExchangeAddress string             `json:"exchangeAddress" bson:"exchangeAddress"`
-		UserAddress     string             `json:"userAddress" bson:"userAddress"`
-		BuyToken        string             `json:"buyToken" bson:"buyToken"`
-		SellToken       string             `json:"sellToken" bson:"sellToken"`
-		BaseToken       string             `json:"baseToken" bson:"baseToken"`
-		QuoteToken      string             `json:"quoteToken" bson:"quoteToken"`
-		BuyAmount       string             `json:"buyAmount" bson:"buyAmount"`
-		SellAmount      string             `json:"sellAmount" bson:"sellAmount"`
-		Status          string             `json:"status" bson:"status"`
-		Side            string             `json:"side" bson:"side"`
-		Hash            string             `json:"hash" bson:"hash"`
-		Price           string             `json:"price" bson:"price"`
-		PricePoint      string             `json:"pricepoint" bson:"pricepoint"`
-		Amount          string             `json:"amount" bson:"amount"`
-		FilledAmount    string             `json:"filledAmount" bson:"filledAmount"`
-		Nonce           string             `json:"nonce" bson:"nonce"`
-		Expires         string             `json:"expires" bson:"expires"`
-		MakeFee         string             `json:"makeFee" bson:"makeFee"`
-		TakeFee         string             `json:"takeFee" bson:"takeFee"`
-		Signature       *SignatureRecord   `json:"signature" bson:"signature"`
-		OrderBook       *OrderSubDocRecord `json:"orderBook" bson:"orderBook"`
-		CreatedAt       time.Time          `json:"createdAt" bson:"createdAt"`
-		UpdatedAt       time.Time          `json:"updatedAt" bson:"updatedAt"`
+		ID              bson.ObjectId    `json:"id,omitempty" bson:"_id"`
+		PairName        string           `json:"pairName" bson:"pairName"`
+		ExchangeAddress string           `json:"exchangeAddress" bson:"exchangeAddress"`
+		UserAddress     string           `json:"userAddress" bson:"userAddress"`
+		BuyToken        string           `json:"buyToken" bson:"buyToken"`
+		SellToken       string           `json:"sellToken" bson:"sellToken"`
+		BaseToken       string           `json:"baseToken" bson:"baseToken"`
+		QuoteToken      string           `json:"quoteToken" bson:"quoteToken"`
+		BuyAmount       string           `json:"buyAmount" bson:"buyAmount"`
+		SellAmount      string           `json:"sellAmount" bson:"sellAmount"`
+		Status          string           `json:"status" bson:"status"`
+		Side            string           `json:"side" bson:"side"`
+		Hash            string           `json:"hash" bson:"hash"`
+		Price           string           `json:"price" bson:"price"`
+		PricePoint      string           `json:"pricepoint" bson:"pricepoint"`
+		Amount          string           `json:"amount" bson:"amount"`
+		FilledAmount    string           `json:"filledAmount" bson:"filledAmount"`
+		Nonce           string           `json:"nonce" bson:"nonce"`
+		Expires         string           `json:"expires" bson:"expires"`
+		MakeFee         string           `json:"makeFee" bson:"makeFee"`
+		TakeFee         string           `json:"takeFee" bson:"takeFee"`
+		Signature       *SignatureRecord `json:"signature" bson:"signature"`
+		CreatedAt       time.Time        `json:"createdAt" bson:"createdAt"`
+		UpdatedAt       time.Time        `json:"updatedAt" bson:"updatedAt"`
 	})
 
 	err := raw.Unmarshal(decoded)
@@ -590,17 +515,6 @@ func (o *Order) SetBSON(raw bson.Raw) error {
 			V: byte(decoded.Signature.V),
 			R: common.HexToHash(decoded.Signature.R),
 			S: common.HexToHash(decoded.Signature.S),
-		}
-	}
-
-	if decoded.OrderBook != nil {
-		o.OrderBook = &OrderSubDoc{
-			Amount: math.ToBigInt(decoded.OrderBook.Amount),
-			Signature: &Signature{
-				V: byte(decoded.OrderBook.Signature.V),
-				R: common.HexToHash(decoded.OrderBook.Signature.R),
-				S: common.HexToHash(decoded.OrderBook.Signature.S),
-			},
 		}
 	}
 

@@ -363,6 +363,7 @@ func NewUnsignedTrade(o *Order, taker common.Address, amount *big.Int) (Trade, e
 	t.OrderHash = o.Hash
 	t.Taker = taker
 	t.Amount = amount
+	t.PairName = o.PairName
 
 	if o.Side == "BUY" {
 		t.Side = "SELL"
@@ -383,6 +384,7 @@ func NewUnsignedTrade1(maker *Order, taker *Order, amount *big.Int) (Trade, erro
 	t.Price = taker.Price
 	t.PricePoint = taker.PricePoint
 	t.OrderHash = maker.Hash
+	t.PairName = maker.PairName
 
 	//TODO compute from taker amount and maker amount
 	t.Amount = amount

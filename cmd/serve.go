@@ -90,7 +90,7 @@ func NewRouter(
 	rg := router.Group("")
 
 	// instantiate engine
-	eng, err := engine.InitEngine(redisConn, amqpConn)
+	eng, err := engine.NewEngine(redisConn, amqpConn)
 	if err != nil {
 		panic(err)
 	}

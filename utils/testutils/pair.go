@@ -7,7 +7,6 @@ import (
 
 func GetZRXWETHTestPair() *types.Pair {
 	return &types.Pair{
-		Name:              "ZRX/WETH",
 		BaseTokenSymbol:   "ZRX",
 		BaseTokenAddress:  common.HexToAddress("0x2034842261b82651885751fc293bba7ba5398156"),
 		BaseTokenDecimal:  18,
