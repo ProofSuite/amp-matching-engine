@@ -1,8 +1,6 @@
 package services
 
 import (
-	"strings"
-
 	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/ethereum/go-ethereum/common"
 
@@ -70,7 +68,6 @@ func (s *PairService) Create(pair *types.Pair) error {
 	pair.BaseTokenSymbol = bt.Symbol
 	pair.BaseTokenAddress = bt.ContractAddress
 	pair.BaseTokenDecimal = bt.Decimal
-	pair.Name = strings.ToUpper(st.Symbol + "/" + bt.Symbol)
 	err = s.pairDao.Create(pair)
 	return err
 

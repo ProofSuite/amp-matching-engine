@@ -3,7 +3,6 @@ package operator
 import (
 	"encoding/json"
 	"errors"
-	"log"
 	"math/big"
 
 	"github.com/Proofsuite/amp-matching-engine/interfaces"
@@ -31,6 +30,7 @@ func NewTxQueue(
 	o interfaces.OrderService,
 	w *types.Wallet,
 	ex interfaces.Exchange,
+	rabbitConn *rabbitmq.Connection,
 ) (*TxQueue, error) {
 
 	txq := &TxQueue{
@@ -40,6 +40,13 @@ func NewTxQueue(
 		EthereumProvider: p,
 		Wallet:           w,
 		Exchange:         ex,
+		RabbitMQConn:     rabbitConn,
+	}
+
+	err := txq.PurgePendingTrades()
+	if err != nil {
+		logger.Error(err)
+		return nil, err
 	}
 
 	return txq, nil
@@ -67,7 +74,6 @@ func (txq *TxQueue) Length() int {
 // func (op *Operator) QueueTrade(o *types.Order, t *types.Trade) error {
 // TODO: Currently doesn't seem thread safe and fails unless called with a sleep time between each call.
 func (txq *TxQueue) QueueTrade(o *types.Order, t *types.Trade) error {
-
 	logger.Info("Length of the queue is ", txq.Length())
 	if txq.Length() == 0 {
 		_, err := txq.ExecuteTrade(o, t)
@@ -91,6 +97,11 @@ func (txq *TxQueue) QueueTrade(o *types.Order, t *types.Trade) error {
 // (order service)
 func (txq *TxQueue) ExecuteTrade(o *types.Order, tr *types.Trade) (*eth.Transaction, error) {
 	logger.Info("EXECUTE_TRADE: ", tr.Hash.Hex())
+
+	// input, err :
+	// callOpts := ethereum.CallMsg{from: }
+	// gas, err := txq.EthereumProvider.EstimateGas
+
 	nonce, err := txq.EthereumProvider.GetPendingNonceAt(txq.Wallet.Address)
 	if err != nil {
 		logger.Error(err)
@@ -99,9 +110,6 @@ func (txq *TxQueue) ExecuteTrade(o *types.Order, tr *types.Trade) (*eth.Transact
 
 	txOpts := txq.GetTxSendOptions()
 	txOpts.Nonce = big.NewInt(int64(nonce))
-
-	log.Print("NONCE IS EQUAL TO", txOpts.Nonce)
-	log.Print("QUEUE IS ", txq.Name)
 
 	tx, err := txq.Exchange.Trade(o, tr, txOpts)
 	if err != nil {

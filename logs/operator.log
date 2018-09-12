@@ -1,0 +1,422 @@
+INFO 15:55:23 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 15:55:23 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 15:55:23 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 15:55:23 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 15:55:23 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 15:55:23 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 15:55:24 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 15:55:24 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 15:55:24 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 15:55:24 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 15:55:24 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 15:55:24 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 15:56:01 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 15:56:01 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 15:56:01 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 15:56:01 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 15:56:01 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 15:56:01 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 15:56:01 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 15:56:01 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 16:25:23 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 16:25:23 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 16:25:23 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 16:25:23 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 16:25:23 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 16:25:23 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 16:25:23 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 16:25:23 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 16:30:55 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 16:30:55 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 16:30:55 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 16:30:55 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 16:30:55 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 16:30:55 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 16:30:55 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 16:30:55 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 16:32:18 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 16:32:18 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 16:32:18 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 16:32:18 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 16:32:18 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 16:32:18 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 16:32:18 at operator/txqueue.go:228 in PopPendingTrade():POPPING PENDING TRADE
+INFO 16:32:18 at operator/txqueue.go:249 in PopPendingTrade():POPPED PENDING TRADE 0x2bd00ac18f9c073ee2a56f8f8f04ba43339da570cbbb1a1629162ec8a31071f2
+INFO 16:32:18 at operator/txqueue.go:228 in PopPendingTrade():POPPING PENDING TRADE
+INFO 16:32:18 at operator/txqueue.go:249 in PopPendingTrade():POPPED PENDING TRADE 0x888a7d8af662c43292d4c8c09f554bf255d097443a14ff2784911f4b2200616d
+INFO 16:32:18 at operator/txqueue.go:228 in PopPendingTrade():POPPING PENDING TRADE
+INFO 16:32:18 at operator/txqueue.go:249 in PopPendingTrade():POPPED PENDING TRADE 0xd603ce75e916df27becf79a43f34d925a0ea8745c38ebdc8b6633b544f99b640
+INFO 16:33:40 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 16:33:40 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 16:33:40 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 16:33:40 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 16:33:40 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 16:33:40 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 16:33:40 at operator/txqueue.go:228 in PopPendingTrade():POPPING PENDING TRADE
+INFO 16:33:40 at operator/txqueue.go:249 in PopPendingTrade():POPPED PENDING TRADE 0xfc562918e85ad8db9e3e89db27b3b8880a715150b9ad714de1c605c5726d9c17
+INFO 16:33:40 at operator/txqueue.go:228 in PopPendingTrade():POPPING PENDING TRADE
+INFO 16:33:40 at operator/txqueue.go:249 in PopPendingTrade():POPPED PENDING TRADE 0x385d79f5de65a4292500e265324def2f08c8caf7f45066737cd3b4f22d110c1f
+INFO 16:33:40 at operator/txqueue.go:228 in PopPendingTrade():POPPING PENDING TRADE
+INFO 16:33:40 at operator/txqueue.go:249 in PopPendingTrade():POPPED PENDING TRADE 0x3d163aa89aff0d30819eec2657e4c51f8dbfee48ac25505e0710a25f42e031ae
+INFO 16:34:00 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 16:34:00 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 16:34:00 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 16:34:00 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 16:34:00 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 16:34:00 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 16:34:00 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 16:34:00 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 16:34:00 at operator/txqueue.go:228 in PopPendingTrade():POPPING PENDING TRADE
+INFO 16:34:00 at operator/txqueue.go:249 in PopPendingTrade():POPPED PENDING TRADE 0x178fe8ffcd581c10c62cdc317ed23785a1218a0b5e1a3f95fce3ee0417bf0fcc
+INFO 16:34:00 at operator/txqueue.go:228 in PopPendingTrade():POPPING PENDING TRADE
+INFO 16:34:00 at operator/txqueue.go:249 in PopPendingTrade():POPPED PENDING TRADE 0x7d9c21298c1768e5b3e7531187adaa63ea6c6bb838b1dba4d763f522cefca08a
+INFO 16:34:00 at operator/txqueue.go:228 in PopPendingTrade():POPPING PENDING TRADE
+INFO 16:34:00 at operator/txqueue.go:249 in PopPendingTrade():POPPED PENDING TRADE 0x69b0161024d22c5b9a73a4fe5e7c38f8c427bd02b410fd562f08290699933fda
+INFO 16:34:00 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 16:34:00 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 16:35:56 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 16:35:56 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 16:35:56 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 16:35:56 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 16:35:56 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 16:35:56 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 16:35:56 at operator/txqueue.go:228 in PopPendingTrade():POPPING PENDING TRADE
+INFO 16:35:56 at operator/txqueue.go:249 in PopPendingTrade():POPPED PENDING TRADE 0x03ba268907bcd0892493ed094f207babb2c0d7763374106f5268cda88c7e45b3
+INFO 16:35:56 at operator/txqueue.go:228 in PopPendingTrade():POPPING PENDING TRADE
+INFO 16:35:56 at operator/txqueue.go:249 in PopPendingTrade():POPPED PENDING TRADE 0x74e510c9bdbe810baff631af49e93e91e63088a3fe3051e5e468dcfa36960fc0
+INFO 16:35:56 at operator/txqueue.go:228 in PopPendingTrade():POPPING PENDING TRADE
+INFO 16:35:56 at operator/txqueue.go:249 in PopPendingTrade():POPPED PENDING TRADE 0xdefbd9bbd912eea9ec4a0db45a370383c66b78f55ebb5d4f1170a933fe84b4c9
+INFO 16:38:51 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 16:38:51 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 16:38:51 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 16:38:51 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 16:38:51 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 16:38:51 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 16:38:51 at operator/txqueue.go:228 in PopPendingTrade():POPPING PENDING TRADE
+INFO 16:38:51 at operator/txqueue.go:249 in PopPendingTrade():POPPED PENDING TRADE 0xb19cd52a008cfa2040f8ab3460a9774d2790538266944b74b4339cb1d8b1052f
+INFO 16:38:51 at operator/txqueue.go:228 in PopPendingTrade():POPPING PENDING TRADE
+INFO 16:38:51 at operator/txqueue.go:249 in PopPendingTrade():POPPED PENDING TRADE 0x4cb60d6c9d4316bb6a9a6885157eb4fdcc7d3780d42383f621fe9a8bbe455605
+INFO 16:38:51 at operator/txqueue.go:228 in PopPendingTrade():POPPING PENDING TRADE
+INFO 16:38:51 at operator/txqueue.go:249 in PopPendingTrade():POPPED PENDING TRADE 0xb9e73b38e43129e62dfc1d19da377929f6a38ce2e3f62a2ed244da960573464c
+INFO 16:39:31 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 16:39:31 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 16:39:31 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 16:39:31 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 16:39:31 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 16:39:31 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 16:39:31 at operator/txqueue.go:228 in PopPendingTrade():POPPING PENDING TRADE
+INFO 16:39:31 at operator/txqueue.go:249 in PopPendingTrade():POPPED PENDING TRADE 0xfd9c7655884263816f25aa2f92a6ecc12716f7661a043b30ec76c64d5d7799fc
+INFO 16:39:31 at operator/txqueue.go:228 in PopPendingTrade():POPPING PENDING TRADE
+INFO 16:39:31 at operator/txqueue.go:249 in PopPendingTrade():POPPED PENDING TRADE 0x30908e36034f6390aa091c527a60d287f47fbeb8d2a98225708e477732ac6d73
+INFO 16:39:31 at operator/txqueue.go:228 in PopPendingTrade():POPPING PENDING TRADE
+INFO 16:39:31 at operator/txqueue.go:249 in PopPendingTrade():POPPED PENDING TRADE 0x22339ca3b32c8388b516dbb0d681b3021f571d5e9aa8c45d179fb121adc45365
+INFO 16:40:54 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 16:40:54 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 16:40:54 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 16:40:54 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 16:40:54 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 16:40:54 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 16:40:54 at operator/txqueue.go:228 in PopPendingTrade():POPPING PENDING TRADE
+INFO 16:40:54 at operator/txqueue.go:249 in PopPendingTrade():POPPED PENDING TRADE 0x24f9165c18c9980a788e1b8dd036fe9ce371fe5c6cb5a1fa23484419504e6746
+INFO 16:40:54 at operator/txqueue.go:228 in PopPendingTrade():POPPING PENDING TRADE
+INFO 16:40:54 at operator/txqueue.go:249 in PopPendingTrade():POPPED PENDING TRADE 0x871d11aaded97c077d7988d4805517a295f981f99e68c3e9214abc0bb8eeb393
+INFO 16:40:54 at operator/txqueue.go:228 in PopPendingTrade():POPPING PENDING TRADE
+INFO 16:40:54 at operator/txqueue.go:249 in PopPendingTrade():POPPED PENDING TRADE 0x5bb73319d670d6b2dc98bfaaf0c69f6d8f010040d2c483f0b77ebf44ecc7ab0a
+INFO 16:40:54 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 16:40:54 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 16:43:46 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 16:43:46 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 16:43:46 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 16:43:46 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 16:43:46 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 16:43:46 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 16:43:46 at operator/txqueue.go:91 in ExecuteTrade():EXECUTE_TRADE:  0x0c9afa9e15c8cb1a5639d758c6516c0ed1816b934d025d7eb6bc9c9d152466cf
+INFO 16:43:46 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 16:43:46 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 16:44:53 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 16:44:53 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 16:44:53 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 16:44:53 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 16:44:53 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 16:44:53 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 16:44:53 at operator/txqueue.go:91 in ExecuteTrade():EXECUTE_TRADE:  0x25ea6f332d6cda2fa3fa2ca286fecb100184bf4ec29e9414cc57dabe8735e8c9
+INFO 16:44:53 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 16:44:53 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 16:45:05 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 16:45:05 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 16:45:05 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 16:45:05 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 16:45:05 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 16:45:05 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 16:45:05 at operator/txqueue.go:91 in ExecuteTrade():EXECUTE_TRADE:  0xa6f71fff3d2afe85a13a1e3772cdb1d5b8e23d880e57587427faca4919aac7db
+INFO 16:45:05 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 16:45:05 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 16:46:12 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 16:46:12 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 16:46:12 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 16:46:12 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 16:46:12 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 16:46:12 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 16:46:12 at operator/txqueue.go:91 in ExecuteTrade():EXECUTE_TRADE:  0x1167dbe796194ba811a2cf53a5189765eb2d53bbea7e2871e0052eaac31af309
+INFO 16:46:12 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 16:46:12 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 16:46:33 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 16:46:33 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 16:46:33 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 16:46:33 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 16:46:33 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 16:46:33 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 16:46:33 at operator/txqueue.go:91 in ExecuteTrade():EXECUTE_TRADE:  0x9713afc854c366b5bbcd29f9426b4472e739965b52e8eb7e9d21ca06f3bb8c22
+INFO 16:46:34 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 16:46:34 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 16:50:30 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 16:50:30 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 16:50:30 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 16:50:30 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 16:50:30 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 16:50:30 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 16:50:30 at operator/txqueue.go:212 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 16:50:30 at operator/txqueue.go:222 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 16:59:53 at operator/txqueue.go:220 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 16:59:53 at operator/txqueue.go:230 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 16:59:53 at operator/txqueue.go:99 in ExecuteTrade():EXECUTE_TRADE:  0xbc3c41b78694fc0876f75e99ed4dba9f697c25744e75fac23196612e0fdbb4bb
+INFO 16:59:53 at operator/txqueue.go:193 in PublishTradeSentMessage():PUBLISHING TRADE SENT MESSAGE
+INFO 16:59:53 at operator/txqueue.go:215 in PublishTradeSentMessage():PUBLISHED TRADE SENT MESSAGE
+INFO 16:59:53 at operator/txqueue.go:220 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 16:59:53 at operator/txqueue.go:133 in func1():MINING TRADE
+INFO 16:59:53 at operator/txqueue.go:230 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 17:00:45 at operator/txqueue.go:220 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 17:00:45 at operator/txqueue.go:230 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 17:00:45 at operator/txqueue.go:99 in ExecuteTrade():EXECUTE_TRADE:  0x90a012f001c1e88d9748d4f4b7e78440557638c5a82a32e6396e67f11f4a22fe
+INFO 17:00:45 at operator/txqueue.go:193 in PublishTradeSentMessage():PUBLISHING TRADE SENT MESSAGE
+INFO 17:00:45 at operator/txqueue.go:215 in PublishTradeSentMessage():PUBLISHED TRADE SENT MESSAGE
+INFO 17:00:45 at operator/txqueue.go:133 in func1():MINING TRADE
+INFO 17:00:45 at operator/txqueue.go:220 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 17:00:45 at operator/txqueue.go:230 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 17:04:25 at operator/txqueue.go:220 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 17:04:25 at operator/txqueue.go:230 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 17:04:25 at operator/txqueue.go:99 in ExecuteTrade():EXECUTE_TRADE:  0x9f2110f23cb951cfb66beb3a3c6034e76914361c162bcc543610fa80e3dbcf24
+INFO 17:04:25 at operator/txqueue.go:193 in PublishTradeSentMessage():PUBLISHING TRADE SENT MESSAGE
+INFO 17:04:25 at operator/txqueue.go:215 in PublishTradeSentMessage():PUBLISHED TRADE SENT MESSAGE
+INFO 17:04:25 at operator/txqueue.go:133 in func1():MINING TRADE
+INFO 17:04:25 at operator/txqueue.go:220 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 17:04:25 at operator/txqueue.go:230 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 17:04:39 at operator/txqueue.go:220 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 17:04:39 at operator/txqueue.go:230 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 17:04:39 at operator/txqueue.go:77 in QueueTrade():Length of the queue is  0
+INFO 17:04:39 at operator/txqueue.go:99 in ExecuteTrade():EXECUTE_TRADE:  0x7de05cac4f99f0ab1b0692cb86f6f91bacc88fe9e0bb183000082303a182dea5
+INFO 17:04:39 at operator/txqueue.go:220 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 17:04:39 at operator/txqueue.go:230 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 17:07:27 at operator/txqueue.go:220 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 17:07:27 at operator/txqueue.go:230 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 17:07:27 at operator/txqueue.go:77 in QueueTrade():Length of the queue is  0
+INFO 17:07:27 at operator/txqueue.go:99 in ExecuteTrade():EXECUTE_TRADE:  0xf26ca1a3e80494816ce65176d029a32410331333f5eaf63a43032e5a76052ad5
+INFO 17:07:27 at operator/txqueue.go:193 in PublishTradeSentMessage():PUBLISHING TRADE SENT MESSAGE
+INFO 17:07:27 at operator/txqueue.go:215 in PublishTradeSentMessage():PUBLISHED TRADE SENT MESSAGE
+INFO 17:07:27 at operator/txqueue.go:133 in func1():MINING TRADE
+INFO 17:07:27 at operator/txqueue.go:220 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 17:07:27 at operator/txqueue.go:230 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 17:11:40 at operator/txqueue.go:220 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 17:11:40 at operator/txqueue.go:230 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 17:11:40 at operator/txqueue.go:77 in QueueTrade():Length of the queue is  0
+INFO 17:11:40 at operator/txqueue.go:99 in ExecuteTrade():EXECUTE_TRADE:  0x716607ca341bd7267e3626dc3725f2ef8ae7c494b1120a301f9ca9f0fc7d5a80
+INFO 17:11:40 at operator/txqueue.go:193 in PublishTradeSentMessage():PUBLISHING TRADE SENT MESSAGE
+INFO 17:11:40 at operator/txqueue.go:215 in PublishTradeSentMessage():PUBLISHED TRADE SENT MESSAGE
+INFO 17:11:40 at operator/txqueue.go:133 in func1():MINING TRADE
+INFO 17:11:40 at operator/txqueue.go:220 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 17:11:40 at operator/txqueue.go:230 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 17:15:38 at operator/txqueue.go:220 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 17:15:38 at operator/txqueue.go:230 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 17:15:38 at operator/txqueue.go:77 in QueueTrade():Length of the queue is  0
+INFO 17:15:38 at operator/txqueue.go:99 in ExecuteTrade():EXECUTE_TRADE:  0x9b8eb1fe70049050e91ede6131fe4e018ba9a4c579fae2601e31f264d9cf715b
+INFO 17:15:38 at operator/txqueue.go:193 in PublishTradeSentMessage():PUBLISHING TRADE SENT MESSAGE
+INFO 17:15:38 at operator/txqueue.go:215 in PublishTradeSentMessage():PUBLISHED TRADE SENT MESSAGE
+INFO 17:15:38 at operator/txqueue.go:133 in func1():MINING TRADE
+INFO 17:15:38 at operator/txqueue.go:77 in QueueTrade():Length of the queue is  1
+INFO 17:15:39 at operator/txqueue.go:139 in func1():TRADE_MINED IN EXECUTE TRADE:  0x9b8eb1fe70049050e91ede6131fe4e018ba9a4c579fae2601e31f264d9cf715b
+INFO 17:15:39 at operator/txqueue.go:142 in func1():LENGTH of the queue is  2
+INFO 17:15:39 at operator/txqueue.go:236 in PopPendingTrade():POPPING PENDING TRADE
+INFO 17:15:39 at operator/txqueue.go:257 in PopPendingTrade():POPPED PENDING TRADE 0x9b8eb1fe70049050e91ede6131fe4e018ba9a4c579fae2601e31f264d9cf715b
+INFO 17:15:39 at operator/txqueue.go:152 in func1():HACKY POP PENDING TRADE:  0x9b8eb1fe70049050e91ede6131fe4e018ba9a4c579fae2601e31f264d9cf715b
+INFO 17:15:39 at operator/txqueue.go:236 in PopPendingTrade():POPPING PENDING TRADE
+INFO 17:15:39 at operator/txqueue.go:257 in PopPendingTrade():POPPED PENDING TRADE 0x1d31f97306e8b74fbd8b2d860e38dad46ce30104fe7f1f0f11ae8eaa336b010a
+INFO 17:15:39 at operator/txqueue.go:164 in func1():NEXT_TRADE:  0x1d31f97306e8b74fbd8b2d860e38dad46ce30104fe7f1f0f11ae8eaa336b010a
+INFO 17:15:39 at operator/txqueue.go:99 in ExecuteTrade():EXECUTE_TRADE:  0x1d31f97306e8b74fbd8b2d860e38dad46ce30104fe7f1f0f11ae8eaa336b010a
+INFO 17:15:39 at operator/txqueue.go:193 in PublishTradeSentMessage():PUBLISHING TRADE SENT MESSAGE
+INFO 17:15:39 at operator/txqueue.go:215 in PublishTradeSentMessage():PUBLISHED TRADE SENT MESSAGE
+INFO 17:15:39 at operator/txqueue.go:133 in func1():MINING TRADE
+INFO 17:15:40 at operator/txqueue.go:220 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 17:15:40 at operator/txqueue.go:230 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 17:18:24 at operator/txqueue.go:220 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 17:18:24 at operator/txqueue.go:230 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 17:18:24 at operator/txqueue.go:77 in QueueTrade():Length of the queue is  0
+INFO 17:18:24 at operator/txqueue.go:99 in ExecuteTrade():EXECUTE_TRADE:  0x0c739906e2cba3a31d4b0c915bd6374f08da3990a4b258373939d597c540551c
+INFO 17:18:24 at operator/txqueue.go:193 in PublishTradeSentMessage():PUBLISHING TRADE SENT MESSAGE
+INFO 17:18:24 at operator/txqueue.go:215 in PublishTradeSentMessage():PUBLISHED TRADE SENT MESSAGE
+INFO 17:18:24 at operator/txqueue.go:133 in func1():MINING TRADE
+INFO 17:18:24 at operator/txqueue.go:77 in QueueTrade():Length of the queue is  1
+INFO 17:18:24 at operator/txqueue.go:77 in QueueTrade():Length of the queue is  2
+INFO 17:18:24 at operator/txqueue.go:77 in QueueTrade():Length of the queue is  3
+INFO 17:18:24 at operator/txqueue.go:77 in QueueTrade():Length of the queue is  4
+INFO 17:18:25 at operator/txqueue.go:139 in func1():TRADE_MINED IN EXECUTE TRADE:  0x0c739906e2cba3a31d4b0c915bd6374f08da3990a4b258373939d597c540551c
+INFO 17:18:25 at operator/txqueue.go:142 in func1():LENGTH of the queue is  5
+INFO 17:18:25 at operator/txqueue.go:236 in PopPendingTrade():POPPING PENDING TRADE
+INFO 17:18:25 at operator/txqueue.go:257 in PopPendingTrade():POPPED PENDING TRADE 0x0c739906e2cba3a31d4b0c915bd6374f08da3990a4b258373939d597c540551c
+INFO 17:18:25 at operator/txqueue.go:152 in func1():HACKY POP PENDING TRADE:  0x0c739906e2cba3a31d4b0c915bd6374f08da3990a4b258373939d597c540551c
+INFO 17:18:25 at operator/txqueue.go:236 in PopPendingTrade():POPPING PENDING TRADE
+INFO 17:18:25 at operator/txqueue.go:257 in PopPendingTrade():POPPED PENDING TRADE 0x63b6df354ac2b0b2d0514b439183b660fc9b0f6b1c1b343843e59ef4b14e4eb7
+INFO 17:18:25 at operator/txqueue.go:164 in func1():NEXT_TRADE:  0x63b6df354ac2b0b2d0514b439183b660fc9b0f6b1c1b343843e59ef4b14e4eb7
+INFO 17:18:25 at operator/txqueue.go:99 in ExecuteTrade():EXECUTE_TRADE:  0x63b6df354ac2b0b2d0514b439183b660fc9b0f6b1c1b343843e59ef4b14e4eb7
+INFO 17:18:25 at operator/txqueue.go:193 in PublishTradeSentMessage():PUBLISHING TRADE SENT MESSAGE
+INFO 17:18:25 at operator/txqueue.go:215 in PublishTradeSentMessage():PUBLISHED TRADE SENT MESSAGE
+INFO 17:18:25 at operator/txqueue.go:133 in func1():MINING TRADE
+INFO 17:18:26 at operator/txqueue.go:139 in func1():TRADE_MINED IN EXECUTE TRADE:  0x63b6df354ac2b0b2d0514b439183b660fc9b0f6b1c1b343843e59ef4b14e4eb7
+INFO 17:18:26 at operator/txqueue.go:142 in func1():LENGTH of the queue is  3
+INFO 17:18:26 at operator/txqueue.go:236 in PopPendingTrade():POPPING PENDING TRADE
+INFO 17:18:26 at operator/txqueue.go:257 in PopPendingTrade():POPPED PENDING TRADE 0x594daab001257f0bd6a74ddae87d1aa6f4b9ee19dd23c44170b439d7e02d9b6c
+INFO 17:18:26 at operator/txqueue.go:164 in func1():NEXT_TRADE:  0x594daab001257f0bd6a74ddae87d1aa6f4b9ee19dd23c44170b439d7e02d9b6c
+INFO 17:18:26 at operator/txqueue.go:99 in ExecuteTrade():EXECUTE_TRADE:  0x594daab001257f0bd6a74ddae87d1aa6f4b9ee19dd23c44170b439d7e02d9b6c
+INFO 17:18:26 at operator/txqueue.go:193 in PublishTradeSentMessage():PUBLISHING TRADE SENT MESSAGE
+INFO 17:18:26 at operator/txqueue.go:215 in PublishTradeSentMessage():PUBLISHED TRADE SENT MESSAGE
+INFO 17:18:26 at operator/txqueue.go:133 in func1():MINING TRADE
+INFO 17:18:27 at operator/txqueue.go:139 in func1():TRADE_MINED IN EXECUTE TRADE:  0x594daab001257f0bd6a74ddae87d1aa6f4b9ee19dd23c44170b439d7e02d9b6c
+INFO 17:18:27 at operator/txqueue.go:142 in func1():LENGTH of the queue is  2
+INFO 17:18:27 at operator/txqueue.go:236 in PopPendingTrade():POPPING PENDING TRADE
+INFO 17:18:27 at operator/txqueue.go:257 in PopPendingTrade():POPPED PENDING TRADE 0xa3b8045afff7abd183a9a05fbe7620626f8f85a2a0a05974228692e5dc12733a
+INFO 17:18:27 at operator/txqueue.go:164 in func1():NEXT_TRADE:  0xa3b8045afff7abd183a9a05fbe7620626f8f85a2a0a05974228692e5dc12733a
+INFO 17:18:27 at operator/txqueue.go:99 in ExecuteTrade():EXECUTE_TRADE:  0xa3b8045afff7abd183a9a05fbe7620626f8f85a2a0a05974228692e5dc12733a
+INFO 17:18:27 at operator/txqueue.go:193 in PublishTradeSentMessage():PUBLISHING TRADE SENT MESSAGE
+INFO 17:18:27 at operator/txqueue.go:215 in PublishTradeSentMessage():PUBLISHED TRADE SENT MESSAGE
+INFO 17:18:27 at operator/txqueue.go:133 in func1():MINING TRADE
+INFO 17:18:28 at operator/txqueue.go:139 in func1():TRADE_MINED IN EXECUTE TRADE:  0xa3b8045afff7abd183a9a05fbe7620626f8f85a2a0a05974228692e5dc12733a
+INFO 17:18:28 at operator/txqueue.go:142 in func1():LENGTH of the queue is  1
+INFO 17:18:28 at operator/txqueue.go:236 in PopPendingTrade():POPPING PENDING TRADE
+INFO 17:18:28 at operator/txqueue.go:257 in PopPendingTrade():POPPED PENDING TRADE 0xebf12352d0c9f4f943c0390828088a798a6038a48ddf10aa61d7539b588b6421
+INFO 17:18:28 at operator/txqueue.go:164 in func1():NEXT_TRADE:  0xebf12352d0c9f4f943c0390828088a798a6038a48ddf10aa61d7539b588b6421
+INFO 17:18:28 at operator/txqueue.go:99 in ExecuteTrade():EXECUTE_TRADE:  0xebf12352d0c9f4f943c0390828088a798a6038a48ddf10aa61d7539b588b6421
+INFO 17:18:28 at operator/txqueue.go:193 in PublishTradeSentMessage():PUBLISHING TRADE SENT MESSAGE
+INFO 17:18:28 at operator/txqueue.go:215 in PublishTradeSentMessage():PUBLISHED TRADE SENT MESSAGE
+INFO 17:18:28 at operator/txqueue.go:133 in func1():MINING TRADE
+INFO 17:18:28 at operator/txqueue.go:220 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 17:18:28 at operator/txqueue.go:230 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 17:19:03 at operator/txqueue.go:220 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 17:19:03 at operator/txqueue.go:230 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 17:19:03 at operator/txqueue.go:77 in QueueTrade():Length of the queue is  0
+INFO 17:19:03 at operator/txqueue.go:99 in ExecuteTrade():EXECUTE_TRADE:  0xdf0a8bd5d105511086d3bc08942a930c4aa47ccc31fc9b538e5ec9498cd383b6
+INFO 17:19:03 at operator/txqueue.go:193 in PublishTradeSentMessage():PUBLISHING TRADE SENT MESSAGE
+INFO 17:19:03 at operator/txqueue.go:215 in PublishTradeSentMessage():PUBLISHED TRADE SENT MESSAGE
+INFO 17:19:03 at operator/txqueue.go:133 in func1():MINING TRADE
+INFO 17:19:03 at operator/txqueue.go:77 in QueueTrade():Length of the queue is  1
+INFO 17:19:03 at operator/txqueue.go:77 in QueueTrade():Length of the queue is  2
+INFO 17:19:03 at operator/txqueue.go:77 in QueueTrade():Length of the queue is  3
+INFO 17:19:03 at operator/txqueue.go:77 in QueueTrade():Length of the queue is  4
+INFO 17:19:04 at operator/txqueue.go:139 in func1():TRADE_MINED IN EXECUTE TRADE:  0xdf0a8bd5d105511086d3bc08942a930c4aa47ccc31fc9b538e5ec9498cd383b6
+INFO 17:19:04 at operator/txqueue.go:142 in func1():LENGTH of the queue is  5
+INFO 17:19:04 at operator/txqueue.go:236 in PopPendingTrade():POPPING PENDING TRADE
+INFO 17:19:04 at operator/txqueue.go:257 in PopPendingTrade():POPPED PENDING TRADE 0xdf0a8bd5d105511086d3bc08942a930c4aa47ccc31fc9b538e5ec9498cd383b6
+INFO 17:19:04 at operator/txqueue.go:152 in func1():HACKY POP PENDING TRADE:  0xdf0a8bd5d105511086d3bc08942a930c4aa47ccc31fc9b538e5ec9498cd383b6
+INFO 17:19:04 at operator/txqueue.go:236 in PopPendingTrade():POPPING PENDING TRADE
+INFO 17:19:04 at operator/txqueue.go:257 in PopPendingTrade():POPPED PENDING TRADE 0x28e054b0afb23e74abdda7abbfe4aad6d245c6c34024f31af1dd110cd51746a0
+INFO 17:19:04 at operator/txqueue.go:164 in func1():NEXT_TRADE:  0x28e054b0afb23e74abdda7abbfe4aad6d245c6c34024f31af1dd110cd51746a0
+INFO 17:19:04 at operator/txqueue.go:99 in ExecuteTrade():EXECUTE_TRADE:  0x28e054b0afb23e74abdda7abbfe4aad6d245c6c34024f31af1dd110cd51746a0
+INFO 17:19:04 at operator/txqueue.go:193 in PublishTradeSentMessage():PUBLISHING TRADE SENT MESSAGE
+INFO 17:19:04 at operator/txqueue.go:215 in PublishTradeSentMessage():PUBLISHED TRADE SENT MESSAGE
+INFO 17:19:04 at operator/txqueue.go:133 in func1():MINING TRADE
+INFO 17:19:05 at operator/txqueue.go:139 in func1():TRADE_MINED IN EXECUTE TRADE:  0x28e054b0afb23e74abdda7abbfe4aad6d245c6c34024f31af1dd110cd51746a0
+INFO 17:19:05 at operator/txqueue.go:142 in func1():LENGTH of the queue is  3
+INFO 17:19:05 at operator/txqueue.go:236 in PopPendingTrade():POPPING PENDING TRADE
+INFO 17:19:05 at operator/txqueue.go:257 in PopPendingTrade():POPPED PENDING TRADE 0x179f4df7598cdaaad78f6ad632105090320f6894f0ced96134c69c2979541942
+INFO 17:19:05 at operator/txqueue.go:164 in func1():NEXT_TRADE:  0x179f4df7598cdaaad78f6ad632105090320f6894f0ced96134c69c2979541942
+INFO 17:19:05 at operator/txqueue.go:99 in ExecuteTrade():EXECUTE_TRADE:  0x179f4df7598cdaaad78f6ad632105090320f6894f0ced96134c69c2979541942
+INFO 17:19:05 at operator/txqueue.go:193 in PublishTradeSentMessage():PUBLISHING TRADE SENT MESSAGE
+INFO 17:19:05 at operator/txqueue.go:215 in PublishTradeSentMessage():PUBLISHED TRADE SENT MESSAGE
+INFO 17:19:05 at operator/txqueue.go:133 in func1():MINING TRADE
+INFO 17:19:05 at operator/operator.go:173 in HandleEvents():The error ID is:  2
+INFO 17:19:06 at operator/txqueue.go:139 in func1():TRADE_MINED IN EXECUTE TRADE:  0x179f4df7598cdaaad78f6ad632105090320f6894f0ced96134c69c2979541942
+INFO 17:19:06 at operator/txqueue.go:142 in func1():LENGTH of the queue is  2
+INFO 17:19:06 at operator/txqueue.go:236 in PopPendingTrade():POPPING PENDING TRADE
+INFO 17:19:06 at operator/txqueue.go:257 in PopPendingTrade():POPPED PENDING TRADE 0x2d7b1a31f0635d96c993ff34b0ca98cdd08cebfc6900cdabfa7b297e9df71ac4
+INFO 17:19:06 at operator/txqueue.go:164 in func1():NEXT_TRADE:  0x2d7b1a31f0635d96c993ff34b0ca98cdd08cebfc6900cdabfa7b297e9df71ac4
+INFO 17:19:06 at operator/txqueue.go:99 in ExecuteTrade():EXECUTE_TRADE:  0x2d7b1a31f0635d96c993ff34b0ca98cdd08cebfc6900cdabfa7b297e9df71ac4
+INFO 17:19:06 at operator/txqueue.go:193 in PublishTradeSentMessage():PUBLISHING TRADE SENT MESSAGE
+INFO 17:19:06 at operator/txqueue.go:215 in PublishTradeSentMessage():PUBLISHED TRADE SENT MESSAGE
+INFO 17:19:06 at operator/txqueue.go:133 in func1():MINING TRADE
+INFO 17:19:07 at operator/txqueue.go:139 in func1():TRADE_MINED IN EXECUTE TRADE:  0x2d7b1a31f0635d96c993ff34b0ca98cdd08cebfc6900cdabfa7b297e9df71ac4
+INFO 17:19:07 at operator/txqueue.go:142 in func1():LENGTH of the queue is  1
+INFO 17:19:07 at operator/txqueue.go:236 in PopPendingTrade():POPPING PENDING TRADE
+INFO 17:19:07 at operator/txqueue.go:257 in PopPendingTrade():POPPED PENDING TRADE 0x753d89960b732e18172ced0df18fad2bff7228dec0b67452da3a1cad55ce815c
+INFO 17:19:07 at operator/txqueue.go:164 in func1():NEXT_TRADE:  0x753d89960b732e18172ced0df18fad2bff7228dec0b67452da3a1cad55ce815c
+INFO 17:19:07 at operator/txqueue.go:99 in ExecuteTrade():EXECUTE_TRADE:  0x753d89960b732e18172ced0df18fad2bff7228dec0b67452da3a1cad55ce815c
+INFO 17:19:07 at operator/txqueue.go:193 in PublishTradeSentMessage():PUBLISHING TRADE SENT MESSAGE
+INFO 17:19:07 at operator/txqueue.go:215 in PublishTradeSentMessage():PUBLISHED TRADE SENT MESSAGE
+INFO 17:19:07 at operator/txqueue.go:133 in func1():MINING TRADE
+INFO 17:19:07 at operator/txqueue.go:220 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 17:19:07 at operator/txqueue.go:230 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 17:20:34 at operator/txqueue.go:77 in QueueTrade():Length of the queue is  0
+INFO 17:20:34 at operator/txqueue.go:99 in ExecuteTrade():EXECUTE_TRADE:  0x4807a1be5e1491dc81f4b07afbce4afaac39c8f00732619e4cd9fb9d94c653c5
+INFO 17:20:34 at operator/txqueue.go:193 in PublishTradeSentMessage():PUBLISHING TRADE SENT MESSAGE
+INFO 17:20:34 at operator/txqueue.go:215 in PublishTradeSentMessage():PUBLISHED TRADE SENT MESSAGE
+INFO 17:20:34 at operator/txqueue.go:133 in func1():MINING TRADE
+INFO 17:20:34 at operator/operator.go:173 in HandleEvents():The error ID is:  2
+INFO 17:20:34 at operator/txqueue.go:220 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 17:20:34 at operator/txqueue.go:230 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 17:20:34 at operator/txqueue.go:220 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 17:20:34 at operator/txqueue.go:230 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 17:20:34 at operator/txqueue.go:220 in PurgePendingTrades():PURGING PENDING TRADES
+INFO 17:20:34 at operator/txqueue.go:230 in PurgePendingTrades():PURGED PENDING TRADES
+INFO 17:21:06 at operator/operator.go:365 in QueueTrade():QUEING TRADE 0
+INFO 17:21:06 at operator/txqueue.go:77 in QueueTrade():Length of the queue is  0
+INFO 17:21:06 at operator/txqueue.go:99 in ExecuteTrade():EXECUTE_TRADE:  0x64b04636882669fa95db8c7315b9a7bad3e6df06b7c199839edd667dc82f62a3
+INFO 17:21:06 at operator/txqueue.go:193 in PublishTradeSentMessage():PUBLISHING TRADE SENT MESSAGE
+INFO 17:21:06 at operator/txqueue.go:215 in PublishTradeSentMessage():PUBLISHED TRADE SENT MESSAGE
+INFO 17:21:06 at operator/txqueue.go:133 in func1():MINING TRADE
+INFO 17:21:06 at operator/operator.go:365 in QueueTrade():QUEING TRADE 0
+INFO 17:21:06 at operator/txqueue.go:77 in QueueTrade():Length of the queue is  0
+INFO 17:21:06 at operator/txqueue.go:99 in ExecuteTrade():EXECUTE_TRADE:  0xf4eccf50baca4c305d40fefa82c6f54fc66ffbb551196cb34c5b5443a4590526
+INFO 17:21:06 at operator/txqueue.go:193 in PublishTradeSentMessage():PUBLISHING TRADE SENT MESSAGE
+INFO 17:21:06 at operator/txqueue.go:215 in PublishTradeSentMessage():PUBLISHED TRADE SENT MESSAGE
+INFO 17:21:06 at operator/txqueue.go:133 in func1():MINING TRADE
+INFO 17:21:06 at operator/operator.go:365 in QueueTrade():QUEING TRADE 0
+INFO 17:21:06 at operator/txqueue.go:77 in QueueTrade():Length of the queue is  0
+INFO 17:21:06 at operator/txqueue.go:99 in ExecuteTrade():EXECUTE_TRADE:  0x518c35271b7dfc0d288ae7d74f237a273cff4d8f7d97d0412cf4fdf9492f3eab
+INFO 17:21:06 at operator/txqueue.go:193 in PublishTradeSentMessage():PUBLISHING TRADE SENT MESSAGE
+INFO 17:21:06 at operator/txqueue.go:215 in PublishTradeSentMessage():PUBLISHED TRADE SENT MESSAGE
+INFO 17:21:06 at operator/txqueue.go:133 in func1():MINING TRADE
+INFO 17:21:06 at operator/operator.go:365 in QueueTrade():QUEING TRADE 1
+INFO 17:21:06 at operator/txqueue.go:77 in QueueTrade():Length of the queue is  1
+INFO 17:21:06 at operator/operator.go:365 in QueueTrade():QUEING TRADE 1
+INFO 17:21:06 at operator/txqueue.go:77 in QueueTrade():Length of the queue is  1
+INFO 17:21:07 at operator/txqueue.go:139 in func1():TRADE_MINED IN EXECUTE TRADE:  0x64b04636882669fa95db8c7315b9a7bad3e6df06b7c199839edd667dc82f62a3
+INFO 17:21:07 at operator/txqueue.go:142 in func1():LENGTH of the queue is  2
+INFO 17:21:07 at operator/txqueue.go:236 in PopPendingTrade():POPPING PENDING TRADE
+INFO 17:21:07 at operator/txqueue.go:257 in PopPendingTrade():POPPED PENDING TRADE 0x64b04636882669fa95db8c7315b9a7bad3e6df06b7c199839edd667dc82f62a3
+INFO 17:21:07 at operator/txqueue.go:152 in func1():HACKY POP PENDING TRADE:  0x64b04636882669fa95db8c7315b9a7bad3e6df06b7c199839edd667dc82f62a3
+INFO 17:21:07 at operator/txqueue.go:236 in PopPendingTrade():POPPING PENDING TRADE
+INFO 17:21:07 at operator/txqueue.go:257 in PopPendingTrade():POPPED PENDING TRADE 0x0ac5a1738ce4b93c7ffde1c16e67c9ea5fb14f323af42b97650e796cdbb60ca5
+INFO 17:21:07 at operator/txqueue.go:164 in func1():NEXT_TRADE:  0x0ac5a1738ce4b93c7ffde1c16e67c9ea5fb14f323af42b97650e796cdbb60ca5
+INFO 17:21:07 at operator/txqueue.go:99 in ExecuteTrade():EXECUTE_TRADE:  0x0ac5a1738ce4b93c7ffde1c16e67c9ea5fb14f323af42b97650e796cdbb60ca5
+INFO 17:21:07 at operator/txqueue.go:139 in func1():TRADE_MINED IN EXECUTE TRADE:  0xf4eccf50baca4c305d40fefa82c6f54fc66ffbb551196cb34c5b5443a4590526
+INFO 17:21:07 at operator/txqueue.go:142 in func1():LENGTH of the queue is  2
+INFO 17:21:07 at operator/txqueue.go:236 in PopPendingTrade():POPPING PENDING TRADE
+INFO 17:21:07 at operator/txqueue.go:193 in PublishTradeSentMessage():PUBLISHING TRADE SENT MESSAGE
+INFO 17:21:07 at operator/txqueue.go:257 in PopPendingTrade():POPPED PENDING TRADE 0xf4eccf50baca4c305d40fefa82c6f54fc66ffbb551196cb34c5b5443a4590526
+INFO 17:21:07 at operator/txqueue.go:152 in func1():HACKY POP PENDING TRADE:  0xf4eccf50baca4c305d40fefa82c6f54fc66ffbb551196cb34c5b5443a4590526
+INFO 17:21:07 at operator/txqueue.go:236 in PopPendingTrade():POPPING PENDING TRADE
+INFO 17:21:07 at operator/txqueue.go:215 in PublishTradeSentMessage():PUBLISHED TRADE SENT MESSAGE
+INFO 17:21:07 at operator/txqueue.go:133 in func1():MINING TRADE
+INFO 17:21:07 at operator/txqueue.go:257 in PopPendingTrade():POPPED PENDING TRADE 0xca3e07c773d0c509227c2d30dfabe2dbe9169b8f7e0bdf25af0b84708393fbf4
+INFO 17:21:07 at operator/txqueue.go:164 in func1():NEXT_TRADE:  0xca3e07c773d0c509227c2d30dfabe2dbe9169b8f7e0bdf25af0b84708393fbf4
+INFO 17:21:07 at operator/txqueue.go:99 in ExecuteTrade():EXECUTE_TRADE:  0xca3e07c773d0c509227c2d30dfabe2dbe9169b8f7e0bdf25af0b84708393fbf4
+INFO 17:21:07 at operator/txqueue.go:139 in func1():TRADE_MINED IN EXECUTE TRADE:  0x518c35271b7dfc0d288ae7d74f237a273cff4d8f7d97d0412cf4fdf9492f3eab
+INFO 17:21:07 at operator/txqueue.go:142 in func1():LENGTH of the queue is  1
+INFO 17:21:07 at operator/txqueue.go:236 in PopPendingTrade():POPPING PENDING TRADE
+INFO 17:21:07 at operator/txqueue.go:257 in PopPendingTrade():POPPED PENDING TRADE 0x518c35271b7dfc0d288ae7d74f237a273cff4d8f7d97d0412cf4fdf9492f3eab
+INFO 17:21:07 at operator/txqueue.go:152 in func1():HACKY POP PENDING TRADE:  0x518c35271b7dfc0d288ae7d74f237a273cff4d8f7d97d0412cf4fdf9492f3eab
+INFO 17:21:07 at operator/txqueue.go:236 in PopPendingTrade():POPPING PENDING TRADE
+INFO 17:21:07 at operator/txqueue.go:193 in PublishTradeSentMessage():PUBLISHING TRADE SENT MESSAGE
+INFO 17:21:07 at operator/txqueue.go:215 in PublishTradeSentMessage():PUBLISHED TRADE SENT MESSAGE
+INFO 17:21:07 at operator/txqueue.go:133 in func1():MINING TRADE
+INFO 17:21:08 at operator/txqueue.go:139 in func1():TRADE_MINED IN EXECUTE TRADE:  0x0ac5a1738ce4b93c7ffde1c16e67c9ea5fb14f323af42b97650e796cdbb60ca5
+INFO 17:21:08 at operator/txqueue.go:142 in func1():LENGTH of the queue is  0
+INFO 17:21:08 at operator/txqueue.go:139 in func1():TRADE_MINED IN EXECUTE TRADE:  0xca3e07c773d0c509227c2d30dfabe2dbe9169b8f7e0bdf25af0b84708393fbf4
+INFO 17:21:08 at operator/txqueue.go:142 in func1():LENGTH of the queue is  0
