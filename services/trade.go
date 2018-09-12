@@ -55,8 +55,6 @@ func (t *TradeService) GetByOrderHash(hash common.Hash) ([]*types.Trade, error) 
 func (t *TradeService) UpdateTradeTxHash(tr *types.Trade, txHash common.Hash) error {
 	tr.TxHash = txHash
 
-	utils.PrintJSON(tr)
-
 	err := t.tradeDao.UpdateByHash(tr.Hash, tr)
 	if err != nil {
 		log.Print(err)

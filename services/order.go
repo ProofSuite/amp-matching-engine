@@ -150,7 +150,7 @@ func (s *OrderService) NewOrder(o *types.Order) error {
 		return err
 	}
 
-	sellTokenBalance, err := s.ethereumProvider.BalanceOf(o.UserAddress, wethAddress)
+	sellTokenBalance, err := s.ethereumProvider.BalanceOf(o.UserAddress, o.SellToken)
 	if err != nil {
 		log.Print("Error", err)
 		return err

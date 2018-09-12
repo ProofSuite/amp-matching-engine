@@ -1,6 +1,3 @@
-// Code generated - DO NOT EDIT.
-// This file is a generated binding and any manual changes will be lost.
-
 package contractsinterfaces
 
 import (
@@ -1174,6 +1171,19 @@ func (_Exchange *ExchangeTransactorSession) CancelTrade(orderHash [32]byte, amou
 func (_Exchange *ExchangeTransactor) ExecuteTrade(opts *bind.TransactOpts, orderValues [8]*big.Int, orderAddresses [4]common.Address, v [2]uint8, rs [4][32]byte) (*types.Transaction, error) {
 	return _Exchange.contract.Transact(opts, "executeTrade", orderValues, orderAddresses, v, rs)
 }
+
+// func (_Exchange *ExchangeTransactor) EstimateTradePrice(opts *bind.TransactOpts, orderValues [8]*big.Int, orderAddresses [4]common.Address, v [2]uint8, rs [4][32]byte) (*types.Transaction, error) {
+// 	input, err := _Exchange.contract.abi.Pack("executeTrade", orderValues, orderAddresses, v, rs)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	// address := _Exchange.contract.address
+
+// 	// msg := ethereum.CallMsg{From: opts.From, To: address, Data: input}
+// 	// gasLimit, err =
+
+// }
 
 // ExecuteTrade is a paid mutator transaction binding the contract method 0x2207148d.
 //

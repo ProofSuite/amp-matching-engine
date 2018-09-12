@@ -1,8 +1,20 @@
 package testutils
 
 import (
+	"time"
+
+	"github.com/Proofsuite/amp-matching-engine/ethereum"
 	"github.com/Proofsuite/amp-matching-engine/utils/testutils/mocks"
 )
+
+func Mine(client *ethereum.SimulatedClient) {
+	nextTime := time.Now()
+	nextTime = nextTime.Add(500 * time.Millisecond)
+	time.Sleep(time.Until(nextTime))
+
+	client.Commit()
+	go Mine(client)
+}
 
 type MockServices struct {
 	WalletService    *mocks.WalletService

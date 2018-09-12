@@ -5,11 +5,13 @@ import (
 	"encoding/hex"
 	"fmt"
 	"math/big"
+	"strings"
 
 	"github.com/Proofsuite/amp-matching-engine/contracts/contractsinterfaces"
 	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/Proofsuite/amp-matching-engine/types"
 	ethereum "github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	eth "github.com/ethereum/go-ethereum/core/types"
@@ -35,6 +37,7 @@ type ethereumClientInterface interface {
 // CallOptions are options for making read calls to the connected backend
 // TxOptions are options for making write txs to the connected backend
 type Exchange struct {
+	Address       common.Address
 	WalletService interfaces.WalletService
 	Interface     *contractsinterfaces.Exchange
 	Client        ethereumClientInterface
@@ -58,7 +61,12 @@ func NewExchange(
 		WalletService: w,
 		Interface:     instance,
 		Client:        backend,
+		Address:       contractAddress,
 	}, nil
+}
+
+func (e *Exchange) GetAddress() common.Address {
+	return e.Address
 }
 
 func (e *Exchange) DefaultTxOptions() (*bind.TransactOpts, error) {
@@ -141,6 +149,32 @@ func (e *Exchange) Trade(o *types.Order, t *types.Trade, txOpts *bind.TransactOp
 	}
 
 	return tx, nil
+}
+
+func (e *Exchange) CallTrade(o *types.Order, t *types.Trade, call *ethereum.CallMsg) (uint64, error) {
+	orderValues := [8]*big.Int{o.BuyAmount, o.SellAmount, o.Expires, o.Nonce, o.MakeFee, o.TakeFee, t.Amount, t.TradeNonce}
+	orderAddresses := [4]common.Address{o.BuyToken, o.SellToken, o.UserAddress, t.Taker}
+	vValues := [2]uint8{o.Signature.V, t.Signature.V}
+	rsValues := [4][32]byte{o.Signature.R, o.Signature.S, t.Signature.R, t.Signature.S}
+
+	exchangeABI, err := abi.JSON(strings.NewReader(contractsinterfaces.ExchangeABI))
+	if err != nil {
+		return 0, err
+	}
+
+	data, err := exchangeABI.Pack("executeTrade", orderValues, orderAddresses, vValues, rsValues)
+	if err != nil {
+		return 0, err
+	}
+
+	call.Data = data
+	gasLimit, err := e.Client.(bind.ContractBackend).EstimateGas(context.Background(), *call)
+	if err != nil {
+		logger.Error(err)
+		return 0, err
+	}
+
+	return gasLimit, nil
 }
 
 // ListenToErrorEvents returns a channel that receives errors logs (events) from the exchange smart contract.

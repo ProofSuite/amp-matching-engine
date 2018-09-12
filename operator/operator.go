@@ -24,6 +24,7 @@ var logger = utils.OperatorLogger
 // account that initially deployed the exchange contract or an address with operator rights
 // on the contract
 type Operator struct {
+	// AccountService     interfaces.AccountService
 	WalletService      interfaces.WalletService
 	TradeService       interfaces.TradeService
 	OrderService       interfaces.OrderService
@@ -200,7 +201,7 @@ func (op *Operator) HandleEvents() error {
 				logger.Error(err)
 			}
 
-			fmt.Println("TRADE_SUCCESS_EVENT", tr.Hash.Hex())
+			logger.Info("TRADE_SUCCESS_EVENT", tr.Hash.Hex(), tr.TxHash.Hex())
 
 			or, err := op.OrderService.GetByHash(tr.OrderHash)
 			if err != nil {
@@ -213,7 +214,7 @@ func (op *Operator) HandleEvents() error {
 					logger.Error(err)
 				}
 
-				fmt.Println("TRADE_MINED IN HANDLE EVENTS: ", tr.Hash.Hex())
+				logger.Info("TRADE_MINED IN HANDLE EVENTS: ", tr.Hash.Hex())
 
 				err = op.PublishTradeSuccessMessage(or, tr)
 				if err != nil {
@@ -365,7 +366,7 @@ func (op *Operator) QueueTrade(o *types.Order, t *types.Trade) error {
 	logger.Info("QUEING TRADE", len)
 	err = txq.QueueTrade(o, t)
 	if err != nil {
-		logger.Error(err)
+		logger.Warning("INVALID TRADE")
 		return err
 	}
 
@@ -472,3 +473,109 @@ func (op *Operator) GetTxSendOptions() (*bind.TransactOpts, error) {
 
 	return bind.NewKeyedTransactor(wallet.PrivateKey), nil
 }
+
+// func (op *Operator) ValidateTrade(o *types.Order, t *types.Trade) error {
+// 	// fee balance validation
+// 	wethAddress := common.HexToAddress(app.Config.Ethereum["weth_address"])
+// 	exchangeAddress := common.HexToAddress(app.Config.Ethereum["exchange_address"])
+
+// 	makerBalanceRecord, err := op.AccountService.GetTokenBalances(o.UserAddress)
+// 	if err != nil {
+// 		logger.Error("Error retrieving maker token balances", err)
+// 		return err
+// 	}
+
+// 	takerBalanceRecord, err := op.AccountService.GetTokenBalances(t.Taker)
+// 	if err != nil {
+// 		logger.Error("Error retrieving taker token balances", err)
+// 		return err
+// 	}
+
+// 	makerWethBalance, err := op.EthereumProvider.BalanceOf(o.UserAddress, wethAddress)
+// 	if err != nil {
+// 		logger.Error("Error", err)
+// 		return err
+// 	}
+
+// 	makerWethAllowance, err := op.EthereumProvider.Allowance(o.UserAddress, exchangeAddress, wethAddress)
+// 	if err != nil {
+// 		logger.Error("Error", err)
+// 		return err
+// 	}
+
+// 	makerTokenBalance, err := op.EthereumProvider.BalanceOf(o.UserAddress, o.SellToken)
+// 	if err != nil {
+// 		logger.Error("Error", err)
+// 		return err
+// 	}
+
+// 	makerTokenAllowance, err := op.EthereumProvider.Allowance(o.UserAddress, exchangeAddress, o.SellToken)
+// 	if err != nil {
+// 		logger.Error("Error", err)
+// 		return err
+// 	}
+
+// 	takerWethBalance, err := op.EthereumProvider.BalanceOf(t.Taker, wethAddress)
+// 	if err != nil {
+// 		logger.Error("Error", err)
+// 		return err
+// 	}
+
+// 	takerWethAllowance, err := op.EthereumProvider.Allowance(t.Taker, exchangeAddress, wethAddress)
+// 	if err != nil {
+// 		logger.Error("Error", err)
+// 		return err
+// 	}
+
+// 	takerTokenBalance, err := op.EthereumProvider.BalanceOf(t.Taker, o.BuyToken)
+// 	if err != nil {
+// 		logger.Error("Error", err)
+// 		return err
+// 	}
+
+// 	takerTokenAllowance, err := op.EthereumProvider.Allowance(t.Taker, exchangeAddress, o.BuyToken)
+// 	if err != nil {
+// 		logger.Error("Error", err)
+// 		return err
+// 	}
+
+// 	fee := math.Max(o.MakeFee, o.TakeFee)
+// 	makerAvailableWethBalance := math.Sub(makerWethBalance, makerBalanceRecord[wethAddress].LockedBalance)
+// 	makerAvailableTokenBalance := math.Sub(makerTokenBalance, makerBalanceRecord[o.SellToken].LockedBalance)
+// 	takerAvailableWethBalance := math.Sub(takerWethBalance, takerBalanceRecord[wethAddress].LockedBalance)
+// 	takerAvailableTokenBalance := math.Sub(takerTokenBalance, takerBalanceRecord[o.BuyToken].LockedBalance)
+
+// 	if makerAvailableWethBalance.Cmp(fee) == -1 {
+// 		return errors.New("Insufficient WETH Balance")
+// 	}
+
+// 	if makerWethAllowance.Cmp(fee) == -1 {
+// 		return errors.New("Insufficient WETH Balance")
+// 	}
+
+// 	if makerAvailableSellTokenBalance.Cmp(o.SellAmount) != 1 {
+// 		return errors.New("Insufficient Balance")
+// 	}
+
+// 	if makerTokenAllowance.Cmp(o.SellAmount) != 1 {
+// 		return errors.New("Insufficient Allowance")
+// 	}
+
+// 	if takerAvailableWethBalance.Cmp(fee) == -1 {
+// 		return errors.New("Insufficient WETH Balance")
+// 	}
+
+// 	if takerWethAllowance.Cmp(fee) == -1 {
+// 		return errors.New("Insufficient WETH Balance")
+// 	}
+
+// 	if takerAvailableTokenBalance.Cmp(t.Amount) != 1 {
+// 		return errors.New("Insufficient Balance")
+// 	}
+
+// 	if takerTokenAllowance.Cmp(t.Amount) != 1 {
+// 		return errors.New("Insufficient Allowance")
+// 	}
+
+// 	return nil
+// }
