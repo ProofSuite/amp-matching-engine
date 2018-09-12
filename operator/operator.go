@@ -14,7 +14,6 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	eth "github.com/ethereum/go-ethereum/core/types"
-	"github.com/streadway/amqp"
 )
 
 var logger = utils.OperatorLogger
@@ -184,12 +183,12 @@ func (op *Operator) HandleEvents() error {
 			}
 
 			go func() {
-				err = op.PublishTxErrorMessage(tr, errID)
+				err = op.RabbitMQConnection.PublishTxErrorMessage(tr, errID)
 				if err != nil {
 					logger.Error(err)
 				}
 
-				err = op.PublishTradeCancelMessage(or, tr)
+				err = op.RabbitMQConnection.PublishTradeCancelMessage(or, tr)
 				if err != nil {
 					logger.Error(err)
 				}
@@ -216,7 +215,7 @@ func (op *Operator) HandleEvents() error {
 
 				logger.Info("TRADE_MINED IN HANDLE EVENTS: ", tr.Hash.Hex())
 
-				err = op.PublishTradeSuccessMessage(or, tr)
+				err = op.RabbitMQConnection.PublishTradeSuccessMessage(or, tr)
 				if err != nil {
 					logger.Error(err)
 				}
@@ -247,98 +246,6 @@ func (op *Operator) HandleTrades(msg *types.OperatorMessage) error {
 	}
 
 	err = op.QueueTrade(msg.Order, msg.Trade)
-	if err != nil {
-		logger.Error(err)
-		return err
-	}
-
-	return nil
-}
-
-// PublishTxErrorMessage publishes a messages when a trade execution fails
-func (op *Operator) PublishTxErrorMessage(tr *types.Trade, errID int) error {
-	ch := op.RabbitMQConnection.GetChannel("OPERATOR_PUB")
-	q := op.RabbitMQConnection.GetQueue(ch, "TX_MESSAGES")
-	msg := &types.OperatorMessage{
-		MessageType: "TRADE_ERROR_MESSAGE",
-		Trade:       tr,
-		ErrID:       errID,
-	}
-
-	bytes, err := json.Marshal(msg)
-	if err != nil {
-		logger.Infof("Failed to marshal %s: %s", msg.MessageType, err)
-	}
-
-	err = op.RabbitMQConnection.Publish(ch, q, bytes)
-	if err != nil {
-		logger.Error(err)
-		return err
-	}
-
-	return nil
-}
-
-// PublishTradeCancelMessage publishes a message when a trade is canceled
-func (op *Operator) PublishTradeCancelMessage(o *types.Order, tr *types.Trade) error {
-	ch := op.RabbitMQConnection.GetChannel("OPERATOR_PUB")
-	q := op.RabbitMQConnection.GetQueue(ch, "TX_MESSAGES")
-	msg := &types.OperatorMessage{
-		MessageType: "TRADE_CANCEL_MESSAGE",
-		Trade:       tr,
-	}
-
-	bytes, err := json.Marshal(msg)
-	if err != nil {
-		logger.Infof("Failed to marshal %s: %s", msg.MessageType, err)
-	}
-
-	err = op.RabbitMQConnection.Publish(ch, q, bytes)
-	if err != nil {
-		logger.Error(err)
-		return err
-	}
-
-	return nil
-}
-
-// PublishTradeSuccessMessage publishes a message when a trade transaction is successful
-func (op *Operator) PublishTradeSuccessMessage(o *types.Order, tr *types.Trade) error {
-	ch := op.RabbitMQConnection.GetChannel("OPERATOR_PUB")
-	q := op.RabbitMQConnection.GetQueue(ch, "TX_MESSAGES")
-	msg := &types.OperatorMessage{
-		MessageType: "TRADE_SUCCESS_MESSAGE",
-		Order:       o,
-		Trade:       tr,
-	}
-
-	bytes, err := json.Marshal(msg)
-	if err != nil {
-		logger.Infof("Failed to marshal %s: %s", msg.MessageType, err)
-	}
-
-	err = op.RabbitMQConnection.Publish(ch, q, bytes)
-	if err != nil {
-		logger.Error(err)
-		return err
-	}
-
-	return nil
-}
-
-// Publish
-func (op *Operator) Publish(ch *amqp.Channel, q *amqp.Queue, bytes []byte) error {
-	err := ch.Publish(
-		"",
-		q.Name,
-		false,
-		false,
-		amqp.Publishing{
-			ContentType: "text/json",
-			Body:        bytes,
-		},
-	)
-
 	if err != nil {
 		logger.Error(err)
 		return err

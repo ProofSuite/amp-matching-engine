@@ -36,6 +36,7 @@ func (s *AccountService) Create(account *types.Account) error {
 
 	tokens, err := s.TokenDao.GetAll()
 	if err != nil {
+		logger.Error(err)
 		return err
 	}
 
@@ -55,6 +56,7 @@ func (s *AccountService) Create(account *types.Account) error {
 	if account != nil {
 		err = s.AccountDao.Create(account)
 		if err != nil {
+			logger.Error(err)
 			return err
 		}
 	}

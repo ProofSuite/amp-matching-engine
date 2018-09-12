@@ -151,7 +151,7 @@ func (txq *TxQueue) ExecuteTrade(o *types.Order, tr *types.Trade) (*eth.Transact
 	}
 	logger.Info("TRANSACTION HASH HAS BEEN UPDATED: %s", tr.TxHash.Hex(), tx.Hash().Hex())
 
-	err = txq.PublishTradeSentMessage(o, tr)
+	err = txq.RabbitMQConn.PublishTradeSentMessage(o, tr)
 	if err != nil {
 		logger.Error(err)
 		return nil, errors.New("Could not update")
@@ -232,35 +232,7 @@ func (txq *TxQueue) PublishPendingTrade(o *types.Order, t *types.Trade) error {
 	return nil
 }
 
-func (txq *TxQueue) PublishTradeSentMessage(or *types.Order, tr *types.Trade) error {
-	logger.Info("PUBLISHING TRADE SENT MESSAGE")
-
-	ch := txq.RabbitMQConn.GetChannel("OPERATOR_PUB")
-	q := txq.RabbitMQConn.GetQueue(ch, "TX_MESSAGES")
-	msg := &types.OperatorMessage{
-		MessageType: "TRADE_SENT_MESSAGE",
-		Trade:       tr,
-		Order:       or,
-	}
-
-	bytes, err := json.Marshal(msg)
-	if err != nil {
-		logger.Error(err)
-		return err
-	}
-
-	err = txq.RabbitMQConn.Publish(ch, q, bytes)
-	if err != nil {
-		logger.Error(err)
-		return err
-	}
-
-	logger.Info("PUBLISHED TRADE SENT MESSAGE")
-	return nil
-}
-
 func (txq *TxQueue) PurgePendingTrades() error {
-	logger.Info("PURGING PENDING TRADES")
 	name := "TX_QUEUES:" + txq.Name
 	ch := txq.RabbitMQConn.GetChannel(name)
 
@@ -270,13 +242,11 @@ func (txq *TxQueue) PurgePendingTrades() error {
 		return err
 	}
 
-	logger.Info("PURGED PENDING TRADES")
 	return nil
 }
 
 // PopPendingTrade
 func (txq *TxQueue) PopPendingTrade() (*types.PendingTradeMessage, error) {
-	logger.Info("POPPING PENDING TRADE")
 	name := "TX_QUEUES:" + txq.Name
 	ch := txq.RabbitMQConn.GetChannel(name)
 	q := txq.RabbitMQConn.GetQueue(ch, name)
@@ -297,6 +267,5 @@ func (txq *TxQueue) PopPendingTrade() (*types.PendingTradeMessage, error) {
 		return nil, err
 	}
 
-	logger.Info("POPPED PENDING TRADE", pding.Trade.Hash.Hex())
 	return pding, nil
 }

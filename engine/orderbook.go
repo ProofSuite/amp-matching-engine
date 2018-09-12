@@ -42,25 +42,6 @@ type OrderBook struct {
 	mutex        *sync.Mutex
 }
 
-func (ob *OrderBook) publishEngineResponse(res *types.EngineResponse) error {
-	ch := ob.rabbitMQConn.GetChannel("erPub")
-	q := ob.rabbitMQConn.GetQueue(ch, "engineResponse")
-
-	bytes, err := json.Marshal(res)
-	if err != nil {
-		logger.Error("Failed to marshal engine response: ", err)
-		return err
-	}
-
-	err = ob.rabbitMQConn.Publish(ch, q, bytes)
-	if err != nil {
-		logger.Error("Failed to publish order: ", err)
-		return err
-	}
-
-	return nil
-}
-
 // newOrder calls buyOrder/sellOrder based on type of order recieved and
 // publishes the response back to rabbitmq
 func (ob *OrderBook) newOrder(order *types.Order) (err error) {
@@ -85,7 +66,7 @@ func (ob *OrderBook) newOrder(order *types.Order) (err error) {
 	}
 
 	// Note: Plug the option for orders like FOC, Limit here (if needed)
-	err = ob.publishEngineResponse(resp)
+	err = ob.rabbitMQConn.PublishEngineResponse(resp)
 	if err != nil {
 		logger.Error(err)
 		return err
@@ -422,13 +403,13 @@ func (ob *OrderBook) RecoverOrders(matches []*types.OrderTradePair) error {
 	return nil
 }
 
-func (ob *OrderBook) CancelTrades(orders []*types.Order, amount []*big.Int) error {
+func (ob *OrderBook) CancelTrades(orders []*types.Order, amounts []*big.Int) error {
 	ob.mutex.Lock()
 	defer ob.mutex.Unlock()
 
-	for _, o := range orders {
+	for i, o := range orders {
 		o.Status = "PARTIAL_FILLED"
-		o.FilledAmount = math.Sub(o.FilledAmount, o.Amount)
+		o.FilledAmount = math.Sub(o.FilledAmount, amounts[i])
 		if math.IsZero(o.FilledAmount) {
 			o.Status = "OPEN"
 		}
@@ -559,6 +540,25 @@ func (ob *OrderBook) execute(order *types.Order, bookEntry *types.Order) (*types
 // 	err = ob.IncrementPricePointVolume(pricePointSetKey, stored.PricePoint.Int64(), volume)
 // 	if err != nil {
 // 		logger.Error(err)
+// 		return err
+// 	}
+
+// 	return nil
+// }
+
+// func (ob *OrderBook) publishEngineResponse(res *types.EngineResponse) error {
+// 	ch := ob.rabbitMQConn.GetChannel("erPub")
+// 	q := ob.rabbitMQConn.GetQueue(ch, "engineResponse")
+
+// 	bytes, err := json.Marshal(res)
+// 	if err != nil {
+// 		logger.Error("Failed to marshal engine response: ", err)
+// 		return err
+// 	}
+
+// 	err = ob.rabbitMQConn.Publish(ch, q, bytes)
+// 	if err != nil {
+// 		logger.Error("Failed to publish order: ", err)
 // 		return err
 // 	}
 

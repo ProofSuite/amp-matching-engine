@@ -50,11 +50,11 @@ func run(cmd *cobra.Command, args []string) {
 	}
 
 	logger := logrus.New()
-	amqpConn := rabbitmq.InitConnection(app.Config.Rabbitmq)
+	rabbitConn := rabbitmq.InitConnection(app.Config.Rabbitmq)
 	redisConn := redis.NewRedisConnection(app.Config.Redis)
 	provider := ethereum.NewWebsocketProvider()
 
-	http.Handle("/", NewRouter(provider, redisConn, amqpConn, logger))
+	http.Handle("/", NewRouter(provider, redisConn, rabbitConn, logger))
 	http.HandleFunc("/socket", ws.ConnectionEndpoint)
 
 	// start the server
@@ -66,7 +66,7 @@ func run(cmd *cobra.Command, args []string) {
 func NewRouter(
 	provider *ethereum.EthereumProvider,
 	redisConn *redis.RedisConnection,
-	amqpConn *rabbitmq.Connection,
+	rabbitConn *rabbitmq.Connection,
 	logger *logrus.Logger,
 ) *routing.Router {
 
@@ -89,12 +89,6 @@ func NewRouter(
 
 	rg := router.Group("")
 
-	// instantiate engine
-	eng, err := engine.NewEngine(redisConn, amqpConn)
-	if err != nil {
-		panic(err)
-	}
-
 	// get daos for dependency injection
 	orderDao := daos.NewOrderDao()
 	tokenDao := daos.NewTokenDao()
@@ -103,13 +97,19 @@ func NewRouter(
 	accountDao := daos.NewAccountDao()
 	walletDao := daos.NewWalletDao()
 
+	// instantiate engine
+	eng := engine.NewEngine(redisConn, rabbitConn, pairDao)
+	if err != nil {
+		panic(err)
+	}
+
 	// get services for injection
 	accountService := services.NewAccountService(accountDao, tokenDao)
 	ohlcvService := services.NewOHLCVService(tradeDao)
 	tokenService := services.NewTokenService(tokenDao)
 	tradeService := services.NewTradeService(tradeDao)
 	pairService := services.NewPairService(pairDao, tokenDao, eng, tradeService)
-	orderService := services.NewOrderService(orderDao, pairDao, accountDao, tradeDao, eng, provider, amqpConn)
+	orderService := services.NewOrderService(orderDao, pairDao, accountDao, tradeDao, eng, provider, rabbitConn)
 	orderBookService := services.NewOrderBookService(pairDao, tokenDao, eng)
 	walletService := services.NewWalletService(walletDao)
 	cronService := crons.NewCronService(ohlcvService)
@@ -133,7 +133,7 @@ func NewRouter(
 		orderService,
 		provider,
 		exchange,
-		amqpConn,
+		rabbitConn,
 	)
 
 	if err != nil {
@@ -150,9 +150,13 @@ func NewRouter(
 	endpoints.ServeOrderResource(rg, orderService, eng)
 
 	//initialize rabbitmq subscriptions
-	orderService.SubscribeOrders(eng.HandleOrders)
-	orderService.SubscribeTrades(op.HandleTrades)
-	eng.SubscribeResponseQueue(orderService.HandleEngineResponse)
+	rabbitConn.SubscribeOrders(eng.HandleOrders)
+	rabbitConn.SubscribeTrades(op.HandleTrades)
+	rabbitConn.SubscribeEngineResponses(orderService.HandleEngineResponse)
+
+	// orderService.SubscribeOrders(eng.HandleOrders)
+	// orderService.SubscribeTrades(op.HandleTrades)
+	// eng.SubscribeResponseQueue(orderService.HandleEngineResponse)
 
 	cronService.InitCrons()
 	return router
