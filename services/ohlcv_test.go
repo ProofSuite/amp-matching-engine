@@ -97,7 +97,6 @@ func TestOHLCV(t *testing.T) {
 		Signature:  &types.Signature{},
 		Side:       "BUY",
 		PricePoint: big.NewInt(9987),
-		Price:      big.NewInt(9987),
 		Amount:     big.NewInt(125772),
 	}
 	app.Config.DBName = "proofdex"
@@ -113,7 +112,7 @@ func TestOHLCV(t *testing.T) {
 		prc := new(big.Int)
 		sampleTrade.CreatedAt = tTime
 		sampleTrade.Amount = amt.Add(sampleTrade.Amount, big.NewInt(10))
-		sampleTrade.Price = prc.Add(sampleTrade.Price, big.NewInt(5))
+		sampleTrade.PricePoint = prc.Add(sampleTrade.PricePoint, big.NewInt(5))
 		sampleTrade.ID = bson.NewObjectId()
 		sampleTrade.Hash = sampleTrade.ComputeHash()
 
@@ -204,26 +203,26 @@ func tradeToTick(trade *types.Trade, tick *types.Tick, ts int64) *types.Tick {
 				BaseToken:  trade.BaseToken,
 				QuoteToken: trade.QuoteToken,
 			},
-			O:     trade.Price,
-			H:     trade.Price,
-			L:     trade.Price,
-			C:     trade.Price,
+			O:     trade.PricePoint,
+			H:     trade.PricePoint,
+			L:     trade.PricePoint,
+			C:     trade.PricePoint,
 			V:     trade.Amount,
 			Count: big.NewInt(1),
 			Ts:    ts * 1000,
 		}
 	} else {
-		tick.C = trade.Price
+		tick.C = trade.PricePoint
 		tv := new(big.Int)
 		tv.Add(tick.V, trade.Amount)
 		tick.V = tv
 
 		tick.Count.Add(tick.Count, big.NewInt(1))
-		if trade.Price.Cmp(tick.H) == 1 {
-			tick.H = trade.Price
+		if trade.PricePoint.Cmp(tick.H) == 1 {
+			tick.H = trade.PricePoint
 		}
-		if trade.Price.Cmp(tick.L) == -1 {
-			tick.L = trade.Price
+		if trade.PricePoint.Cmp(tick.L) == -1 {
+			tick.L = trade.PricePoint
 		}
 	}
 	return tick

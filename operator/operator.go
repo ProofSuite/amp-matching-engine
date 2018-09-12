@@ -31,8 +31,8 @@ type Operator struct {
 	Exchange           interfaces.Exchange
 	TxQueues           []*TxQueue
 	QueueAddressIndex  map[common.Address]*TxQueue
-	mutex              *sync.Mutex
 	RabbitMQConnection *rabbitmq.Connection
+	mutex              *sync.Mutex
 }
 
 type OperatorInterface interface {
@@ -97,11 +97,10 @@ func NewOperator(
 		mutex:             &sync.Mutex{},
 	}
 
-	err = op.PurgeQueues()
-	if err != nil {
-		panic(err)
-		return nil, err
-	}
+	// err = op.PurgeQueues()
+	// if err != nil {
+	// 	panic(err)
+	// }
 
 	go op.HandleEvents()
 	return op, nil
@@ -226,7 +225,27 @@ func (op *Operator) HandleEvents() error {
 }
 
 func (op *Operator) HandleTrades(msg *types.OperatorMessage) error {
-	err := op.QueueTrade(msg.Order, msg.Trade)
+	o := msg.Order
+	// t := msg.Trade
+
+	//TODO move this to the order service
+	err := o.Validate()
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	//TODO move this to the order service
+	ok, err := o.VerifySignature()
+	if err != nil {
+		return err
+	}
+
+	if !ok {
+		return errors.New("Invalid signature")
+	}
+
+	err = op.QueueTrade(msg.Order, msg.Trade)
 	if err != nil {
 		logger.Error(err)
 		return err

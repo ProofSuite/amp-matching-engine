@@ -185,6 +185,20 @@ func (_m *OrderService) PublishOrder(order *rabbitmq.Message) error {
 	return r0
 }
 
+// PublishTrade provides a mock function with given fields: o, t
+func (_m *OrderService) PublishTrade(o *types.Order, t *types.Trade) error {
+	ret := _m.Called(o, t)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(*types.Order, *types.Trade) error); ok {
+		r0 = rf(o, t)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // RecoverOrders provides a mock function with given fields: res
 func (_m *OrderService) RecoverOrders(res *types.EngineResponse) {
 	_m.Called(res)
@@ -200,12 +214,26 @@ func (_m *OrderService) SendMessage(msgType string, hash common.Hash, data inter
 	_m.Called(msgType, hash, data)
 }
 
-// SubscribeQueue provides a mock function with given fields: fn
-func (_m *OrderService) SubscribeQueue(fn func(*rabbitmq.Message) error) error {
+// SubscribeOrders provides a mock function with given fields: fn
+func (_m *OrderService) SubscribeOrders(fn func(*rabbitmq.Message) error) error {
 	ret := _m.Called(fn)
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(func(*rabbitmq.Message) error) error); ok {
+		r0 = rf(fn)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// SubscribeTrades provides a mock function with given fields: fn
+func (_m *OrderService) SubscribeTrades(fn func(*types.OperatorMessage) error) error {
+	ret := _m.Called(fn)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(func(*types.OperatorMessage) error) error); ok {
 		r0 = rf(fn)
 	} else {
 		r0 = ret.Error(0)
