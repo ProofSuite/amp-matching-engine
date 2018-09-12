@@ -3,6 +3,7 @@ package engine
 import (
 	"encoding/json"
 	"errors"
+	"math/big"
 	"sync"
 
 	"github.com/Proofsuite/amp-matching-engine/interfaces"
@@ -47,46 +48,6 @@ func NewEngine(
 
 	engine := &Engine{obs, redisConn, rabbitMQConn}
 	return engine
-}
-
-// SubscribeResponseQueue subscribes to engineResponse queue and triggers the function
-// passed as arguments for each message.
-func (e *Engine) SubscribeResponseQueue(fn func(*types.EngineResponse) error) error {
-	ch := e.rabbitMQConn.GetChannel("erSub")
-	q := e.rabbitMQConn.GetQueue(ch, "engineResponse")
-
-	go func() {
-		msgs, err := ch.Consume(
-			q.Name, // queue
-			"",     // consumer
-			true,   // auto-ack
-			false,  // exclusive
-			false,  // no-local
-			false,  // no-wait
-			nil,    // args
-		)
-
-		if err != nil {
-			logger.Fatal("Failed to register a consumer:", err)
-		}
-
-		forever := make(chan bool)
-
-		go func() {
-			for d := range msgs {
-				var res *types.EngineResponse
-				err := json.Unmarshal(d.Body, &res)
-				if err != nil {
-					logger.Error(err)
-					continue
-				}
-				go fn(res)
-			}
-		}()
-
-		<-forever
-	}()
-	return nil
 }
 
 // HandleOrders parses incoming rabbitmq order messages and redirects them to the appropriate
@@ -150,6 +111,50 @@ func (e *Engine) newOrder(o *types.Order) error {
 	}
 
 	err = ob.newOrder(o)
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	return nil
+}
+
+//Cancel order is currently not sent through a queue. Not sure i agree with this mechanism
+func (e *Engine) CancelOrder(o *types.Order) (*types.EngineResponse, error) {
+	code, err := o.PairCode()
+	if err != nil {
+		logger.Error(err)
+		return nil, err
+	}
+
+	ob := e.orderbooks[code]
+	if ob == nil {
+		return nil, errors.New("Orderbook error")
+	}
+
+	res, err := ob.CancelOrder(o)
+	if err != nil {
+		logger.Error(err)
+		return nil, err
+	}
+
+	return res, nil
+}
+
+func (e *Engine) CancelTrades(orders []*types.Order, amounts []*big.Int) error {
+	//we assume all orders are for the same pair
+	code, err := orders[0].PairCode()
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	ob := e.orderbooks[code]
+	if ob == nil {
+		return errors.New("Orderbook error")
+	}
+
+	err = ob.CancelTrades(orders, amounts)
 	if err != nil {
 		logger.Error(err)
 		return err

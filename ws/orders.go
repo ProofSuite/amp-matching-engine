@@ -80,10 +80,15 @@ func CloseOrderReadChannel(h common.Hash) error {
 	return nil
 }
 
-func SendOrderMessage(conn *Conn, msgType string, data interface{}, hash ...common.Hash) {
-	SendMessage(conn, OrderChannel, msgType, data, hash...)
+func SendOrderMessage(msgType string, hash common.Hash, data interface{}) {
+	conn := GetOrderConnection(hash)
+	SendMessage(conn, OrderChannel, msgType, data)
 }
 
-func SendOrderErrorMessage(conn *Conn, data interface{}, hash ...common.Hash) {
-	SendOrderMessage(conn, "ERROR", data, hash...)
-}
+// func SendOrderMessage(conn *Conn, msgType string, data interface{}, hash ...common.Hash) {
+// 	SendMessage(conn, OrderChannel, msgType, data, hash...)
+// }
+
+// func SendOrderErrorMessage(conn *Conn, data interface{}, hash ...common.Hash) {
+// 	SendOrderMessage(conn, "ERROR", data, hash...)
+// }
