@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"github.com/Proofsuite/amp-matching-engine/types"
+	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/streadway/amqp"
 )
 
@@ -12,6 +13,8 @@ import (
 var conn *Connection
 var channels = make(map[string]*amqp.Channel)
 var queues = make(map[string]*amqp.Queue)
+
+var logger = utils.RabbitLogger
 
 type Connection struct {
 	Conn *amqp.Connection
@@ -163,6 +166,20 @@ func (c *Connection) SubscribeOperator(fn func(*types.OperatorMessage) error) er
 	return nil
 }
 
+func (c *Connection) CloseOperatorChannel() error {
+	if channels["OPERATOR_SUB"] != nil {
+		ch := c.GetChannel("OPERATOR_SUB")
+		err := ch.Close()
+		if err != nil {
+			log.Print(err)
+		}
+
+		channels["OPERATOR_SUB"] = nil
+	}
+
+	return nil
+}
+
 func (c *Connection) UnSubscribeOperator() error {
 	ch := c.GetChannel("OPERATOR_SUB")
 	q := c.GetQueue(ch, "TX_MESSAGES")
@@ -197,6 +214,77 @@ func (c *Connection) Purge(ch *amqp.Channel, name string) error {
 	_, err = ch.QueuePurge(name, false)
 	if err != nil {
 		log.Print(err)
+		return err
+	}
+
+	return nil
+}
+
+// PublishTxErrorMessage publishes a messages when a trade execution fails
+func (c *Connection) PublishTxErrorMessage(tr *types.Trade, errID int) error {
+	ch := c.GetChannel("OPERATOR_PUB")
+	q := c.GetQueue(ch, "TX_MESSAGES")
+	msg := &types.OperatorMessage{
+		MessageType: "TRADE_ERROR_MESSAGE",
+		Trade:       tr,
+		ErrID:       errID,
+	}
+
+	bytes, err := json.Marshal(msg)
+	if err != nil {
+		logger.Infof("Failed to marshal %s: %s", msg.MessageType, err)
+	}
+
+	err = c.Publish(ch, q, bytes)
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	return nil
+}
+
+// PublishTradeCancelMessage publishes a message when a trade is canceled
+func (c *Connection) PublishTradeCancelMessage(o *types.Order, tr *types.Trade) error {
+	ch := c.GetChannel("OPERATOR_PUB")
+	q := c.GetQueue(ch, "TX_MESSAGES")
+	msg := &types.OperatorMessage{
+		MessageType: "TRADE_CANCEL_MESSAGE",
+		Trade:       tr,
+	}
+
+	bytes, err := json.Marshal(msg)
+	if err != nil {
+		logger.Infof("Failed to marshal %s: %s", msg.MessageType, err)
+	}
+
+	err = c.Publish(ch, q, bytes)
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	return nil
+}
+
+// PublishTradeSuccessMessage publishes a message when a trade transaction is successful
+func (c *Connection) PublishTradeSuccessMessage(o *types.Order, tr *types.Trade) error {
+	ch := c.GetChannel("OPERATOR_PUB")
+	q := c.GetQueue(ch, "TX_MESSAGES")
+	msg := &types.OperatorMessage{
+		MessageType: "TRADE_SUCCESS_MESSAGE",
+		Order:       o,
+		Trade:       tr,
+	}
+
+	bytes, err := json.Marshal(msg)
+	if err != nil {
+		logger.Infof("Failed to marshal %s: %s", msg.MessageType, err)
+	}
+
+	err = c.Publish(ch, q, bytes)
+	if err != nil {
+		logger.Error(err)
 		return err
 	}
 

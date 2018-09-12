@@ -13,6 +13,7 @@ var Logger = NewLogger("main", "./logs/main.log")
 var OperatorLogger = NewLogger("operator", "./logs/operator.log")
 var EngineLogger = NewLogger("engine", "./logs/engine.log")
 var APILogger = NewLogger("api", "./logs/api.log")
+var RabbitLogger = NewLogger("rabbitmq", "./logs/rabbit.log")
 
 func NewLogger(module string, logFile string) *logging.Logger {
 	_, fileName, _, _ := runtime.Caller(1)

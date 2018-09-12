@@ -86,9 +86,11 @@ type TokenDao interface {
 }
 
 type Exchange interface {
+	GetAddress() common.Address
 	GetTxCallOptions() *bind.CallOpts
 	SetFeeAccount(a common.Address, txOpts *bind.TransactOpts) (*eth.Transaction, error)
 	SetOperator(a common.Address, isOperator bool, txOpts *bind.TransactOpts) (*eth.Transaction, error)
+	CallTrade(o *types.Order, t *types.Trade, call *ethereum.CallMsg) (uint64, error)
 	FeeAccount() (common.Address, error)
 	Operator(a common.Address) (bool, error)
 	Trade(o *types.Order, t *types.Trade, txOpts *bind.TransactOpts) (*eth.Transaction, error)

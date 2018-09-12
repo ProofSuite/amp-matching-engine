@@ -8,6 +8,7 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/Proofsuite/amp-matching-engine/rabbitmq"
 	"github.com/Proofsuite/amp-matching-engine/types"
+	ethereum "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	eth "github.com/ethereum/go-ethereum/core/types"
 )
@@ -56,6 +57,11 @@ func (txq *TxQueue) GetTxSendOptions() *bind.TransactOpts {
 	return bind.NewKeyedTransactor(txq.Wallet.PrivateKey)
 }
 
+func (txq *TxQueue) GetTxCallOptions() *ethereum.CallMsg {
+	address := txq.Exchange.GetAddress()
+	return &ethereum.CallMsg{From: txq.Wallet.Address, To: &address}
+}
+
 // Length
 func (txq *TxQueue) Length() int {
 	name := "TX_QUEUES:" + txq.Name
@@ -79,6 +85,7 @@ func (txq *TxQueue) QueueTrade(o *types.Order, t *types.Trade) error {
 		_, err := txq.ExecuteTrade(o, t)
 		if err != nil {
 			logger.Error(err)
+			logger.Info("This is an invalid trade")
 			return err
 		}
 	}
@@ -98,9 +105,29 @@ func (txq *TxQueue) QueueTrade(o *types.Order, t *types.Trade) error {
 func (txq *TxQueue) ExecuteTrade(o *types.Order, tr *types.Trade) (*eth.Transaction, error) {
 	logger.Info("EXECUTE_TRADE: ", tr.Hash.Hex())
 
-	// input, err :
-	// callOpts := ethereum.CallMsg{from: }
-	// gas, err := txq.EthereumProvider.EstimateGas
+	callOpts := txq.GetTxCallOptions()
+	gasLimit, err := txq.Exchange.CallTrade(o, tr, callOpts)
+	if err != nil {
+		logger.Error(err)
+		return nil, err
+	}
+
+	if gasLimit < 140000 {
+		err = txq.RabbitMQConn.PublishTxErrorMessage(tr, 10)
+		if err != nil {
+			logger.Error(err)
+			return nil, err
+		}
+
+		err = txq.RabbitMQConn.PublishTradeCancelMessage(o, tr)
+		if err != nil {
+			logger.Error(err)
+			return nil, err
+		}
+
+		go txq.ExecuteNextTrade(tr)
+		return nil, errors.New("Invalid Trade")
+	}
 
 	nonce, err := txq.EthereumProvider.GetPendingNonceAt(txq.Wallet.Address)
 	if err != nil {
@@ -110,18 +137,19 @@ func (txq *TxQueue) ExecuteTrade(o *types.Order, tr *types.Trade) (*eth.Transact
 
 	txOpts := txq.GetTxSendOptions()
 	txOpts.Nonce = big.NewInt(int64(nonce))
-
 	tx, err := txq.Exchange.Trade(o, tr, txOpts)
 	if err != nil {
 		logger.Error(err)
 		return nil, err
 	}
 
+	logger.Info("TRANSACTION HASH IS GOING TO BE UPDATED", tr.Hash.Hex(), tx.Hash().Hex())
 	err = txq.TradeService.UpdateTradeTxHash(tr, tx.Hash())
 	if err != nil {
 		logger.Error(err)
 		return nil, errors.New("Could not update trade tx attribute")
 	}
+	logger.Info("TRANSACTION HASH HAS BEEN UPDATED: %s", tr.TxHash.Hex(), tx.Hash().Hex())
 
 	err = txq.PublishTradeSentMessage(o, tr)
 	if err != nil {
@@ -130,7 +158,6 @@ func (txq *TxQueue) ExecuteTrade(o *types.Order, tr *types.Trade) (*eth.Transact
 	}
 
 	go func() {
-		logger.Info("MINING TRADE")
 		_, err := txq.EthereumProvider.WaitMined(tx.Hash())
 		if err != nil {
 			logger.Error(err)
@@ -139,7 +166,6 @@ func (txq *TxQueue) ExecuteTrade(o *types.Order, tr *types.Trade) (*eth.Transact
 		logger.Info("TRADE_MINED IN EXECUTE TRADE: ", tr.Hash.Hex())
 
 		len := txq.Length()
-		logger.Info("LENGTH of the queue is ", len)
 		if len > 0 {
 			msg, err := txq.PopPendingTrade()
 			if err != nil {
@@ -149,7 +175,6 @@ func (txq *TxQueue) ExecuteTrade(o *types.Order, tr *types.Trade) (*eth.Transact
 
 			// very hacky
 			if msg.Trade.Hash == tr.Hash {
-				logger.Info("HACKY POP PENDING TRADE: ", tr.Hash.Hex())
 				msg, err = txq.PopPendingTrade()
 				if err != nil {
 					logger.Error(err)
@@ -167,6 +192,24 @@ func (txq *TxQueue) ExecuteTrade(o *types.Order, tr *types.Trade) (*eth.Transact
 	}()
 
 	return tx, nil
+}
+
+func (txq *TxQueue) ExecuteNextTrade(tr *types.Trade) error {
+	len := txq.Length()
+	logger.Info("LENGTH of the queue is ", len)
+	if len > 0 {
+		msg, err := txq.PopPendingTrade()
+		if err != nil {
+			logger.Error(err)
+			return err
+		}
+
+		logger.Info("NEXT_TRADE: ", msg.Trade.Hash.Hex())
+		go txq.ExecuteTrade(msg.Order, msg.Trade)
+		return nil
+	}
+
+	return nil
 }
 
 func (txq *TxQueue) PublishPendingTrade(o *types.Order, t *types.Trade) error {

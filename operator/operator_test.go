@@ -16,6 +16,7 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/rabbitmq"
 	"github.com/Proofsuite/amp-matching-engine/services"
 	"github.com/Proofsuite/amp-matching-engine/types"
+	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/Proofsuite/amp-matching-engine/utils/testutils"
 	"github.com/Proofsuite/amp-matching-engine/utils/testutils/mocks"
 	"github.com/ethereum/go-ethereum/common"
@@ -394,6 +395,7 @@ func TestHandleEvents1(t *testing.T) {
 	}
 
 	rabbitConn.SubscribeOperator(handler)
+
 	o1, _ := factory1.NewOrder(zrx, 1, weth, 1)
 	t1, _ := factory2.NewTrade(o1, 1)
 
@@ -417,9 +419,6 @@ func TestHandleEvents1(t *testing.T) {
 	if err != nil {
 		t.Errorf("Could not create new queue: %v", err)
 	}
-
-	defer txq.PurgePendingTrades()
-	defer rabbitConn.PurgeOperatorQueue()
 
 	err = txq.QueueTrade(o1, &t1)
 	if err != nil {
@@ -459,6 +458,10 @@ func TestHandleEvents1(t *testing.T) {
 
 	wg.Wait()
 	done <- true
+
+	txq.PurgePendingTrades()
+	rabbitConn.PurgeOperatorQueue()
+	rabbitConn.CloseOperatorChannel()
 }
 
 func TestHandleEvents2(t *testing.T) {
@@ -466,18 +469,23 @@ func TestHandleEvents2(t *testing.T) {
 
 	opMessages := make(chan *types.OperatorMessage)
 	handler := func(msg *types.OperatorMessage) error {
+		fmt.Println("RECEIVING MESSAGE IN TEST HANDLE EVENTS 2")
 		opMessages <- msg
 		return nil
 	}
 
 	rabbitConn.SubscribeOperator(handler)
+	defer rabbitConn.CloseOperatorChannel()
+
 	o1, _ := factory1.NewOrder(zrx, 1, weth, 1)
 	t1, _ := factory2.NewTrade(o1, 1)
 	o2, _ := factory1.NewOrder(zrx, 1, weth, 1)
 	t2, _ := factory2.NewTrade(o2, 1)
 
-	provider := ethereum.NewEthereumProvider(simulator)
+	utils.PrintJSON(t1)
+	utils.PrintJSON(t2)
 
+	provider := ethereum.NewEthereumProvider(simulator)
 	tradeService.On("UpdateTradeTxHash", mock.Anything, mock.Anything).Return(nil).Once().Run(func(args mock.Arguments) {
 		t1.TxHash = args.Get(1).(common.Hash)
 	})
@@ -618,8 +626,7 @@ func TestHandleEvents3(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 	txq.QueueTrade(o5, &t5)
 
-	simulator.Commit()
-
+	go testutils.Mine(simulator)
 	wg := sync.WaitGroup{}
 	wg.Add(10)
 
@@ -628,11 +635,6 @@ func TestHandleEvents3(t *testing.T) {
 			msg := <-opMessages
 			switch msg.MessageType {
 			case "TRADE_SENT_MESSAGE":
-				go func() {
-					// we simulate that transactions take 100 milliseconds
-					time.Sleep(100 * time.Millisecond)
-					simulator.Commit()
-				}()
 				wg.Done()
 			case "TRADE_SUCCESS_MESSAGE":
 				wg.Done()
@@ -649,7 +651,7 @@ func TestHandleEvents3(t *testing.T) {
 //transaction. o3/t3 payload is signed with a wrong private key and will be rejected by the smart contracts
 //The rest of the transactions are valid and should be sent successfully.
 func TestHandleEvents4(t *testing.T) {
-	_, exchange, wallets, zrx, weth, factory1, factory2, simulator, tradeService, orderService, rabbitConn := SetupTest(t)
+	op, exchange, wallets, zrx, weth, factory1, factory2, simulator, tradeService, orderService, rabbitConn := SetupTest(t)
 
 	opMessages := make(chan *types.OperatorMessage)
 	rabbitConn.SubscribeOperator(func(msg *types.OperatorMessage) error {
@@ -673,18 +675,12 @@ func TestHandleEvents4(t *testing.T) {
 	// we simulate a failing order with a wrong signature
 	t3.Sign(admin)
 
-	provider := ethereum.NewEthereumProvider(simulator)
-
 	tradeService.On("UpdateTradeTxHash", mock.Anything, mock.Anything).Return(nil).Once().Run(func(args mock.Arguments) {
 		t1.TxHash = args.Get(1).(common.Hash)
 	})
 
 	tradeService.On("UpdateTradeTxHash", mock.Anything, mock.Anything).Return(nil).Once().Run(func(args mock.Arguments) {
 		t2.TxHash = args.Get(1).(common.Hash)
-	})
-
-	tradeService.On("UpdateTradeTxHash", mock.Anything, mock.Anything).Return(nil).Once().Run(func(args mock.Arguments) {
-		t3.TxHash = args.Get(1).(common.Hash)
 	})
 
 	tradeService.On("UpdateTradeTxHash", mock.Anything, mock.Anything).Return(nil).Once().Run(func(args mock.Arguments) {
@@ -709,7 +705,7 @@ func TestHandleEvents4(t *testing.T) {
 	txq, err := operator.NewTxQueue(
 		"queue1",
 		tradeService,
-		provider,
+		op.EthereumProvider,
 		orderService,
 		wallets[0],
 		exchange,
@@ -733,27 +729,24 @@ func TestHandleEvents4(t *testing.T) {
 	time.Sleep(2 * time.Millisecond)
 	txq.QueueTrade(o5, &t5)
 
+	go testutils.Mine(simulator)
+
 	wg := sync.WaitGroup{}
-	wg.Add(10)
+	wg.Add(8)
 
 	go func() {
 		for {
 			msg := <-opMessages
 			switch msg.MessageType {
 			case "TRADE_SENT_MESSAGE":
-				fmt.Println("TRADE_SENT")
-				// we simulate that transactions take 100 milliseconds
-				go func() {
-					time.Sleep(100 * time.Millisecond)
-					simulator.Commit()
-				}()
+				log.Print("TRADE_SENT_MESSAGE")
 				wg.Done()
 			case "TRADE_SUCCESS_MESSAGE":
-				fmt.Println("TRADE_SUCCESS")
+				log.Print("TRADE_SUCCESS_MESSAGE")
 				wg.Done()
 			case "TRADE_ERROR_MESSAGE":
-				fmt.Println("TRADE_ERROR")
-				assert.Equal(t, msg.ErrID, 2)
+				log.Print("TRADE_ERROR_MESSAGE")
+				assert.Equal(t, msg.ErrID, 10)
 				assert.Equal(t, msg.Trade.Hash, t3.Hash)
 				wg.Done()
 			}
