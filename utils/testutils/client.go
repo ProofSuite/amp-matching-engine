@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/Proofsuite/amp-matching-engine/types"
+	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/Proofsuite/amp-matching-engine/ws"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/websocket"
@@ -21,6 +22,7 @@ import (
 
 var wg = &sync.WaitGroup{}
 var addr = flag.String("addr", "localhost:8080", "http service address")
+var logger = utils.TerminalLogger
 
 // Client simulates the client websocket handler that will be used to perform trading.
 // requests and responses are respectively the outbound and incoming messages.
@@ -135,6 +137,7 @@ func (c *Client) handleMessages() {
 
 // handleChannelMessagesOut
 func (c *Client) handleOrderChannelMessagesOut(m types.WebSocketMessage) {
+	logger.Infof("Semd %v message on channel %v", m.Payload.Type, m.Channel)
 	err := c.send(m)
 	if err != nil {
 		log.Printf("Error: Could not send signed orders. Payload: %#v", m.Payload)
@@ -144,6 +147,7 @@ func (c *Client) handleOrderChannelMessagesOut(m types.WebSocketMessage) {
 
 // handleChannelMessagesIn
 func (c *Client) handleOrderChannelMessagesIn(p types.WebSocketPayload) {
+	logger.Infof("Receiving %v message", p.Type)
 	switch p.Type {
 	case "ORDER_ADDED":
 		c.handleOrderAdded(p)
@@ -254,12 +258,12 @@ func (c *Client) handleSignatureRequested(p types.WebSocketPayload) {
 	data := &types.SignaturePayload{}
 	bytes, err := json.Marshal(p.Data)
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 	}
 
 	err = json.Unmarshal(bytes, data)
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 	}
 
 	for _, m := range data.Matches {
@@ -268,7 +272,7 @@ func (c *Client) handleSignatureRequested(p types.WebSocketPayload) {
 
 		err := c.Wallet.SignTrade(t)
 		if err != nil {
-			log.Print(err)
+			logger.Error(err)
 		}
 	}
 
@@ -277,7 +281,7 @@ func (c *Client) handleSignatureRequested(p types.WebSocketPayload) {
 		c.SetNonce(data.Order)
 		err = c.Wallet.SignOrder(data.Order)
 		if err != nil {
-			log.Print(err)
+			logger.Error(err)
 		}
 	}
 

@@ -112,14 +112,9 @@ func (txq *TxQueue) ExecuteTrade(o *types.Order, tr *types.Trade) (*eth.Transact
 		return nil, err
 	}
 
-	if gasLimit < 140000 {
-		err = txq.RabbitMQConn.PublishTxErrorMessage(tr, 10)
-		if err != nil {
-			logger.Error(err)
-			return nil, err
-		}
-
-		err = txq.RabbitMQConn.PublishTradeCancelMessage(o, tr)
+	if gasLimit < 120000 {
+		logger.Warning("GAS LIMIT: ", gasLimit)
+		err = txq.RabbitMQConn.PublishTradeInvalidMessage(o, tr)
 		if err != nil {
 			logger.Error(err)
 			return nil, err
@@ -143,13 +138,11 @@ func (txq *TxQueue) ExecuteTrade(o *types.Order, tr *types.Trade) (*eth.Transact
 		return nil, err
 	}
 
-	logger.Info("TRANSACTION HASH IS GOING TO BE UPDATED", tr.Hash.Hex(), tx.Hash().Hex())
 	err = txq.TradeService.UpdateTradeTxHash(tr, tx.Hash())
 	if err != nil {
 		logger.Error(err)
 		return nil, errors.New("Could not update trade tx attribute")
 	}
-	logger.Info("TRANSACTION HASH HAS BEEN UPDATED: %s", tr.TxHash.Hex(), tx.Hash().Hex())
 
 	err = txq.RabbitMQConn.PublishTradeSentMessage(o, tr)
 	if err != nil {

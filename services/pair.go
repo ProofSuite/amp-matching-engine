@@ -35,31 +35,31 @@ func NewPairService(
 func (s *PairService) Create(pair *types.Pair) error {
 	p, err := s.pairDao.GetByBuySellTokenAddress(pair.BaseTokenAddress, pair.QuoteTokenAddress)
 	if err != nil && err.Error() != "NO_PAIR_FOUND" {
-		return aerrors.NewAPIError(400, err.Error(), nil)
+		return aerrors.NewHTTPError(400, err.Error(), nil)
 	} else if p != nil {
-		return aerrors.NewAPIError(401, "PAIR_ALREADY_EXISTS", nil)
+		return aerrors.NewHTTPError(401, "PAIR_ALREADY_EXISTS", nil)
 	}
 
 	bt, err := s.tokenDao.GetByAddress(pair.BaseTokenAddress)
 	if err != nil {
-		return aerrors.NewAPIError(400, err.Error(), nil)
+		return aerrors.NewHTTPError(400, err.Error(), nil)
 	}
 
 	if bt == nil {
-		return aerrors.NewAPIError(401, "BaseTokenAddress_DOESNT_EXIST", nil)
+		return aerrors.NewHTTPError(401, "BaseTokenAddress_DOESNT_EXIST", nil)
 	}
 
 	st, err := s.tokenDao.GetByAddress(pair.QuoteTokenAddress)
 	if err != nil {
-		return aerrors.NewAPIError(400, err.Error(), nil)
+		return aerrors.NewHTTPError(400, err.Error(), nil)
 	}
 
 	if st == nil {
-		return aerrors.NewAPIError(401, "QuoteTokenAddress_DOESNT_EXIST", nil)
+		return aerrors.NewHTTPError(401, "QuoteTokenAddress_DOESNT_EXIST", nil)
 	}
 
 	if !st.Quote {
-		return aerrors.NewAPIError(401, "QuoteTokenAddress_CAN_NOT_BE_USED_AS_QUOTE_TOKEN", nil)
+		return aerrors.NewHTTPError(401, "QuoteTokenAddress_CAN_NOT_BE_USED_AS_QUOTE_TOKEN", nil)
 	}
 
 	pair.QuoteTokenSymbol = st.Symbol

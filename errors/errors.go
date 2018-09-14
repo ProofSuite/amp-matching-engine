@@ -14,17 +14,17 @@ type validationError struct {
 
 // InternalServerError creates a new API error representing an internal server error (HTTP 500)
 func InternalServerError(err error) *APIError {
-	return NewAPIError(http.StatusInternalServerError, "INTERNAL_SERVER_ERROR", Params{"error": err.Error()})
+	return NewHTTPError(http.StatusInternalServerError, "INTERNAL_SERVER_ERROR", Params{"error": err.Error()})
 }
 
 // NotFound creates a new API error representing a resource-not-found error (HTTP 404)
 func NotFound(resource string) *APIError {
-	return NewAPIError(http.StatusNotFound, "NOT_FOUND", Params{"resource": resource})
+	return NewHTTPError(http.StatusNotFound, "NOT_FOUND", Params{"resource": resource})
 }
 
 // Unauthorized creates a new API error representing an authentication failure (HTTP 401)
 func Unauthorized(err string) *APIError {
-	return NewAPIError(http.StatusUnauthorized, "UNAUTHORIZED", Params{"error": err})
+	return NewHTTPError(http.StatusUnauthorized, "UNAUTHORIZED", Params{"error": err})
 }
 
 // InvalidData converts a data validation error into an API error (HTTP 400)
@@ -43,7 +43,7 @@ func InvalidData(errs validation.Errors) *APIError {
 		})
 	}
 
-	err := NewAPIError(http.StatusBadRequest, "INVALID_DATA", nil)
+	err := NewHTTPError(http.StatusBadRequest, "INVALID_DATA", nil)
 	err.Details = result
 
 	return err

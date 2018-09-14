@@ -149,6 +149,7 @@ func NewRouter() *routing.Router {
 	//initialize rabbitmq subscriptions
 	rabbitConn.SubscribeOrders(eng.HandleOrders)
 	rabbitConn.SubscribeTrades(op.HandleTrades)
+	rabbitConn.SubscribeOperator(orderService.HandleOperatorMessages)
 	rabbitConn.SubscribeEngineResponses(orderService.HandleEngineResponse)
 
 	// fmt.Printf("\n%+v\n", app.Config.TickDuration)

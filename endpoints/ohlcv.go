@@ -16,11 +16,11 @@ type OHLCVEndpoint struct {
 }
 
 func ServeOHLCVResource(
-	rg *routing.RouteGroup,
+	r *routing.RouteGroup,
 	ohlcvService interfaces.OHLCVService,
 ) {
 	e := &OHLCVEndpoint{ohlcvService}
-	rg.Post("/ohlcv", e.ohlcv)
+	r.Post("/ohlcv", e.ohlcv)
 	ws.RegisterChannel(ws.OHLCVChannel, e.ohlcvWebSocket)
 }
 
@@ -64,8 +64,7 @@ func (e *OHLCVEndpoint) ohlcvWebSocket(input interface{}, conn *ws.Conn) {
 	socket := ws.GetOHLCVSocket()
 
 	if payload.Type != "subscription" {
-		logger.Error("Payload is not subscription type")
-		socket.SendErrorMessage(conn, "Payload is not of subscription type")
+		socket.SendErrorMessage(conn, "Invalid payload")
 		return
 	}
 
@@ -78,22 +77,12 @@ func (e *OHLCVEndpoint) ohlcvWebSocket(input interface{}, conn *ws.Conn) {
 	}
 
 	if (msg.Pair.BaseToken == common.Address{}) {
-		message := map[string]string{
-			"Code":    "Invalid_Pair_BaseToken",
-			"Message": "Invalid Pair BaseToken passed in Params",
-		}
-
-		socket.SendErrorMessage(conn, message)
+		socket.SendErrorMessage(conn, "Invalid base token")
 		return
 	}
 
 	if (msg.Pair.QuoteToken == common.Address{}) {
-		message := map[string]string{
-			"Code":    "Invalid_Pair_BaseToken",
-			"Message": "Invalid Pair BaseToken passed in Params",
-		}
-
-		socket.SendErrorMessage(conn, message)
+		socket.SendErrorMessage(conn, "Invalid Quote Token")
 		return
 	}
 

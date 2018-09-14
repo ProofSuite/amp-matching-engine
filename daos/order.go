@@ -252,8 +252,8 @@ func (dao *OrderDao) GetUserLockedBalance(account common.Address, token common.A
 			"OPEN",
 			"PARTIALLY_FILLED",
 		},
-			"sellToken": token.Hex(),
 		},
+		"sellToken": token.Hex(),
 	}
 
 	err := db.Get(dao.dbName, dao.collectionName, q, 0, 0, &orders)

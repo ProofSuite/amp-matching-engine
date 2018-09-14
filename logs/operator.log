@@ -1,0 +1,113 @@
+INFO 22:06:02 at operator/operator.go:273 in QueueTrade():QUEING TRADE 0
+INFO 22:06:02 at operator/txqueue.go:83 in QueueTrade():Length of the queue is  0
+INFO 22:06:02 at operator/txqueue.go:106 in ExecuteTrade():EXECUTE_TRADE:  0xbdefc866b1554d6ac13c94d14239941729b9436916a6f75c5e08b5c4d2f488dd
+INFO 22:06:03 at operator/txqueue.go:146 in ExecuteTrade():TRANSACTION HASH IS GOING TO BE UPDATED 0xbdefc866b1554d6ac13c94d14239941729b9436916a6f75c5e08b5c4d2f488dd 0x124f9d83d0c630711f50eb7c1be216d0e4966af2232891c45dc50a93b61db86b
+INFO 22:06:03 at operator/txqueue.go:152 in ExecuteTrade():TRANSACTION HASH HAS BEEN UPDATED: %s 0x124f9d83d0c630711f50eb7c1be216d0e4966af2232891c45dc50a93b61db86b 0x124f9d83d0c630711f50eb7c1be216d0e4966af2232891c45dc50a93b61db86b
+INFO 22:06:29 at operator/operator.go:203 in HandleEvents():TRADE_SUCCESS_EVENT 0xbdefc866b1554d6ac13c94d14239941729b9436916a6f75c5e08b5c4d2f488dd 0x124f9d83d0c630711f50eb7c1be216d0e4966af2232891c45dc50a93b61db86b
+INFO 22:06:29 at operator/operator.go:216 in func2():TRADE_MINED IN HANDLE EVENTS:  0xbdefc866b1554d6ac13c94d14239941729b9436916a6f75c5e08b5c4d2f488dd
+INFO 22:06:30 at operator/txqueue.go:166 in func1():TRADE_MINED IN EXECUTE TRADE:  0xbdefc866b1554d6ac13c94d14239941729b9436916a6f75c5e08b5c4d2f488dd
+INFO 22:10:26 at operator/operator.go:273 in QueueTrade():QUEING TRADE 0
+INFO 22:10:26 at operator/txqueue.go:83 in QueueTrade():Length of the queue is  0
+INFO 22:10:26 at operator/txqueue.go:106 in ExecuteTrade():EXECUTE_TRADE:  0x671946fe9e4783080880e7a02c639d4123ecb8f9766d6e5e731026237c11b2db
+INFO 22:10:56 at operator/operator.go:203 in HandleEvents():TRADE_SUCCESS_EVENT 0x671946fe9e4783080880e7a02c639d4123ecb8f9766d6e5e731026237c11b2db 0x74aa910aecb5c386b54079fe8433d03c71516b6650980ad2cc834a919db46444
+INFO 22:10:56 at operator/operator.go:216 in func2():TRADE_MINED IN HANDLE EVENTS:  0x671946fe9e4783080880e7a02c639d4123ecb8f9766d6e5e731026237c11b2db
+INFO 22:10:56 at operator/txqueue.go:164 in func1():TRADE_MINED IN EXECUTE TRADE:  0x671946fe9e4783080880e7a02c639d4123ecb8f9766d6e5e731026237c11b2db
+INFO 22:15:32 at operator/operator.go:273 in QueueTrade():QUEING TRADE 0
+INFO 22:15:32 at operator/txqueue.go:83 in QueueTrade():Length of the queue is  0
+INFO 22:15:32 at operator/txqueue.go:106 in ExecuteTrade():EXECUTE_TRADE:  0xa721241fbb46f0610f160579f96e842031b9b4fbf0d8bd6c8103b31185283093
+INFO 22:15:58 at operator/operator.go:203 in HandleEvents():TRADE_SUCCESS_EVENT 0xa721241fbb46f0610f160579f96e842031b9b4fbf0d8bd6c8103b31185283093 0x55603443bebd865d7218c8191374da8c8349c9eeea5ceb2f369f05503f5a024f
+INFO 22:15:58 at operator/operator.go:216 in func2():TRADE_MINED IN HANDLE EVENTS:  0xa721241fbb46f0610f160579f96e842031b9b4fbf0d8bd6c8103b31185283093
+INFO 22:15:58 at operator/txqueue.go:164 in func1():TRADE_MINED IN EXECUTE TRADE:  0xa721241fbb46f0610f160579f96e842031b9b4fbf0d8bd6c8103b31185283093
+INFO 22:21:03 at operator/operator.go:273 in QueueTrade():QUEING TRADE 0
+INFO 22:21:03 at operator/txqueue.go:83 in QueueTrade():Length of the queue is  0
+INFO 22:21:03 at operator/txqueue.go:106 in ExecuteTrade():EXECUTE_TRADE:  0x449d1ee3b9ee8d6f4fa3b480812554b19e5460fd9a91086bd58f23e1b9503e2d
+INFO 22:21:49 at operator/operator.go:203 in HandleEvents():TRADE_SUCCESS_EVENT 0x449d1ee3b9ee8d6f4fa3b480812554b19e5460fd9a91086bd58f23e1b9503e2d 0x38e782a8b45624221be27a9e7648af033665e608173c920e513b2c353ac3c314
+INFO 22:21:49 at operator/operator.go:216 in func2():TRADE_MINED IN HANDLE EVENTS:  0x449d1ee3b9ee8d6f4fa3b480812554b19e5460fd9a91086bd58f23e1b9503e2d
+INFO 22:21:50 at operator/txqueue.go:164 in func1():TRADE_MINED IN EXECUTE TRADE:  0x449d1ee3b9ee8d6f4fa3b480812554b19e5460fd9a91086bd58f23e1b9503e2d
+INFO 22:24:56 at operator/operator.go:273 in QueueTrade():QUEING TRADE 0
+INFO 22:24:56 at operator/txqueue.go:83 in QueueTrade():Length of the queue is  0
+INFO 22:24:56 at operator/txqueue.go:106 in ExecuteTrade():EXECUTE_TRADE:  0xb90f63e1f6ac121c76303e50b02f070cadb01a76983a449108891c1137dd0d3b
+INFO 22:25:13 at operator/operator.go:273 in QueueTrade():QUEING TRADE 0
+INFO 22:25:13 at operator/txqueue.go:83 in QueueTrade():Length of the queue is  0
+INFO 22:25:13 at operator/txqueue.go:106 in ExecuteTrade():EXECUTE_TRADE:  0x46cb7d19fb600897a08f2816b79908dbd5d596d26b2241f75fdb53b41fe829c4
+INFO 22:25:14 at operator/operator.go:273 in QueueTrade():QUEING TRADE 0
+INFO 22:25:14 at operator/txqueue.go:83 in QueueTrade():Length of the queue is  1
+INFO 22:25:27 at operator/operator.go:203 in HandleEvents():TRADE_SUCCESS_EVENT 0x46cb7d19fb600897a08f2816b79908dbd5d596d26b2241f75fdb53b41fe829c4 0x0b0d2a9a05903af010fcf531f592651714113e47cae4b87d08a561d68efd15e6
+INFO 22:25:27 at operator/operator.go:216 in func2():TRADE_MINED IN HANDLE EVENTS:  0x46cb7d19fb600897a08f2816b79908dbd5d596d26b2241f75fdb53b41fe829c4
+INFO 22:25:28 at operator/txqueue.go:164 in func1():TRADE_MINED IN EXECUTE TRADE:  0x46cb7d19fb600897a08f2816b79908dbd5d596d26b2241f75fdb53b41fe829c4
+INFO 22:25:28 at operator/txqueue.go:187 in func1():NEXT_TRADE:  0xffed52a9a2da30bf8c9a6f5a8e48f0b4c262663988e34981e7ef1b301643298f
+INFO 22:25:28 at operator/txqueue.go:106 in ExecuteTrade():EXECUTE_TRADE:  0xffed52a9a2da30bf8c9a6f5a8e48f0b4c262663988e34981e7ef1b301643298f
+INFO 22:25:28 at operator/txqueue.go:197 in ExecuteNextTrade():LENGTH of the queue is  0
+INFO 22:30:45 at operator/operator.go:273 in QueueTrade():QUEING TRADE 0
+INFO 22:30:45 at operator/txqueue.go:83 in QueueTrade():Length of the queue is  0
+INFO 22:30:45 at operator/txqueue.go:106 in ExecuteTrade():EXECUTE_TRADE:  0x27f2ff76404fa4007928a18587cc8eac6041ba0dc44acabb36b6080eee82ba5b
+INFO 22:30:45 at operator/operator.go:273 in QueueTrade():QUEING TRADE 0
+INFO 22:30:45 at operator/txqueue.go:83 in QueueTrade():Length of the queue is  1
+INFO 22:32:24 at operator/operator.go:203 in HandleEvents():TRADE_SUCCESS_EVENT 0x27f2ff76404fa4007928a18587cc8eac6041ba0dc44acabb36b6080eee82ba5b 0xbac95185e0d9c737662d1e71b98507f69903d41f3c7e1cc919096479ba7afb63
+INFO 22:32:24 at operator/operator.go:216 in func2():TRADE_MINED IN HANDLE EVENTS:  0x27f2ff76404fa4007928a18587cc8eac6041ba0dc44acabb36b6080eee82ba5b
+INFO 22:32:24 at operator/txqueue.go:164 in func1():TRADE_MINED IN EXECUTE TRADE:  0x27f2ff76404fa4007928a18587cc8eac6041ba0dc44acabb36b6080eee82ba5b
+INFO 22:32:24 at operator/txqueue.go:187 in func1():NEXT_TRADE:  0x4bc8e4f263b7ba5609260893572c331bbe096823fbc881a3f1463435bce1a00f
+INFO 22:32:24 at operator/txqueue.go:106 in ExecuteTrade():EXECUTE_TRADE:  0x4bc8e4f263b7ba5609260893572c331bbe096823fbc881a3f1463435bce1a00f
+INFO 22:32:24 at operator/txqueue.go:197 in ExecuteNextTrade():LENGTH of the queue is  0
+INFO 22:34:38 at operator/operator.go:273 in QueueTrade():QUEING TRADE 0
+INFO 22:34:38 at operator/txqueue.go:83 in QueueTrade():Length of the queue is  0
+INFO 22:34:38 at operator/txqueue.go:106 in ExecuteTrade():EXECUTE_TRADE:  0x9495d9e001a0aed35be93ff00c134d23f61307e3dbfc30c14fd146b9941921bf
+INFO 22:34:39 at operator/operator.go:273 in QueueTrade():QUEING TRADE 0
+INFO 22:34:39 at operator/txqueue.go:83 in QueueTrade():Length of the queue is  1
+INFO 22:34:47 at operator/operator.go:203 in HandleEvents():TRADE_SUCCESS_EVENT 0x9495d9e001a0aed35be93ff00c134d23f61307e3dbfc30c14fd146b9941921bf 0x31a7e6e2ac05b64b8f64d369c019511677003e0bd3a623c8edfb29a8ba064a9d
+INFO 22:34:47 at operator/operator.go:216 in func2():TRADE_MINED IN HANDLE EVENTS:  0x9495d9e001a0aed35be93ff00c134d23f61307e3dbfc30c14fd146b9941921bf
+INFO 22:34:48 at operator/txqueue.go:166 in func1():TRADE_MINED IN EXECUTE TRADE:  0x9495d9e001a0aed35be93ff00c134d23f61307e3dbfc30c14fd146b9941921bf
+INFO 22:34:48 at operator/txqueue.go:189 in func1():NEXT_TRADE:  0x2b2115152d6378789c5443c5d5397613bd22da98184595f542ef94cdd6b0d717
+INFO 22:34:48 at operator/txqueue.go:106 in ExecuteTrade():EXECUTE_TRADE:  0x2b2115152d6378789c5443c5d5397613bd22da98184595f542ef94cdd6b0d717
+WARN 22:34:48 at operator/txqueue.go:116 in ExecuteTrade():GAS LIMIT:  128388
+INFO 22:34:59 at operator/operator.go:203 in HandleEvents():TRADE_SUCCESS_EVENT 0x2b2115152d6378789c5443c5d5397613bd22da98184595f542ef94cdd6b0d717 0x8bbd5b01ae4ada386836f7346a24d24acd9eab3f93db8321f1c9b05f2cd58c73
+INFO 22:34:59 at operator/operator.go:216 in func2():TRADE_MINED IN HANDLE EVENTS:  0x2b2115152d6378789c5443c5d5397613bd22da98184595f542ef94cdd6b0d717
+INFO 22:34:59 at operator/txqueue.go:166 in func1():TRADE_MINED IN EXECUTE TRADE:  0x2b2115152d6378789c5443c5d5397613bd22da98184595f542ef94cdd6b0d717
+INFO 22:36:07 at operator/operator.go:273 in QueueTrade():QUEING TRADE 0
+INFO 22:36:07 at operator/txqueue.go:83 in QueueTrade():Length of the queue is  0
+INFO 22:36:07 at operator/txqueue.go:106 in ExecuteTrade():EXECUTE_TRADE:  0xedec2a008ffbc2e87a3b2783726e5b7c06afbb4b4a4f5a2008f44558c1e7278a
+INFO 22:36:07 at operator/operator.go:273 in QueueTrade():QUEING TRADE 0
+INFO 22:36:07 at operator/txqueue.go:83 in QueueTrade():Length of the queue is  1
+INFO 22:36:21 at operator/operator.go:203 in HandleEvents():TRADE_SUCCESS_EVENT 0xedec2a008ffbc2e87a3b2783726e5b7c06afbb4b4a4f5a2008f44558c1e7278a 0x3cc0eef7cf010eefd2360999b200e1387240b8c732adfbbe16d7e9799a8dc0d4
+INFO 22:36:21 at operator/operator.go:216 in func2():TRADE_MINED IN HANDLE EVENTS:  0xedec2a008ffbc2e87a3b2783726e5b7c06afbb4b4a4f5a2008f44558c1e7278a
+INFO 22:36:21 at operator/txqueue.go:166 in func1():TRADE_MINED IN EXECUTE TRADE:  0xedec2a008ffbc2e87a3b2783726e5b7c06afbb4b4a4f5a2008f44558c1e7278a
+INFO 22:36:21 at operator/txqueue.go:189 in func1():NEXT_TRADE:  0xf9ed4be762faefad7c0b71ef00922852de3d8e351a1f7306b2be4e6e3624c567
+INFO 22:36:21 at operator/txqueue.go:106 in ExecuteTrade():EXECUTE_TRADE:  0xf9ed4be762faefad7c0b71ef00922852de3d8e351a1f7306b2be4e6e3624c567
+WARN 22:36:21 at operator/txqueue.go:116 in ExecuteTrade():GAS LIMIT:  128516
+INFO 22:36:31 at operator/operator.go:203 in HandleEvents():TRADE_SUCCESS_EVENT 0xf9ed4be762faefad7c0b71ef00922852de3d8e351a1f7306b2be4e6e3624c567 0x4b3bfad2280cb181b520f25ae4074bf9533aaeeeacaf608425340282194a028f
+INFO 22:36:31 at operator/operator.go:216 in func2():TRADE_MINED IN HANDLE EVENTS:  0xf9ed4be762faefad7c0b71ef00922852de3d8e351a1f7306b2be4e6e3624c567
+INFO 22:36:32 at operator/txqueue.go:166 in func1():TRADE_MINED IN EXECUTE TRADE:  0xf9ed4be762faefad7c0b71ef00922852de3d8e351a1f7306b2be4e6e3624c567
+INFO 22:39:24 at operator/operator.go:273 in QueueTrade():QUEING TRADE 0
+INFO 22:39:24 at operator/txqueue.go:83 in QueueTrade():Length of the queue is  0
+INFO 22:39:24 at operator/txqueue.go:106 in ExecuteTrade():EXECUTE_TRADE:  0xb530cda13918486576b92cddd094984a5b1415511f163778366fb44981fefae2
+INFO 22:39:33 at operator/operator.go:203 in HandleEvents():TRADE_SUCCESS_EVENT 0xb530cda13918486576b92cddd094984a5b1415511f163778366fb44981fefae2 0x76c0738e88d82a1b7ef6b6040d114eb69e5b1d4a576dc5144388419459a08f84
+INFO 22:39:33 at operator/operator.go:216 in func2():TRADE_MINED IN HANDLE EVENTS:  0xb530cda13918486576b92cddd094984a5b1415511f163778366fb44981fefae2
+INFO 22:39:33 at operator/txqueue.go:165 in func1():TRADE_MINED IN EXECUTE TRADE:  0xb530cda13918486576b92cddd094984a5b1415511f163778366fb44981fefae2
+INFO 22:40:52 at operator/operator.go:273 in QueueTrade():QUEING TRADE 0
+INFO 22:40:52 at operator/txqueue.go:83 in QueueTrade():Length of the queue is  0
+INFO 22:40:52 at operator/txqueue.go:106 in ExecuteTrade():EXECUTE_TRADE:  0x77527086bed451a61002d1bb08867cad5dd51b220c43fa5a9e230bdbfc82b57b
+INFO 22:40:52 at operator/operator.go:273 in QueueTrade():QUEING TRADE 0
+INFO 22:40:52 at operator/txqueue.go:83 in QueueTrade():Length of the queue is  1
+INFO 22:40:55 at operator/operator.go:203 in HandleEvents():TRADE_SUCCESS_EVENT 0x77527086bed451a61002d1bb08867cad5dd51b220c43fa5a9e230bdbfc82b57b 0x31da9e98627b61f93d154676367e82267e13399e0cba7ede2553dab413d98109
+INFO 22:40:55 at operator/operator.go:216 in func2():TRADE_MINED IN HANDLE EVENTS:  0x77527086bed451a61002d1bb08867cad5dd51b220c43fa5a9e230bdbfc82b57b
+INFO 22:40:56 at operator/txqueue.go:165 in func1():TRADE_MINED IN EXECUTE TRADE:  0x77527086bed451a61002d1bb08867cad5dd51b220c43fa5a9e230bdbfc82b57b
+INFO 22:40:56 at operator/txqueue.go:188 in func1():NEXT_TRADE:  0xe696e02a7920128342c7e3c43d270a1f375fd61e72d7162a483b746e19cc40fd
+INFO 22:40:56 at operator/txqueue.go:106 in ExecuteTrade():EXECUTE_TRADE:  0xe696e02a7920128342c7e3c43d270a1f375fd61e72d7162a483b746e19cc40fd
+INFO 22:41:14 at operator/operator.go:203 in HandleEvents():TRADE_SUCCESS_EVENT 0xe696e02a7920128342c7e3c43d270a1f375fd61e72d7162a483b746e19cc40fd 0xeb16a977b64189403acfad9ec8bb4061e2a3d433bcabdacd6ca78afda0b930ec
+INFO 22:41:14 at operator/operator.go:216 in func2():TRADE_MINED IN HANDLE EVENTS:  0xe696e02a7920128342c7e3c43d270a1f375fd61e72d7162a483b746e19cc40fd
+INFO 22:41:15 at operator/txqueue.go:165 in func1():TRADE_MINED IN EXECUTE TRADE:  0xe696e02a7920128342c7e3c43d270a1f375fd61e72d7162a483b746e19cc40fd
+INFO 22:42:54 at operator/operator.go:273 in QueueTrade():QUEING TRADE 0
+INFO 22:42:54 at operator/txqueue.go:83 in QueueTrade():Length of the queue is  0
+INFO 22:42:54 at operator/txqueue.go:106 in ExecuteTrade():EXECUTE_TRADE:  0xffaef63b832a9f177aab68040fa332abee3091868b11e7d1859468a766a6a7bc
+WARN 22:42:54 at operator/txqueue.go:116 in ExecuteTrade():GAS LIMIT:  53504
+ERRO 22:42:54 at operator/txqueue.go:87 in QueueTrade():Invalid Trade
+INFO 22:42:54 at operator/txqueue.go:88 in QueueTrade():This is an invalid trade
+WARN 22:42:54 at operator/operator.go:276 in QueueTrade():INVALID TRADE
+ERRO 22:42:54 at operator/operator.go:250 in HandleTrades():Invalid Trade
+INFO 22:42:54 at operator/txqueue.go:198 in ExecuteNextTrade():LENGTH of the queue is  0
+INFO 00:13:07 at operator/operator.go:268 in QueueTrade():QUEING TRADE 0
+INFO 00:13:07 at operator/txqueue.go:83 in QueueTrade():Length of the queue is  0
+INFO 00:13:07 at operator/txqueue.go:106 in ExecuteTrade():EXECUTE_TRADE:  0x361ae3306147c01ef25bf35b7aff957e71b555ed4089cbe1ea8cfe7664288118
+INFO 00:13:08 at operator/operator.go:198 in HandleEvents():TRADE_SUCCESS_EVENT 0x361ae3306147c01ef25bf35b7aff957e71b555ed4089cbe1ea8cfe7664288118 0xab7fcdfe045da549d597ad632af38c14e34656526c3a89ee3eeb8f6f971f1cb0
+INFO 00:13:08 at operator/operator.go:211 in func2():TRADE_MINED IN HANDLE EVENTS:  0x361ae3306147c01ef25bf35b7aff957e71b555ed4089cbe1ea8cfe7664288118
+INFO 00:13:09 at operator/txqueue.go:159 in func1():TRADE_MINED IN EXECUTE TRADE:  0x361ae3306147c01ef25bf35b7aff957e71b555ed4089cbe1ea8cfe7664288118

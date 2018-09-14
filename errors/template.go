@@ -30,9 +30,9 @@ func LoadMessages(file string) error {
 	return yaml.Unmarshal(bytes, &templates)
 }
 
-// NewAPIError creates a new APIError with the given HTTP status code, error code, and parameters for replacing placeholders in the error template.
+// NewHTTPError creates a new APIError with the given HTTP status code, error code, and parameters for replacing placeholders in the error template.
 // The param can be nil, indicating there is no need for placeholder replacement.
-func NewAPIError(status int, code string, params Params) *APIError {
+func NewHTTPError(status int, code string, params Params) *APIError {
 	err := &APIError{
 		Status:    status,
 		ErrorCode: code,
