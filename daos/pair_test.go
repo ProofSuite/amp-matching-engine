@@ -24,7 +24,6 @@ func TestPairDao(t *testing.T) {
 
 	pair := &types.Pair{
 		ID:                bson.NewObjectId(),
-		Name:              "REQ",
 		BaseTokenSymbol:   "REQ",
 		BaseTokenAddress:  common.HexToAddress("0xcf7389dc6c63637598402907d5431160ec8972a5"),
 		QuoteTokenSymbol:  "WETH",

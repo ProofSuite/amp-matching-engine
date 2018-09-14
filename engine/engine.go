@@ -119,6 +119,29 @@ func (e *Engine) newOrder(o *types.Order) error {
 	return nil
 }
 
+func (e *Engine) RecoverOrders(matches []*types.OrderTradePair) error {
+	//TODO for now we assume all order/trades have the same token pair
+	o := matches[0].Order
+	code, err := o.PairCode()
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	ob := e.orderbooks[code]
+	if ob == nil {
+		return errors.New("Orderbook error")
+	}
+
+	err = ob.RecoverOrders(matches)
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	return nil
+}
+
 //Cancel order is currently not sent through a queue. Not sure i agree with this mechanism
 func (e *Engine) CancelOrder(o *types.Order) (*types.EngineResponse, error) {
 	code, err := o.PairCode()
@@ -141,6 +164,50 @@ func (e *Engine) CancelOrder(o *types.Order) (*types.EngineResponse, error) {
 	return res, nil
 }
 
+func (e *Engine) DeleteOrders(orders ...types.Order) error {
+	//we assume all the orders correspond to the same pair
+	code, err := orders[0].PairCode()
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	ob := e.orderbooks[code]
+	if ob == nil {
+		return errors.New("Orderbook error")
+	}
+
+	err = ob.deleteOrders(orders...)
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	return nil
+}
+
+func (e *Engine) DeleteOrder(o *types.Order) error {
+	//we assume all the orders correspond to the same pair
+	code, err := o.PairCode()
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	ob := e.orderbooks[code]
+	if ob == nil {
+		return errors.New("Orderbook error")
+	}
+
+	err = ob.deleteOrder(o)
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	return nil
+}
+
 func (e *Engine) CancelTrades(orders []*types.Order, amounts []*big.Int) error {
 	//we assume all orders are for the same pair
 	code, err := orders[0].PairCode()
@@ -161,4 +228,33 @@ func (e *Engine) CancelTrades(orders []*types.Order, amounts []*big.Int) error {
 	}
 
 	return nil
+}
+
+func (e *Engine) GetRawOrderBook(pair *types.Pair) ([][]types.Order, error) {
+	code := pair.Code()
+
+	ob := e.orderbooks[code]
+	if ob == nil {
+		return nil, errors.New("Orderbook error")
+	}
+
+	book := ob.GetRawOrderBook(pair)
+	// if err != nil {
+	// 	logger.Error(err)
+	// 	return nil, err
+	// }
+
+	return book, nil
+}
+
+func (e *Engine) GetOrderBook(pair *types.Pair) (asks, bids []*map[string]float64, err error) {
+	code := pair.Code()
+
+	ob := e.orderbooks[code]
+	if ob == nil {
+		return nil, nil, errors.New("Orderbook error")
+	}
+
+	asks, bids = ob.GetOrderBook(pair)
+	return asks, bids, nil
 }

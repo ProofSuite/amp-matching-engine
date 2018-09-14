@@ -99,9 +99,6 @@ func NewRouter(
 
 	// instantiate engine
 	eng := engine.NewEngine(redisConn, rabbitConn, pairDao)
-	if err != nil {
-		panic(err)
-	}
 
 	// get services for injection
 	accountService := services.NewAccountService(accountDao, tokenDao)
@@ -152,11 +149,8 @@ func NewRouter(
 	//initialize rabbitmq subscriptions
 	rabbitConn.SubscribeOrders(eng.HandleOrders)
 	rabbitConn.SubscribeTrades(op.HandleTrades)
+	rabbitConn.SubscribeOperator(orderService.HandleOperatorMessages)
 	rabbitConn.SubscribeEngineResponses(orderService.HandleEngineResponse)
-
-	// orderService.SubscribeOrders(eng.HandleOrders)
-	// orderService.SubscribeTrades(op.HandleTrades)
-	// eng.SubscribeResponseQueue(orderService.HandleEngineResponse)
 
 	cronService.InitCrons()
 	return router

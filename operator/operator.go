@@ -133,7 +133,7 @@ func (op *Operator) SubscribeOperatorMessages(fn func(*types.OperatorMessage) er
 				om := &types.OperatorMessage{}
 				err := json.Unmarshal(m.Body, &om)
 				if err != nil {
-					logger.Infof("Error: %v", err)
+					logger.Error(err)
 					continue
 				}
 				go fn(om)

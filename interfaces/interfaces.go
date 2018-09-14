@@ -26,6 +26,9 @@ type OrderDao interface {
 	GetByUserAddress(addr common.Address) ([]*types.Order, error)
 	GetCurrentByUserAddress(addr common.Address) ([]*types.Order, error)
 	GetHistoryByUserAddress(addr common.Address) ([]*types.Order, error)
+	UpdateOrderFilledAmount(hash common.Hash, value *big.Int) error
+	GetUserLockedBalance(account common.Address, token common.Address) (*big.Int, error)
+	UpdateOrderStatus(hash common.Hash, status string) error
 	Drop() error
 }
 
@@ -72,6 +75,7 @@ type TradeDao interface {
 	GetByOrderHash(hash common.Hash) ([]*types.Trade, error)
 	GetByPairAddress(baseToken, quoteToken common.Address) ([]*types.Trade, error)
 	GetByUserAddress(addr common.Address) ([]*types.Trade, error)
+	UpdateTradeStatus(hash common.Hash, status string) error
 	Drop()
 }
 
@@ -104,12 +108,13 @@ type Exchange interface {
 
 type Engine interface {
 	HandleOrders(msg *rabbitmq.Message) error
-	SubscribeResponseQueue(fn func(*types.EngineResponse) error) error
 	RecoverOrders(orders []*types.OrderTradePair) error
 	CancelOrder(order *types.Order) (*types.EngineResponse, error)
-	GetOrderBook(pair *types.Pair) (asks, bids []*map[string]float64)
 	CancelTrades(orders []*types.Order, amount []*big.Int) error
-	GetFullOrderBook(pair *types.Pair) [][]types.Order
+	DeleteOrder(o *types.Order) error
+	DeleteOrders(orders ...types.Order) error
+	GetOrderBook(pair *types.Pair) (asks, bids []*map[string]float64, err error)
+	GetRawOrderBook(pair *types.Pair) ([][]types.Order, error)
 }
 
 type WalletService interface {
@@ -138,25 +143,25 @@ type OrderService interface {
 	GetByUserAddress(addr common.Address) ([]*types.Order, error)
 	NewOrder(o *types.Order) error
 	CancelOrder(oc *types.OrderCancel) error
+	CancelTrades(trades []*types.Trade) error
 	HandleEngineResponse(res *types.EngineResponse) error
-	RecoverOrders(res *types.EngineResponse)
 	RelayUpdateOverSocket(res *types.EngineResponse)
-	SendMessage(msgType string, hash common.Hash, data interface{})
+	RelayOrderUpdate(res *types.EngineResponse)
+	RelayTradeUpdate(res *types.EngineResponse)
 	GetCurrentByUserAddress(addr common.Address) ([]*types.Order, error)
 	GetHistoryByUserAddress(addr common.Address) ([]*types.Order, error)
-	SubscribeOrders(fn func(*rabbitmq.Message) error) error
-	PublishOrder(order *rabbitmq.Message) error
-	SubscribeTrades(fn func(*types.OperatorMessage) error) error
-	PublishTrade(o *types.Order, t *types.Trade) error
+	Rollback(res *types.EngineResponse) *types.EngineResponse
+	RollbackOrder(o *types.Order) error
+	RollbackTrade(o *types.Order, t *types.Trade) error
 }
 
 type OrderBookService interface {
 	GetOrderBook(bt, qt common.Address) (ob map[string]interface{}, err error)
-	GetFullOrderBook(bt, qt common.Address) (ob [][]types.Order, err error)
-	SubscribeLite(conn *ws.Conn, bt, qt common.Address)
-	UnsubscribeLite(conn *ws.Conn, bt, qt common.Address)
-	SubscribeFull(conn *ws.Conn, bt, qt common.Address)
-	UnsubscribeFull(conn *ws.Conn, bt, qt common.Address)
+	GetRawOrderBook(bt, qt common.Address) (ob [][]types.Order, err error)
+	SubscribeOrderBook(conn *ws.Conn, bt, qt common.Address)
+	UnSubscribeOrderBook(conn *ws.Conn, bt, qt common.Address)
+	SubscribeRawOrderBook(conn *ws.Conn, bt, qt common.Address)
+	UnSubscribeRawOrderBook(conn *ws.Conn, bt, qt common.Address)
 }
 
 type PairService interface {

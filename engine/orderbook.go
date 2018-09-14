@@ -33,6 +33,7 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/Proofsuite/amp-matching-engine/utils/math"
 	"github.com/ethereum/go-ethereum/common"
+	redigo "github.com/gomodule/redigo/redis"
 )
 
 type OrderBook struct {
@@ -126,9 +127,6 @@ func (ob *OrderBook) buyOrder(order *types.Order) (*types.EngineResponse, error)
 
 			match := &types.OrderTradePair{entry, trade}
 			res.Matches = append(res.Matches, match)
-
-			// res.Trades = append(res.Trades, trade)
-			// res.MatchingOrders = append(res.MatchingOrders, fillOrder)
 			res.RemainingOrder.Amount = math.Sub(res.RemainingOrder.Amount, trade.Amount)
 
 			if math.IsZero(res.RemainingOrder.Amount) {
@@ -307,68 +305,60 @@ func (ob *OrderBook) updateOrder(order *types.Order, tradeAmount *big.Int) error
 }
 
 // deleteOrder deletes the order in redis
-func (ob *OrderBook) deleteOrder(order *types.Order, tradeAmount *big.Int) (err error) {
-	pricePointSetKey, orderHashListKey := order.GetOBKeys()
+func (ob *OrderBook) deleteOrder(o *types.Order) (err error) {
+	//TODO decide to put the mutex on deleteOrder or on cancelOrder
+	// ob.mutex.Lock()
+	// defer ob.mutex.Unlock()
 
-	vol, err := ob.GetPricePointVolume(pricePointSetKey, order.PricePoint.Int64())
+	pricePointSetKey, orderHashListKey := o.GetOBKeys()
+	pp := o.PricePoint.Int64()
+
+	err = ob.RemoveFromPricePointHashesSet(orderHashListKey, o.Hash)
 	if err != nil {
 		logger.Error(err)
-		return
 	}
 
-	tradeVolume := math.Div(tradeAmount, big.NewInt(1e18)).Int64()
-	if vol == tradeVolume {
-		err := ob.RemoveFromPricePointSet(pricePointSetKey, order.PricePoint.Int64())
+	pplen, err := ob.GetPricePointHashesSetLength(orderHashListKey)
+	if err != nil {
+		logger.Error(err)
+	}
+
+	if pplen == 0 {
+		err = ob.RemoveFromPricePointSet(pricePointSetKey, pp)
 		if err != nil {
 			logger.Error(err)
-			return err
 		}
 
-		err = ob.RemoveFromPricePointHashesSet(orderHashListKey, order.Hash)
+		err = ob.DeletePricePointVolume(pricePointSetKey, pp)
 		if err != nil {
 			logger.Error(err)
-			return err
 		}
-
-		err = ob.DeletePricePointVolume(pricePointSetKey, order.PricePoint.Int64())
-		if err != nil {
-			logger.Error(err)
-			return err
-		}
-
-		err = ob.RemoveFromOrderMap(order.Hash)
-		if err != nil {
-			logger.Error(err)
-			return err
-		}
-
 	} else {
-		err := ob.AddToPricePointSet(pricePointSetKey, order.PricePoint.Int64())
+		amt := math.Div(math.Sub(o.Amount, o.FilledAmount), big.NewInt(1e18)).Int64()
+		err = ob.DecrementPricePointVolume(pricePointSetKey, pp, amt)
 		if err != nil {
 			logger.Error(err)
-			return err
 		}
+	}
 
-		// Currently converting amount to int64. In the future, we need to use strings instead of int64
-		err = ob.DecrementPricePointVolume(pricePointSetKey, order.PricePoint.Int64(), tradeVolume)
-		if err != nil {
-			logger.Error(err)
-			return err
-		}
+	err = ob.RemoveFromOrderMap(o.Hash)
+	if err != nil {
+		logger.Error(err)
+	}
 
-		err = ob.RemoveFromOrderMap(order.Hash)
-		if err != nil {
-			logger.Error(err)
-			return err
-		}
+	return err
+}
 
-		err = ob.RemoveFromPricePointHashesSet(orderHashListKey, order.Hash)
+func (ob *OrderBook) deleteOrders(orders ...types.Order) error {
+	for _, o := range orders {
+		err := ob.deleteOrder(&o)
 		if err != nil {
 			logger.Error(err)
 			return err
 		}
 	}
-	return
+
+	return nil
 }
 
 // RecoverOrders is responsible for recovering the orders that failed to execute after matching
@@ -400,6 +390,7 @@ func (ob *OrderBook) RecoverOrders(matches []*types.OrderTradePair) error {
 			}
 		}
 	}
+
 	return nil
 }
 
@@ -442,8 +433,7 @@ func (ob *OrderBook) CancelOrder(o *types.Order) (*types.EngineResponse, error) 
 		return nil, err
 	}
 
-	amt := math.Sub(stored.Amount, stored.FilledAmount)
-	if err := ob.deleteOrder(o, amt); err != nil {
+	if err := ob.deleteOrder(o); err != nil {
 		logger.Error(err)
 		return nil, err
 	}
@@ -480,87 +470,114 @@ func (ob *OrderBook) execute(order *types.Order, bookEntry *types.Order) (*types
 		}
 
 	} else {
-		tradeAmount = bookEntryAvailableAmount
-		bookEntry.FilledAmount = math.Add(bookEntry.FilledAmount, bookEntryAvailableAmount)
-		bookEntry.Status = "FILLED"
-
-		err := ob.deleteOrder(bookEntry, tradeAmount)
+		err := ob.deleteOrder(bookEntry)
 		if err != nil {
 			logger.Error(err)
 			return nil, err
 		}
+
+		tradeAmount = bookEntryAvailableAmount
+		bookEntry.FilledAmount = bookEntry.Amount
+		bookEntry.Status = "FILLED"
+		// bookEntry.FilledAmount = math.Add(bookEntry.FilledAmount, bookEntryAvailableAmount)
 	}
 
 	order.FilledAmount = math.Add(order.FilledAmount, tradeAmount)
 	trade = &types.Trade{
-		Amount:     tradeAmount,
-		PricePoint: order.PricePoint,
-		BaseToken:  order.BaseToken,
-		QuoteToken: order.QuoteToken,
-		OrderHash:  bookEntry.Hash,
-		Side:       order.Side,
-		Taker:      order.UserAddress,
-		PairName:   order.PairName,
-		Maker:      bookEntry.UserAddress,
+		Amount:         tradeAmount,
+		PricePoint:     order.PricePoint,
+		BaseToken:      order.BaseToken,
+		QuoteToken:     order.QuoteToken,
+		OrderHash:      bookEntry.Hash,
+		TakerOrderHash: order.Hash,
+		Side:           order.Side,
+		Taker:          order.UserAddress,
+		PairName:       order.PairName,
+		Maker:          bookEntry.UserAddress,
 	}
 
 	return trade, nil
 }
 
-// updateOrderAmount is a less general version of update order that updates the order filled amount after
-// a trade or recover orders
-// EXPERIMENTAL
-// func (ob *OrderBook) updateOrderAmount(hash common.Hash, amount *big.Int) error {
-// 	stored := &types.Order{}
+// GetRawOrderBook fetches the complete orderbook from redis for the required pair
+func (ob *OrderBook) GetRawOrderBook(p *types.Pair) (book [][]types.Order) {
+	pattern := p.GetKVPrefix() + "::*::*::orders::*"
 
-// 	stored, err := ob.GetFromOrderMap(hash)
-// 	if err != nil {
-// 		logger.Error(err)
-// 		return err
-// 	}
+	length := 100
+	book = make([][]types.Order, 0)
+	keys, err := ob.redisConn.Keys(pattern)
+	if err != nil {
+		logger.Error(err)
+		return
+	}
 
-// 	stored.FilledAmount = math.Add(stored.FilledAmount, amount)
-// 	if math.IsZero(stored.FilledAmount) {
-// 		stored.Status = "OPEN"
-// 	} else if math.IsSmallerThan(stored.FilledAmount, stored.Amount) {
-// 		stored.Status = "PARTIAL_FILLED"
-// 	} else {
-// 		stored.Status = "FILLED"
-// 	}
+	orders := make([]types.Order, 0)
+	for start := 0; start < len(keys); start = start + length {
+		end := start + length
+		if len(keys) < end {
+			end = len(keys)
+		}
 
-// 	err = ob.AddToOrderMap(stored)
-// 	if err != nil {
-// 		logger.Error(err)
-// 		return err
-// 	}
+		res, err := ob.redisConn.MGet(keys[start:end]...)
+		if err != nil {
+			logger.Error(err)
+			return
+		}
 
-// 	pricePointSetKey, _ := stored.GetOBKeys()
-// 	volume := math.Div(amount, big.NewInt(1e18)).Int64()
-// 	// Currently converting amount to int64. In the future, we need to use strings instead of int64
-// 	err = ob.IncrementPricePointVolume(pricePointSetKey, stored.PricePoint.Int64(), volume)
-// 	if err != nil {
-// 		logger.Error(err)
-// 		return err
-// 	}
+		for _, r := range res {
+			if r == "" {
+				continue
+			}
 
-// 	return nil
-// }
+			var temp types.Order
+			if err := json.Unmarshal([]byte(r), &temp); err != nil {
+				continue
+			}
 
-// func (ob *OrderBook) publishEngineResponse(res *types.EngineResponse) error {
-// 	ch := ob.rabbitMQConn.GetChannel("erPub")
-// 	q := ob.rabbitMQConn.GetQueue(ch, "engineResponse")
+			orders = append(orders, temp)
+		}
+	}
 
-// 	bytes, err := json.Marshal(res)
-// 	if err != nil {
-// 		logger.Error("Failed to marshal engine response: ", err)
-// 		return err
-// 	}
+	for start := 0; start < len(orders); start = start + length {
+		end := start + length
+		if len(keys) < end {
+			end = len(keys)
+		}
 
-// 	err = ob.rabbitMQConn.Publish(ch, q, bytes)
-// 	if err != nil {
-// 		logger.Error("Failed to publish order: ", err)
-// 		return err
-// 	}
+		book = append(book, orders[start:end])
+	}
 
-// 	return nil
-// }
+	return
+}
+
+// GetOrderBook fetches the complete orderbook from redis for the required pair
+func (ob *OrderBook) GetOrderBook(pair *types.Pair) (asks, bids []*map[string]float64) {
+	sKey, bKey := pair.GetOrderBookKeys()
+	res, err := redigo.Int64s(ob.redisConn.Do("SORT", sKey, "GET", sKey+"::book::*", "GET", "#")) // Add price point to order book
+	if err != nil {
+		logger.Error(err)
+	}
+
+	for i := 0; i < len(res); i = i + 2 {
+		temp := &map[string]float64{
+			"amount": float64(res[i]),
+			"price":  float64(res[i+1]),
+		}
+		asks = append(asks, temp)
+	}
+
+	res, err = redigo.Int64s(ob.redisConn.Do("SORT", bKey, "GET", bKey+"::book::*", "GET", "#", "DESC"))
+	if err != nil {
+		logger.Error(err)
+	}
+
+	for i := 0; i < len(res); i = i + 2 {
+		temp := &map[string]float64{
+			"amount": float64(res[i]),
+			"price":  float64(res[i+1]),
+		}
+		bids = append(bids, temp)
+	}
+
+	return
+}

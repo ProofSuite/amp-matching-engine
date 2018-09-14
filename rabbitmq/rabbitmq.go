@@ -60,7 +60,7 @@ func (c *Connection) DeclareQueue(ch *amqp.Channel, name string) error {
 	if queues[name] == nil {
 		q, err := ch.QueueDeclare(name, false, false, false, false, nil)
 		if err != nil {
-			log.Print(err)
+			logger.Error(err)
 			return err
 		}
 
@@ -98,7 +98,7 @@ func (c *Connection) Publish(ch *amqp.Channel, q *amqp.Queue, bytes []byte) erro
 	)
 
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return err
 	}
 
@@ -117,7 +117,7 @@ func (c *Connection) Consume(ch *amqp.Channel, q *amqp.Queue) (<-chan amqp.Deliv
 	)
 
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return nil, err
 	}
 
@@ -132,7 +132,7 @@ func (c *Connection) Purge(ch *amqp.Channel, name string) error {
 
 	_, err = ch.QueuePurge(name, false)
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return err
 	}
 

@@ -57,12 +57,11 @@ func Init(t *testing.T) {
 
 	// === drop database on test end ===
 	defer session.DB(app.Config.DBName).DropDatabase()
-	tokens := testToken(t)
-	pair := testPair(t, tokens)
-	accounts := testAccount(t, tokens)
-	testWS(t, pair, accounts)
+	// tokens := testToken(t)
+	// pair := testPair(t, tokens)
+	// accounts := testAccount(t, tokens)
+	// testWS(t, pair, accounts)
 	// address := testAddress(t, tokens)
-	// testBalance(t, tokens, address)
 }
 
 func NewRouter() *routing.Router {
@@ -92,11 +91,6 @@ func NewRouter() *routing.Router {
 	redisConn := redis.NewRedisConnection(app.Config.Redis)
 	redisConn.FlushAll()
 
-	eng, err := engine.NewEngine(redisConn, rabbitConn)
-	if err != nil {
-		panic(err)
-	}
-
 	// get daos for dependency injection
 	orderDao := daos.NewOrderDao()
 	tokenDao := daos.NewTokenDao()
@@ -104,6 +98,8 @@ func NewRouter() *routing.Router {
 	tradeDao := daos.NewTradeDao()
 	accountDao := daos.NewAccountDao()
 	walletDao := daos.NewWalletDao()
+
+	eng := engine.NewEngine(redisConn, rabbitConn, pairDao)
 
 	// get services for injection
 	accountService := services.NewAccountService(accountDao, tokenDao)
@@ -151,9 +147,9 @@ func NewRouter() *routing.Router {
 	endpoints.ServeOrderResource(rg, orderService, eng)
 
 	//initialize rabbitmq subscriptions
-	orderService.SubscribeOrders(eng.HandleOrders)
-	orderService.SubscribeTrades(op.HandleTrades)
-	eng.SubscribeResponseQueue(orderService.HandleEngineResponse)
+	rabbitConn.SubscribeOrders(eng.HandleOrders)
+	rabbitConn.SubscribeTrades(op.HandleTrades)
+	rabbitConn.SubscribeEngineResponses(orderService.HandleEngineResponse)
 
 	// fmt.Printf("\n%+v\n", app.Config.TickDuration)
 	cronService.InitCrons()

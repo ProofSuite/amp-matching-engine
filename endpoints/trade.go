@@ -70,7 +70,7 @@ func (e *tradeEndpoint) tradeWebSocket(input interface{}, conn *ws.Conn) {
 	bytes, _ := json.Marshal(input)
 	var payload *types.WebSocketPayload
 	if err := json.Unmarshal(bytes, &payload); err != nil {
-		log.Println("unmarshal to wsmsg <==>" + err.Error())
+		logger.Error(err)
 	}
 
 	socket := ws.GetTradeSocket()
@@ -84,7 +84,7 @@ func (e *tradeEndpoint) tradeWebSocket(input interface{}, conn *ws.Conn) {
 	var msg *types.WebSocketSubscription
 	err := json.Unmarshal(bytes, &msg)
 	if err != nil {
-		log.Println("unmarshal to wsmsg <==>" + err.Error())
+		logger.Error(err)
 	}
 
 	if (msg.Pair.BaseToken == common.Address{}) {

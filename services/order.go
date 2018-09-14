@@ -150,6 +150,12 @@ func (s *OrderService) NewOrder(o *types.Order) error {
 		return err
 	}
 
+	wethLockedBalance, err := s.orderDao.GetUserLockedBalance(o.UserAddress, wethAddress)
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
 	sellTokenBalance, err := s.ethereumProvider.BalanceOf(o.UserAddress, o.SellToken)
 	if err != nil {
 		logger.Error(err)
@@ -162,10 +168,15 @@ func (s *OrderService) NewOrder(o *types.Order) error {
 		return err
 	}
 
-	fee := math.Max(o.MakeFee, o.TakeFee)
+	sellTokenLockedBalance, err := s.orderDao.GetUserLockedBalance(o.UserAddress, o.SellToken)
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
 
-	availableWethBalance := math.Sub(wethBalance, balanceRecord[wethAddress].LockedBalance)
-	availableSellTokenBalance := math.Sub(sellTokenBalance, balanceRecord[o.SellToken].LockedBalance)
+	fee := math.Max(o.MakeFee, o.TakeFee)
+	availableWethBalance := math.Sub(wethBalance, wethLockedBalance)
+	availableSellTokenBalance := math.Sub(sellTokenBalance, sellTokenLockedBalance)
 
 	if availableWethBalance.Cmp(fee) == -1 {
 		return errors.New("Insufficient WETH Balance")
@@ -186,11 +197,9 @@ func (s *OrderService) NewOrder(o *types.Order) error {
 	sellTokenBalanceRecord := balanceRecord[o.SellToken]
 	sellTokenBalanceRecord.Balance.Set(sellTokenBalance)
 	sellTokenBalanceRecord.Allowance.Set(sellTokenAllowance)
-	sellTokenBalanceRecord.LockedBalance = math.Add(sellTokenBalanceRecord.LockedBalance, o.SellAmount)
 	wethTokenBalanceRecord := balanceRecord[wethAddress]
 	wethTokenBalanceRecord.Balance.Set(wethBalance)
 	wethTokenBalanceRecord.Allowance.Set(wethAllowance)
-	wethTokenBalanceRecord.LockedBalance = math.Add(wethTokenBalanceRecord.LockedBalance, fee)
 
 	err = s.accountDao.UpdateTokenBalance(o.UserAddress, wethAddress, wethTokenBalanceRecord)
 	if err != nil {
@@ -246,11 +255,22 @@ func (s *OrderService) CancelOrder(oc *types.OrderCancel) error {
 			return err
 		}
 
-		s.orderDao.UpdateByHash(res.Order.Hash, res.Order)
-		if err := s.UnlockBalances(res.Order); err != nil {
+		err = s.orderDao.UpdateOrderStatus(res.Order.Hash, "CANCELLED")
+		if err != nil {
 			logger.Error(err)
-			return err
 		}
+
+		// err = s.orderDao.UpdateByHash(res.Order.Hash, res.Order)
+		// if err != nil {
+		// 	logger.Error(err)
+		// 	return err
+		// }
+
+		// err = s.ReverseBalances(res.Order)
+		// if err != nil {
+		// 	logger.Error(err)
+		// 	return err
+		// }
 
 		ws.SendOrderMessage("ORDER_CANCELLED", res.Order.Hash, res.Order)
 		s.RelayUpdateOverSocket(res)
@@ -281,15 +301,36 @@ func (s *OrderService) HandleEngineResponse(res *types.EngineResponse) error {
 	return nil
 }
 
+func (s *OrderService) HandleOperatorMessages(msg *types.OperatorMessage) error {
+	switch msg.MessageType {
+	case "TRADE_PENDING":
+		s.handleOperatorTradePending(msg)
+	case "TRADE_SUCCESS":
+		s.handleOperatorTradeSuccess(msg)
+	case "TRADE_ERROR":
+		s.handleOperatorTradeError(msg)
+	case "TRADE_INVALID":
+		s.handleOperatorTradeError(msg)
+	default:
+		s.handleOperatorUnknownMessage(msg)
+	}
+
+	return nil
+}
+
 // handleEngineError returns an websocket error message to the client and recovers orders on the
 // redis key/value store
 func (s *OrderService) handleEngineError(res *types.EngineResponse) {
-	err := s.orderDao.UpdateByHash(res.Order.Hash, res.Order)
+	// err := s.orderDao.UpdateByHash(res.Order.Hash, res.Order)
+	// if err != nil {
+	// 	logger.Error(err)
+	// }
+
+	err := s.orderDao.UpdateOrderStatus(res.Order.Hash, "ERROR")
 	if err != nil {
 		logger.Error(err)
 	}
 
-	s.cancelOrderUnlockAmount(res.Order)
 	ws.SendOrderMessage("ERROR", res.Order.Hash, nil)
 }
 
@@ -330,7 +371,7 @@ func (s *OrderService) handleSubmitSignatures(res *types.EngineResponse) {
 			bytes, err := json.Marshal(msg.Data)
 			if err != nil {
 				logger.Error(err)
-				s.RecoverOrders(res)
+				s.Rollback(res)
 				ws.SendOrderMessage("ERROR", res.Order.Hash, err)
 			}
 
@@ -338,14 +379,25 @@ func (s *OrderService) handleSubmitSignatures(res *types.EngineResponse) {
 			err = json.Unmarshal(bytes, data)
 			if err != nil {
 				logger.Error(err)
-				s.RecoverOrders(res)
+				s.Rollback(res)
 				ws.SendOrderMessage("ERROR", res.Order.Hash, err)
 			}
 
+			// remaining order
 			if data.Order != nil {
-				bytes, err := json.Marshal(res.Order)
+				err := s.orderDao.Create(data.Order)
+				if err != nil {
+					//TODO consider if we should going on with execution or not
+					logger.Error(err)
+					s.Rollback(res)
+					ws.SendOrderMessage("ERROR", res.Order.Hash, err)
+				}
+
+				bytes, err := json.Marshal(data.Order)
 				if err != nil {
 					logger.Error(err)
+					//TODO not sure whether rolling back is good here
+					s.Rollback(res)
 					ws.SendOrderMessage("ERROR", res.Order.Hash, err)
 				}
 
@@ -358,6 +410,7 @@ func (s *OrderService) handleSubmitSignatures(res *types.EngineResponse) {
 					trades = append(trades, m.Trade)
 				}
 
+				//TODO include this in the handleOrderMatched step
 				err := s.tradeDao.Create(trades...)
 				if err != nil {
 					logger.Error(err)
@@ -366,6 +419,7 @@ func (s *OrderService) handleSubmitSignatures(res *types.EngineResponse) {
 				_, err = json.Marshal(res.Order)
 				if err != nil {
 					logger.Error(err)
+					s.Rollback(res)
 					ws.SendOrderMessage("ERROR", res.Order.Hash, err)
 				}
 
@@ -373,13 +427,14 @@ func (s *OrderService) handleSubmitSignatures(res *types.EngineResponse) {
 					err := s.broker.PublishTrade(m.Order, m.Trade)
 					if err != nil {
 						logger.Error(err)
+						s.Rollback(res)
 						ws.SendOrderMessage("ERROR", res.Order.Hash, err)
 					}
 				}
 			}
 		}
 	case <-t.C:
-		s.RecoverOrders(res)
+		s.Rollback(res)
 		t.Stop()
 		break
 	}
@@ -387,22 +442,206 @@ func (s *OrderService) handleSubmitSignatures(res *types.EngineResponse) {
 
 // handleEngineUnknownMessage returns a websocket messsage in case the engine resonse is not recognized
 func (s *OrderService) handleEngineUnknownMessage(res *types.EngineResponse) {
-	s.RecoverOrders(res)
+	s.Rollback(res)
 	ws.SendOrderMessage("ERROR", res.Order.Hash, nil)
 }
 
-// RecoverOrders recovers orders i.e puts back matched orders to orderbook
-// in case of failure of trade signing by the maker
-func (s *OrderService) RecoverOrders(res *types.EngineResponse) {
-	err := s.engine.RecoverOrders(res.Matches)
+func (s *OrderService) handleOperatorUnknownMessage(msg *types.OperatorMessage) {
+	// s.Rollback(res)
+	ws.SendOrderMessage("ERROR", msg.Order.Hash, nil)
+}
+
+func (s *OrderService) handleOperatorTradePending(msg *types.OperatorMessage) {
+	t := msg.Trade
+
+	err := s.tradeDao.UpdateTradeStatus(t.Hash, "ORDER_PENDING")
 	if err != nil {
-		panic(err)
+		logger.Error(err)
+	}
+
+	ws.SendOrderMessage("ORDER_PENDING", t.OrderHash, t)
+	ws.SendOrderMessage("ORDER_PENDING", t.TakerOrderHash, t)
+}
+
+// handleTradeMakerInvalid handles the case where a "MAKER_INVALID" message is received from the
+// operator. It reinclues the TAKER order in the db and in the redis orderbook and invalidates the
+// MAKER order
+func (s *OrderService) handleTradeMakerInvalid(msg *types.OperatorMessage) {
+	t := msg.Trade
+
+	err := s.tradeDao.UpdateTradeStatus(t.Hash, "INVALID")
+	if err != nil {
+		logger.Error(err)
+	}
+
+	err = s.tradeDao.UpdateTradeStatus(t.TakerOrderHash, "INVALID")
+	if err != nil {
+		logger.Error(err)
+	}
+
+	err = s.orderDao.UpdateOrderFilledAmount(t.OrderHash, math.Neg(t.Amount))
+	if err != nil {
+		logger.Error(err)
+	}
+
+	takerOrder, err := s.orderDao.GetByHash(t.TakerOrderHash)
+	if err != nil {
+		logger.Error(err)
+	}
+
+	op := &types.OrderTradePair{takerOrder, t}
+	err = s.engine.RecoverOrders([]*types.OrderTradePair{op})
+	if err != nil {
+		logger.Error(err)
+	}
+
+	//TODO decide whether we should also send a message to the taker
+	ws.SendOrderMessage("ORDER_INVALID", t.OrderHash, t)
+}
+
+// handleTradeMakerInvalid handles the case where a "TAKER_INVALID" message is received from the
+// operator. It reinclues the MAKER order in the db and in the redis orderbook and invalidates the
+// TAKER order
+func (s *OrderService) handleTradeTakerInvalid(msg *types.OperatorMessage) {
+	t := msg.Trade
+
+	err := s.tradeDao.UpdateTradeStatus(t.Hash, "INVALID")
+	if err != nil {
+		logger.Error(err)
+	}
+
+	err = s.orderDao.UpdateOrderStatus(t.TakerOrderHash, "INVALID")
+	if err != nil {
+		logger.Error(err)
+	}
+
+	//we reinclude the amount "lost" of the MAKER ORDER due to this failed trade back in the mongo record
+	err = s.orderDao.UpdateOrderFilledAmount(t.OrderHash, math.Neg(t.Amount))
+	if err != nil {
+		logger.Error(err)
+	}
+
+	makerOrder, err := s.orderDao.GetByHash(t.OrderHash)
+	if err != nil {
+		logger.Error(err)
+	}
+
+	// we recover and include the maker order in the redis orderbook again
+	//TODO only the trade amount should be needed and not the full trade
+	op := &types.OrderTradePair{makerOrder, t}
+	err = s.engine.RecoverOrders([]*types.OrderTradePair{op})
+	if err != nil {
+		logger.Error(err)
+	}
+
+	ws.SendOrderMessage("ORDER_INVALID", t.TakerOrderHash, t)
+	//TODO decide whether we should also send a message to the maker. In
+	//TODO theory might has well not take the trouble since this will not happen
+	//TODO often and he will likely not know
+}
+
+// handleOperatorTradeSuccess handles successfull trade messages from the orderbook. It updates
+// the trade status in the database and
+func (s *OrderService) handleOperatorTradeSuccess(msg *types.OperatorMessage) {
+	t := msg.Trade
+	err := s.tradeDao.UpdateTradeStatus(t.Hash, "SUCCESS")
+	if err != nil {
+		logger.Error(err)
+	}
+
+	ws.SendOrderMessage("ORDER_SUCCESS", t.OrderHash, t)
+	ws.SendOrderMessage("ORDER_SUCCESS", t.TakerOrderHash, t)
+}
+
+// handleOperatorTradeError handles error messages from the operator (case where the blockchain tx was made
+// but ended up failing. It updates the trade status in the db. None of the orders are reincluded in the redis
+// orderbook.
+func (s *OrderService) handleOperatorTradeError(msg *types.OperatorMessage) {
+	t := msg.Trade
+	ws.SendOrderMessage("ORDER_ERROR", t.OrderHash, t)
+	ws.SendOrderMessage("ORDER_ERROR", t.TakerOrderHash, t)
+
+	err := s.tradeDao.UpdateTradeStatus(t.Hash, "ERROR")
+	if err != nil {
+		logger.Error(err)
+	}
+}
+
+func (s *OrderService) Rollback(res *types.EngineResponse) *types.EngineResponse {
+	if res.RemainingOrder != nil {
+		err := s.orderDao.UpdateOrderStatus(res.RemainingOrder.Hash, "ERROR")
+		if err != nil {
+			logger.Error(err)
+		}
+	}
+
+	//TODO what do we do with remaining order ?
+	if len(res.Matches) > 0 {
+		for _, ot := range res.Matches {
+			t := ot.Trade
+
+			err := s.orderDao.UpdateOrderFilledAmount(t.OrderHash, math.Neg(t.Amount))
+			if err != nil {
+				logger.Error(err)
+			}
+
+			err = s.orderDao.UpdateOrderStatus(t.TakerOrderHash, "ERROR")
+			if err != nil {
+				logger.Error(err)
+			}
+
+			err = s.tradeDao.UpdateTradeStatus(t.Hash, "ERROR")
+			if err != nil {
+				logger.Error(err)
+			}
+		}
+
+		//TODO should we simply delete the orders from the orderbook
+		err := s.engine.RecoverOrders(res.Matches)
+		if err != nil {
+			logger.Error(err)
+		}
 	}
 
 	res.Status = "ERROR"
 	res.Order.Status = "ERROR"
 	res.Matches = nil
 	res.RemainingOrder = nil
+	return res
+}
+
+func (s *OrderService) RollbackOrder(o *types.Order) (err error) {
+	err = s.orderDao.UpdateOrderStatus(o.Hash, "ERROR")
+	if err != nil {
+		logger.Error(err)
+	}
+
+	err = s.engine.DeleteOrder(o)
+	if err != nil {
+		logger.Error(err)
+	}
+
+	return err
+}
+
+func (s *OrderService) RollbackTrade(o *types.Order, t *types.Trade) (err error) {
+	err = s.tradeDao.UpdateTradeStatus(t.Hash, "ERROR")
+	if err != nil {
+		logger.Error(err)
+	}
+
+	//TODO check that this also updates the order status
+	err = s.orderDao.UpdateOrderFilledAmount(t.OrderHash, math.Neg(t.Amount))
+	if err != nil {
+		logger.Error(err)
+	}
+
+	err = s.engine.RecoverOrders([]*types.OrderTradePair{{o, t}})
+	if err != nil {
+		logger.Error(err)
+	}
+
+	return err
 }
 
 func (s *OrderService) CancelTrades(trades []*types.Trade) error {
@@ -429,75 +668,6 @@ func (s *OrderService) CancelTrades(trades []*types.Trade) error {
 	return nil
 }
 
-// UnlockBalances unlocks balances in case an order is canceled for examples. It unlocks both
-// the token sell balance as well as the weth balance for fees.
-func (s *OrderService) UnlockBalances(o *types.Order) error {
-	balanceRecord, err := s.accountDao.GetTokenBalances(o.UserAddress)
-	if err != nil {
-		logger.Error(err)
-		return err
-	}
-
-	wethAddress := common.HexToAddress(app.Config.Ethereum["weth_address"])
-
-	fee := math.Max(o.MakeFee, o.TakeFee)
-	sellTokenBalanceRecord := balanceRecord[o.SellToken]
-	sellTokenBalanceRecord.LockedBalance = math.Sub(sellTokenBalanceRecord.LockedBalance, o.SellAmount)
-	wethTokenBalanceRecord := balanceRecord[wethAddress]
-	wethTokenBalanceRecord.LockedBalance = math.Sub(wethTokenBalanceRecord.LockedBalance, fee)
-
-	err = s.accountDao.UpdateTokenBalance(o.UserAddress, wethAddress, wethTokenBalanceRecord)
-	if err != nil {
-		logger.Error(err)
-		return err
-	}
-
-	err = s.accountDao.UpdateTokenBalance(o.UserAddress, o.SellToken, sellTokenBalanceRecord)
-	if err != nil {
-		logger.Error(err)
-		return err
-	}
-
-	return nil
-}
-
-// this function is resonsible for unlocking of maker's amount in balance document
-// in case maker cancels the order or some error occurs
-func (s *OrderService) cancelOrderUnlockAmount(o *types.Order) error {
-	// Unlock Amount
-	acc, err := s.accountDao.GetByAddress(o.UserAddress)
-	if err != nil {
-		logger.Error(err)
-		return err
-	}
-
-	if o.Side == "BUY" {
-		tokenBalance := acc.TokenBalances[o.QuoteToken]
-		tokenBalance.Balance.Add(tokenBalance.Balance, o.SellAmount)
-		tokenBalance.LockedBalance.Sub(tokenBalance.LockedBalance, o.SellAmount)
-
-		err = s.accountDao.UpdateTokenBalance(o.UserAddress, o.QuoteToken, tokenBalance)
-		if err != nil {
-			logger.Error(err)
-			return err
-		}
-	}
-
-	if o.Side == "SELL" {
-		tokenBalance := acc.TokenBalances[o.BaseToken]
-		tokenBalance.Balance.Add(tokenBalance.Balance, o.SellAmount)
-		tokenBalance.LockedBalance.Sub(tokenBalance.LockedBalance, o.SellAmount)
-
-		err = s.accountDao.UpdateTokenBalance(o.UserAddress, o.BaseToken, tokenBalance)
-		if err != nil {
-			logger.Error(err)
-			return err
-		}
-	}
-
-	return nil
-}
-
 // RelayUpdateOverSocket is resonsible for notifying listening clients about new order/trade addition/deletion
 func (s *OrderService) RelayUpdateOverSocket(res *types.EngineResponse) {
 	// broadcast order's latest state
@@ -508,8 +678,8 @@ func (s *OrderService) RelayUpdateOverSocket(res *types.EngineResponse) {
 // RelayOrderUpdate is resonsible for notifying listening clients about new order addition/deletion
 func (s *OrderService) RelayOrderUpdate(res *types.EngineResponse) {
 	// broadcast order's latest state
-	go broadcastLiteOBUpdate(res.Order.BaseToken, res.Order.QuoteToken, getLightOBPayload(res))
-	go broadcastFullOBUpdate(res.Order)
+	go broadcastOrderBookUpdate(res.Order.BaseToken, res.Order.QuoteToken, getOrderBookPayload(res))
+	go broadcastRawOrderBookUpdate(res.Order)
 }
 
 // RelayTradeUpdate is resonsible for notifying listening clients about new trades
@@ -527,14 +697,14 @@ func (s *OrderService) RelayTradeUpdate(res *types.EngineResponse) {
 	go broadcastTradeUpdate(trades)
 }
 
-func broadcastLiteOBUpdate(baseToken, quoteToken common.Address, data interface{}) {
+func broadcastOrderBookUpdate(baseToken, quoteToken common.Address, data interface{}) {
 	cid := utils.GetOrderBookChannelID(baseToken, quoteToken)
 	ws.GetLiteOrderBookSocket().BroadcastMessage(cid, data)
 }
 
-func broadcastFullOBUpdate(order *types.Order) {
+func broadcastRawOrderBookUpdate(order *types.Order) {
 	cid := utils.GetOrderBookChannelID(order.BaseToken, order.QuoteToken)
-	ws.GetFullOrderBookSocket().BroadcastMessage(cid, order)
+	ws.GetRawOrderBookSocket().BroadcastMessage(cid, order)
 }
 
 func broadcastTradeUpdate(trades []*types.Trade) {
@@ -542,7 +712,7 @@ func broadcastTradeUpdate(trades []*types.Trade) {
 	ws.GetTradeSocket().BroadcastMessage(cid, trades)
 }
 
-func getLightOBPayload(res *types.EngineResponse) interface{} {
+func getOrderBookPayload(res *types.EngineResponse) interface{} {
 	orderSide := make(map[string]string)
 	matchSide := make([]map[string]string, 0)
 
@@ -629,4 +799,75 @@ func getLightOBPayload(res *types.EngineResponse) interface{} {
 // 			logger.Error(err)
 // 		}
 // 	}
+// }
+
+// UnlockBalances unlocks balances in case an order is canceled for examples. It unlocks both
+// the token sell balance as well as the weth balance for fees.
+// func (s *OrderService) ReverseBalances(orders ...*types.Order) error {
+// 	for _, o := range orders {
+// 		balanceRecord, err := s.accountDao.GetTokenBalances(o.UserAddress)
+// 		if err != nil {
+// 			logger.Error(err)
+// 			return err
+// 		}
+
+// 		wethAddress := common.HexToAddress(app.Config.Ethereum["weth_address"])
+
+// 		fee := math.Max(o.MakeFee, o.TakeFee)
+// 		sellTokenBalanceRecord := balanceRecord[o.SellToken]
+// 		sellTokenBalanceRecord.LockedBalance = math.Sub(sellTokenBalanceRecord.LockedBalance, o.SellAmount)
+// 		wethTokenBalanceRecord := balanceRecord[wethAddress]
+// 		wethTokenBalanceRecord.LockedBalance = math.Sub(wethTokenBalanceRecord.LockedBalance, fee)
+
+// 		err = s.accountDao.UpdateTokenBalance(o.UserAddress, wethAddress, wethTokenBalanceRecord)
+// 		if err != nil {
+// 			logger.Error(err)
+// 			return err
+// 		}
+
+// 		err = s.accountDao.UpdateTokenBalance(o.UserAddress, o.SellToken, sellTokenBalanceRecord)
+// 		if err != nil {
+// 			logger.Error(err)
+// 			return err
+// 		}
+// 	}
+
+// 	return nil
+// }
+
+// // this function is resonsible for unlocking of maker's amount in balance document
+// // in case maker cancels the order or some error occurs
+// func (s *OrderService) cancelOrderUnlockAmount(o *types.Order) error {
+// 	// Unlock Amount
+// 	acc, err := s.accountDao.GetByAddress(o.UserAddress)
+// 	if err != nil {
+// 		logger.Error(err)
+// 		return err
+// 	}
+
+// 	if o.Side == "BUY" {
+// 		tokenBalance := acc.TokenBalances[o.QuoteToken]
+// 		tokenBalance.Balance.Add(tokenBalance.Balance, o.SellAmount)
+// 		tokenBalance.LockedBalance.Sub(tokenBalance.LockedBalance, o.SellAmount)
+
+// 		err = s.accountDao.UpdateTokenBalance(o.UserAddress, o.QuoteToken, tokenBalance)
+// 		if err != nil {
+// 			logger.Error(err)
+// 			return err
+// 		}
+// 	}
+
+// 	if o.Side == "SELL" {
+// 		tokenBalance := acc.TokenBalances[o.BaseToken]
+// 		tokenBalance.Balance.Add(tokenBalance.Balance, o.SellAmount)
+// 		tokenBalance.LockedBalance.Sub(tokenBalance.LockedBalance, o.SellAmount)
+
+// 		err = s.accountDao.UpdateTokenBalance(o.UserAddress, o.BaseToken, tokenBalance)
+// 		if err != nil {
+// 			logger.Error(err)
+// 			return err
+// 		}
+// 	}
+
+// 	return nil
 // }

@@ -33,7 +33,7 @@ func (c *Connection) SubscribeOperator(fn func(*types.OperatorMessage) error) er
 				om := &types.OperatorMessage{}
 				err := json.Unmarshal(m.Body, &om)
 				if err != nil {
-					log.Print(err)
+					logger.Error(err)
 					continue
 				}
 
@@ -52,7 +52,7 @@ func (c *Connection) CloseOperatorChannel() error {
 		ch := c.GetChannel("OPERATOR_SUB")
 		err := ch.Close()
 		if err != nil {
-			log.Print(err)
+			logger.Error(err)
 		}
 
 		channels["OPERATOR_SUB"] = nil
@@ -67,7 +67,7 @@ func (c *Connection) UnSubscribeOperator() error {
 
 	err := ch.Cancel(q.Name, false)
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return err
 	}
 
@@ -79,7 +79,7 @@ func (c *Connection) PurgeOperatorQueue() error {
 
 	_, err := ch.QueuePurge("TX_MESSAGES", false)
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return err
 	}
 
@@ -91,7 +91,7 @@ func (c *Connection) PublishTradeCancelMessage(o *types.Order, tr *types.Trade) 
 	ch := c.GetChannel("OPERATOR_PUB")
 	q := c.GetQueue(ch, "TX_MESSAGES")
 	msg := &types.OperatorMessage{
-		MessageType: "TRADE_CANCEL_MESSAGE",
+		MessageType: "TRADE_CANCEL",
 		Trade:       tr,
 	}
 
@@ -106,6 +106,7 @@ func (c *Connection) PublishTradeCancelMessage(o *types.Order, tr *types.Trade) 
 		return err
 	}
 
+	logger.Info("PUBLISH TRADE CANCEL MESSAGE")
 	return nil
 }
 
@@ -114,14 +115,14 @@ func (c *Connection) PublishTradeSuccessMessage(o *types.Order, tr *types.Trade)
 	ch := c.GetChannel("OPERATOR_PUB")
 	q := c.GetQueue(ch, "TX_MESSAGES")
 	msg := &types.OperatorMessage{
-		MessageType: "TRADE_SUCCESS_MESSAGE",
+		MessageType: "TRADE_SUCCESS",
 		Order:       o,
 		Trade:       tr,
 	}
 
 	bytes, err := json.Marshal(msg)
 	if err != nil {
-		logger.Infof("Failed to marshal %s: %s", msg.MessageType, err)
+		logger.Error(err)
 	}
 
 	err = c.Publish(ch, q, bytes)
@@ -130,6 +131,7 @@ func (c *Connection) PublishTradeSuccessMessage(o *types.Order, tr *types.Trade)
 		return err
 	}
 
+	logger.Info("PUBLISH TRADE SUCCESS MESSAGE")
 	return nil
 }
 
@@ -138,7 +140,7 @@ func (c *Connection) PublishTxErrorMessage(tr *types.Trade, errID int) error {
 	ch := c.GetChannel("OPERATOR_PUB")
 	q := c.GetQueue(ch, "TX_MESSAGES")
 	msg := &types.OperatorMessage{
-		MessageType: "TRADE_ERROR_MESSAGE",
+		MessageType: "TRADE_ERROR",
 		Trade:       tr,
 		ErrID:       errID,
 	}
@@ -154,6 +156,30 @@ func (c *Connection) PublishTxErrorMessage(tr *types.Trade, errID int) error {
 		return err
 	}
 
+	logger.Info("PUBLISHED TRADE ERROR MESSAGE. Error ID: %v", errID)
+	return nil
+}
+
+func (c *Connection) PublishTradeInvalidMessage(or *types.Order, tr *types.Trade) error {
+	ch := c.GetChannel("OPERATOR_PUB")
+	q := c.GetQueue(ch, "TX_MESSAGES")
+	msg := &types.OperatorMessage{
+		MessageType: "TRADE_INVALID",
+		Trade:       tr,
+	}
+
+	bytes, err := json.Marshal(msg)
+	if err != nil {
+		logger.Error(err)
+	}
+
+	err = c.Publish(ch, q, bytes)
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	logger.Info("PUBLISHED TRADE INVALID MESSAGE")
 	return nil
 }
 
@@ -161,7 +187,7 @@ func (c *Connection) PublishTradeSentMessage(or *types.Order, tr *types.Trade) e
 	ch := c.GetChannel("OPERATOR_PUB")
 	q := c.GetQueue(ch, "TX_MESSAGES")
 	msg := &types.OperatorMessage{
-		MessageType: "TRADE_SENT_MESSAGE",
+		MessageType: "TRADE_SENT",
 		Trade:       tr,
 		Order:       or,
 	}

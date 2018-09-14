@@ -50,24 +50,42 @@ func (_m *Engine) CancelTrades(orders []*types.Order, amount []*big.Int) error {
 	return r0
 }
 
-// GetFullOrderBook provides a mock function with given fields: pair
-func (_m *Engine) GetFullOrderBook(pair *types.Pair) [][]types.Order {
-	ret := _m.Called(pair)
+// DeleteOrder provides a mock function with given fields: o
+func (_m *Engine) DeleteOrder(o *types.Order) error {
+	ret := _m.Called(o)
 
-	var r0 [][]types.Order
-	if rf, ok := ret.Get(0).(func(*types.Pair) [][]types.Order); ok {
-		r0 = rf(pair)
+	var r0 error
+	if rf, ok := ret.Get(0).(func(*types.Order) error); ok {
+		r0 = rf(o)
 	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([][]types.Order)
-		}
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// DeleteOrders provides a mock function with given fields: orders
+func (_m *Engine) DeleteOrders(orders ...types.Order) error {
+	_va := make([]interface{}, len(orders))
+	for _i := range orders {
+		_va[_i] = orders[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(...types.Order) error); ok {
+		r0 = rf(orders...)
+	} else {
+		r0 = ret.Error(0)
 	}
 
 	return r0
 }
 
 // GetOrderBook provides a mock function with given fields: pair
-func (_m *Engine) GetOrderBook(pair *types.Pair) ([]*map[string]float64, []*map[string]float64) {
+func (_m *Engine) GetOrderBook(pair *types.Pair) ([]*map[string]float64, []*map[string]float64, error) {
 	ret := _m.Called(pair)
 
 	var r0 []*map[string]float64
@@ -86,6 +104,36 @@ func (_m *Engine) GetOrderBook(pair *types.Pair) ([]*map[string]float64, []*map[
 		if ret.Get(1) != nil {
 			r1 = ret.Get(1).([]*map[string]float64)
 		}
+	}
+
+	var r2 error
+	if rf, ok := ret.Get(2).(func(*types.Pair) error); ok {
+		r2 = rf(pair)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
+}
+
+// GetRawOrderBook provides a mock function with given fields: pair
+func (_m *Engine) GetRawOrderBook(pair *types.Pair) ([][]types.Order, error) {
+	ret := _m.Called(pair)
+
+	var r0 [][]types.Order
+	if rf, ok := ret.Get(0).(func(*types.Pair) [][]types.Order); ok {
+		r0 = rf(pair)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([][]types.Order)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(*types.Pair) error); ok {
+		r1 = rf(pair)
+	} else {
+		r1 = ret.Error(1)
 	}
 
 	return r0, r1
@@ -112,20 +160,6 @@ func (_m *Engine) RecoverOrders(orders []*types.OrderTradePair) error {
 	var r0 error
 	if rf, ok := ret.Get(0).(func([]*types.OrderTradePair) error); ok {
 		r0 = rf(orders)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// SubscribeResponseQueue provides a mock function with given fields: fn
-func (_m *Engine) SubscribeResponseQueue(fn func(*types.EngineResponse) error) error {
-	ret := _m.Called(fn)
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(func(*types.EngineResponse) error) error); ok {
-		r0 = rf(fn)
 	} else {
 		r0 = ret.Error(0)
 	}

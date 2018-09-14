@@ -83,7 +83,7 @@ func (e *orderEndpoint) ws(input interface{}, conn *ws.Conn) {
 	bytes, _ := json.Marshal(input)
 	if err := json.Unmarshal(bytes, &msg); err != nil {
 		logger.Error(err)
-		ws.SendOrderErrorMessage(conn, err.Error())
+		ws.SendMessage(conn, ws.OrderChannel, "ERROR", err.Error())
 	}
 
 	switch msg.Type {
@@ -117,14 +117,14 @@ func (e *orderEndpoint) handleNewOrder(msg *types.WebSocketPayload, conn *ws.Con
 	bytes, err := json.Marshal(msg.Data)
 	if err != nil {
 		logger.Error(err)
-		ws.SendOrderErrorMessage(conn, err.Error())
+		ws.SendMessage(conn, ws.OrderChannel, "ERROR", err.Error())
 		return
 	}
 
 	err = json.Unmarshal(bytes, &o)
 	if err != nil {
 		logger.Error(err)
-		ws.SendOrderErrorMessage(conn, err.Error())
+		ws.SendMessage(conn, ws.OrderChannel, "ERROR", err.Error())
 		return
 	}
 
@@ -135,7 +135,7 @@ func (e *orderEndpoint) handleNewOrder(msg *types.WebSocketPayload, conn *ws.Con
 	err = e.orderService.NewOrder(o)
 	if err != nil {
 		logger.Error(err)
-		ws.SendOrderErrorMessage(conn, err.Error(), o.Hash)
+		ws.SendMessage(conn, ws.OrderChannel, "ERROR", err.Error())
 		return
 	}
 }
@@ -148,7 +148,7 @@ func (e *orderEndpoint) handleCancelOrder(p *types.WebSocketPayload, conn *ws.Co
 	err = oc.UnmarshalJSON(bytes)
 	if err != nil {
 		logger.Error(err)
-		ws.SendOrderErrorMessage(conn, err.Error(), oc.Hash)
+		ws.SendMessage(conn, ws.OrderChannel, "ERROR", err.Error())
 	}
 
 	ws.RegisterOrderConnection(oc.Hash, &ws.OrderConnection{Conn: conn, Active: true})
@@ -160,7 +160,7 @@ func (e *orderEndpoint) handleCancelOrder(p *types.WebSocketPayload, conn *ws.Co
 	err = e.orderService.CancelOrder(oc)
 	if err != nil {
 		logger.Error(err)
-		ws.SendOrderErrorMessage(conn, err.Error(), oc.Hash)
+		ws.SendMessage(conn, ws.OrderChannel, "ERROR", err.Error())
 		return
 	}
 }
