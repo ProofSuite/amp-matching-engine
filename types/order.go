@@ -7,12 +7,12 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/Proofsuite/amp-matching-engine/app"
 	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/Proofsuite/amp-matching-engine/utils/math"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/sha3"
-	validation "github.com/go-ozzo/ozzo-validation"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -44,20 +44,42 @@ type Order struct {
 	UpdatedAt time.Time `json:"updatedAt" bson:"updatedAt"`
 }
 
-func (o Order) Validate() error {
-	return validation.ValidateStruct(&o,
-		validation.Field(&o.ExchangeAddress, validation.Required),
-		validation.Field(&o.UserAddress, validation.Required),
-		validation.Field(&o.SellToken, validation.Required),
-		validation.Field(&o.BuyToken, validation.Required),
-		validation.Field(&o.MakeFee, validation.Required),
-		validation.Field(&o.TakeFee, validation.Required),
-		validation.Field(&o.Nonce, validation.Required),
-		validation.Field(&o.Expires, validation.Required),
-		validation.Field(&o.SellAmount, validation.Required),
-		validation.Field(&o.UserAddress, validation.Required),
-		validation.Field(&o.Signature, validation.Required),
-	)
+func (o *Order) Validate() error {
+	// err := validation.ValidateStruct(o,
+	// 	validation.Field(o.ExchangeAddress, validation.Required),
+	// 	validation.Field(o.UserAddress, validation.Required),
+	// 	validation.Field(o.SellToken, validation.Required),
+	// 	validation.Field(o.BuyToken, validation.Required),
+	// 	validation.Field(o.MakeFee, validation.Required),
+	// 	validation.Field(o.TakeFee, validation.Required),
+	// 	validation.Field(o.Nonce, validation.Required),
+	// 	validation.Field(o.Expires, validation.Required),
+	// 	validation.Field(o.SellAmount, validation.Required),
+	// 	validation.Field(o.UserAddress, validation.Required),
+	// 	validation.Field(o.Signature, validation.Required),
+	// )
+
+	// if err != nil {
+	// 	return err
+	// }
+
+	if o.ExchangeAddress != common.HexToAddress(app.Config.Ethereum["exchange_address"]) {
+		return errors.New("Incorrect exchange address")
+	}
+
+	if math.IsSmallerThan(o.BuyAmount, big.NewInt(0)) {
+		return errors.New("BuyAmount should be positive")
+	}
+
+	if math.IsSmallerThan(o.SellAmount, big.NewInt(0)) {
+		return errors.New("SellAmount should be positive")
+	}
+
+	if math.IsSmallerThan(o.Nonce, big.NewInt(0)) {
+		return errors.New("Nonce should be positive")
+	}
+
+	return nil
 }
 
 // ComputeHash calculates the orderRequest hash

@@ -28,7 +28,7 @@ func (s *TokenService) Create(token *types.Token) error {
 	}
 
 	if t != nil {
-		return errors.NewAPIError(401, "TOKEN_ALREADY_EXISTS", nil)
+		return errors.NewHTTPError(401, "TOKEN_ALREADY_EXISTS", nil)
 	}
 
 	return s.tokenDao.Create(token)

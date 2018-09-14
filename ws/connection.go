@@ -15,7 +15,7 @@ import (
 
 const (
 	TradeChannel         = "trades"
-	FullOrderBookChannel = "order_book_full"
+	RawOrderBookChannel  = "order_book_full"
 	LiteOrderBookChannel = "order_book_lite"
 	OrderChannel         = "orders"
 	OHLCVChannel         = "ohlcv"
@@ -178,6 +178,7 @@ func SendMessage(conn *Conn, channel string, msgType string, data interface{}, h
 		Channel: channel,
 		Payload: payload,
 	}
+
 	conn.mu.Lock()
 	defer conn.mu.Unlock()
 	err := conn.WriteJSON(message)

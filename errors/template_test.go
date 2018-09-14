@@ -3,24 +3,25 @@ package errors
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"net/http"
+
+	"github.com/stretchr/testify/assert"
 )
 
 const MESSAGE_FILE = "../config/errors.yaml"
 
-func TestNewAPIError(t *testing.T) {
+func TestNewHTTPError(t *testing.T) {
 	defer func() {
 		templates = nil
 	}()
 
 	assert.Nil(t, LoadMessages(MESSAGE_FILE))
 
-	e := NewAPIError(http.StatusContinue, "xyz", nil)
+	e := NewHTTPError(http.StatusContinue, "xyz", nil)
 	assert.Equal(t, http.StatusContinue, e.Status)
 	assert.Equal(t, "xyz", e.Message)
 
-	e = NewAPIError(http.StatusNotFound, "NOT_FOUND", nil)
+	e = NewHTTPError(http.StatusNotFound, "NOT_FOUND", nil)
 	assert.Equal(t, http.StatusNotFound, e.Status)
 	assert.NotEqual(t, "NOT_FOUND", e.Message)
 }

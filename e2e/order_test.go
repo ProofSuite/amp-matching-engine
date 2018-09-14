@@ -14,7 +14,6 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/rabbitmq"
 	"github.com/Proofsuite/amp-matching-engine/redis"
 	"github.com/Proofsuite/amp-matching-engine/types"
-	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/Proofsuite/amp-matching-engine/utils/testutils"
 	"github.com/Proofsuite/amp-matching-engine/ws"
 	"github.com/ethereum/go-ethereum/common"
@@ -157,9 +156,6 @@ func TestMatchOrder(t *testing.T) {
 	m1, _, _ := factory1.NewOrderMessage(ZRX, 1e10, WETH, 1e10)
 	m2, _, _ := factory2.NewOrderMessage(WETH, 1e10, ZRX, 1e10)
 
-	log.Print("HERE IS THER ORDER IN THE BEGIN")
-	utils.PrintJSON(m1)
-
 	//We put a millisecond delay between both requests to ensure they are
 	//received in the same order for each test
 	client1.Requests <- m1
@@ -222,7 +218,7 @@ func TestMatchPartialOrder1(t *testing.T) {
 	time.Sleep(time.Millisecond)
 
 	wg := sync.WaitGroup{}
-	wg.Add(2)
+	wg.Add(4)
 
 	go func() {
 		for {
@@ -267,7 +263,7 @@ func TestMatchPartialOrder2(t *testing.T) {
 	client2.Requests <- m3
 
 	wg := sync.WaitGroup{}
-	wg.Add(3)
+	wg.Add(4)
 
 	go func() {
 		for {
@@ -527,8 +523,8 @@ func TestMatchPartialOrder4(t *testing.T) {
 
 func TestMatchPartialOrder5(t *testing.T) {
 	_, _, client1, client2, factory1, factory2, pair, ZRX, WETH := SetupTest()
-	m1, o1, _ := factory1.NewBuyOrderMessage(50, 1e18) // buy 1e18 ZRX at 1ZRX = 50WETH
-	m2, o2, _ := factory2.NewSellOrderMessage(50, 1e18)
+	m1, o1, _ := factory1.NewBuyOrderMessage(50, 10) // buy 1e18 ZRX at 1ZRX = 50WETH
+	m2, o2, _ := factory2.NewSellOrderMessage(50, 10)
 
 	client1.Requests <- m1
 	time.Sleep(200 * time.Millisecond)
@@ -592,8 +588,8 @@ func TestMatchPartialOrder5(t *testing.T) {
 
 func TestMatchPartialOrder6(t *testing.T) {
 	_, _, client1, client2, factory1, factory2, pair, _, _ := SetupTest()
-	m1, o1, _ := factory1.NewSellOrderMessage(51, 1e16) // buy 1e18 ZRX at 1ZRX = 49WETH
-	m2, o2, _ := factory2.NewBuyOrderMessage(49, 1e16)  // sell 1e18 ZRX at 1ZRX = 51WETH
+	m1, o1, _ := factory1.NewSellOrderMessage(51, 1000) // buy 1e18 ZRX at 1ZRX = 49WETH
+	m2, o2, _ := factory2.NewBuyOrderMessage(49, 1000)  // sell 1e18 ZRX at 1ZRX = 51WETH
 
 	client1.Requests <- m1
 	time.Sleep(200 * time.Millisecond)

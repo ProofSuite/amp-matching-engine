@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"math/big"
 	"time"
 
@@ -178,6 +179,9 @@ func (s *OrderService) NewOrder(o *types.Order) error {
 	availableWethBalance := math.Sub(wethBalance, wethLockedBalance)
 	availableSellTokenBalance := math.Sub(sellTokenBalance, sellTokenLockedBalance)
 
+	logger.Info("Available weth balance", availableWethBalance)
+	logger.Info("Available sell token balance", availableSellTokenBalance)
+
 	if availableWethBalance.Cmp(fee) == -1 {
 		return errors.New("Insufficient WETH Balance")
 	}
@@ -302,6 +306,9 @@ func (s *OrderService) HandleEngineResponse(res *types.EngineResponse) error {
 }
 
 func (s *OrderService) HandleOperatorMessages(msg *types.OperatorMessage) error {
+	logger.Info("RECEIVING OPERATOR MESSAGE")
+	utils.PrintJSON(msg)
+
 	switch msg.MessageType {
 	case "TRADE_PENDING":
 		s.handleOperatorTradePending(msg)
@@ -365,9 +372,13 @@ func (s *OrderService) handleSubmitSignatures(res *types.EngineResponse) {
 	ch := ws.GetOrderChannel(res.Order.Hash)
 	t := time.NewTimer(30 * time.Second)
 
+	// utils.PrintJSON(res)
+
 	select {
 	case msg := <-ch:
 		if msg != nil && msg.Type == "SUBMIT_SIGNATURE" {
+			utils.PrintJSON(msg)
+
 			bytes, err := json.Marshal(msg.Data)
 			if err != nil {
 				logger.Error(err)
@@ -447,8 +458,11 @@ func (s *OrderService) handleEngineUnknownMessage(res *types.EngineResponse) {
 }
 
 func (s *OrderService) handleOperatorUnknownMessage(msg *types.OperatorMessage) {
+	log.Print("Receiving unknown message")
+	utils.PrintJSON(msg)
+
 	// s.Rollback(res)
-	ws.SendOrderMessage("ERROR", msg.Order.Hash, nil)
+	// ws.SendOrderMessage("ERROR", msg.Order.Hash, nil)
 }
 
 func (s *OrderService) handleOperatorTradePending(msg *types.OperatorMessage) {

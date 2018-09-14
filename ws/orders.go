@@ -20,6 +20,12 @@ var orderConnections map[string]*OrderConnection
 
 // GetOrderConn returns the connection associated with an order ID
 func GetOrderConnection(hash common.Hash) (conn *Conn) {
+	c := orderConnections[hash.Hex()]
+	if c == nil {
+		logger.Warning("No connection found")
+		return nil
+	}
+
 	return orderConnections[hash.Hex()].Conn
 }
 
@@ -82,13 +88,5 @@ func CloseOrderReadChannel(h common.Hash) error {
 
 func SendOrderMessage(msgType string, hash common.Hash, data interface{}) {
 	conn := GetOrderConnection(hash)
-	SendMessage(conn, OrderChannel, msgType, data)
+	SendMessage(conn, OrderChannel, msgType, data, hash)
 }
-
-// func SendOrderMessage(conn *Conn, msgType string, data interface{}, hash ...common.Hash) {
-// 	SendMessage(conn, OrderChannel, msgType, data, hash...)
-// }
-
-// func SendOrderErrorMessage(conn *Conn, data interface{}, hash ...common.Hash) {
-// 	SendOrderMessage(conn, "ERROR", data, hash...)
-// }

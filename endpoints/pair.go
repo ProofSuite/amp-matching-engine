@@ -47,7 +47,7 @@ func (r *pairEndpoint) query(c *routing.Context) error {
 	res, err := r.pairService.GetAll()
 	if err != nil {
 		logger.Error(err)
-		return errors.NewAPIError(500, "INTERNAL_SERVER_ERROR", nil)
+		return errors.NewHTTPError(500, "Internal Server Error", nil)
 	}
 
 	return c.Write(res)
@@ -56,12 +56,12 @@ func (r *pairEndpoint) query(c *routing.Context) error {
 func (r *pairEndpoint) get(c *routing.Context) error {
 	baseToken := c.Param("baseToken")
 	if !common.IsHexAddress(baseToken) {
-		return errors.NewAPIError(400, "INVALID_HEX_ADDRESS", nil)
+		return errors.NewHTTPError(400, "Invalid Hex Address", nil)
 	}
 
 	quoteToken := c.Param("quoteToken")
 	if !common.IsHexAddress(quoteToken) {
-		return errors.NewAPIError(400, "INVALID_HEX_ADDRESS", nil)
+		return errors.NewHTTPError(400, "Invalid Hex Address", nil)
 	}
 
 	baseTokenAddress := common.HexToAddress(baseToken)
@@ -70,7 +70,7 @@ func (r *pairEndpoint) get(c *routing.Context) error {
 	res, err := r.pairService.GetByTokenAddress(baseTokenAddress, quoteTokenAddress)
 	if err != nil {
 		logger.Error(err)
-		return errors.NewAPIError(500, "INTERNAL_SERVER_ERROR", nil)
+		return errors.NewHTTPError(500, "Internal Server Error", nil)
 	}
 
 	return c.Write(res)

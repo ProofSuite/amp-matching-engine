@@ -2,7 +2,6 @@ package endpoints
 
 import (
 	"encoding/json"
-	"log"
 
 	"github.com/Proofsuite/amp-matching-engine/errors"
 	"github.com/Proofsuite/amp-matching-engine/interfaces"
@@ -32,19 +31,19 @@ func ServeTradeResource(
 func (r *tradeEndpoint) history(c *routing.Context) error {
 	bt := c.Param("bt")
 	if !common.IsHexAddress(bt) {
-		return errors.NewAPIError(400, "INVALID_HEX_ADDRESS", nil)
+		return errors.NewHTTPError(400, "Invalid base token address", nil)
 	}
 
 	qt := c.Param("qt")
 	if !common.IsHexAddress(qt) {
-		return errors.NewAPIError(400, "INVALID_HEX_ADDRESS", nil)
+		return errors.NewHTTPError(400, "Invalid quote token address", nil)
 	}
 
 	baseToken := common.HexToAddress(bt)
 	quoteToken := common.HexToAddress(qt)
 	response, err := r.tradeService.GetByPairAddress(baseToken, quoteToken)
 	if err != nil {
-		return errors.NewAPIError(500, "INTERNAL_SERVER_ERROR", nil)
+		return errors.NewHTTPError(500, "Internal server error", nil)
 	}
 
 	return c.Write(response)
@@ -54,13 +53,13 @@ func (r *tradeEndpoint) history(c *routing.Context) error {
 func (r *tradeEndpoint) get(c *routing.Context) error {
 	addr := c.Param("addr")
 	if !common.IsHexAddress(addr) {
-		return errors.NewAPIError(400, "INVALID_ADDRESS", nil)
+		return errors.NewHTTPError(400, "Invalid address", nil)
 	}
 
 	address := common.HexToAddress(addr)
 	response, err := r.tradeService.GetByUserAddress(address)
 	if err != nil {
-		return errors.NewAPIError(500, "INTERNAL_SERVER_ERROR", nil)
+		return errors.NewHTTPError(500, "Internal server error", nil)
 	}
 
 	return c.Write(response)
@@ -75,8 +74,8 @@ func (e *tradeEndpoint) tradeWebSocket(input interface{}, conn *ws.Conn) {
 
 	socket := ws.GetTradeSocket()
 	if payload.Type != "subscription" {
-		log.Println("Payload is not of subscription type")
-		socket.SendErrorMessage(conn, "Payload is not of subscription type")
+		err := map[string]string{"Message": "Invalid payload"}
+		socket.SendErrorMessage(conn, err)
 		return
 	}
 
@@ -88,21 +87,14 @@ func (e *tradeEndpoint) tradeWebSocket(input interface{}, conn *ws.Conn) {
 	}
 
 	if (msg.Pair.BaseToken == common.Address{}) {
-		message := map[string]string{
-			"Code":    "Invalid_Pair_BaseToken",
-			"Message": "Invalid Pair BaseToken passed in Params",
-		}
-
-		socket.SendErrorMessage(conn, message)
+		err := map[string]string{"Message": "Invalid base token"}
+		socket.SendErrorMessage(conn, err)
 		return
 	}
 
 	if (msg.Pair.QuoteToken == common.Address{}) {
-		message := map[string]string{
-			"Code":    "Invalid_Pair_BaseToken",
-			"Message": "Invalid Pair BaseToken passed in Params",
-		}
-		socket.SendErrorMessage(conn, message)
+		err := map[string]string{"Message": "Invalid quote token"}
+		socket.SendErrorMessage(conn, err)
 		return
 	}
 

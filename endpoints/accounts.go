@@ -13,21 +13,20 @@ type accountEndpoint struct {
 }
 
 func ServeAccountResource(
-	rg *routing.RouteGroup,
+	r *routing.RouteGroup,
 	accountService interfaces.AccountService,
 ) {
+
 	e := &accountEndpoint{accountService}
-	rg.Post("/account", e.create)
-	rg.Get("/account/<address>", e.get)
+	r.Post("/account", e.create)
+	r.Get("/account/<address>", e.get)
 }
 
 func (e *accountEndpoint) create(c *routing.Context) error {
 	account := &types.Account{}
 	err := c.Read(&account)
 	if err != nil {
-		return errors.NewAPIError(400, "INVALID_DATA", map[string]interface{}{
-			"details": err.Error(),
-		})
+		return errors.NewHTTPError(400, "Invalid payload", nil)
 	}
 
 	err = account.Validate()
@@ -39,9 +38,7 @@ func (e *accountEndpoint) create(c *routing.Context) error {
 	err = e.accountService.Create(account)
 	if err != nil {
 		logger.Error(err)
-		return errors.NewAPIError(400, "CREATE_ACCOUNT_FAIL", map[string]interface{}{
-			"details": err.Error(),
-		})
+		return errors.NewHTTPError(400, "Internal server error", nil)
 	}
 
 	return c.Write(account)
@@ -50,14 +47,14 @@ func (e *accountEndpoint) create(c *routing.Context) error {
 func (e *accountEndpoint) get(c *routing.Context) error {
 	a := c.Param("address")
 	if !common.IsHexAddress(a) {
-		return errors.NewAPIError(400, "INVALID_ADDRESS", nil)
+		return errors.NewHTTPError(400, "Invalid Address", nil)
 	}
 
 	address := common.HexToAddress(a)
 	account, err := e.accountService.GetByAddress(address)
 	if err != nil {
 		logger.Error(err)
-		return errors.NewAPIError(400, "ACCOUNT_ERROR", nil)
+		return errors.NewHTTPError(400, "Internal Server Error", nil)
 	}
 
 	return c.Write(account)
@@ -66,12 +63,12 @@ func (e *accountEndpoint) get(c *routing.Context) error {
 func (e *accountEndpoint) getBalance(c *routing.Context) error {
 	a := c.Param("address")
 	if !common.IsHexAddress(a) {
-		return errors.NewAPIError(400, "INVALID_ADDRESS", nil)
+		return errors.NewHTTPError(400, "Invalid Address", nil)
 	}
 
 	t := c.Param("token")
 	if !common.IsHexAddress(a) {
-		return errors.NewAPIError(400, "INVALID_TOKEN_ADDRESS", nil)
+		return errors.NewHTTPError(400, "Invalid Token Address", nil)
 	}
 
 	addr := common.HexToAddress(a)
@@ -80,7 +77,7 @@ func (e *accountEndpoint) getBalance(c *routing.Context) error {
 	balance, err := e.accountService.GetTokenBalance(addr, tokenAddr)
 	if err != nil {
 		logger.Error(err)
-		return errors.NewAPIError(400, "ERROR_GETBALANCE", nil)
+		return errors.NewHTTPError(400, "Internal Server Error", nil)
 	}
 
 	return c.Write(balance)

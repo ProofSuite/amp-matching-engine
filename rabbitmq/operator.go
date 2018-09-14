@@ -187,7 +187,7 @@ func (c *Connection) PublishTradeSentMessage(or *types.Order, tr *types.Trade) e
 	ch := c.GetChannel("OPERATOR_PUB")
 	q := c.GetQueue(ch, "TX_MESSAGES")
 	msg := &types.OperatorMessage{
-		MessageType: "TRADE_SENT",
+		MessageType: "TRADE_PENDING",
 		Trade:       tr,
 		Order:       or,
 	}

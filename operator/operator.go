@@ -177,18 +177,13 @@ func (op *Operator) HandleEvents() error {
 				logger.Error(err)
 			}
 
-			or, err := op.OrderService.GetByHash(tr.OrderHash)
-			if err != nil {
-				logger.Error(err)
-			}
+			// or, err := op.OrderService.GetByHash(tr.OrderHash)
+			// if err != nil {
+			// 	logger.Error(err)
+			// }
 
 			go func() {
 				err = op.RabbitMQConnection.PublishTxErrorMessage(tr, errID)
-				if err != nil {
-					logger.Error(err)
-				}
-
-				err = op.RabbitMQConnection.PublishTradeCancelMessage(or, tr)
 				if err != nil {
 					logger.Error(err)
 				}
