@@ -67,7 +67,7 @@ func (e *OrderBookEndpoint) fullOrderBookEndpoint(c *routing.Context) error {
 
 	baseTokenAddress := common.HexToAddress(bt)
 	quoteTokenAddress := common.HexToAddress(qt)
-	ob, err := e.orderBookService.GetFullOrderBook(baseTokenAddress, quoteTokenAddress)
+	ob, err := e.orderBookService.GetRawOrderBook(baseTokenAddress, quoteTokenAddress)
 	if err != nil {
 		return errors.NewAPIError(500, "INTERNAL_SERVER_ERROR", nil)
 	}
@@ -123,11 +123,11 @@ func (e *OrderBookEndpoint) fullOrderBookWebSocket(input interface{}, conn *ws.C
 	}
 
 	if msg.Event == types.SUBSCRIBE {
-		e.orderBookService.SubscribeFull(conn, msg.Pair.BaseToken, msg.Pair.QuoteToken)
+		e.orderBookService.SubscribeRawOrderBook(conn, msg.Pair.BaseToken, msg.Pair.QuoteToken)
 	}
 
 	if msg.Event == types.UNSUBSCRIBE {
-		e.orderBookService.UnsubscribeFull(conn, msg.Pair.BaseToken, msg.Pair.QuoteToken)
+		e.orderBookService.UnSubscribeRawOrderBook(conn, msg.Pair.BaseToken, msg.Pair.QuoteToken)
 	}
 }
 
@@ -176,10 +176,10 @@ func (e *OrderBookEndpoint) liteOrderBookWebSocket(input interface{}, conn *ws.C
 	}
 
 	if msg.Event == types.SUBSCRIBE {
-		e.orderBookService.SubscribeLite(conn, msg.Pair.BaseToken, msg.Pair.QuoteToken)
+		e.orderBookService.SubscribeOrderBook(conn, msg.Pair.BaseToken, msg.Pair.QuoteToken)
 	}
 
 	if msg.Event == types.UNSUBSCRIBE {
-		e.orderBookService.UnsubscribeLite(conn, msg.Pair.BaseToken, msg.Pair.QuoteToken)
+		e.orderBookService.UnSubscribeOrderBook(conn, msg.Pair.BaseToken, msg.Pair.QuoteToken)
 	}
 }

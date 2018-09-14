@@ -15,7 +15,7 @@ func (c *Connection) SubscribeOrders(fn func(*Message) error) error {
 	go func() {
 		msgs, err := c.Consume(ch, q)
 		if err != nil {
-			log.Print(err)
+			logger.Error(err)
 		}
 
 		forever := make(chan bool)
@@ -25,7 +25,7 @@ func (c *Connection) SubscribeOrders(fn func(*Message) error) error {
 				msg := &Message{}
 				err := json.Unmarshal(d.Body, msg)
 				if err != nil {
-					log.Print(err)
+					logger.Error(err)
 					continue
 				}
 
@@ -45,7 +45,7 @@ func (c *Connection) SubscribeTrades(fn func(*types.OperatorMessage) error) erro
 	go func() {
 		msgs, err := c.Consume(ch, q)
 		if err != nil {
-			log.Print(err)
+			logger.Error(err)
 		}
 
 		forever := make(chan bool)
@@ -55,7 +55,7 @@ func (c *Connection) SubscribeTrades(fn func(*types.OperatorMessage) error) erro
 				msg := &types.OperatorMessage{}
 				err := json.Unmarshal(d.Body, msg)
 				if err != nil {
-					log.Print(err)
+					logger.Error(err)
 					continue
 				}
 
@@ -80,13 +80,13 @@ func (c *Connection) PublishTrade(o *types.Order, t *types.Trade) error {
 
 	bytes, err := json.Marshal(msg)
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return err
 	}
 
 	err = c.Publish(ch, q, bytes)
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return err
 	}
 
@@ -105,7 +105,7 @@ func (c *Connection) PublishOrder(order *Message) error {
 
 	err = c.Publish(ch, q, bytes)
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return err
 	}
 

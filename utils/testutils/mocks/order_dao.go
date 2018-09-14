@@ -2,6 +2,7 @@
 
 package mocks
 
+import big "math/big"
 import bson "gopkg.in/mgo.v2/bson"
 import common "github.com/ethereum/go-ethereum/common"
 
@@ -179,6 +180,29 @@ func (_m *OrderDao) GetHistoryByUserAddress(addr common.Address) ([]*types.Order
 	return r0, r1
 }
 
+// GetUserLockedBalance provides a mock function with given fields: account, token
+func (_m *OrderDao) GetUserLockedBalance(account common.Address, token common.Address) (*big.Int, error) {
+	ret := _m.Called(account, token)
+
+	var r0 *big.Int
+	if rf, ok := ret.Get(0).(func(common.Address, common.Address) *big.Int); ok {
+		r0 = rf(account, token)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*big.Int)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(common.Address, common.Address) error); ok {
+		r1 = rf(account, token)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // Update provides a mock function with given fields: id, o
 func (_m *OrderDao) Update(id bson.ObjectId, o *types.Order) error {
 	ret := _m.Called(id, o)
@@ -214,6 +238,34 @@ func (_m *OrderDao) UpdateByHash(hash common.Hash, o *types.Order) error {
 	var r0 error
 	if rf, ok := ret.Get(0).(func(common.Hash, *types.Order) error); ok {
 		r0 = rf(hash, o)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// UpdateOrderFilledAmount provides a mock function with given fields: hash, value
+func (_m *OrderDao) UpdateOrderFilledAmount(hash common.Hash, value *big.Int) error {
+	ret := _m.Called(hash, value)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(common.Hash, *big.Int) error); ok {
+		r0 = rf(hash, value)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// UpdateOrderStatus provides a mock function with given fields: hash, status
+func (_m *OrderDao) UpdateOrderStatus(hash common.Hash, status string) error {
+	ret := _m.Called(hash, status)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(common.Hash, string) error); ok {
+		r0 = rf(hash, status)
 	} else {
 		r0 = ret.Error(0)
 	}

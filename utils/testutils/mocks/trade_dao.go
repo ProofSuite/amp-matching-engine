@@ -226,3 +226,17 @@ func (_m *TradeDao) UpdateByHash(hash common.Hash, t *types.Trade) error {
 
 	return r0
 }
+
+// UpdateTradeStatus provides a mock function with given fields: hash, status
+func (_m *TradeDao) UpdateTradeStatus(hash common.Hash, status string) error {
+	ret := _m.Called(hash, status)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(common.Hash, string) error); ok {
+		r0 = rf(hash, status)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}

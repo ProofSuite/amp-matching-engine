@@ -2,10 +2,12 @@ package daos
 
 import (
 	"log"
+	"math/big"
 	"time"
 
 	"github.com/Proofsuite/amp-matching-engine/app"
 	"github.com/Proofsuite/amp-matching-engine/types"
+	"github.com/Proofsuite/amp-matching-engine/utils/math"
 	"github.com/ethereum/go-ethereum/common"
 	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -94,6 +96,55 @@ func (dao *OrderDao) UpdateByHash(hash common.Hash, o *types.Order) error {
 	}}
 
 	err := db.Update(dao.dbName, dao.collectionName, query, update)
+	if err != nil {
+		log.Print(err)
+		return err
+	}
+
+	return nil
+}
+
+func (dao *OrderDao) UpdateOrderStatus(hash common.Hash, status string) error {
+	query := bson.M{"hash": hash.Hex()}
+	update := bson.M{"$set": bson.M{
+		"status": status,
+	}}
+
+	err := db.Update(dao.dbName, dao.collectionName, query, update)
+	if err != nil {
+		log.Print(err)
+		return err
+	}
+
+	return nil
+}
+
+func (dao *OrderDao) UpdateOrderFilledAmount(hash common.Hash, value *big.Int) error {
+	q := bson.M{"hash": hash.Hex()}
+	res := []types.Order{}
+	err := db.Get(dao.dbName, dao.collectionName, q, 0, 1, &res)
+	if err != nil {
+		log.Print(err)
+		return err
+	}
+
+	o := res[0]
+	status := ""
+	filledAmount := math.Add(o.FilledAmount, value)
+	if math.IsZero(filledAmount) {
+		status = "OPEN"
+	} else if filledAmount.Cmp(o.Amount) == 0 {
+		status = "FILLED"
+	} else {
+		status = "PARTIALLY_FILLED"
+	}
+
+	update := bson.M{"$set": bson.M{
+		"status":       status,
+		"filledAmount": filledAmount,
+	}}
+
+	err = db.Update(dao.dbName, dao.collectionName, q, update)
 	if err != nil {
 		log.Print(err)
 		return err
@@ -191,6 +242,33 @@ func (dao *OrderDao) GetHistoryByUserAddress(addr common.Address) ([]*types.Orde
 	}
 	err := db.Get(dao.dbName, dao.collectionName, q, 0, 0, &res)
 	return res, err
+}
+
+func (dao *OrderDao) GetUserLockedBalance(account common.Address, token common.Address) (*big.Int, error) {
+	var orders []*types.Order
+	q := bson.M{
+		"userAddress": account.Hex(),
+		"status": bson.M{"$in": []string{
+			"OPEN",
+			"PARTIALLY_FILLED",
+		},
+			"sellToken": token.Hex(),
+		},
+	}
+
+	err := db.Get(dao.dbName, dao.collectionName, q, 0, 0, &orders)
+	if err != nil {
+		logger.Error(err)
+		return nil, err
+	}
+
+	lockedBalance := big.NewInt(0)
+	for _, o := range orders {
+		//TODO include the filled amounts in this balance
+		lockedBalance = math.Add(lockedBalance, o.SellAmount)
+	}
+
+	return lockedBalance, nil
 }
 
 // Drop drops all the order documents in the current database

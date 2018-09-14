@@ -4,9 +4,12 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/alicebob/miniredis"
 	"github.com/gomodule/redigo/redis"
 )
+
+var logger = utils.Logger
 
 type RedisConnection struct {
 	redis.Conn
@@ -93,6 +96,24 @@ func (c *RedisConnection) ZAdd(key string, rank int64, member string) error {
 	return err
 }
 
+// ZRem removes value in sorted set.
+// Cmd Returns: number of deletions and error
+// Returns: error
+func (c *RedisConnection) ZRem(key string, member string) error {
+	_, err := redis.Int64(c.Do("ZREM", key, member))
+	return err
+}
+
+func (c *RedisConnection) ZCount(key string) (int64, error) {
+	count, err := redis.Int64(c.Do("ZCOUNT", key, "-inf", "+inf"))
+	if err != nil {
+		logger.Error(err)
+		return 0, err
+	}
+
+	return count, nil
+}
+
 // IncrBy increment value of a key by passed amount. Returns: currentValue of key
 func (c *RedisConnection) IncrBy(key string, value int64) (int64, error) {
 	return redis.Int64(c.Do("INCRBY", key, value))
@@ -109,14 +130,6 @@ func (c *RedisConnection) Set(key string, value string) error {
 		return fmt.Errorf("Some error occured while running SET command on key: %v", key)
 	}
 	return nil
-}
-
-// ZRem removes value in sorted set.
-// Cmd Returns: number of deletions and error
-// Returns: error
-func (c *RedisConnection) ZRem(key string, member string) error {
-	_, err := redis.Int64(c.Do("ZREM", key, member))
-	return err
 }
 
 // Del removes given key from redis

@@ -73,9 +73,10 @@ func (dao *TradeDao) UpdateByHash(hash common.Hash, t *types.Trade) error {
 	t.UpdatedAt = time.Now()
 	query := bson.M{"hash": hash.Hex()}
 	update := bson.M{"$set": bson.M{
-		"pricepoint": t.PricePoint.String(),
-		"tradeNonce": t.TradeNonce.String(),
-		"txHash":     t.TxHash.String(),
+		"pricepoint":     t.PricePoint.String(),
+		"tradeNonce":     t.TradeNonce.String(),
+		"txHash":         t.TxHash.String(),
+		"takerOrderHash": t.TakerOrderHash.String(),
 		"signature": &types.SignatureRecord{
 			V: t.Signature.V,
 			R: t.Signature.R.Hex(),
@@ -190,6 +191,21 @@ func (dao *TradeDao) GetByUserAddress(addr common.Address) ([]*types.Trade, erro
 	}
 
 	return response, nil
+}
+
+func (dao *TradeDao) UpdateTradeStatus(hash common.Hash, status string) error {
+	query := bson.M{"hash": hash.Hex()}
+	update := bson.M{"$set": bson.M{
+		"status": status,
+	}}
+
+	err := db.Update(dao.dbName, dao.collectionName, query, update)
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	return nil
 }
 
 // Drop drops all the order documents in the current database

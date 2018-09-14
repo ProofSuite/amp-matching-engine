@@ -14,13 +14,13 @@ type AccountDao struct {
 	mock.Mock
 }
 
-// Create provides a mock function with given fields: a
-func (_m *AccountDao) Create(a *types.Account) error {
-	ret := _m.Called(a)
+// Create provides a mock function with given fields: account
+func (_m *AccountDao) Create(account *types.Account) error {
+	ret := _m.Called(account)
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(*types.Account) error); ok {
-		r0 = rf(a)
+		r0 = rf(account)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -135,29 +135,6 @@ func (_m *AccountDao) GetTokenBalances(owner common.Address) (map[common.Address
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(map[common.Address]*types.TokenBalance)
-		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(common.Address) error); ok {
-		r1 = rf(owner)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// GetWethTokenBalance provides a mock function with given fields: owner
-func (_m *AccountDao) GetWethTokenBalance(owner common.Address) (*types.TokenBalance, error) {
-	ret := _m.Called(owner)
-
-	var r0 *types.TokenBalance
-	if rf, ok := ret.Get(0).(func(common.Address) *types.TokenBalance); ok {
-		r0 = rf(owner)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*types.TokenBalance)
 		}
 	}
 

@@ -2,7 +2,6 @@ package daos
 
 import (
 	"fmt"
-	"log"
 	"math/big"
 	"time"
 
@@ -46,7 +45,7 @@ func (dao *AccountDao) Create(account *types.Account) error {
 
 	err := db.Create(dao.dbName, dao.collectionName, account)
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return err
 	}
 
@@ -184,6 +183,7 @@ func (dao *AccountDao) UpdateAllowance(owner common.Address, token common.Addres
 	q := bson.M{
 		"address": owner.Hex(),
 	}
+
 	updateQuery := bson.M{
 		"$set": bson.M{"tokenBalances." + token.Hex() + ".allowance": allowance.String()},
 	}

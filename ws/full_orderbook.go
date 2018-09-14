@@ -12,8 +12,8 @@ type FullOrderBookSocket struct {
 	subscriptions map[string]map[*Conn]bool
 }
 
-// GetFullOrderBookSocket return singleton instance of PairSockets type struct
-func GetFullOrderBookSocket() *FullOrderBookSocket {
+// GetRawOrderBookSocket return singleton instance of PairSockets type struct
+func GetRawOrderBookSocket() *FullOrderBookSocket {
 	if fullOrderBookSocket == nil {
 		fullOrderBookSocket = &FullOrderBookSocket{make(map[string]map[*Conn]bool)}
 	}

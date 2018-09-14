@@ -226,7 +226,10 @@ func TestDeleteOrder(t *testing.T) {
 	assert.Equal(t, int64(pricePointHashes[o1.Hash.Hex()]), o1.CreatedAt.Unix())
 	assert.Equal(t, int64(100000000), volume)
 
-	ob.deleteOrder(&o1, units.Ethers(1e8))
+	err = ob.deleteOrder(&o1)
+	if err != nil {
+		t.Error(err)
+	}
 
 	pricePointSetKey, orderHashListKey = o1.GetOBKeys()
 
@@ -363,7 +366,7 @@ func TestFillOrder1(t *testing.T) {
 
 	o1, _ := factory1.NewSellOrder(1e3, 1e8)
 	o2, _ := factory2.NewBuyOrder(1e3, 1e8)
-	expectedTrade, _ := types.NewUnsignedTrade(&o1, factory2.Wallet.Address, units.Ethers(1e8))
+	expectedTrade, _ := types.NewUnsignedTrade1(&o1, &o2, units.Ethers(1e8))
 
 	exp1 := o1
 	exp1.Status = "OPEN"
@@ -406,7 +409,7 @@ func TestFillOrder2(t *testing.T) {
 
 	o1, _ := factory1.NewBuyOrder(1e3, 1e8)
 	o2, _ := factory2.NewSellOrder(1e3, 1e8)
-	expectedTrade, _ := types.NewUnsignedTrade(&o1, factory2.Wallet.Address, utils.Ethers(1e8))
+	expectedTrade, _ := types.NewUnsignedTrade1(&o1, &o2, utils.Ethers(1e8))
 
 	exp1 := o1
 	exp1.Status = "OPEN"

@@ -9,7 +9,6 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/gomodule/redigo/redis"
 )
 
 // GetPricePoints returns the pricepoints matching a certain (pair, pricepoint)
@@ -31,22 +30,6 @@ func (ob *OrderBook) GetMatchingSellPricePoints(obkv string, pricePoint int64) (
 	}
 
 	return pps, nil
-}
-
-func (ob *OrderBook) GetPricePointVolume(pricePointSetKey string, pricePoint int64) (int64, error) {
-	val, err := ob.redisConn.GetValue(pricePointSetKey + "::book::" + utils.UintToPaddedString(pricePoint))
-	if err != nil {
-		logger.Error(err)
-		return 0, err
-	}
-
-	vol, err := strconv.ParseInt(val, 10, 64)
-	if err != nil {
-		logger.Error(err)
-		return 0, err
-	}
-
-	return vol, nil
 }
 
 func (ob *OrderBook) GetFromOrderMap(hash common.Hash) (*types.Order, error) {
@@ -107,10 +90,21 @@ func (ob *OrderBook) RemoveFromPricePointSet(pricePointSetKey string, pricePoint
 	return nil
 }
 
+func (ob *OrderBook) GetPricePointSetLength(pricePointSetKey string) (int64, error) {
+	count, err := ob.redisConn.ZCount(pricePointSetKey)
+	if err != nil {
+		logger.Error(err)
+		return 0, err
+	}
+
+	return count, nil
+}
+
 // AddPricePointHashesSet
 func (ob *OrderBook) AddToPricePointHashesSet(orderHashListKey string, createdAt time.Time, hash common.Hash) error {
 	err := ob.redisConn.ZAdd(orderHashListKey, createdAt.Unix(), hash.Hex())
 	if err != nil {
+		logger.Error(err)
 		return err
 	}
 
@@ -121,10 +115,37 @@ func (ob *OrderBook) AddToPricePointHashesSet(orderHashListKey string, createdAt
 func (ob *OrderBook) RemoveFromPricePointHashesSet(orderHashListKey string, hash common.Hash) error {
 	err := ob.redisConn.ZRem(orderHashListKey, hash.Hex())
 	if err != nil {
+		logger.Error(err)
 		return err
 	}
 
 	return nil
+}
+
+func (ob *OrderBook) GetPricePointHashesSetLength(orderHashListKey string) (int64, error) {
+	count, err := ob.redisConn.ZCount(orderHashListKey)
+	if err != nil {
+		logger.Error(err)
+		return 0, err
+	}
+
+	return count, nil
+}
+
+func (ob *OrderBook) GetPricePointVolume(pricePointSetKey string, pricePoint int64) (int64, error) {
+	val, err := ob.redisConn.GetValue(pricePointSetKey + "::book::" + utils.UintToPaddedString(pricePoint))
+	if err != nil {
+		logger.Error(err)
+		return 0, err
+	}
+
+	vol, err := strconv.ParseInt(val, 10, 64)
+	if err != nil {
+		logger.Error(err)
+		return 0, err
+	}
+
+	return vol, nil
 }
 
 // IncrementPricePointVolume increases the value of a certain pricepoint at a certain volume
@@ -190,84 +211,4 @@ func (ob *OrderBook) RemoveFromOrderMap(hash common.Hash) error {
 	}
 
 	return nil
-}
-
-// GetOrderBook fetches the complete orderbook from redis for the required pair
-func (ob *OrderBook) GetOrderBook(pair *types.Pair) (sellBook, buyBook []*map[string]float64) {
-	sKey, bKey := pair.GetOrderBookKeys()
-	res, err := redis.Int64s(ob.redisConn.Do("SORT", sKey, "GET", sKey+"::book::*", "GET", "#")) // Add price point to order book
-	if err != nil {
-		logger.Error(err)
-	}
-
-	for i := 0; i < len(res); i = i + 2 {
-		temp := &map[string]float64{
-			"amount": float64(res[i]),
-			"price":  float64(res[i+1]),
-		}
-		sellBook = append(sellBook, temp)
-	}
-
-	res, err = redis.Int64s(ob.redisConn.Do("SORT", bKey, "GET", bKey+"::book::*", "GET", "#", "DESC"))
-	if err != nil {
-		logger.Error(err)
-	}
-
-	for i := 0; i < len(res); i = i + 2 {
-		temp := &map[string]float64{
-			"amount": float64(res[i]),
-			"price":  float64(res[i+1]),
-		}
-		buyBook = append(buyBook, temp)
-	}
-
-	return
-}
-
-// GetFullOrderBook fetches the complete orderbook from redis for the required pair
-func (ob *OrderBook) GetFullOrderBook(pair *types.Pair) (book [][]types.Order) {
-	pattern := pair.GetKVPrefix() + "::*::*::orders::*"
-
-	groupInt := 100
-
-	book = make([][]types.Order, 0)
-	keys, err := ob.redisConn.Keys(pattern)
-	if err != nil {
-		logger.Error(err)
-		return
-	}
-
-	orders := make([]types.Order, 0)
-
-	for start := 0; start < len(keys); start = start + groupInt {
-		end := start + groupInt
-		if len(keys) < end {
-			end = len(keys)
-		}
-		res, err := ob.redisConn.MGet(keys[start:end]...)
-		if err != nil {
-			logger.Error(err)
-			return
-		}
-		for _, r := range res {
-			if r == "" {
-				continue
-			}
-			var temp types.Order
-			if err := json.Unmarshal([]byte(r), &temp); err != nil {
-				continue
-			}
-			orders = append(orders, temp)
-		}
-	}
-
-	for start := 0; start < len(orders); start = start + groupInt {
-		end := start + groupInt
-		if len(keys) < end {
-			end = len(keys)
-		}
-		book = append(book, orders[start:end])
-	}
-
-	return
 }

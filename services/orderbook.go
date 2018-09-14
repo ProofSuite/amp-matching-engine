@@ -34,16 +34,24 @@ func (s *OrderBookService) GetOrderBook(bt, qt common.Address) (map[string]inter
 	res, err := s.pairDao.GetByTokenAddress(bt, qt)
 	if err != nil {
 		message := map[string]string{
-			"Code":    "Invalid_Pair",
-			"Message": "Invalid Pair " + err.Error(),
+			"Code":    "Invalid Pair",
+			"Message": err.Error(),
 		}
 		bytes, _ := json.Marshal(message)
 		return nil, errors.New(string(bytes))
 	}
 
-	// sKey, bKey := res.GetOrderBookKeys()
+	bids, asks, err := s.eng.GetOrderBook(res)
+	if err != nil {
+		message := map[string]string{
+			"Code":    "Invalid Pair",
+			"Message": err.Error(),
+		}
 
-	bids, asks := s.eng.GetOrderBook(res)
+		bytes, _ := json.Marshal(message)
+		return nil, errors.New(string(bytes))
+	}
+
 	ob := map[string]interface{}{
 		"asks": asks,
 		"bids": bids,
@@ -51,9 +59,9 @@ func (s *OrderBookService) GetOrderBook(bt, qt common.Address) (map[string]inter
 	return ob, nil
 }
 
-// SubscribeLite is responsible for handling incoming orderbook subscription messages
+// SubscribeOrderBook is responsible for handling incoming orderbook subscription messages
 // It makes an entry of connection in pairSocket corresponding to pair,unit and duration
-func (s *OrderBookService) SubscribeLite(conn *ws.Conn, bt, qt common.Address) {
+func (s *OrderBookService) SubscribeOrderBook(conn *ws.Conn, bt, qt common.Address) {
 	socket := ws.GetLiteOrderBookSocket()
 
 	ob, err := s.GetOrderBook(bt, qt)
@@ -66,8 +74,8 @@ func (s *OrderBookService) SubscribeLite(conn *ws.Conn, bt, qt common.Address) {
 	err = socket.Subscribe(id, conn)
 	if err != nil {
 		message := map[string]string{
-			"Code":    "UNABLE_TO_REGISTER",
-			"Message": "UNABLE_TO_REGISTER " + err.Error(),
+			"Code":    "Internal Server Error",
+			"Message": err.Error(),
 		}
 
 		socket.SendErrorMessage(conn, message)
@@ -78,35 +86,45 @@ func (s *OrderBookService) SubscribeLite(conn *ws.Conn, bt, qt common.Address) {
 	socket.SendInitMessage(conn, ob)
 }
 
-// UnsubscribeLite is responsible for handling incoming orderbook unsubscription messages
-func (s *OrderBookService) UnsubscribeLite(conn *ws.Conn, bt, qt common.Address) {
+// UnSubscribeOrderBook is responsible for handling incoming orderbook unsubscription messages
+func (s *OrderBookService) UnSubscribeOrderBook(conn *ws.Conn, bt, qt common.Address) {
 	socket := ws.GetLiteOrderBookSocket()
 
 	id := utils.GetOrderBookChannelID(bt, qt)
 	socket.Unsubscribe(id, conn)
 }
 
-// GetFullOrderBook fetches complete orderbook from engine/redis
-func (s *OrderBookService) GetFullOrderBook(bt, qt common.Address) ([][]types.Order, error) {
+// GetRawOrderBook fetches complete orderbook from engine/redis
+func (s *OrderBookService) GetRawOrderBook(bt, qt common.Address) ([][]types.Order, error) {
 	res, err := s.pairDao.GetByTokenAddress(bt, qt)
 	if err != nil {
 		message := map[string]string{
-			"Code":    "Invalid_Pair",
-			"Message": "Invalid Pair " + err.Error(),
+			"Code":    "Invalid Pair",
+			"Message": err.Error(),
 		}
 		bytes, _ := json.Marshal(message)
 		return nil, errors.New(string(bytes))
 	}
 
-	return s.eng.GetFullOrderBook(res), nil
+	book, err := s.eng.GetRawOrderBook(res)
+	if err != nil {
+		message := map[string]string{
+			"Code":    "Internal Server Error",
+			"Message": err.Error(),
+		}
+		bytes, _ := json.Marshal(message)
+		return nil, errors.New(string(bytes))
+	}
+
+	return book, nil
 }
 
-// SubscribeFull is responsible for handling incoming orderbook subscription messages
+// SubscribeRawOrderBook is responsible for handling incoming orderbook subscription messages
 // It makes an entry of connection in pairSocket corresponding to pair,unit and duration
-func (s *OrderBookService) SubscribeFull(conn *ws.Conn, bt, qt common.Address) {
-	socket := ws.GetFullOrderBookSocket()
+func (s *OrderBookService) SubscribeRawOrderBook(conn *ws.Conn, bt, qt common.Address) {
+	socket := ws.GetRawOrderBookSocket()
 
-	ob, err := s.GetFullOrderBook(bt, qt)
+	ob, err := s.GetRawOrderBook(bt, qt)
 	if err != nil {
 		socket.SendErrorMessage(conn, err.Error())
 		return
@@ -116,8 +134,8 @@ func (s *OrderBookService) SubscribeFull(conn *ws.Conn, bt, qt common.Address) {
 	err = socket.Subscribe(id, conn)
 	if err != nil {
 		message := map[string]string{
-			"Code":    "UNABLE_TO_REGISTER",
-			"Message": "UNABLE_TO_REGISTER " + err.Error(),
+			"Code":    "Internal Server Error",
+			"Message": err.Error(),
 		}
 
 		socket.SendErrorMessage(conn, message)
@@ -128,9 +146,9 @@ func (s *OrderBookService) SubscribeFull(conn *ws.Conn, bt, qt common.Address) {
 	socket.SendInitMessage(conn, ob)
 }
 
-// UnsubscribeFull is responsible for handling incoming orderbook unsubscription messages
-func (s *OrderBookService) UnsubscribeFull(conn *ws.Conn, bt, qt common.Address) {
-	socket := ws.GetFullOrderBookSocket()
+// UnSubscribeRawOrderBook is responsible for handling incoming orderbook unsubscription messages
+func (s *OrderBookService) UnSubscribeRawOrderBook(conn *ws.Conn, bt, qt common.Address) {
+	socket := ws.GetRawOrderBookSocket()
 
 	id := utils.GetOrderBookChannelID(bt, qt)
 	socket.Unsubscribe(id, conn)
