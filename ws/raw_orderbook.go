@@ -85,3 +85,7 @@ func (s *RawOrderBookSocket) SendInitMessage(conn *Conn, data interface{}) {
 func (s *RawOrderBookSocket) SendUpdateMessage(conn *Conn, data interface{}) {
 	s.SendMessage(conn, "UPDATE", data)
 }
+
+func (s *RawOrderBookSocket) SendErrorMessage(conn *Conn, data interface{}) {
+	s.SendMessage(conn, "ERROR", data)
+}

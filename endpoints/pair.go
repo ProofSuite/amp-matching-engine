@@ -1,12 +1,16 @@
 package endpoints
 
 import (
+	"encoding/json"
+	"net/http"
+
 	"github.com/ethereum/go-ethereum/common"
 
-	"github.com/Proofsuite/amp-matching-engine/errors"
 	"github.com/Proofsuite/amp-matching-engine/interfaces"
+	"github.com/Proofsuite/amp-matching-engine/services"
 	"github.com/Proofsuite/amp-matching-engine/types"
-	"github.com/go-ozzo/ozzo-routing"
+	"github.com/Proofsuite/amp-matching-engine/utils/httputils"
+	"github.com/gorilla/mux"
 )
 
 type pairEndpoint struct {
@@ -15,63 +19,93 @@ type pairEndpoint struct {
 
 // ServePairResource sets up the routing of pair endpoints and the corresponding handlers.
 func ServePairResource(
-	rg *routing.RouteGroup,
+	r *mux.Router,
 	p interfaces.PairService,
 ) {
-	r := &pairEndpoint{p}
-	rg.Get("/pairs/<baseToken>/<quoteToken>", r.get)
-	rg.Get("/pairs", r.query)
-	rg.Post("/pairs", r.create)
+	e := &pairEndpoint{p}
+	r.HandleFunc("/pairs", e.HandleCreatePair).Methods("POST")
+	r.HandleFunc("/pairs/{baseToken}/{quoteToken}", e.HandleGetPair).Methods("GET")
+	r.HandleFunc("/pairs", e.HandleGetAllPairs).Methods("GET")
 }
 
-func (r *pairEndpoint) create(c *routing.Context) error {
-	var p types.Pair
+func (e *pairEndpoint) HandleCreatePair(w http.ResponseWriter, r *http.Request) {
+	p := &types.Pair{}
 
-	if err := c.Read(&p); err != nil {
-		return err
-	}
-
-	if err := p.Validate(); err != nil {
-		return err
-	}
-
-	err := r.pairService.Create(&p)
-	if err != nil {
-		return err
-	}
-
-	return c.Write(p)
-}
-
-func (r *pairEndpoint) query(c *routing.Context) error {
-	res, err := r.pairService.GetAll()
+	decoder := json.NewDecoder(r.Body)
+	err := decoder.Decode(p)
 	if err != nil {
 		logger.Error(err)
-		return errors.NewHTTPError(500, "Internal Server Error", nil)
+		httputils.WriteError(w, http.StatusBadRequest, "Invalid payload")
+		return
 	}
 
-	return c.Write(res)
+	defer r.Body.Close()
+
+	err = p.Validate()
+	if err != nil {
+		logger.Error(err)
+		httputils.WriteError(w, http.StatusBadRequest, "Invalid payload")
+		return
+	}
+
+	err = e.pairService.Create(p)
+	if err != nil {
+		switch err {
+		case services.ErrPairExists:
+			httputils.WriteError(w, http.StatusBadRequest, "Pair exists")
+			return
+		case services.ErrBaseTokenNotFound:
+			httputils.WriteError(w, http.StatusBadRequest, "Base token not found")
+			return
+		case services.ErrQuoteTokenNotFound:
+			httputils.WriteError(w, http.StatusBadRequest, "Quote token not found")
+			return
+		case services.ErrQuoteTokenInvalid:
+			httputils.WriteError(w, http.StatusBadRequest, "Quote token invalid (token is not registered as quote")
+			return
+		default:
+			logger.Error(err)
+			httputils.WriteError(w, http.StatusInternalServerError, "")
+			return
+		}
+	}
+
+	httputils.WriteJSON(w, http.StatusCreated, p)
 }
 
-func (r *pairEndpoint) get(c *routing.Context) error {
-	baseToken := c.Param("baseToken")
-	if !common.IsHexAddress(baseToken) {
-		return errors.NewHTTPError(400, "Invalid Hex Address", nil)
+func (e *pairEndpoint) HandleGetAllPairs(w http.ResponseWriter, r *http.Request) {
+	res, err := e.pairService.GetAll()
+	if err != nil {
+		logger.Error(err)
+		httputils.WriteError(w, http.StatusInternalServerError, "")
+		return
 	}
 
-	quoteToken := c.Param("quoteToken")
+	httputils.WriteJSON(w, http.StatusCreated, res)
+}
+
+func (e *pairEndpoint) HandleGetPair(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	baseToken := vars["baseToken"]
+	quoteToken := vars["quoteToken"]
+
+	if !common.IsHexAddress(baseToken) {
+		httputils.WriteError(w, http.StatusBadRequest, "Invalid Address")
+	}
+
 	if !common.IsHexAddress(quoteToken) {
-		return errors.NewHTTPError(400, "Invalid Hex Address", nil)
+		httputils.WriteError(w, http.StatusBadRequest, "Invalid Address")
 	}
 
 	baseTokenAddress := common.HexToAddress(baseToken)
 	quoteTokenAddress := common.HexToAddress(quoteToken)
-
-	res, err := r.pairService.GetByTokenAddress(baseTokenAddress, quoteTokenAddress)
+	res, err := e.pairService.GetByTokenAddress(baseTokenAddress, quoteTokenAddress)
 	if err != nil {
 		logger.Error(err)
-		return errors.NewHTTPError(500, "Internal Server Error", nil)
+		httputils.WriteError(w, http.StatusInternalServerError, "")
+		return
 	}
 
-	return c.Write(res)
+	httputils.WriteJSON(w, http.StatusCreated, res)
 }

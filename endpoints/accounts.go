@@ -1,11 +1,14 @@
 package endpoints
 
 import (
-	"github.com/Proofsuite/amp-matching-engine/errors"
+	"encoding/json"
+	"net/http"
+
 	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/Proofsuite/amp-matching-engine/types"
+	"github.com/Proofsuite/amp-matching-engine/utils/httputils"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/go-ozzo/ozzo-routing"
+	"github.com/gorilla/mux"
 )
 
 type accountEndpoint struct {
@@ -13,72 +16,87 @@ type accountEndpoint struct {
 }
 
 func ServeAccountResource(
-	r *routing.RouteGroup,
+	r *mux.Router,
 	accountService interfaces.AccountService,
 ) {
 
 	e := &accountEndpoint{accountService}
-	r.Post("/account", e.create)
-	r.Get("/account/<address>", e.get)
+	r.HandleFunc("/account", e.handleCreateAccount).Methods("POST")
+	r.HandleFunc("/account/<address>", e.handleGetAccount).Methods("GET")
+	r.HandleFunc("/account/{address}/{token}", e.handleGetAccountTokenBalance).Methods("GET")
 }
 
-func (e *accountEndpoint) create(c *routing.Context) error {
-	account := &types.Account{}
-	err := c.Read(&account)
-	if err != nil {
-		return errors.NewHTTPError(400, "Invalid payload", nil)
-	}
+func (e *accountEndpoint) handleCreateAccount(w http.ResponseWriter, r *http.Request) {
+	a := &types.Account{}
+	decoder := json.NewDecoder(r.Body)
 
-	err = account.Validate()
+	err := decoder.Decode(a)
 	if err != nil {
 		logger.Error(err)
-		return err
+		httputils.WriteError(w, http.StatusBadRequest, "Invalid payload")
+		return
 	}
 
-	err = e.accountService.Create(account)
+	defer r.Body.Close()
+
+	err = a.Validate()
 	if err != nil {
 		logger.Error(err)
-		return errors.NewHTTPError(400, "Internal server error", nil)
+		httputils.WriteError(w, http.StatusBadRequest, "Invalid payload")
+		return
 	}
 
-	return c.Write(account)
+	err = e.accountService.Create(a)
+	if err != nil {
+		logger.Error(err)
+		httputils.WriteError(w, http.StatusInternalServerError, "")
+		return
+	}
+
+	httputils.WriteJSON(w, http.StatusCreated, a)
 }
 
-func (e *accountEndpoint) get(c *routing.Context) error {
-	a := c.Param("address")
-	if !common.IsHexAddress(a) {
-		return errors.NewHTTPError(400, "Invalid Address", nil)
+func (e *accountEndpoint) handleGetAccount(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	addr := vars["address"]
+	if !common.IsHexAddress(addr) {
+		httputils.WriteError(w, http.StatusBadRequest, "Invalid Address")
+		return
 	}
 
-	address := common.HexToAddress(a)
-	account, err := e.accountService.GetByAddress(address)
+	address := common.HexToAddress(addr)
+	a, err := e.accountService.GetByAddress(address)
 	if err != nil {
 		logger.Error(err)
-		return errors.NewHTTPError(400, "Internal Server Error", nil)
+		httputils.WriteError(w, http.StatusInternalServerError, "")
+		return
 	}
 
-	return c.Write(account)
+	httputils.WriteJSON(w, http.StatusOK, a)
 }
 
-func (e *accountEndpoint) getBalance(c *routing.Context) error {
-	a := c.Param("address")
+func (e *accountEndpoint) handleGetAccountTokenBalance(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	a := vars["address"]
 	if !common.IsHexAddress(a) {
-		return errors.NewHTTPError(400, "Invalid Address", nil)
+		httputils.WriteError(w, http.StatusBadRequest, "Invalid Address")
 	}
 
-	t := c.Param("token")
+	t := vars["token"]
 	if !common.IsHexAddress(a) {
-		return errors.NewHTTPError(400, "Invalid Token Address", nil)
+		httputils.WriteError(w, http.StatusBadRequest, "Invalid Token Address")
 	}
 
 	addr := common.HexToAddress(a)
 	tokenAddr := common.HexToAddress(t)
 
-	balance, err := e.accountService.GetTokenBalance(addr, tokenAddr)
+	b, err := e.accountService.GetTokenBalance(addr, tokenAddr)
 	if err != nil {
 		logger.Error(err)
-		return errors.NewHTTPError(400, "Internal Server Error", nil)
+		httputils.WriteError(w, http.StatusInternalServerError, "")
 	}
 
-	return c.Write(balance)
+	httputils.WriteJSON(w, http.StatusOK, b)
 }

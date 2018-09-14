@@ -1,7 +1,6 @@
 package daos
 
 import (
-	"fmt"
 	"math/big"
 	"time"
 
@@ -63,40 +62,43 @@ func (dao *AccountDao) GetByID(id bson.ObjectId) (*types.Account, error) {
 
 	err := db.Get(dao.dbName, dao.collectionName, q, 0, 0, &res)
 	if err != nil {
+		logger.Error(err)
 		return nil, err
 	}
 
 	return &res[0], nil
 }
 
-func (dao *AccountDao) GetByAddress(owner common.Address) (response *types.Account, err error) {
-	var res []*types.Account
+func (dao *AccountDao) GetByAddress(owner common.Address) (*types.Account, error) {
+	res := []types.Account{}
 	q := bson.M{"address": owner.Hex()}
-	err = db.Get(dao.dbName, dao.collectionName, q, 0, 1, &res)
-
+	err := db.Get(dao.dbName, dao.collectionName, q, 0, 1, &res)
 	if err != nil {
-		return
-	} else if len(res) > 0 {
-		response = res[0]
-		return
+		logger.Error(err)
+		return nil, err
 	}
 
-	return nil, fmt.Errorf("NO_ACCOUNT_FOUND")
+	if len(res) == 0 {
+		return nil, nil
+	}
+
+	return &res[0], nil
 }
 
 func (dao *AccountDao) GetTokenBalances(owner common.Address) (map[common.Address]*types.TokenBalance, error) {
 	q := bson.M{"address": owner.Hex()}
-	response := []types.Account{}
-	err := db.Get(dao.dbName, dao.collectionName, q, 0, 1, &response)
+	res := []types.Account{}
+	err := db.Get(dao.dbName, dao.collectionName, q, 0, 1, &res)
 	if err != nil {
+		logger.Error(err)
 		return nil, err
 	}
 
-	if len(response) > 0 {
-		return response[0].TokenBalances, nil
+	if len(res) == 0 {
+		return nil, nil
 	}
 
-	return nil, fmt.Errorf("NO_ACCOUNT_FOUND")
+	return res[0].TokenBalances, nil
 }
 
 func (dao *AccountDao) GetTokenBalance(owner common.Address, token common.Address) (*types.TokenBalance, error) {

@@ -2,13 +2,15 @@ package endpoints
 
 import (
 	"encoding/json"
+	"net/http"
 	"time"
 
 	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/Proofsuite/amp-matching-engine/types"
+	"github.com/Proofsuite/amp-matching-engine/utils/httputils"
 	"github.com/Proofsuite/amp-matching-engine/ws"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/go-ozzo/ozzo-routing"
+	"github.com/gorilla/mux"
 )
 
 type OHLCVEndpoint struct {
@@ -16,18 +18,23 @@ type OHLCVEndpoint struct {
 }
 
 func ServeOHLCVResource(
-	r *routing.RouteGroup,
+	r *mux.Router,
 	ohlcvService interfaces.OHLCVService,
 ) {
 	e := &OHLCVEndpoint{ohlcvService}
-	r.Post("/ohlcv", e.ohlcv)
+	r.HandleFunc("/ohlcv", e.handleGetOHLCV).Methods("POST")
 	ws.RegisterChannel(ws.OHLCVChannel, e.ohlcvWebSocket)
 }
 
-func (e *OHLCVEndpoint) ohlcv(c *routing.Context) error {
+func (e *OHLCVEndpoint) handleGetOHLCV(w http.ResponseWriter, r *http.Request) {
 	var model types.TickRequest
-	if err := c.Read(&model); err != nil {
-		return err
+
+	decoder := json.NewDecoder(r.Body)
+	err := decoder.Decode(model)
+	if err != nil {
+		logger.Error(err)
+		httputils.WriteError(w, http.StatusBadRequest, "Invalid payload")
+		return
 	}
 
 	if model.Units == "" {
@@ -44,10 +51,12 @@ func (e *OHLCVEndpoint) ohlcv(c *routing.Context) error {
 
 	res, err := e.ohlcvService.GetOHLCV(model.Pair, model.Duration, model.Units, model.From, model.To)
 	if err != nil {
-		return err
+		logger.Error(err)
+		httputils.WriteError(w, http.StatusInternalServerError, "")
+		return
 	}
 
-	return c.Write(res)
+	httputils.WriteJSON(w, http.StatusOK, res)
 }
 
 func (e *OHLCVEndpoint) ohlcvWebSocket(input interface{}, conn *ws.Conn) {

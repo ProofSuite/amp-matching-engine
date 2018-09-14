@@ -713,7 +713,7 @@ func (s *OrderService) RelayTradeUpdate(res *types.EngineResponse) {
 
 func broadcastOrderBookUpdate(baseToken, quoteToken common.Address, data interface{}) {
 	cid := utils.GetOrderBookChannelID(baseToken, quoteToken)
-	ws.GetLiteOrderBookSocket().BroadcastMessage(cid, data)
+	ws.GetOrderBookSocket().BroadcastMessage(cid, data)
 }
 
 func broadcastRawOrderBookUpdate(order *types.Order) {

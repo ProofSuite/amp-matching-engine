@@ -67,7 +67,7 @@ func (dao *TokenDao) GetAll() ([]types.Token, error) {
 }
 
 // GetQuote function fetches all the quote tokens in the token collection of mongodb.
-func (dao *TokenDao) GetQuote() ([]types.Token, error) {
+func (dao *TokenDao) GetQuoteTokens() ([]types.Token, error) {
 	var response []types.Token
 	err := db.Get(dao.dbName, dao.collectionName, bson.M{"quote": true}, 0, 0, &response)
 	if err != nil {
@@ -79,7 +79,7 @@ func (dao *TokenDao) GetQuote() ([]types.Token, error) {
 }
 
 // GetBase function fetches all the base tokens in the token collection of mongodb.
-func (dao *TokenDao) GetBase() ([]types.Token, error) {
+func (dao *TokenDao) GetBaseTokens() ([]types.Token, error) {
 	var response []types.Token
 	err := db.Get(dao.dbName, dao.collectionName, bson.M{"quote": false}, 0, 0, &response)
 	if err != nil {
