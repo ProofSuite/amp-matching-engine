@@ -1,7 +1,6 @@
 package services
 
 import (
-	"errors"
 	"math/big"
 
 	"github.com/Proofsuite/amp-matching-engine/interfaces"
@@ -23,15 +22,17 @@ func NewAccountService(
 	return &AccountService{AccountDao, TokenDao}
 }
 
-func (s *AccountService) Create(account *types.Account) error {
-	addr := account.Address
-	acc, err := s.GetByAddress(addr)
-	if err != nil && err.Error() != "NO_ACCOUNT_FOUND" {
+func (s *AccountService) Create(a *types.Account) error {
+	addr := a.Address
+
+	acc, err := s.AccountDao.GetByAddress(addr)
+	if err != nil {
+		logger.Error(err)
 		return err
 	}
 
 	if acc != nil {
-		return errors.New("ACCOUNT_ALREADY_EXISTS")
+		return ErrAccountExists
 	}
 
 	tokens, err := s.TokenDao.GetAll()
@@ -40,21 +41,21 @@ func (s *AccountService) Create(account *types.Account) error {
 		return err
 	}
 
-	account.IsBlocked = false
-	account.TokenBalances = make(map[common.Address]*types.TokenBalance)
+	a.IsBlocked = false
+	a.TokenBalances = make(map[common.Address]*types.TokenBalance)
 
 	// currently by default, the tokens balances are set to 0
 	for _, token := range tokens {
-		account.TokenBalances[token.ContractAddress] = &types.TokenBalance{
+		a.TokenBalances[token.ContractAddress] = &types.TokenBalance{
 			Address:       token.ContractAddress,
 			Symbol:        token.Symbol,
-			Balance:       big.NewInt(10000000000000000),
-			Allowance:     big.NewInt(10000000000000000),
+			Balance:       big.NewInt(0),
+			Allowance:     big.NewInt(0),
 			LockedBalance: big.NewInt(0),
 		}
 	}
-	if account != nil {
-		err = s.AccountDao.Create(account)
+	if a != nil {
+		err = s.AccountDao.Create(a)
 		if err != nil {
 			logger.Error(err)
 			return err

@@ -3,14 +3,15 @@ package endpoints
 import (
 	"encoding/json"
 	"log"
+	"net/http"
 
-	"github.com/Proofsuite/amp-matching-engine/errors"
 	"github.com/Proofsuite/amp-matching-engine/interfaces"
+	"github.com/Proofsuite/amp-matching-engine/utils/httputils"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/gorilla/mux"
 
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/Proofsuite/amp-matching-engine/ws"
-	"github.com/go-ozzo/ozzo-routing"
 )
 
 type orderEndpoint struct {
@@ -20,60 +21,68 @@ type orderEndpoint struct {
 
 // ServeOrderResource sets up the routing of order endpoints and the corresponding handlers.
 func ServeOrderResource(
-	r *routing.RouteGroup,
+	r *mux.Router,
 	orderService interfaces.OrderService,
 	engine interfaces.Engine,
 ) {
 	e := &orderEndpoint{orderService, engine}
-	r.Get("/orders/<address>/history", e.queryHistory)
-	r.Get("/orders/<address>/current", e.queryCurrent)
-	r.Get("/orders/<address>", e.query)
+	r.HandleFunc("/orders/{address}/history", e.handleGetOrderHistory).Methods("GET")
+	r.HandleFunc("/orders/{address}/current", e.handleGetPositions).Methods("GET")
+	r.HandleFunc("/orders/{address}", e.handleGetOrders).Methods("GET")
 	ws.RegisterChannel(ws.OrderChannel, e.ws)
 }
 
-func (e *orderEndpoint) query(c *routing.Context) error {
-	addr := c.Param("address")
+func (e *orderEndpoint) handleGetOrders(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	addr := vars["address"]
 	if !common.IsHexAddress(addr) {
-		return errors.NewHTTPError(400, "Invalid Adrress", nil)
+		httputils.WriteError(w, http.StatusBadRequest, "Invalid Address")
 	}
 
 	address := common.HexToAddress(addr)
 	orders, err := e.orderService.GetByUserAddress(address)
 	if err != nil {
-		return errors.NewHTTPError(400, "Fetch Error", nil)
+		logger.Error(err)
+		httputils.WriteError(w, http.StatusInternalServerError, "")
 	}
 
-	return c.Write(orders)
+	httputils.WriteJSON(w, http.StatusOK, orders)
 }
 
-func (e *orderEndpoint) queryCurrent(c *routing.Context) error {
-	addr := c.Param("address")
+func (e *orderEndpoint) handleGetPositions(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	addr := vars["address"]
 	if !common.IsHexAddress(addr) {
-		return errors.NewHTTPError(400, "Invalid Adrress", nil)
+		httputils.WriteError(w, http.StatusBadRequest, "Invalid Address")
 	}
 
 	address := common.HexToAddress(addr)
 	orders, err := e.orderService.GetCurrentByUserAddress(address)
 	if err != nil {
-		return errors.NewHTTPError(400, "Fetch Error", nil)
+		logger.Error(err)
+		httputils.WriteError(w, http.StatusInternalServerError, "")
 	}
 
-	return c.Write(orders)
+	httputils.WriteJSON(w, http.StatusOK, orders)
 }
 
-func (e *orderEndpoint) queryHistory(c *routing.Context) error {
-	addr := c.Param("address")
+func (e *orderEndpoint) handleGetOrderHistory(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	addr := vars["address"]
 	if !common.IsHexAddress(addr) {
-		return errors.NewHTTPError(400, "Invalid Adrress", nil)
+		httputils.WriteError(w, http.StatusBadRequest, "Invalid Address")
 	}
 
 	address := common.HexToAddress(addr)
 	orders, err := e.orderService.GetHistoryByUserAddress(address)
 	if err != nil {
-		return errors.NewHTTPError(400, "Fetch Error", nil)
+		httputils.WriteError(w, http.StatusInternalServerError, "")
 	}
 
-	return c.Write(orders)
+	httputils.WriteJSON(w, http.StatusOK, orders)
 }
 
 // ws function handles incoming websocket messages on the order channel

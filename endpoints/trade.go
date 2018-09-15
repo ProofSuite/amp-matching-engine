@@ -2,13 +2,14 @@ package endpoints
 
 import (
 	"encoding/json"
+	"net/http"
 
-	"github.com/Proofsuite/amp-matching-engine/errors"
 	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/Proofsuite/amp-matching-engine/types"
+	"github.com/Proofsuite/amp-matching-engine/utils/httputils"
 	"github.com/Proofsuite/amp-matching-engine/ws"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/go-ozzo/ozzo-routing"
+	"github.com/gorilla/mux"
 )
 
 type tradeEndpoint struct {
@@ -17,52 +18,62 @@ type tradeEndpoint struct {
 
 // ServeTradeResource sets up the routing of trade endpoints and the corresponding handlers.
 func ServeTradeResource(
-	rg *routing.RouteGroup,
+	r *mux.Router,
 	tradeService interfaces.TradeService,
 ) {
 	e := &tradeEndpoint{tradeService}
-	rg.Get("/trades/history/<bt>/<qt>", e.history)
-	rg.Get("/trades/<addr>", e.get)
-
+	r.HandleFunc("/trades/history/{baseToken}/{quoteToken}", e.HandleGetTradeHistory)
+	r.HandleFunc("/trades/{address}", e.HandleGetTrades)
 	ws.RegisterChannel(ws.TradeChannel, e.tradeWebSocket)
 }
 
 // history is reponsible for handling pair's trade history requests
-func (r *tradeEndpoint) history(c *routing.Context) error {
-	bt := c.Param("bt")
+func (e *tradeEndpoint) HandleGetTradeHistory(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	bt := vars["baseToken"]
+	qt := vars["quoteToken"]
+
 	if !common.IsHexAddress(bt) {
-		return errors.NewHTTPError(400, "Invalid base token address", nil)
+		httputils.WriteError(w, http.StatusBadRequest, "Invalid base token address")
+		return
 	}
 
-	qt := c.Param("qt")
 	if !common.IsHexAddress(qt) {
-		return errors.NewHTTPError(400, "Invalid quote token address", nil)
+		httputils.WriteError(w, http.StatusBadRequest, "Invalid quote token address")
+		return
 	}
 
 	baseToken := common.HexToAddress(bt)
 	quoteToken := common.HexToAddress(qt)
-	response, err := r.tradeService.GetByPairAddress(baseToken, quoteToken)
+	res, err := e.tradeService.GetByPairAddress(baseToken, quoteToken)
 	if err != nil {
-		return errors.NewHTTPError(500, "Internal server error", nil)
+		logger.Error(err)
+		httputils.WriteError(w, http.StatusInternalServerError, "")
+		return
 	}
 
-	return c.Write(response)
+	httputils.WriteJSON(w, http.StatusOK, res)
 }
 
 // get is reponsible for handling user's trade history requests
-func (r *tradeEndpoint) get(c *routing.Context) error {
-	addr := c.Param("addr")
+func (e *tradeEndpoint) HandleGetTrades(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	addr := vars["address"]
+
 	if !common.IsHexAddress(addr) {
-		return errors.NewHTTPError(400, "Invalid address", nil)
+		httputils.WriteError(w, http.StatusBadRequest, "Invalid Address")
+		return
 	}
 
 	address := common.HexToAddress(addr)
-	response, err := r.tradeService.GetByUserAddress(address)
+	res, err := e.tradeService.GetByUserAddress(address)
 	if err != nil {
-		return errors.NewHTTPError(500, "Internal server error", nil)
+		logger.Error(err)
+		httputils.WriteError(w, http.StatusInternalServerError, "")
+		return
 	}
 
-	return c.Write(response)
+	httputils.WriteJSON(w, http.StatusOK, res)
 }
 
 func (e *tradeEndpoint) tradeWebSocket(input interface{}, conn *ws.Conn) {

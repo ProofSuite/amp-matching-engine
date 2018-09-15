@@ -62,7 +62,7 @@ func (s *OrderBookService) GetOrderBook(bt, qt common.Address) (map[string]inter
 // SubscribeOrderBook is responsible for handling incoming orderbook subscription messages
 // It makes an entry of connection in pairSocket corresponding to pair,unit and duration
 func (s *OrderBookService) SubscribeOrderBook(conn *ws.Conn, bt, qt common.Address) {
-	socket := ws.GetLiteOrderBookSocket()
+	socket := ws.GetOrderBookSocket()
 
 	ob, err := s.GetOrderBook(bt, qt)
 	if err != nil {
@@ -88,7 +88,7 @@ func (s *OrderBookService) SubscribeOrderBook(conn *ws.Conn, bt, qt common.Addre
 
 // UnSubscribeOrderBook is responsible for handling incoming orderbook unsubscription messages
 func (s *OrderBookService) UnSubscribeOrderBook(conn *ws.Conn, bt, qt common.Address) {
-	socket := ws.GetLiteOrderBookSocket()
+	socket := ws.GetOrderBookSocket()
 
 	id := utils.GetOrderBookChannelID(bt, qt)
 	socket.Unsubscribe(id, conn)

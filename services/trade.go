@@ -1,8 +1,6 @@
 package services
 
 import (
-	"log"
-
 	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/Proofsuite/amp-matching-engine/utils"
@@ -22,53 +20,11 @@ func NewTradeService(TradeDao interfaces.TradeDao) *TradeService {
 	return &TradeService{TradeDao}
 }
 
-// GetByPairName fetches all the trades corresponding to a pair using pair's name
-func (t *TradeService) GetByPairName(pairName string) ([]*types.Trade, error) {
-	return t.tradeDao.GetByPairName(pairName)
-}
-
-// GetTrades is currently not implemented correctly
-func (t *TradeService) GetTrades(bt, qt common.Address) ([]types.Trade, error) {
-	return t.tradeDao.GetAll()
-}
-
-// GetByPairAddress fetches all the trades corresponding to a pair using pair's token address
-func (t *TradeService) GetByPairAddress(bt, qt common.Address) ([]*types.Trade, error) {
-	return t.tradeDao.GetByPairAddress(bt, qt)
-}
-
-// GetByUserAddress fetches all the trades corresponding to a user address
-func (t *TradeService) GetByUserAddress(addr common.Address) ([]*types.Trade, error) {
-	return t.tradeDao.GetByUserAddress(addr)
-}
-
-// GetByHash fetches all trades corresponding to a trade hash
-func (t *TradeService) GetByHash(hash common.Hash) (*types.Trade, error) {
-	return t.tradeDao.GetByHash(hash)
-}
-
-// GetByOrderHash fetches all trades corresponding to an order hash
-func (t *TradeService) GetByOrderHash(hash common.Hash) ([]*types.Trade, error) {
-	return t.tradeDao.GetByOrderHash(hash)
-}
-
-func (t *TradeService) UpdateTradeTxHash(tr *types.Trade, txHash common.Hash) error {
-	tr.TxHash = txHash
-
-	err := t.tradeDao.UpdateByHash(tr.Hash, tr)
-	if err != nil {
-		log.Print(err)
-		return err
-	}
-
-	return nil
-}
-
 // Subscribe
-func (t *TradeService) Subscribe(conn *ws.Conn, bt, qt common.Address) {
+func (s *TradeService) Subscribe(conn *ws.Conn, bt, qt common.Address) {
 	socket := ws.GetTradeSocket()
 
-	trades, err := t.GetTrades(bt, qt)
+	trades, err := s.GetTrades(bt, qt)
 	if err != nil {
 		socket.SendErrorMessage(conn, err.Error())
 		return
@@ -91,9 +47,51 @@ func (t *TradeService) Subscribe(conn *ws.Conn, bt, qt common.Address) {
 }
 
 // Unsubscribe
-func (t *TradeService) Unsubscribe(conn *ws.Conn, bt, qt common.Address) {
+func (s *TradeService) Unsubscribe(conn *ws.Conn, bt, qt common.Address) {
 	socket := ws.GetTradeSocket()
 
 	id := utils.GetTradeChannelID(bt, qt)
 	socket.Unsubscribe(id, conn)
+}
+
+// GetByPairName fetches all the trades corresponding to a pair using pair's name
+func (s *TradeService) GetByPairName(pairName string) ([]*types.Trade, error) {
+	return s.tradeDao.GetByPairName(pairName)
+}
+
+// GetTrades is currently not implemented correctly
+func (s *TradeService) GetTrades(bt, qt common.Address) ([]types.Trade, error) {
+	return s.tradeDao.GetAll()
+}
+
+// GetByPairAddress fetches all the trades corresponding to a pair using pair's token address
+func (s *TradeService) GetByPairAddress(bt, qt common.Address) ([]*types.Trade, error) {
+	return s.tradeDao.GetByPairAddress(bt, qt)
+}
+
+// GetByUserAddress fetches all the trades corresponding to a user address
+func (s *TradeService) GetByUserAddress(addr common.Address) ([]*types.Trade, error) {
+	return s.tradeDao.GetByUserAddress(addr)
+}
+
+// GetByHash fetches all trades corresponding to a trade hash
+func (s *TradeService) GetByHash(hash common.Hash) (*types.Trade, error) {
+	return s.tradeDao.GetByHash(hash)
+}
+
+// GetByOrderHash fetches all trades corresponding to an order hash
+func (s *TradeService) GetByOrderHash(hash common.Hash) ([]*types.Trade, error) {
+	return s.tradeDao.GetByOrderHash(hash)
+}
+
+func (s *TradeService) UpdateTradeTxHash(tr *types.Trade, txHash common.Hash) error {
+	tr.TxHash = txHash
+
+	err := s.tradeDao.UpdateByHash(tr.Hash, tr)
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	return nil
 }

@@ -170,11 +170,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:e781b9e918b110c122642343079c76fb3672a3f875be3a871e2bb5fc36d9ca45"
+  digest = "1:c562a26b09743c059ebe4e4ce6954411627ace9f26e0cd58ff6d432e09486390"
   name = "github.com/golang/gddo"
   packages = ["httputil/header"]
   pruneopts = "T"
-  revision = "656e7e11a75c6bf4ba73628e7384a0d4c08cc537"
+  revision = "8b031907f29f163ebae1e3978af398769a5f3df6"
 
 [[projects]]
   branch = "master"
@@ -202,6 +202,22 @@
   pruneopts = "T"
   revision = "d460ce9f8df2e77fb1ba55ca87fafed96c607494"
   version = "v1.0.0"
+
+[[projects]]
+  digest = "1:c79fb010be38a59d657c48c6ba1d003a8aa651fa56b579d959d74573b7dff8e1"
+  name = "github.com/gorilla/context"
+  packages = ["."]
+  pruneopts = "T"
+  revision = "08b5f424b9271eedf6f9f0ce86cb9396ed337a42"
+  version = "v1.1.1"
+
+[[projects]]
+  digest = "1:e73f5b0152105f18bc131fba127d9949305c8693f8a762588a82a48f61756f5f"
+  name = "github.com/gorilla/mux"
+  packages = ["."]
+  pruneopts = "T"
+  revision = "e3702bed27f0d39777b0b37b664b6280e8ef8fbf"
+  version = "v1.6.2"
 
 [[projects]]
   digest = "1:80f394537967d97fcc0da30762843805c8aaea7d208c43c99d1fe988a8888f0d"
@@ -264,6 +280,14 @@
   pruneopts = "T"
   revision = "fa473d140ef3c6adf42d6b391fe76707f1f243c8"
   version = "v1.0.0"
+
+[[projects]]
+  branch = "master"
+  digest = "1:c69070f70c4582d75ee142e82f45ee579e8bd9bc9bdd8e3aa8ada46ed5ab5a2f"
+  name = "github.com/op/go-logging"
+  packages = ["."]
+  pruneopts = "T"
+  revision = "970db520ece77730c7e4724c61121037378659d9"
 
 [[projects]]
   digest = "1:e5d0bd87abc2781d14e274807a470acd180f0499f8bf5bb18606e9ec22ad9de9"
@@ -422,7 +446,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:be58125a0756e311ebf5f5fd253a36814d09dd26fa82c0fdd1db5ef225943828"
+  digest = "1:afd95c12c4ae9bf890c277401e42ee3394cb5ad86881fbdc05c773650501db85"
   name = "github.com/yuin/gopher-lua"
   packages = [
     ".",
@@ -431,11 +455,11 @@
     "pm",
   ]
   pruneopts = "T"
-  revision = "b942cacc89fe49895d145e8b360612a9a51d0423"
+  revision = "ed65620d4bd7093055e0e305bf0fdadcc0026acb"
 
 [[projects]]
   branch = "master"
-  digest = "1:490cbeb7a0a743de4cc0058a6d13ef6772c4d1e3d4d36a8f0428d3c5114012ff"
+  digest = "1:62fac8c414ce3fb59b87102ebebb04edd0287a721c0cd6b36f4dc866a42cf772"
   name = "golang.org/x/crypto"
   packages = [
     "pbkdf2",
@@ -444,22 +468,22 @@
     "ssh/terminal",
   ]
   pruneopts = "T"
-  revision = "0709b304e793a5edb4a2c0145f281ecdc20838a4"
+  revision = "0e37d006457bf46f9e6692014ba72ef82c33022c"
 
 [[projects]]
   branch = "master"
-  digest = "1:2584347a8e1438435975f69490a9aff755899d57f9afc67798cd2ae49ac16aaf"
+  digest = "1:a42c6aed51ed8b42dae608760a24ce53b799ede0c31637dfcbf1116cd0c23b03"
   name = "golang.org/x/net"
   packages = [
     "context",
     "websocket",
   ]
   pruneopts = "T"
-  revision = "161cd47e91fd58ac17490ef4d742dc98bb4cf60e"
+  revision = "26e67e76b6c3f6ce91f7c52def5af501b4e0f3a2"
 
 [[projects]]
   branch = "master"
-  digest = "1:9a867c8d79596c22ba98d70837c854db4afa937183beccb75f6d888f4410fe54"
+  digest = "1:57d967d0c359c56065e766555f82df575d98c6b1979f7d257b83220ed1340d3b"
   name = "golang.org/x/sys"
   packages = [
     "cpu",
@@ -467,7 +491,7 @@
     "windows",
   ]
   pruneopts = "T"
-  revision = "917fdcba135dcbaccd57425db91723541b4427c8"
+  revision = "d0be0721c37eeb5299f245a996a483160fc36940"
 
 [[projects]]
   digest = "1:6164911cb5e94e8d8d5131d646613ff82c14f5a8ce869de2f6d80d9889df8c5a"
@@ -486,7 +510,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:dbc233c3e91caaf82db96f3bc5fcd5aa783f7b645022fd4ffc471e36f06df946"
+  digest = "1:4fb0ad32f68e6e42e39f3415d21b2aedf775068712c09d10d5fbf1a06afb40cc"
   name = "golang.org/x/tools"
   packages = [
     "go/ast/astutil",
@@ -494,7 +518,7 @@
     "internal/fastwalk",
   ]
   pruneopts = "T"
-  revision = "0aa4b8830f481fed77b73cf7cea2bc3129e05148"
+  revision = "677d2ff680c188ddb7dcd2bfa6bc7d3f2f2f75b2"
 
 [[projects]]
   branch = "v2"
@@ -570,7 +594,9 @@
     "github.com/go-ozzo/ozzo-validation",
     "github.com/go-test/deep",
     "github.com/gomodule/redigo/redis",
+    "github.com/gorilla/mux",
     "github.com/gorilla/websocket",
+    "github.com/op/go-logging",
     "github.com/posener/wstest",
     "github.com/robfig/cron",
     "github.com/spf13/cobra",

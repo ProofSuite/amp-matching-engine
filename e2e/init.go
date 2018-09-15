@@ -20,11 +20,9 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/rabbitmq"
 	"github.com/Proofsuite/amp-matching-engine/redis"
 	"github.com/Proofsuite/amp-matching-engine/services"
-	"github.com/Sirupsen/logrus"
 	"github.com/ethereum/go-ethereum/common"
 	routing "github.com/go-ozzo/ozzo-routing"
-	"github.com/go-ozzo/ozzo-routing/content"
-	"github.com/go-ozzo/ozzo-routing/cors"
+	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/mgo.v2/dbtest"
 )
@@ -64,32 +62,13 @@ func Init(t *testing.T) {
 	// address := testAddress(t, tokens)
 }
 
-func NewRouter() *routing.Router {
-	logger := logrus.New()
-	logger.SetLevel(logrus.PanicLevel)
-	router := routing.New()
-
-	router.To("GET,HEAD", "/ping", func(c *routing.Context) error {
-		c.Abort() // skip all other middlewares/handlers
-		return c.Write("OK " + app.Version)
-	})
-
-	router.Use(
-		app.Init(logger),
-		content.TypeNegotiator(content.JSON),
-		cors.Handler(cors.Options{
-			AllowOrigins: "*",
-			AllowHeaders: "*",
-			AllowMethods: "*",
-		}),
-	)
-
-	rg := router.Group("")
-
+func NewRouter() *mux.Router {
 	provider := ethereum.NewWebsocketProvider()
 	rabbitConn := rabbitmq.InitConnection(app.Config.Rabbitmq)
 	redisConn := redis.NewRedisConnection(app.Config.Redis)
 	redisConn.FlushAll()
+
+	r := mux.NewRouter()
 
 	// get daos for dependency injection
 	orderDao := daos.NewOrderDao()
@@ -99,6 +78,7 @@ func NewRouter() *routing.Router {
 	accountDao := daos.NewAccountDao()
 	walletDao := daos.NewWalletDao()
 
+	// instantiate engine
 	eng := engine.NewEngine(redisConn, rabbitConn, pairDao)
 
 	// get services for injection
@@ -138,13 +118,14 @@ func NewRouter() *routing.Router {
 		panic(err)
 	}
 
-	endpoints.ServeAccountResource(rg, accountService)
-	endpoints.ServeTokenResource(rg, tokenService)
-	endpoints.ServePairResource(rg, pairService)
-	endpoints.ServeOrderBookResource(rg, orderBookService)
-	endpoints.ServeOHLCVResource(rg, ohlcvService)
-	endpoints.ServeTradeResource(rg, tradeService)
-	endpoints.ServeOrderResource(rg, orderService, eng)
+	// deploy http and ws endpoints
+	endpoints.ServeAccountResource(r, accountService)
+	endpoints.ServeTokenResource(r, tokenService)
+	endpoints.ServePairResource(r, pairService)
+	endpoints.ServeOrderBookResource(r, orderBookService)
+	endpoints.ServeOHLCVResource(r, ohlcvService)
+	endpoints.ServeTradeResource(r, tradeService)
+	endpoints.ServeOrderResource(r, orderService, eng)
 
 	//initialize rabbitmq subscriptions
 	rabbitConn.SubscribeOrders(eng.HandleOrders)
@@ -152,9 +133,8 @@ func NewRouter() *routing.Router {
 	rabbitConn.SubscribeOperator(orderService.HandleOperatorMessages)
 	rabbitConn.SubscribeEngineResponses(orderService.HandleEngineResponse)
 
-	// fmt.Printf("\n%+v\n", app.Config.TickDuration)
 	cronService.InitCrons()
-	return router
+	return r
 }
 
 func testAPI(router *routing.Router, method, URL, body string) *httptest.ResponseRecorder {

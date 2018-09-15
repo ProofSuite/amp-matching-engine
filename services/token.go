@@ -1,7 +1,6 @@
 package services
 
 import (
-	"github.com/Proofsuite/amp-matching-engine/errors"
 	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/ethereum/go-ethereum/common"
 	"gopkg.in/mgo.v2/bson"
@@ -24,14 +23,21 @@ func NewTokenService(tokenDao interfaces.TokenDao) *TokenService {
 func (s *TokenService) Create(token *types.Token) error {
 	t, err := s.tokenDao.GetByAddress(token.ContractAddress)
 	if err != nil {
+		logger.Error(err)
 		return err
 	}
 
 	if t != nil {
-		return errors.NewHTTPError(401, "TOKEN_ALREADY_EXISTS", nil)
+		return ErrTokenExists
 	}
 
-	return s.tokenDao.Create(token)
+	err = s.tokenDao.Create(token)
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	return nil
 }
 
 // GetByID fetches the detailed document of a token using its mongo ID
@@ -50,11 +56,11 @@ func (s *TokenService) GetAll() ([]types.Token, error) {
 }
 
 // GetQuote fetches all the quote tokens from db
-func (s *TokenService) GetQuote() ([]types.Token, error) {
-	return s.tokenDao.GetQuote()
+func (s *TokenService) GetQuoteTokens() ([]types.Token, error) {
+	return s.tokenDao.GetQuoteTokens()
 }
 
 // GetBase fetches all the quote tokens from db
-func (s *TokenService) GetBase() ([]types.Token, error) {
-	return s.tokenDao.GetBase()
+func (s *TokenService) GetBaseTokens() ([]types.Token, error) {
+	return s.tokenDao.GetBaseTokens()
 }

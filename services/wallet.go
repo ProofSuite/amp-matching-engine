@@ -23,6 +23,7 @@ func (s *WalletService) CreateAdminWallet(a common.Address) (*types.Wallet, erro
 
 	err := s.WalletDao.Create(w)
 	if err != nil {
+		logger.Error(err)
 		return nil, err
 	}
 

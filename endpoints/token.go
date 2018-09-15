@@ -1,11 +1,16 @@
 package endpoints
 
 import (
-	"github.com/Proofsuite/amp-matching-engine/errors"
+	"encoding/json"
+	"net/http"
+
 	"github.com/Proofsuite/amp-matching-engine/interfaces"
+	"github.com/Proofsuite/amp-matching-engine/services"
 	"github.com/Proofsuite/amp-matching-engine/types"
+	"github.com/Proofsuite/amp-matching-engine/utils"
+	"github.com/Proofsuite/amp-matching-engine/utils/httputils"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/go-ozzo/ozzo-routing"
+	"github.com/gorilla/mux"
 )
 
 type tokenEndpoint struct {
@@ -13,72 +18,94 @@ type tokenEndpoint struct {
 }
 
 // ServeTokenResource sets up the routing of token endpoints and the corresponding handlers.
-func ServeTokenResource(rg *routing.RouteGroup, tokenService interfaces.TokenService) {
-	r := &tokenEndpoint{tokenService}
-	rg.Get("/tokens/base", r.queryBase)
-	rg.Get("/tokens/quote", r.queryQuote)
-	rg.Get("/tokens/<address>", r.get)
-	rg.Get("/tokens", r.query)
-	rg.Post("/tokens", r.create)
+func ServeTokenResource(
+	r *mux.Router,
+	tokenService interfaces.TokenService,
+) {
+	e := &tokenEndpoint{tokenService}
+	r.HandleFunc("/tokens/base", e.HandleGetBaseTokens).Methods("GET")
+	r.HandleFunc("/tokens/quote", e.HandleGetQuoteTokens).Methods("GET")
+	r.HandleFunc("/tokens/{address}", e.HandleGetToken).Methods("GET")
+	r.HandleFunc("/tokens", e.HandleGetTokens).Methods("GET")
+	r.HandleFunc("/tokens", e.HandleCreateTokens).Methods("POST")
 }
 
-func (r *tokenEndpoint) create(c *routing.Context) error {
-	var model types.Token
-	if err := c.Read(&model); err != nil {
-		logger.Error(err)
-		return errors.NewHTTPError(400, "Invalid Payload", nil)
-	}
+func (e *tokenEndpoint) HandleCreateTokens(w http.ResponseWriter, r *http.Request) {
+	var t types.Token
+	decoder := json.NewDecoder(r.Body)
 
-	err := r.tokenService.Create(&model)
+	err := decoder.Decode(&t)
 	if err != nil {
 		logger.Error(err)
-		return errors.NewHTTPError(500, "Internal Server Error", nil)
+		httputils.WriteError(w, http.StatusBadRequest, "Invalid payload")
 	}
 
-	return c.Write(model)
-}
+	utils.PrintJSON(t)
 
-func (r *tokenEndpoint) query(c *routing.Context) error {
-	response, err := r.tokenService.GetAll()
+	defer r.Body.Close()
+
+	err = e.tokenService.Create(&t)
 	if err != nil {
-		return errors.NewHTTPError(500, "Internal Server Error", nil)
+		if err == services.ErrTokenExists {
+			httputils.WriteError(w, http.StatusBadRequest, "")
+			return
+		} else {
+			logger.Error(err)
+			httputils.WriteError(w, http.StatusInternalServerError, "")
+			return
+		}
 	}
 
-	return c.Write(response)
+	httputils.WriteJSON(w, http.StatusCreated, t)
 }
 
-func (r *tokenEndpoint) queryQuote(c *routing.Context) error {
-	response, err := r.tokenService.GetQuote()
-	if err != nil {
-		logger.Error(err)
-		return errors.NewHTTPError(500, "Internal Server Error", nil)
-	}
-
-	return c.Write(response)
-}
-
-func (r *tokenEndpoint) queryBase(c *routing.Context) error {
-	response, err := r.tokenService.GetBase()
+func (e *tokenEndpoint) HandleGetTokens(w http.ResponseWriter, r *http.Request) {
+	res, err := e.tokenService.GetAll()
 	if err != nil {
 		logger.Error(err)
-		return errors.NewHTTPError(500, "Internal Server Error", nil)
+		httputils.WriteError(w, http.StatusInternalServerError, "")
+		return
 	}
 
-	return c.Write(response)
+	httputils.WriteJSON(w, http.StatusOK, res)
 }
 
-func (r *tokenEndpoint) get(c *routing.Context) error {
-	a := c.Param("address")
+func (e *tokenEndpoint) HandleGetQuoteTokens(w http.ResponseWriter, r *http.Request) {
+	res, err := e.tokenService.GetQuoteTokens()
+	if err != nil {
+		logger.Error(err)
+		httputils.WriteError(w, http.StatusInternalServerError, "")
+	}
+
+	httputils.WriteJSON(w, http.StatusOK, res)
+}
+
+func (e *tokenEndpoint) HandleGetBaseTokens(w http.ResponseWriter, r *http.Request) {
+	res, err := e.tokenService.GetBaseTokens()
+	if err != nil {
+		logger.Error(err)
+		httputils.WriteError(w, http.StatusInternalServerError, "")
+		return
+	}
+
+	httputils.WriteJSON(w, http.StatusOK, res)
+}
+
+func (e *tokenEndpoint) HandleGetToken(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	a := vars["address"]
 	if !common.IsHexAddress(a) {
-		return errors.NewHTTPError(400, "Invalid Address", nil)
+		httputils.WriteError(w, http.StatusBadRequest, "Invalid Address")
 	}
 
 	tokenAddress := common.HexToAddress(a)
-	response, err := r.tokenService.GetByAddress(tokenAddress)
+	res, err := e.tokenService.GetByAddress(tokenAddress)
 	if err != nil {
 		logger.Error(err)
-		return errors.NewHTTPError(500, "Internal Server Error", nil)
+		httputils.WriteError(w, http.StatusInternalServerError, "")
+		return
 	}
 
-	return c.Write(response)
+	httputils.WriteJSON(w, http.StatusOK, res)
 }

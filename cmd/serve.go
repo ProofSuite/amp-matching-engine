@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/Proofsuite/amp-matching-engine/app"
@@ -16,15 +15,12 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/redis"
 	"github.com/Proofsuite/amp-matching-engine/services"
 	"github.com/Proofsuite/amp-matching-engine/ws"
-	"github.com/Sirupsen/logrus"
+	"github.com/Proofsuite/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/gorilla/mux"
 	"github.com/spf13/cobra"
 
 	"github.com/Proofsuite/amp-matching-engine/engine"
-
-	"github.com/go-ozzo/ozzo-routing"
-	"github.com/go-ozzo/ozzo-routing/content"
-	"github.com/go-ozzo/ozzo-routing/cors"
 )
 
 // serveCmd represents the serve command
@@ -40,26 +36,23 @@ func init() {
 }
 
 func run(cmd *cobra.Command, args []string) {
-	log.SetFlags(log.LstdFlags | log.Llongfile)
-	log.SetPrefix("\nLOG: ")
-
 	// connect to the database
 	_, err := daos.InitSession(nil)
 	if err != nil {
 		panic(err)
 	}
 
-	logger := logrus.New()
 	rabbitConn := rabbitmq.InitConnection(app.Config.Rabbitmq)
 	redisConn := redis.NewRedisConnection(app.Config.Redis)
 	provider := ethereum.NewWebsocketProvider()
 
-	http.Handle("/", NewRouter(provider, redisConn, rabbitConn, logger))
+	router := NewRouter(provider, redisConn, rabbitConn)
+	http.Handle("/", router)
 	http.HandleFunc("/socket", ws.ConnectionEndpoint)
 
 	// start the server
 	address := fmt.Sprintf(":%v", app.Config.ServerPort)
-	logger.Infof("server %v is started at %v\n", app.Version, address)
+	log.Info("server %v is started at %v\n", app.Version, address)
 	panic(http.ListenAndServe(address, nil))
 }
 
@@ -67,27 +60,9 @@ func NewRouter(
 	provider *ethereum.EthereumProvider,
 	redisConn *redis.RedisConnection,
 	rabbitConn *rabbitmq.Connection,
-	logger *logrus.Logger,
-) *routing.Router {
+) *mux.Router {
 
-	router := routing.New()
-
-	router.To("GET,HEAD", "/ping", func(c *routing.Context) error {
-		c.Abort() // skip all other middlewares/handlers
-		return c.Write("OK " + app.Version)
-	})
-
-	router.Use(
-		app.Init(logger),
-		content.TypeNegotiator(content.JSON),
-		cors.Handler(cors.Options{
-			AllowOrigins: "*",
-			AllowHeaders: "*",
-			AllowMethods: "*",
-		}),
-	)
-
-	rg := router.Group("")
+	r := mux.NewRouter()
 
 	// get daos for dependency injection
 	orderDao := daos.NewOrderDao()
@@ -138,13 +113,13 @@ func NewRouter(
 	}
 
 	// deploy http and ws endpoints
-	endpoints.ServeAccountResource(rg, accountService)
-	endpoints.ServeTokenResource(rg, tokenService)
-	endpoints.ServePairResource(rg, pairService)
-	endpoints.ServeOrderBookResource(rg, orderBookService)
-	endpoints.ServeOHLCVResource(rg, ohlcvService)
-	endpoints.ServeTradeResource(rg, tradeService)
-	endpoints.ServeOrderResource(rg, orderService, eng)
+	endpoints.ServeAccountResource(r, accountService)
+	endpoints.ServeTokenResource(r, tokenService)
+	endpoints.ServePairResource(r, pairService)
+	endpoints.ServeOrderBookResource(r, orderBookService)
+	endpoints.ServeOHLCVResource(r, ohlcvService)
+	endpoints.ServeTradeResource(r, tradeService)
+	endpoints.ServeOrderResource(r, orderService, eng)
 
 	//initialize rabbitmq subscriptions
 	rabbitConn.SubscribeOrders(eng.HandleOrders)
@@ -153,5 +128,5 @@ func NewRouter(
 	rabbitConn.SubscribeEngineResponses(orderService.HandleEngineResponse)
 
 	cronService.InitCrons()
-	return router
+	return r
 }

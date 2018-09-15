@@ -13,13 +13,13 @@ type TokenDao struct {
 	mock.Mock
 }
 
-// Create provides a mock function with given fields: a
-func (_m *TokenDao) Create(a *types.Token) error {
-	ret := _m.Called(a)
+// Create provides a mock function with given fields: token
+func (_m *TokenDao) Create(token *types.Token) error {
+	ret := _m.Called(token)
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(*types.Token) error); ok {
-		r0 = rf(a)
+		r0 = rf(token)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -43,6 +43,29 @@ func (_m *TokenDao) Drop() error {
 
 // GetAll provides a mock function with given fields:
 func (_m *TokenDao) GetAll() ([]types.Token, error) {
+	ret := _m.Called()
+
+	var r0 []types.Token
+	if rf, ok := ret.Get(0).(func() []types.Token); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]types.Token)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetBaseTokens provides a mock function with given fields:
+func (_m *TokenDao) GetBaseTokens() ([]types.Token, error) {
 	ret := _m.Called()
 
 	var r0 []types.Token
@@ -103,6 +126,29 @@ func (_m *TokenDao) GetByID(id bson.ObjectId) (*types.Token, error) {
 	var r1 error
 	if rf, ok := ret.Get(1).(func(bson.ObjectId) error); ok {
 		r1 = rf(id)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetQuoteTokens provides a mock function with given fields:
+func (_m *TokenDao) GetQuoteTokens() ([]types.Token, error) {
+	ret := _m.Called()
+
+	var r0 []types.Token
+	if rf, ok := ret.Get(0).(func() []types.Token); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]types.Token)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
 	} else {
 		r1 = ret.Error(1)
 	}

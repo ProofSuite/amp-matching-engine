@@ -6,7 +6,6 @@ import (
 
 	"gopkg.in/mgo.v2/bson"
 
-	aerrors "github.com/Proofsuite/amp-matching-engine/errors"
 	"github.com/Proofsuite/amp-matching-engine/types"
 )
 
@@ -34,32 +33,34 @@ func NewPairService(
 // It checks for existence of tokens in DB first
 func (s *PairService) Create(pair *types.Pair) error {
 	p, err := s.pairDao.GetByBuySellTokenAddress(pair.BaseTokenAddress, pair.QuoteTokenAddress)
-	if err != nil && err.Error() != "NO_PAIR_FOUND" {
-		return aerrors.NewHTTPError(400, err.Error(), nil)
-	} else if p != nil {
-		return aerrors.NewHTTPError(401, "PAIR_ALREADY_EXISTS", nil)
+	if err != nil {
+		return err
+	}
+
+	if p != nil {
+		return ErrPairExists
 	}
 
 	bt, err := s.tokenDao.GetByAddress(pair.BaseTokenAddress)
 	if err != nil {
-		return aerrors.NewHTTPError(400, err.Error(), nil)
+		return err
 	}
 
 	if bt == nil {
-		return aerrors.NewHTTPError(401, "BaseTokenAddress_DOESNT_EXIST", nil)
+		return ErrBaseTokenNotFound
 	}
 
 	st, err := s.tokenDao.GetByAddress(pair.QuoteTokenAddress)
 	if err != nil {
-		return aerrors.NewHTTPError(400, err.Error(), nil)
+		return err
 	}
 
 	if st == nil {
-		return aerrors.NewHTTPError(401, "QuoteTokenAddress_DOESNT_EXIST", nil)
+		return ErrQuoteTokenNotFound
 	}
 
 	if !st.Quote {
-		return aerrors.NewHTTPError(401, "QuoteTokenAddress_CAN_NOT_BE_USED_AS_QUOTE_TOKEN", nil)
+		return ErrQuoteTokenInvalid
 	}
 
 	pair.QuoteTokenSymbol = st.Symbol
@@ -69,8 +70,11 @@ func (s *PairService) Create(pair *types.Pair) error {
 	pair.BaseTokenAddress = bt.ContractAddress
 	pair.BaseTokenDecimal = bt.Decimal
 	err = s.pairDao.Create(pair)
-	return err
+	if err != nil {
+		return err
+	}
 
+	return nil
 }
 
 // GetByID fetches details of a pair using its mongo ID

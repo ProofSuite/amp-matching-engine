@@ -40,9 +40,12 @@ func NewOrderDao() *OrderDao {
 // Create function performs the DB insertion task for Order collection
 func (dao *OrderDao) Create(order *types.Order) error {
 	order.ID = bson.NewObjectId()
-	order.Status = "NEW"
 	order.CreatedAt = time.Now()
 	order.UpdatedAt = time.Now()
+
+	if order.Status == "" {
+		order.Status = "NEW"
+	}
 
 	err := db.Create(dao.dbName, dao.collectionName, order)
 	if err != nil {
@@ -249,6 +252,7 @@ func (dao *OrderDao) GetUserLockedBalance(account common.Address, token common.A
 	q := bson.M{
 		"userAddress": account.Hex(),
 		"status": bson.M{"$in": []string{
+			"NEW",
 			"OPEN",
 			"PARTIALLY_FILLED",
 		},
@@ -262,13 +266,14 @@ func (dao *OrderDao) GetUserLockedBalance(account common.Address, token common.A
 		return nil, err
 	}
 
-	lockedBalance := big.NewInt(0)
+	totalLockedBalance := big.NewInt(0)
 	for _, o := range orders {
-		//TODO include the filled amounts in this balance
-		lockedBalance = math.Add(lockedBalance, o.SellAmount)
+		filledSellAmount := math.Div(math.Mul(o.FilledAmount, o.SellAmount), o.BuyAmount)
+		lockedBalance := math.Sub(o.SellAmount, filledSellAmount)
+		totalLockedBalance = math.Add(totalLockedBalance, lockedBalance)
 	}
 
-	return lockedBalance, nil
+	return totalLockedBalance, nil
 }
 
 // Drop drops all the order documents in the current database

@@ -84,8 +84,8 @@ type TokenDao interface {
 	GetAll() ([]types.Token, error)
 	GetByID(id bson.ObjectId) (*types.Token, error)
 	GetByAddress(owner common.Address) (*types.Token, error)
-	GetQuote() ([]types.Token, error)
-	GetBase() ([]types.Token, error)
+	GetQuoteTokens() ([]types.Token, error)
+	GetBaseTokens() ([]types.Token, error)
 	Drop() error
 }
 
@@ -176,8 +176,8 @@ type TokenService interface {
 	GetByID(id bson.ObjectId) (*types.Token, error)
 	GetByAddress(addr common.Address) (*types.Token, error)
 	GetAll() ([]types.Token, error)
-	GetQuote() ([]types.Token, error)
-	GetBase() ([]types.Token, error)
+	GetQuoteTokens() ([]types.Token, error)
+	GetBaseTokens() ([]types.Token, error)
 }
 
 type TradeService interface {
