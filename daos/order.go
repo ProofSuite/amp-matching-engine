@@ -134,9 +134,12 @@ func (dao *OrderDao) UpdateOrderFilledAmount(hash common.Hash, value *big.Int) e
 	o := res[0]
 	status := ""
 	filledAmount := math.Add(o.FilledAmount, value)
-	if math.IsZero(filledAmount) {
+
+	if math.IsEqualOrSmallerThan(filledAmount, big.NewInt(0)) {
+		filledAmount = big.NewInt(0)
 		status = "OPEN"
-	} else if filledAmount.Cmp(o.Amount) == 0 {
+	} else if math.IsEqualOrGreaterThan(filledAmount, o.Amount) {
+		filledAmount = o.Amount
 		status = "FILLED"
 	} else {
 		status = "PARTIALLY_FILLED"
@@ -144,7 +147,7 @@ func (dao *OrderDao) UpdateOrderFilledAmount(hash common.Hash, value *big.Int) e
 
 	update := bson.M{"$set": bson.M{
 		"status":       status,
-		"filledAmount": filledAmount,
+		"filledAmount": filledAmount.String(),
 	}}
 
 	err = db.Update(dao.dbName, dao.collectionName, q, update)
