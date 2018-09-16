@@ -29,6 +29,9 @@ type OrderDao interface {
 	UpdateOrderFilledAmount(hash common.Hash, value *big.Int) error
 	GetUserLockedBalance(account common.Address, token common.Address) (*big.Int, error)
 	UpdateOrderStatus(hash common.Hash, status string) error
+	GetRawOrderBook(*types.Pair) ([]*types.Order, error)
+	GetOrderBook(*types.Pair) ([]map[string]string, []map[string]string, error)
+	GetOrderBookPricePoint(p *types.Pair, pp *big.Int) (*big.Int, error)
 	Drop() error
 }
 

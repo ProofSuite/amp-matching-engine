@@ -400,7 +400,7 @@ func (dao *OrderDao) GetOrderBook(p *types.Pair) ([]map[string]string, []map[str
 	return bids, asks, nil
 }
 
-func (dao *OrderDao) GetOrderBookPricePoint(p *types.Pair, pp *big.Int) (map[string]string, error) {
+func (dao *OrderDao) GetOrderBookPricePoint(p *types.Pair, pp *big.Int) (*big.Int, error) {
 	q := []bson.M{
 		bson.M{
 			"$match": bson.M{
@@ -434,7 +434,7 @@ func (dao *OrderDao) GetOrderBookPricePoint(p *types.Pair, pp *big.Int) (map[str
 		return nil, nil
 	}
 
-	return res[0], nil
+	return math.ToBigInt(res[0]["amount"]), nil
 }
 
 // Drop drops all the order documents in the current database

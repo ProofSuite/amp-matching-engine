@@ -229,32 +229,3 @@ func (e *Engine) CancelTrades(orders []*types.Order, amounts []*big.Int) error {
 
 	return nil
 }
-
-func (e *Engine) GetRawOrderBook(pair *types.Pair) ([][]types.Order, error) {
-	code := pair.Code()
-
-	ob := e.orderbooks[code]
-	if ob == nil {
-		return nil, errors.New("Orderbook error")
-	}
-
-	book := ob.GetRawOrderBook(pair)
-	// if err != nil {
-	// 	logger.Error(err)
-	// 	return nil, err
-	// }
-
-	return book, nil
-}
-
-func (e *Engine) GetOrderBook(pair *types.Pair) (asks, bids []*map[string]float64, err error) {
-	code := pair.Code()
-
-	ob := e.orderbooks[code]
-	if ob == nil {
-		return nil, nil, errors.New("Orderbook error")
-	}
-
-	asks, bids = ob.GetOrderBook(pair)
-	return asks, bids, nil
-}
