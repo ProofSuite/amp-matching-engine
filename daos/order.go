@@ -21,20 +21,39 @@ type OrderDao struct {
 	dbName         string
 }
 
+type OrderDaoOption = func(*OrderDao) error
+
+func OrderDaoDBOption(dbName string) func(dao *OrderDao) error {
+	return func(dao *OrderDao) error {
+		dao.dbName = dbName
+		return nil
+	}
+}
+
 // NewOrderDao returns a new instance of OrderDao
-func NewOrderDao() *OrderDao {
-	dbName := app.Config.DBName
-	collection := "orders"
+func NewOrderDao(opts ...OrderDaoOption) *OrderDao {
+	dao := &OrderDao{}
+	dao.collectionName = "orders"
+	dao.dbName = app.Config.DBName
+
+	for _, op := range opts {
+		err := op(dao)
+		if err != nil {
+			panic(err)
+		}
+	}
+
 	index := mgo.Index{
 		Key:    []string{"hash"},
 		Unique: true,
 	}
 
-	err := db.Session.DB(dbName).C(collection).EnsureIndex(index)
+	err := db.Session.DB(dao.dbName).C(dao.collectionName).EnsureIndex(index)
 	if err != nil {
 		panic(err)
 	}
-	return &OrderDao{collection, dbName}
+
+	return dao
 }
 
 // Create function performs the DB insertion task for Order collection
@@ -277,6 +296,145 @@ func (dao *OrderDao) GetUserLockedBalance(account common.Address, token common.A
 	}
 
 	return totalLockedBalance, nil
+}
+
+func (dao *OrderDao) GetRawOrderBook(p *types.Pair) ([]*types.Order, error) {
+	var orders []*types.Order
+	q := bson.M{
+		"status":     bson.M{"$in": []string{"OPEN", "PARTIALLY_FILLED"}},
+		"baseToken":  p.BaseTokenAddress.Hex(),
+		"quoteToken": p.QuoteTokenAddress.Hex(),
+	}
+
+	sort := []string{"pricepoint"}
+	err := db.GetAndSort(dao.dbName, dao.collectionName, q, sort, 0, 0, &orders)
+	if err != nil {
+		logger.Error(err)
+		return nil, err
+	}
+
+	return orders, nil
+}
+
+func (dao *OrderDao) GetOrderBook(p *types.Pair) ([]map[string]string, []map[string]string, error) {
+	bidsQuery := []bson.M{
+		bson.M{
+			"$match": bson.M{
+				"status":     bson.M{"$in": []string{"OPEN", "PARTIALLY_FILLED"}},
+				"baseToken":  p.BaseTokenAddress.Hex(),
+				"quoteToken": p.QuoteTokenAddress.Hex(),
+				"side":       "BUY",
+			},
+		},
+		bson.M{
+			"$group": bson.M{
+				"_id": "$pricepoint",
+				"amount": bson.M{
+					"$sum": bson.M{
+						"$subtract": []bson.M{bson.M{"$toDecimal": "$amount"}, bson.M{"$toDecimal": "$filledAmount"}},
+					},
+				},
+			},
+		},
+		bson.M{
+			"$sort": bson.M{
+				"_id": 1,
+			},
+		},
+		bson.M{
+			"$project": bson.M{
+				"_id":        0,
+				"pricepoint": "$_id",
+				"amount":     bson.M{"$toString": "$amount"},
+			},
+		},
+	}
+
+	asksQuery := []bson.M{
+		bson.M{
+			"$match": bson.M{
+				"status":     bson.M{"$in": []string{"OPEN", "PARTIALLY_FILLED"}},
+				"baseToken":  p.BaseTokenAddress.Hex(),
+				"quoteToken": p.QuoteTokenAddress.Hex(),
+				"side":       "SELL",
+			},
+		},
+		bson.M{
+			"$group": bson.M{
+				"_id": "$pricepoint",
+				"amount": bson.M{
+					"$sum": bson.M{
+						"$subtract": []bson.M{bson.M{"$toDecimal": "$amount"}, bson.M{"$toDecimal": "$filledAmount"}},
+					},
+				},
+			},
+		},
+		bson.M{
+			"$sort": bson.M{
+				"_id": 1,
+			},
+		},
+		bson.M{
+			"$project": bson.M{
+				"_id":        0,
+				"pricepoint": "$_id",
+				"amount":     bson.M{"$toString": "$amount"},
+			},
+		},
+	}
+
+	bids := []map[string]string{}
+	asks := []map[string]string{}
+	err := db.Aggregate(dao.dbName, dao.collectionName, bidsQuery, &bids)
+	if err != nil {
+		logger.Error(err)
+		return nil, nil, err
+	}
+
+	err = db.Aggregate(dao.dbName, dao.collectionName, asksQuery, &asks)
+	if err != nil {
+		logger.Error(err)
+		return nil, nil, err
+	}
+
+	return bids, asks, nil
+}
+
+func (dao *OrderDao) GetOrderBookPricePoint(p *types.Pair, pp *big.Int) (map[string]string, error) {
+	q := []bson.M{
+		bson.M{
+			"$match": bson.M{
+				"status":     bson.M{"$in": []string{"OPEN", "PARTIALLY_FILLED"}},
+				"baseToken":  p.BaseTokenAddress.Hex(),
+				"quoteToken": p.QuoteTokenAddress.Hex(),
+				"pricepoint": pp.String(),
+			},
+		},
+		bson.M{
+			"$project": bson.M{
+				"_id":        0,
+				"pricepoint": "$pricepoint",
+				"amount": bson.M{
+					"$toString": bson.M{
+						"$subtract": []bson.M{bson.M{"$toDecimal": "$amount"}, bson.M{"$toDecimal": "$filledAmount"}},
+					},
+				},
+			},
+		},
+	}
+
+	res := []map[string]string{}
+	err := db.Aggregate(dao.dbName, dao.collectionName, q, &res)
+	if err != nil {
+		logger.Error(err)
+		return nil, err
+	}
+
+	if res == nil {
+		return nil, nil
+	}
+
+	return res[0], nil
 }
 
 // Drop drops all the order documents in the current database

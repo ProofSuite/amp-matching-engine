@@ -82,10 +82,10 @@ func (d *Database) Query(dbName, collection string, query interface{}, selector 
 	return
 }
 
-// GetWithSort is a wrapper for mgo.Find function with SORT function in pipeline.
+// GetAndSort is a wrapper for mgo.Find function with SORT function in pipeline.
 // It creates a copy of session initialized, sends query over this session
 // and returns the session to connection pool
-func (d *Database) GetWithSort(dbName, collection string, query interface{}, sort []string, offset, limit int, response interface{}) (err error) {
+func (d *Database) GetAndSort(dbName, collection string, query interface{}, sort []string, offset, limit int, response interface{}) (err error) {
 	sc := d.Session.Copy()
 	defer sc.Close()
 

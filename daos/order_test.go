@@ -1,26 +1,28 @@
 package daos
 
 import (
-	"io/ioutil"
 	"math/big"
 	"testing"
 	"time"
 
+	"github.com/Proofsuite/amp-matching-engine/app"
 	"github.com/Proofsuite/amp-matching-engine/types"
+	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/Proofsuite/amp-matching-engine/utils/math"
 	"github.com/Proofsuite/amp-matching-engine/utils/testutils"
 	"github.com/Proofsuite/amp-matching-engine/utils/units"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
+	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
 func init() {
-	temp, _ := ioutil.TempDir("", "test")
-	server.SetPath(temp)
+	// temp, _ := ioutil.TempDir("", "test")
+	// server.SetPath(temp)
 
-	session := server.Session()
-	db = &Database{session}
+	// session := server.Session()
+	// db = &Database{session}
 }
 
 func TestUpdateOrderByHash(t *testing.T) {
@@ -632,6 +634,75 @@ func TestUpdateOrderFilledAmount3(t *testing.T) {
 
 	assert.Equal(t, "OPEN", stored.Status)
 	assert.Equal(t, big.NewInt(0), stored.FilledAmount)
+}
+
+func ExampleGetOrderBook() {
+	session, err := mgo.Dial(app.Config.DSN)
+	if err != nil {
+		panic(err)
+	}
+
+	db = &Database{session}
+	pairDao := NewPairDao(PairDaoDBOption("proofdex"))
+	orderDao := NewOrderDao(OrderDaoDBOption("proofdex"))
+	pair, err := pairDao.GetByTokenSymbols("BAT", "WETH")
+	if err != nil {
+		panic(err)
+	}
+
+	bids, asks, err := orderDao.GetOrderBook(pair)
+	if err != nil {
+		panic(err)
+	}
+
+	utils.PrintJSON(bids)
+	utils.PrintJSON(asks)
+}
+
+func ExampleGetOrderBookPricePoint() {
+	session, err := mgo.Dial(app.Config.DSN)
+	if err != nil {
+		panic(err)
+	}
+
+	db = &Database{session}
+
+	pairDao := NewPairDao(PairDaoDBOption("proofdex"))
+	orderDao := NewOrderDao(OrderDaoDBOption("proofdex"))
+	pair, err := pairDao.GetByTokenSymbols("AE", "WETH")
+	if err != nil {
+		panic(err)
+	}
+
+	orderPricePoint, err := orderDao.GetOrderBookPricePoint(pair, big.NewInt(59303))
+	if err != nil {
+		panic(err)
+	}
+
+	utils.PrintJSON(orderPricePoint)
+}
+
+func ExampleGetRawOrderBook() {
+	session, err := mgo.Dial(app.Config.DSN)
+	if err != nil {
+		panic(err)
+	}
+
+	db = &Database{session}
+
+	pairDao := NewPairDao(PairDaoDBOption("proofdex"))
+	orderDao := NewOrderDao(OrderDaoDBOption("proofdex"))
+	pair, err := pairDao.GetByTokenSymbols("AE", "WETH")
+	if err != nil {
+		panic(err)
+	}
+
+	orders, err := orderDao.GetRawOrderBook(pair)
+	if err != nil {
+		panic(err)
+	}
+
+	utils.PrintJSON(orders)
 }
 
 // func TestUpdateOrderFilledAmount2(t)

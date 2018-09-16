@@ -1,2 +1,0 @@
-ERRO 13:27:37 at endpoints/pair.go:46 in HandleCreatePair():quoteTokenSymbol: cannot be blank.
-ERRO 13:27:37 at endpoints/pair.go:46 in HandleCreatePair():quoteTokenSymbol: cannot be blank.
