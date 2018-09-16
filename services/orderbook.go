@@ -1,7 +1,6 @@
 package services
 
 import (
-	"encoding/json"
 	"errors"
 
 	"github.com/Proofsuite/amp-matching-engine/interfaces"
@@ -17,6 +16,7 @@ import (
 type OrderBookService struct {
 	pairDao  interfaces.PairDao
 	tokenDao interfaces.TokenDao
+	orderDao interfaces.OrderDao
 	eng      interfaces.Engine
 }
 
@@ -24,38 +24,35 @@ type OrderBookService struct {
 func NewOrderBookService(
 	pairDao interfaces.PairDao,
 	tokenDao interfaces.TokenDao,
+	orderDao interfaces.OrderDao,
 	eng interfaces.Engine,
 ) *OrderBookService {
-	return &OrderBookService{pairDao, tokenDao, eng}
+	return &OrderBookService{pairDao, tokenDao, orderDao, eng}
 }
 
 // GetOrderBook fetches orderbook from engine/redis and returns it as an map[string]interface
 func (s *OrderBookService) GetOrderBook(bt, qt common.Address) (map[string]interface{}, error) {
-	res, err := s.pairDao.GetByTokenAddress(bt, qt)
+	pair, err := s.pairDao.GetByTokenAddress(bt, qt)
 	if err != nil {
-		message := map[string]string{
-			"Code":    "Invalid Pair",
-			"Message": err.Error(),
-		}
-		bytes, _ := json.Marshal(message)
-		return nil, errors.New(string(bytes))
+		logger.Error(err)
+		return nil, err
 	}
 
-	bids, asks, err := s.eng.GetOrderBook(res)
-	if err != nil {
-		message := map[string]string{
-			"Code":    "Invalid Pair",
-			"Message": err.Error(),
-		}
+	if pair == nil {
+		return nil, errors.New("Pair not found")
+	}
 
-		bytes, _ := json.Marshal(message)
-		return nil, errors.New(string(bytes))
+	bids, asks, err := s.orderDao.GetOrderBook(pair)
+	if err != nil {
+		logger.Error(err)
+		return nil, err
 	}
 
 	ob := map[string]interface{}{
 		"asks": asks,
 		"bids": bids,
 	}
+
 	return ob, nil
 }
 
@@ -89,34 +86,25 @@ func (s *OrderBookService) SubscribeOrderBook(conn *ws.Conn, bt, qt common.Addre
 // UnSubscribeOrderBook is responsible for handling incoming orderbook unsubscription messages
 func (s *OrderBookService) UnSubscribeOrderBook(conn *ws.Conn, bt, qt common.Address) {
 	socket := ws.GetOrderBookSocket()
-
 	id := utils.GetOrderBookChannelID(bt, qt)
 	socket.Unsubscribe(id, conn)
 }
 
 // GetRawOrderBook fetches complete orderbook from engine/redis
-func (s *OrderBookService) GetRawOrderBook(bt, qt common.Address) ([][]types.Order, error) {
-	res, err := s.pairDao.GetByTokenAddress(bt, qt)
+func (s *OrderBookService) GetRawOrderBook(bt, qt common.Address) ([]*types.Order, error) {
+	pair, err := s.pairDao.GetByTokenAddress(bt, qt)
 	if err != nil {
-		message := map[string]string{
-			"Code":    "Invalid Pair",
-			"Message": err.Error(),
-		}
-		bytes, _ := json.Marshal(message)
-		return nil, errors.New(string(bytes))
+		logger.Error(err)
+		return nil, err
 	}
 
-	book, err := s.eng.GetRawOrderBook(res)
+	ob, err := s.orderDao.GetRawOrderBook(pair)
 	if err != nil {
-		message := map[string]string{
-			"Code":    "Internal Server Error",
-			"Message": err.Error(),
-		}
-		bytes, _ := json.Marshal(message)
-		return nil, errors.New(string(bytes))
+		logger.Error(err)
+		return nil, err
 	}
 
-	return book, nil
+	return ob, nil
 }
 
 // SubscribeRawOrderBook is responsible for handling incoming orderbook subscription messages

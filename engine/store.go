@@ -3,7 +3,6 @@ package engine
 import (
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/Proofsuite/amp-matching-engine/types"
@@ -130,55 +129,6 @@ func (ob *OrderBook) GetPricePointHashesSetLength(orderHashListKey string) (int6
 	}
 
 	return count, nil
-}
-
-func (ob *OrderBook) GetPricePointVolume(pricePointSetKey string, pricePoint int64) (int64, error) {
-	val, err := ob.redisConn.GetValue(pricePointSetKey + "::book::" + utils.UintToPaddedString(pricePoint))
-	if err != nil {
-		logger.Error(err)
-		return 0, err
-	}
-
-	vol, err := strconv.ParseInt(val, 10, 64)
-	if err != nil {
-		logger.Error(err)
-		return 0, err
-	}
-
-	return vol, nil
-}
-
-// IncrementPricePointVolume increases the value of a certain pricepoint at a certain volume
-func (ob *OrderBook) IncrementPricePointVolume(pricePointSetKey string, pricePoint int64, amount int64) error {
-	_, err := ob.redisConn.IncrBy(pricePointSetKey+"::book::"+utils.UintToPaddedString(pricePoint), amount)
-	if err != nil {
-		logger.Error(err)
-		return err
-	}
-
-	return nil
-}
-
-// DecrementPricePoint
-func (ob *OrderBook) DecrementPricePointVolume(pricePointSetKey string, pricePoint int64, amount int64) error {
-	_, err := ob.redisConn.IncrBy(pricePointSetKey+"::book::"+utils.UintToPaddedString(pricePoint), -amount)
-	if err != nil {
-		logger.Error(err)
-		return err
-	}
-
-	return nil
-}
-
-// DeletePricePoint
-func (ob *OrderBook) DeletePricePointVolume(pricePointSetKey string, pricePoint int64) error {
-	err := ob.redisConn.Del(pricePointSetKey + "::book::" + utils.UintToPaddedString(pricePoint))
-	if err != nil {
-		logger.Error(err)
-		return err
-	}
-
-	return nil
 }
 
 // AddToOrderMap

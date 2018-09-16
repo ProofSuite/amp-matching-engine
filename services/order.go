@@ -670,7 +670,26 @@ func (s *OrderService) CancelTrades(trades []*types.Trade) error {
 }
 
 func (s *OrderService) BroadcastUpdate(res *types.EngineResponse) {
-	orders := getOrderBookPayload(res)
+	p, err := s.pairDao.GetByBuySellTokenAddress(res.Order.BuyToken, res.Order.SellToken)
+	if err != nil {
+		logger.Error(err)
+	}
+
+	orders := []map[string]string{}
+	for _, m := range res.Matches {
+		pp := m.Order.PricePoint
+		amount, err := s.orderDao.GetOrderBookPricePoint(p, pp)
+		if err != nil {
+			logger.Error(err)
+		}
+
+		update := map[string]string{
+			"pricepoint": pp.String(),
+			"amount":     amount.String(),
+		}
+
+		orders = append(orders, update)
+	}
 
 	rawOrders := []*types.Order{res.Order}
 	for _, m := range res.Matches {
@@ -682,67 +701,22 @@ func (s *OrderService) BroadcastUpdate(res *types.EngineResponse) {
 		trades = append(trades, m.Trade)
 	}
 
-	go s.broadcastTradeUpdate(trades)
-	go s.broadcastRawOrderUpdate(rawOrders)
-	go s.broadcastOrderUpdate(res.Order.BaseToken, res.Order.QuoteToken, orders)
+	go s.broadcastTradeUpdate(p, trades)
+	go s.broadcastRawOrderUpdate(p, rawOrders)
+	go s.broadcastOrderUpdate(p, orders)
 }
 
-func (s *OrderService) broadcastOrderUpdate(baseToken, quoteToken common.Address, data interface{}) {
-	id := utils.GetOrderBookChannelID(baseToken, quoteToken)
+func (s *OrderService) broadcastOrderUpdate(p *types.Pair, data interface{}) {
+	id := utils.GetOrderBookChannelID(p.BaseTokenAddress, p.QuoteTokenAddress)
 	ws.GetOrderBookSocket().BroadcastMessage(id, data)
 }
 
-func (s *OrderService) broadcastTradeUpdate(trades []*types.Trade) {
-	id := utils.GetTradeChannelID(trades[0].BaseToken, trades[0].QuoteToken)
+func (s *OrderService) broadcastTradeUpdate(p *types.Pair, trades []*types.Trade) {
+	id := utils.GetTradeChannelID(p.BaseTokenAddress, p.QuoteTokenAddress)
 	ws.GetTradeSocket().BroadcastMessage(id, trades)
 }
 
-func (s *OrderService) broadcastRawOrderUpdate(orders []*types.Order) {
-	id := utils.GetOrderBookChannelID(orders[0].BaseToken, orders[0].QuoteToken)
+func (s *OrderService) broadcastRawOrderUpdate(p *types.Pair, orders []*types.Order) {
+	id := utils.GetOrderBookChannelID(p.BaseTokenAddress, p.QuoteTokenAddress)
 	ws.GetRawOrderBookSocket().BroadcastMessage(id, orders)
-}
-
-func getOrderBookPayload(res *types.EngineResponse) interface{} {
-	orderSide := make(map[string]string)
-	matchSide := make([]map[string]string, 0)
-	matchSideMap := make(map[string]*big.Int)
-
-	if math.Sub(res.Order.Amount, res.Order.FilledAmount).Cmp(big.NewInt(0)) != 0 {
-		orderSide["price"] = res.Order.PricePoint.String()
-		orderSide["amount"] = math.Sub(res.Order.Amount, res.Order.FilledAmount).String()
-	}
-
-	if len(res.Matches) > 0 {
-		for _, mo := range res.Matches {
-			pp := mo.Order.PricePoint.String()
-			if matchSideMap[pp] == nil {
-				matchSideMap[pp] = big.NewInt(0)
-			}
-
-			matchSideMap[pp] = math.Add(matchSideMap[pp], mo.Trade.Amount)
-		}
-	}
-
-	for price, amount := range matchSideMap {
-		temp := map[string]string{
-			"price":  price,
-			"amount": math.Neg(amount).String(),
-		}
-		matchSide = append(matchSide, temp)
-	}
-
-	var response map[string]interface{}
-	if res.Order.Side == "SELL" {
-		response = map[string]interface{}{
-			"asks": []map[string]string{orderSide},
-			"bids": matchSide,
-		}
-	} else {
-		response = map[string]interface{}{
-			"asks": matchSide,
-			"bids": []map[string]string{orderSide},
-		}
-	}
-
-	return response
 }

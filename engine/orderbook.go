@@ -33,7 +33,6 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/Proofsuite/amp-matching-engine/utils/math"
 	"github.com/ethereum/go-ethereum/common"
-	redigo "github.com/gomodule/redigo/redis"
 )
 
 type OrderBook struct {
@@ -205,7 +204,6 @@ func (ob *OrderBook) sellOrder(order *types.Order) (*types.EngineResponse, error
 
 			order.Status = "PARTIAL_FILLED"
 			res.Status = "PARTIAL"
-
 			match := &types.OrderTradePair{entry, trade}
 
 			res.Matches = append(res.Matches, match)
@@ -244,14 +242,6 @@ func (ob *OrderBook) addOrder(order *types.Order) error {
 		return err
 	}
 
-	// Currently converting amount to int64. In the future, we need to use strings instead of int64
-	volume := math.Div(math.Sub(order.Amount, order.FilledAmount), big.NewInt(1e18)).Int64()
-	err = ob.IncrementPricePointVolume(pricePointSetKey, order.PricePoint.Int64(), volume)
-	if err != nil {
-		logger.Error(err)
-		return err
-	}
-
 	err = ob.AddToOrderMap(order)
 	if err != nil {
 		logger.Error(err)
@@ -271,7 +261,6 @@ func (ob *OrderBook) addOrder(order *types.Order) error {
 func (ob *OrderBook) updateOrder(order *types.Order, tradeAmount *big.Int) error {
 	stored := &types.Order{}
 
-	pricePointSetKey, _ := order.GetOBKeys()
 	stored, err := ob.GetFromOrderMap(order.Hash)
 	if err != nil {
 		logger.Error(err)
@@ -291,13 +280,6 @@ func (ob *OrderBook) updateOrder(order *types.Order, tradeAmount *big.Int) error
 	}
 
 	err = ob.AddToOrderMap(stored)
-	if err != nil {
-		logger.Error(err)
-		return err
-	}
-
-	volume := math.Div(tradeAmount, big.NewInt(1e18)).Int64()
-	err = ob.IncrementPricePointVolume(pricePointSetKey, order.PricePoint.Int64(), -volume)
 	if err != nil {
 		logger.Error(err)
 		return err
@@ -327,17 +309,6 @@ func (ob *OrderBook) deleteOrder(o *types.Order) (err error) {
 
 	if pplen == 0 {
 		err = ob.RemoveFromPricePointSet(pricePointSetKey, pp)
-		if err != nil {
-			logger.Error(err)
-		}
-
-		err = ob.DeletePricePointVolume(pricePointSetKey, pp)
-		if err != nil {
-			logger.Error(err)
-		}
-	} else {
-		amt := math.Div(math.Sub(o.Amount, o.FilledAmount), big.NewInt(1e18)).Int64()
-		err = ob.DecrementPricePointVolume(pricePointSetKey, pp, amt)
 		if err != nil {
 			logger.Error(err)
 		}
@@ -499,87 +470,4 @@ func (ob *OrderBook) execute(order *types.Order, bookEntry *types.Order) (*types
 	}
 
 	return trade, nil
-}
-
-// GetRawOrderBook fetches the complete orderbook from redis for the required pair
-func (ob *OrderBook) GetRawOrderBook(p *types.Pair) (book [][]types.Order) {
-	pattern := p.GetKVPrefix() + "::*::*::orders::*"
-
-	length := 100
-	book = make([][]types.Order, 0)
-	keys, err := ob.redisConn.Keys(pattern)
-	if err != nil {
-		logger.Error(err)
-		return
-	}
-
-	orders := make([]types.Order, 0)
-	for start := 0; start < len(keys); start = start + length {
-		end := start + length
-		if len(keys) < end {
-			end = len(keys)
-		}
-
-		res, err := ob.redisConn.MGet(keys[start:end]...)
-		if err != nil {
-			logger.Error(err)
-			return
-		}
-
-		for _, r := range res {
-			if r == "" {
-				continue
-			}
-
-			var temp types.Order
-			if err := json.Unmarshal([]byte(r), &temp); err != nil {
-				continue
-			}
-
-			orders = append(orders, temp)
-		}
-	}
-
-	for start := 0; start < len(orders); start = start + length {
-		end := start + length
-		if len(keys) < end {
-			end = len(keys)
-		}
-
-		book = append(book, orders[start:end])
-	}
-
-	return
-}
-
-// GetOrderBook fetches the complete orderbook from redis for the required pair
-func (ob *OrderBook) GetOrderBook(pair *types.Pair) (asks, bids []*map[string]float64) {
-	sKey, bKey := pair.GetOrderBookKeys()
-	res, err := redigo.Int64s(ob.redisConn.Do("SORT", sKey, "GET", sKey+"::book::*", "GET", "#")) // Add price point to order book
-	if err != nil {
-		logger.Error(err)
-	}
-
-	for i := 0; i < len(res); i = i + 2 {
-		temp := &map[string]float64{
-			"amount": float64(res[i]),
-			"price":  float64(res[i+1]),
-		}
-		asks = append(asks, temp)
-	}
-
-	res, err = redigo.Int64s(ob.redisConn.Do("SORT", bKey, "GET", bKey+"::book::*", "GET", "#", "DESC"))
-	if err != nil {
-		logger.Error(err)
-	}
-
-	for i := 0; i < len(res); i = i + 2 {
-		temp := &map[string]float64{
-			"amount": float64(res[i]),
-			"price":  float64(res[i+1]),
-		}
-		bids = append(bids, temp)
-	}
-
-	return
 }
