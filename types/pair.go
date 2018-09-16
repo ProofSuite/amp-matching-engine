@@ -123,6 +123,8 @@ func (p Pair) Validate() error {
 	return validation.ValidateStruct(&p,
 		validation.Field(&p.BaseTokenAddress, validation.Required),
 		validation.Field(&p.QuoteTokenAddress, validation.Required),
+		validation.Field(&p.BaseTokenSymbol, validation.Required),
+		validation.Field(&p.QuoteTokenSymbol, validation.Required),
 	)
 }
 

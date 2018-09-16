@@ -278,13 +278,16 @@ func (ob *OrderBook) updateOrder(order *types.Order, tradeAmount *big.Int) error
 		return err
 	}
 
-	stored.FilledAmount = math.Add(stored.FilledAmount, tradeAmount)
-	if math.IsZero(stored.FilledAmount) {
+	filledAmount := math.Add(stored.FilledAmount, tradeAmount)
+	if math.IsEqualOrSmallerThan(filledAmount, big.NewInt(0)) {
 		stored.Status = "OPEN"
-	} else if math.IsSmallerThan(stored.FilledAmount, stored.Amount) {
-		stored.Status = "PARTIAL_FILLED"
-	} else {
+		stored.FilledAmount = big.NewInt(0)
+	} else if math.IsEqualOrGreaterThan(filledAmount, stored.Amount) {
 		stored.Status = "FILLED"
+		stored.FilledAmount = stored.Amount
+	} else {
+		stored.Status = "PARTIAL_FILLED"
+		stored.FilledAmount = filledAmount
 	}
 
 	err = ob.AddToOrderMap(stored)
@@ -294,7 +297,6 @@ func (ob *OrderBook) updateOrder(order *types.Order, tradeAmount *big.Int) error
 	}
 
 	volume := math.Div(tradeAmount, big.NewInt(1e18)).Int64()
-	// Currently converting amount to int64. In the future, we need to use strings instead of int64
 	err = ob.IncrementPricePointVolume(pricePointSetKey, order.PricePoint.Int64(), -volume)
 	if err != nil {
 		logger.Error(err)
@@ -372,9 +374,10 @@ func (ob *OrderBook) RecoverOrders(matches []*types.OrderTradePair) error {
 		o := m.Order
 
 		o.Status = "PARTIAL_FILLED"
-		o.FilledAmount = math.Sub(o.FilledAmount, t.Amount)
-		if math.IsZero(o.FilledAmount) {
+		filledAmount := math.Sub(o.FilledAmount, t.Amount)
+		if math.IsEqualOrSmallerThan(filledAmount, big.NewInt(0)) {
 			o.Status = "OPEN"
+			o.FilledAmount = big.NewInt(0)
 		}
 
 		_, obListKey := o.GetOBKeys()
@@ -479,7 +482,6 @@ func (ob *OrderBook) execute(order *types.Order, bookEntry *types.Order) (*types
 		tradeAmount = bookEntryAvailableAmount
 		bookEntry.FilledAmount = bookEntry.Amount
 		bookEntry.Status = "FILLED"
-		// bookEntry.FilledAmount = math.Add(bookEntry.FilledAmount, bookEntryAvailableAmount)
 	}
 
 	order.FilledAmount = math.Add(order.FilledAmount, tradeAmount)

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Proofsuite/amp-matching-engine/types"
+	"github.com/Proofsuite/amp-matching-engine/utils/math"
 	"github.com/Proofsuite/amp-matching-engine/utils/testutils"
 	"github.com/Proofsuite/amp-matching-engine/utils/units"
 	"github.com/ethereum/go-ethereum/common"
@@ -476,3 +477,163 @@ func TestGetUserOrderHistory(t *testing.T) {
 	assert.NotContains(t, orders, o2)
 	assert.NotContains(t, orders, o4)
 }
+
+func TestUpdateOrderFilledAmount1(t *testing.T) {
+	dao := NewOrderDao()
+	err := dao.Drop()
+	if err != nil {
+		t.Error("Could not drop previous order collection")
+	}
+
+	user := common.HexToAddress("0x1")
+	exchange := common.HexToAddress("0x2")
+	buyToken := common.HexToAddress("0x3")
+	sellToken := common.HexToAddress("0x4")
+	hash := common.HexToHash("0x5")
+
+	o1 := &types.Order{
+		ID:              bson.ObjectIdHex("537f700b537461b70c5f0001"),
+		UserAddress:     user,
+		ExchangeAddress: exchange,
+		BuyToken:        buyToken,
+		SellToken:       sellToken,
+		BuyAmount:       units.Ethers(10),
+		SellAmount:      units.Ethers(10),
+		Amount:          units.Ethers(10),
+		FilledAmount:    big.NewInt(0),
+		Status:          "OPEN",
+		Side:            "BUY",
+		PairName:        "ZRX/WETH",
+		Expires:         big.NewInt(10000),
+		MakeFee:         big.NewInt(50),
+		Nonce:           big.NewInt(1000),
+		TakeFee:         big.NewInt(50),
+		Hash:            hash,
+	}
+
+	err = dao.Create(o1)
+	if err != nil {
+		t.Error("Could not create order")
+	}
+
+	err = dao.UpdateOrderFilledAmount(hash, big.NewInt(5))
+	if err != nil {
+		t.Error("Could not get order history", err)
+	}
+
+	stored, err := dao.GetByHash(hash)
+	if err != nil {
+		t.Error("Could not retrieve order", err)
+	}
+
+	assert.Equal(t, "PARTIALLY_FILLED", stored.Status)
+	assert.Equal(t, big.NewInt(5), stored.FilledAmount)
+}
+
+func TestUpdateOrderFilledAmount2(t *testing.T) {
+	dao := NewOrderDao()
+	err := dao.Drop()
+	if err != nil {
+		t.Error("Could not drop previous order collection")
+	}
+
+	user := common.HexToAddress("0x1")
+	exchange := common.HexToAddress("0x2")
+	buyToken := common.HexToAddress("0x3")
+	sellToken := common.HexToAddress("0x4")
+	hash := common.HexToHash("0x5")
+
+	o1 := &types.Order{
+		ID:              bson.ObjectIdHex("537f700b537461b70c5f0001"),
+		UserAddress:     user,
+		ExchangeAddress: exchange,
+		BuyToken:        buyToken,
+		SellToken:       sellToken,
+		BuyAmount:       units.Ethers(10),
+		SellAmount:      units.Ethers(10),
+		Amount:          units.Ethers(10),
+		FilledAmount:    units.Ethers(5),
+		Status:          "OPEN",
+		Side:            "BUY",
+		PairName:        "ZRX/WETH",
+		Expires:         big.NewInt(10000),
+		MakeFee:         big.NewInt(50),
+		Nonce:           big.NewInt(1000),
+		TakeFee:         big.NewInt(50),
+		Hash:            hash,
+	}
+
+	err = dao.Create(o1)
+	if err != nil {
+		t.Error("Could not create order")
+	}
+
+	err = dao.UpdateOrderFilledAmount(hash, units.Ethers(6))
+	if err != nil {
+		t.Error("Could not get order history", err)
+	}
+
+	stored, err := dao.GetByHash(hash)
+	if err != nil {
+		t.Error("Could not retrieve order", err)
+	}
+
+	assert.Equal(t, "FILLED", stored.Status)
+	assert.Equal(t, units.Ethers(10), stored.FilledAmount)
+}
+
+func TestUpdateOrderFilledAmount3(t *testing.T) {
+	dao := NewOrderDao()
+	err := dao.Drop()
+	if err != nil {
+		t.Error("Could not drop previous order collection")
+	}
+
+	user := common.HexToAddress("0x1")
+	exchange := common.HexToAddress("0x2")
+	buyToken := common.HexToAddress("0x3")
+	sellToken := common.HexToAddress("0x4")
+	hash := common.HexToHash("0x5")
+
+	o1 := &types.Order{
+		ID:              bson.ObjectIdHex("537f700b537461b70c5f0001"),
+		UserAddress:     user,
+		ExchangeAddress: exchange,
+		BuyToken:        buyToken,
+		SellToken:       sellToken,
+		BuyAmount:       units.Ethers(10),
+		SellAmount:      units.Ethers(10),
+		Amount:          units.Ethers(10),
+		FilledAmount:    units.Ethers(5),
+		Status:          "OPEN",
+		Side:            "BUY",
+		PairName:        "ZRX/WETH",
+		Expires:         big.NewInt(10000),
+		MakeFee:         big.NewInt(50),
+		Nonce:           big.NewInt(1000),
+		TakeFee:         big.NewInt(50),
+		Hash:            hash,
+	}
+
+	err = dao.Create(o1)
+	if err != nil {
+		t.Error("Could not create order")
+	}
+
+	err = dao.UpdateOrderFilledAmount(hash, math.Neg(units.Ethers(6)))
+	if err != nil {
+		t.Error("Could not get order history", err)
+	}
+
+	stored, err := dao.GetByHash(hash)
+	if err != nil {
+		t.Error("Could not retrieve order", err)
+	}
+
+	assert.Equal(t, "OPEN", stored.Status)
+	assert.Equal(t, big.NewInt(0), stored.FilledAmount)
+}
+
+// func TestUpdateOrderFilledAmount2(t)
+
+// func TestUpdateOrderFilledAmount2(t *testing.T)

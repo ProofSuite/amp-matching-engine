@@ -34,7 +34,6 @@ func (e *pairEndpoint) HandleCreatePair(w http.ResponseWriter, r *http.Request) 
 	decoder := json.NewDecoder(r.Body)
 	err := decoder.Decode(p)
 	if err != nil {
-		logger.Error(err)
 		httputils.WriteError(w, http.StatusBadRequest, "Invalid payload")
 		return
 	}
@@ -43,8 +42,7 @@ func (e *pairEndpoint) HandleCreatePair(w http.ResponseWriter, r *http.Request) 
 
 	err = p.Validate()
 	if err != nil {
-		logger.Error(err)
-		httputils.WriteError(w, http.StatusBadRequest, "Invalid payload")
+		httputils.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -81,7 +79,7 @@ func (e *pairEndpoint) HandleGetAllPairs(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	httputils.WriteJSON(w, http.StatusCreated, res)
+	httputils.WriteJSON(w, http.StatusOK, res)
 }
 
 func (e *pairEndpoint) HandleGetPair(w http.ResponseWriter, r *http.Request) {
@@ -107,5 +105,5 @@ func (e *pairEndpoint) HandleGetPair(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	httputils.WriteJSON(w, http.StatusCreated, res)
+	httputils.WriteJSON(w, http.StatusOK, res)
 }

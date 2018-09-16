@@ -67,3 +67,11 @@ func IsSmallerThan(x, y *big.Int) bool {
 		return false
 	}
 }
+
+func IsEqualOrGreaterThan(x, y *big.Int) bool {
+	return (IsEqual(x, y) || IsGreaterThan(x, y))
+}
+
+func IsEqualOrSmallerThan(x, y *big.Int) bool {
+	return (IsEqual(x, y) || IsSmallerThan(x, y))
+}
