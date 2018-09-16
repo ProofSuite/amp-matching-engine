@@ -19,20 +19,39 @@ type PairDao struct {
 	dbName         string
 }
 
+type PairDaoOption = func(*PairDao) error
+
+func PairDaoDBOption(dbName string) func(dao *PairDao) error {
+	return func(dao *PairDao) error {
+		dao.dbName = dbName
+		return nil
+	}
+}
+
 // NewPairDao returns a new instance of AddressDao
-func NewPairDao() *PairDao {
-	dbName := app.Config.DBName
-	collection := "pairs"
+func NewPairDao(options ...PairDaoOption) *PairDao {
+	dao := &PairDao{}
+	dao.collectionName = "pairs"
+	dao.dbName = app.Config.DBName
+
+	for _, op := range options {
+		err := op(dao)
+		if err != nil {
+			panic(err)
+		}
+	}
+
 	index := mgo.Index{
 		Key:    []string{"baseTokenAddress", "quoteTokenAddress"},
 		Unique: true,
 	}
 
-	err := db.Session.DB(dbName).C(collection).EnsureIndex(index)
+	err := db.Session.DB(dao.dbName).C(dao.collectionName).EnsureIndex(index)
 	if err != nil {
 		panic(err)
 	}
-	return &PairDao{collection, dbName}
+
+	return dao
 }
 
 // Create function performs the DB insertion task for pair collection
