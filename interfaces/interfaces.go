@@ -116,8 +116,6 @@ type Engine interface {
 	CancelTrades(orders []*types.Order, amount []*big.Int) error
 	DeleteOrder(o *types.Order) error
 	DeleteOrders(orders ...types.Order) error
-	GetOrderBook(pair *types.Pair) (asks, bids []*map[string]float64, err error)
-	GetRawOrderBook(pair *types.Pair) ([][]types.Order, error)
 }
 
 type WalletService interface {
@@ -148,9 +146,6 @@ type OrderService interface {
 	CancelOrder(oc *types.OrderCancel) error
 	CancelTrades(trades []*types.Trade) error
 	HandleEngineResponse(res *types.EngineResponse) error
-	RelayUpdateOverSocket(res *types.EngineResponse)
-	RelayOrderUpdate(res *types.EngineResponse)
-	RelayTradeUpdate(res *types.EngineResponse)
 	GetCurrentByUserAddress(addr common.Address) ([]*types.Order, error)
 	GetHistoryByUserAddress(addr common.Address) ([]*types.Order, error)
 	Rollback(res *types.EngineResponse) *types.EngineResponse
@@ -159,8 +154,8 @@ type OrderService interface {
 }
 
 type OrderBookService interface {
-	GetOrderBook(bt, qt common.Address) (ob map[string]interface{}, err error)
-	GetRawOrderBook(bt, qt common.Address) (ob [][]types.Order, err error)
+	GetOrderBook(bt, qt common.Address) (map[string]interface{}, error)
+	GetRawOrderBook(bt, qt common.Address) ([]*types.Order, error)
 	SubscribeOrderBook(conn *ws.Conn, bt, qt common.Address)
 	UnSubscribeOrderBook(conn *ws.Conn, bt, qt common.Address)
 	SubscribeRawOrderBook(conn *ws.Conn, bt, qt common.Address)

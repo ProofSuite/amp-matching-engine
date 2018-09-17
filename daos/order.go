@@ -1,7 +1,6 @@
 package daos
 
 import (
-	"log"
 	"math/big"
 	"time"
 
@@ -68,7 +67,7 @@ func (dao *OrderDao) Create(order *types.Order) error {
 
 	err := db.Create(dao.dbName, dao.collectionName, order)
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return err
 	}
 
@@ -82,7 +81,7 @@ func (dao *OrderDao) Update(id bson.ObjectId, o *types.Order) error {
 
 	err := db.Update(dao.dbName, dao.collectionName, bson.M{"_id": id}, o)
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return err
 	}
 
@@ -94,7 +93,7 @@ func (dao *OrderDao) UpdateAllByHash(hash common.Hash, o *types.Order) error {
 
 	err := db.Update(dao.dbName, dao.collectionName, bson.M{"hash": hash.Hex()}, o)
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return err
 	}
 
@@ -119,7 +118,7 @@ func (dao *OrderDao) UpdateByHash(hash common.Hash, o *types.Order) error {
 
 	err := db.Update(dao.dbName, dao.collectionName, query, update)
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return err
 	}
 
@@ -134,7 +133,7 @@ func (dao *OrderDao) UpdateOrderStatus(hash common.Hash, status string) error {
 
 	err := db.Update(dao.dbName, dao.collectionName, query, update)
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return err
 	}
 
@@ -146,7 +145,7 @@ func (dao *OrderDao) UpdateOrderFilledAmount(hash common.Hash, value *big.Int) e
 	res := []types.Order{}
 	err := db.Get(dao.dbName, dao.collectionName, q, 0, 1, &res)
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return err
 	}
 
@@ -171,7 +170,7 @@ func (dao *OrderDao) UpdateOrderFilledAmount(hash common.Hash, value *big.Int) e
 
 	err = db.Update(dao.dbName, dao.collectionName, q, update)
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return err
 	}
 
@@ -194,13 +193,12 @@ func (dao *OrderDao) GetByHash(hash common.Hash) (*types.Order, error) {
 
 	err := db.Get(dao.dbName, dao.collectionName, q, 0, 1, &res)
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return nil, err
 	}
 
 	if len(res) == 0 {
-		log.Print(err)
-		return &res[0], nil
+		return nil, nil
 	}
 
 	return &res[0], nil
@@ -218,7 +216,7 @@ func (dao *OrderDao) GetByHashes(hashes []common.Hash) ([]*types.Order, error) {
 
 	err := db.Get(dao.dbName, dao.collectionName, q, 0, 0, &res)
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return nil, err
 	}
 
@@ -430,7 +428,7 @@ func (dao *OrderDao) GetOrderBookPricePoint(p *types.Pair, pp *big.Int) (*big.In
 		return nil, err
 	}
 
-	if res == nil {
+	if len(res) == 0 {
 		return nil, nil
 	}
 
@@ -441,7 +439,7 @@ func (dao *OrderDao) GetOrderBookPricePoint(p *types.Pair, pp *big.Int) (*big.In
 func (dao *OrderDao) Drop() error {
 	err := db.DropCollection(dao.dbName, dao.collectionName)
 	if err != nil {
-		log.Print(err)
+		logger.Error(err)
 		return err
 	}
 

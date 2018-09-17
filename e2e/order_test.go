@@ -105,7 +105,6 @@ func TestBuyOrder(t *testing.T) {
 			}
 		}
 	}()
-
 	wg.Wait()
 }
 
@@ -630,4 +629,110 @@ func TestMatchPartialOrder6(t *testing.T) {
 	res2 := types.NewOrderAddedWebsocketMessage(o2, pair, 0)
 	testutils.Compare(t, res1, client1.ResponseLogs[0])
 	testutils.Compare(t, res2, client2.ResponseLogs[0])
+}
+
+func TestOrders1(t *testing.T) {
+	_, wallet2, client1, client2, factory1, factory2, pair, ZRX, WETH := SetupTest()
+	m1, o1, _ := factory1.NewOrderMessage(WETH, 1e18, ZRX, 1e18)
+	m2, o2, _ := factory1.NewOrderMessage(WETH, 1e18, ZRX, 1e18)
+	m3, o3, _ := factory2.NewOrderMessage(ZRX, 3e18, WETH, 3e18)
+
+	// we simulated the order has an invalid signature
+	o2.Sign(wallet2)
+	m2 = types.NewOrderWebsocketMessage(o2)
+
+	client1.Requests <- m1
+	time.Sleep(1000 * time.Millisecond)
+	client1.Requests <- m2
+	time.Sleep(1000 * time.Millisecond)
+	client2.Requests <- m3
+
+	wg := sync.WaitGroup{}
+	wg.Add(4)
+
+	go func() {
+		for {
+			select {
+			case l1 := <-client1.Logs:
+				log.Print(l1)
+				switch l1.MessageType {
+				case "ORDER_ADDED":
+					wg.Done()
+				case "REQUEST_SIGNATURE":
+					wg.Done()
+				case "ERROR":
+					t.Errorf("Received an error")
+				}
+			case l2 := <-client2.Logs:
+				log.Print(l2)
+				switch l2.MessageType {
+				case "ORDER_ADDED":
+					wg.Done()
+				case "REQUEST_SIGNATURE":
+					wg.Done()
+				case "ERROR":
+					t.Errorf("Received an error")
+				}
+			}
+		}
+	}()
+
+	wg.Wait()
+
+	t1 := &types.Trade{
+		Amount:     big.NewInt(1e18),
+		BaseToken:  ZRX,
+		QuoteToken: WETH,
+		PricePoint: big.NewInt(1e8),
+		OrderHash:  o1.Hash,
+		Side:       "BUY",
+		PairName:   "ZRX/WETH",
+		Maker:      factory1.GetAddress(),
+		Taker:      factory2.GetAddress(),
+		TradeNonce: big.NewInt(0),
+	}
+
+	t2 := &types.Trade{
+		Amount:     big.NewInt(1e18),
+		BaseToken:  ZRX,
+		QuoteToken: WETH,
+		PricePoint: big.NewInt(1e8),
+		OrderHash:  o2.Hash,
+		Side:       "BUY",
+		PairName:   "ZRX/WETH",
+		Maker:      factory1.GetAddress(),
+		Taker:      factory2.GetAddress(),
+		TradeNonce: big.NewInt(0),
+	}
+
+	//Remaining order
+	ro1 := &types.Order{
+		Amount:          big.NewInt(1e18),
+		BaseToken:       ZRX,
+		QuoteToken:      WETH,
+		BuyToken:        ZRX,
+		SellToken:       WETH,
+		BuyAmount:       big.NewInt(1e18),
+		SellAmount:      big.NewInt(1e18),
+		FilledAmount:    big.NewInt(0),
+		ExchangeAddress: factory2.GetExchangeAddress(),
+		UserAddress:     factory2.GetAddress(),
+		PricePoint:      big.NewInt(1e8),
+		Side:            "BUY",
+		PairName:        "ZRX/WETH",
+		Status:          "NEW",
+		TakeFee:         big.NewInt(0),
+		MakeFee:         big.NewInt(0),
+		Expires:         o1.Expires,
+	}
+
+	t1.Hash = t1.ComputeHash()
+	t2.Hash = t2.ComputeHash()
+
+	res1 := types.NewOrderAddedWebsocketMessage(o1, pair, 0)
+	res2 := types.NewOrderAddedWebsocketMessage(o2, pair, 0)
+	res3 := types.NewRequestSignaturesWebsocketMessage(o3.Hash, []*types.OrderTradePair{{o1, t1}, {o2, t2}}, ro1)
+	testutils.Compare(t, res1, client1.ResponseLogs[0])
+	testutils.Compare(t, res2, client1.ResponseLogs[1])
+	testutils.Compare(t, res3, client2.ResponseLogs[0])
 }

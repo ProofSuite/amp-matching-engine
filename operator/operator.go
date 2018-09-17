@@ -74,13 +74,18 @@ func NewOperator(
 			panic(err)
 		}
 
-		txq := &TxQueue{
-			Name:             name,
-			Wallet:           w,
-			TradeService:     tradeService,
-			EthereumProvider: provider,
-			Exchange:         exchange,
-			RabbitMQConn:     conn,
+		txq, err := NewTxQueue(
+			name,
+			tradeService,
+			provider,
+			orderService,
+			w,
+			exchange,
+			conn,
+		)
+
+		if err != nil {
+			panic(err)
 		}
 
 		txqueues = append(txqueues, txq)
@@ -96,11 +101,6 @@ func NewOperator(
 		QueueAddressIndex: addressIndex,
 		mutex:             &sync.Mutex{},
 	}
-
-	// err = op.PurgeQueues()
-	// if err != nil {
-	// 	panic(err)
-	// }
 
 	go op.HandleEvents()
 	return op, nil
@@ -171,7 +171,6 @@ func (op *Operator) HandleEvents() error {
 			errID := int(event.ErrorId)
 
 			logger.Info("The error ID is: ", errID)
-
 			tr, err := op.TradeService.GetByHash(tradeHash)
 			if err != nil {
 				logger.Error(err)

@@ -44,7 +44,7 @@ type OrderBook struct {
 
 // newOrder calls buyOrder/sellOrder based on type of order recieved and
 // publishes the response back to rabbitmq
-func (ob *OrderBook) newOrder(order *types.Order) (err error) {
+func (ob *OrderBook) newOrder(order *types.Order, hashID common.Hash) (err error) {
 	// Attain lock on engineResource, so that recovery or cancel order function doesn't interfere
 	ob.mutex.Lock()
 	defer ob.mutex.Unlock()
@@ -66,6 +66,7 @@ func (ob *OrderBook) newOrder(order *types.Order) (err error) {
 	}
 
 	// Note: Plug the option for orders like FOC, Limit here (if needed)
+	resp.HashID = hashID
 	err = ob.rabbitMQConn.PublishEngineResponse(resp)
 	if err != nil {
 		logger.Error(err)
@@ -138,7 +139,7 @@ func (ob *OrderBook) buyOrder(order *types.Order) (*types.EngineResponse, error)
 	}
 
 	//TODO refactor this in a different function (make above function more clear in general)
-	res.Order.Status = "PARTIAL_FILLED"
+	res.Order.Status = "REPLACED"
 	res.Status = "PARTIAL"
 	res.RemainingOrder.Signature = nil
 	res.RemainingOrder.Nonce = nil
@@ -202,10 +203,7 @@ func (ob *OrderBook) sellOrder(order *types.Order) (*types.EngineResponse, error
 				return nil, err
 			}
 
-			order.Status = "PARTIAL_FILLED"
-			res.Status = "PARTIAL"
 			match := &types.OrderTradePair{entry, trade}
-
 			res.Matches = append(res.Matches, match)
 			res.RemainingOrder.Amount = math.Sub(res.RemainingOrder.Amount, trade.Amount)
 
@@ -219,7 +217,7 @@ func (ob *OrderBook) sellOrder(order *types.Order) (*types.EngineResponse, error
 	}
 
 	//TODO refactor this in a different function (make above function more clear in general)
-	res.Order.Status = "PARTIAL_FILLED"
+	res.Order.Status = "REPLACED"
 	res.Status = "PARTIAL"
 	res.RemainingOrder.Signature = nil
 	res.RemainingOrder.Nonce = nil
@@ -235,6 +233,7 @@ func (ob *OrderBook) sellOrder(order *types.Order) (*types.EngineResponse, error
 
 // addOrder adds an order to redis
 func (ob *OrderBook) addOrder(order *types.Order) error {
+	order.Status = "OPEN"
 	pricePointSetKey, orderHashListKey := order.GetOBKeys()
 	err := ob.AddToPricePointSet(pricePointSetKey, order.PricePoint.Int64())
 	if err != nil {

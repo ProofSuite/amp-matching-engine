@@ -11,6 +11,7 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/redis"
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/Proofsuite/amp-matching-engine/utils"
+	"github.com/ethereum/go-ethereum/common"
 )
 
 // Engine contains daos and redis connection required for engine to work
@@ -61,7 +62,7 @@ func (e *Engine) HandleOrders(msg *rabbitmq.Message) error {
 	}
 
 	if msg.Type == "NEW_ORDER" {
-		err := e.newOrder(o)
+		err := e.newOrder(o, msg.HashID)
 		if err != nil {
 			logger.Error(err)
 			return err
@@ -98,7 +99,7 @@ func (e *Engine) addOrder(o *types.Order) error {
 	return nil
 }
 
-func (e *Engine) newOrder(o *types.Order) error {
+func (e *Engine) newOrder(o *types.Order, hashID common.Hash) error {
 	code, err := o.PairCode()
 	if err != nil {
 		logger.Error(err)
@@ -110,7 +111,7 @@ func (e *Engine) newOrder(o *types.Order) error {
 		return errors.New("Orderbook error")
 	}
 
-	err = ob.newOrder(o)
+	err = ob.newOrder(o, hashID)
 	if err != nil {
 		logger.Error(err)
 		return err
