@@ -194,7 +194,7 @@ func (op *Operator) HandleEvents() error {
 				logger.Error(err)
 			}
 
-			logger.Info("TRADE_SUCCESS_EVENT", tr.Hash.Hex(), tr.TxHash.Hex())
+			logger.Info("TRADE_SUCCESS_EVENT")
 
 			or, err := op.OrderService.GetByHash(tr.OrderHash)
 			if err != nil {
@@ -206,8 +206,6 @@ func (op *Operator) HandleEvents() error {
 				if err != nil {
 					logger.Error(err)
 				}
-
-				logger.Info("TRADE_MINED IN HANDLE EVENTS: ", tr.Hash.Hex())
 
 				err = op.RabbitMQConnection.PublishTradeSuccessMessage(or, tr)
 				if err != nil {

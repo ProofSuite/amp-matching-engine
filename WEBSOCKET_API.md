@@ -1,6 +1,6 @@
 # Websocket API
 
-**Websocket Endpoint**: `/socket` 
+**Websocket Endpoint**: `/socket`
 
 ### PLACE_ORDER (client -> engine)
 
@@ -11,7 +11,7 @@ message is send in order to provide
 ```
 {
 	"channel": "order_channel",
-	"message": 
+	"message":
 	{
 		"msgType": "NEW_ORDER",
 		"data": {
@@ -27,7 +27,7 @@ message is send in order to provide
 }
 ```
 **Response** [engine->client]
-If order added to orderbook: 
+If order added to orderbook:
 
 ```
 {
@@ -72,7 +72,7 @@ If order added to orderbook:
       "amountBuy": 5000000000,
       "amountSell": 11000000000,
       "exchangeAddress": "",
-      "status": "NEW",
+      "status": "OPEN",
       "pairID": "5b3e82a07b44576ba8000003",
       "pairName": "HPC-AUT",
       "hash": "0xa9a89346cc62330626c5853b74493a1f8e933db582c444bf2288bd6a211586ee",
@@ -213,7 +213,7 @@ Payload:
 ```
 {
 	"channel": "order_channel",
-	"message": 
+	"message":
 	{
   "msgType": "REQUEST_SIGNATURE",
   "orderId": "5b50d0ff7b44578e7e436816",
@@ -326,7 +326,7 @@ Payload:
 ```
 {
 	"channel": "order_channel",
-	"message": 
+	"message":
 	{
 		"msgType": "CANCEL_ORDER",
 		"data": {
@@ -338,7 +338,7 @@ Payload:
 	}
 }
 ```
-ORDER_BOOK_SUBSCRIBE (client->engine) 
+ORDER_BOOK_SUBSCRIBE (client->engine)
 
 To subscribe to orderbook channel for any given pair. client needs to send message with payload:
 **Payload**:
@@ -411,7 +411,7 @@ To subscribe to orderbook channel for any given pair. client needs to send messa
 }
 ```
 
-ORDER_BOOK_UNSUBSCRIBE (client->engine) 
+ORDER_BOOK_UNSUBSCRIBE (client->engine)
 To unsubscribe from orderbook channel for any given pair. client needs to send message with payload:
 **Payload**
 ```
@@ -479,7 +479,7 @@ Payload:
     "amountBuy": 6000000000,
     "amountSell": 13200000000,
     "exchangeAddress": "",
-    "status": "NEW",
+    "status": "OPEN",
     "pairID": "5b3e82a07b44576ba8000003",
     "pairName": "HPC-AUT",
     "hash": "0xfc4c476cb2166d520a28ec1d4d4a42f1ef1ce5d7ac10433b03a39c99320a69d0",

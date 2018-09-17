@@ -93,7 +93,7 @@ func (dao *PairDao) GetByName(name string) (*types.Pair, error) {
 	}
 
 	if len(res) == 0 {
-		return nil, errors.New("NO_PAIR_FOUND")
+		return nil, errors.New("Pair not found")
 	}
 
 	return res[0], nil
@@ -135,7 +135,7 @@ func (dao *PairDao) GetByTokenAddress(baseToken, quoteToken common.Address) (*ty
 	}
 
 	if len(res) == 0 {
-		return nil, errors.New("NO_PAIR_FOUND")
+		return nil, errors.New("Pair not found")
 	}
 
 	return res[0], nil
@@ -164,7 +164,7 @@ func (dao *PairDao) GetByBuySellTokenAddress(buyToken, sellToken common.Address)
 	}
 
 	if len(res) == 0 {
-		return nil, errors.New("NO_PAIR_FOUND")
+		return nil, errors.New("Pair not found")
 	}
 
 	return res[0], nil

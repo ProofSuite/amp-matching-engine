@@ -80,7 +80,7 @@ func (txq *TxQueue) Length() int {
 // func (op *Operator) QueueTrade(o *types.Order, t *types.Trade) error {
 // TODO: Currently doesn't seem thread safe and fails unless called with a sleep time between each call.
 func (txq *TxQueue) QueueTrade(o *types.Order, t *types.Trade) error {
-	logger.Info("Length of the queue is ", txq.Length())
+	logger.Info("QUEUE LENGTH", txq.Length())
 	if txq.Length() == 0 {
 		_, err := txq.ExecuteTrade(o, t)
 		if err != nil {

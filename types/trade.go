@@ -34,6 +34,7 @@ type Trade struct {
 	UpdatedAt      time.Time      `json:"updatedAt" bson:"updatedAt" redis:"updatedAt"`
 	PricePoint     *big.Int       `json:"pricepoint" bson:"pricepoint"`
 	Side           string         `json:"side" bson:"side"`
+	Status         string         `json:"status" bson:"status"`
 	Amount         *big.Int       `json:"amount" bson:"amount"`
 }
 

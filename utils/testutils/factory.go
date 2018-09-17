@@ -123,7 +123,7 @@ func (f *OrderFactory) NewOrder(buyToken common.Address, buyAmount int64, sellTo
 	o.SellToken = sellToken
 	o.BuyAmount = big.NewInt(buyAmount)
 	o.SellAmount = big.NewInt(sellAmount)
-	o.Status = "NEW"
+	o.Status = "OPEN"
 	o.Expires = f.Params.Expires
 	o.MakeFee = f.Params.MakeFee
 	o.TakeFee = f.Params.TakeFee
@@ -142,7 +142,7 @@ func (f *OrderFactory) NewLargeOrder(buyToken common.Address, buyAmount *big.Int
 	o.SellToken = sellToken
 	o.BuyAmount = buyAmount
 	o.SellAmount = sellAmount
-	o.Status = "NEW"
+	o.Status = "OPEN"
 	o.Expires = f.Params.Expires
 	o.MakeFee = f.Params.MakeFee
 	o.TakeFee = f.Params.TakeFee
@@ -208,7 +208,7 @@ func (f *OrderFactory) NewBuyOrder(pricepoint int64, value float64, filled ...fl
 
 	if filled == nil {
 		o.FilledAmount = big.NewInt(0)
-		o.Status = "NEW"
+		o.Status = "OPEN"
 	} else if value == filled[0] {
 		o.FilledAmount = o.Amount
 		o.Status = "FILLED"
@@ -260,7 +260,7 @@ func (f *OrderFactory) NewSellOrder(pricepoint int64, value float64, filled ...f
 
 	if filled == nil {
 		o.FilledAmount = big.NewInt(0)
-		o.Status = "NEW"
+		o.Status = "OPEN"
 	} else if value == filled[0] {
 		o.FilledAmount = o.Amount
 		o.Status = "FILLED"

@@ -68,11 +68,11 @@ func (o *Order) Validate() error {
 	}
 
 	if math.IsSmallerThan(o.BuyAmount, big.NewInt(0)) {
-		return errors.New("BuyAmount should be positive")
+		return errors.New("Buy amount should be positive")
 	}
 
 	if math.IsSmallerThan(o.SellAmount, big.NewInt(0)) {
-		return errors.New("SellAmount should be positive")
+		return errors.New("Sell amount should be positive")
 	}
 
 	if math.IsSmallerThan(o.Nonce, big.NewInt(0)) {
