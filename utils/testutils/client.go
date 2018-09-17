@@ -96,6 +96,7 @@ func NewClient(w *types.Wallet, s Server) *Client {
 func (c *Client) send(v interface{}) error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
+
 	return c.connection.WriteJSON(v)
 }
 

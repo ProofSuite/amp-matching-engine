@@ -7,7 +7,6 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/Proofsuite/amp-matching-engine/services"
 	"github.com/Proofsuite/amp-matching-engine/types"
-	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/Proofsuite/amp-matching-engine/utils/httputils"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/mux"
@@ -39,8 +38,6 @@ func (e *tokenEndpoint) HandleCreateTokens(w http.ResponseWriter, r *http.Reques
 		logger.Error(err)
 		httputils.WriteError(w, http.StatusBadRequest, "Invalid payload")
 	}
-
-	utils.PrintJSON(t)
 
 	defer r.Body.Close()
 

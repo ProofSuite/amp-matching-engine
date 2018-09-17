@@ -225,7 +225,7 @@ func (s *OrderService) NewOrder(o *types.Order) error {
 		return err
 	}
 
-	s.broker.PublishOrder(&rabbitmq.Message{Type: "NEW_ORDER", Data: bytes})
+	s.broker.PublishOrder(&rabbitmq.Message{Type: "NEW_ORDER", HashID: o.Hash, Data: bytes})
 	return nil
 }
 
@@ -261,7 +261,7 @@ func (s *OrderService) CancelOrder(oc *types.OrderCancel) error {
 			logger.Error(err)
 		}
 
-		ws.SendOrderMessage("ORDER_CANCELLED", res.Order.Hash, res.Order)
+		ws.SendOrderMessage("ORDER_CANCELLED", res.HashID, res.Order)
 		s.BroadcastUpdate(res)
 		return nil
 	}
@@ -292,7 +292,6 @@ func (s *OrderService) HandleEngineResponse(res *types.EngineResponse) error {
 
 func (s *OrderService) HandleOperatorMessages(msg *types.OperatorMessage) error {
 	logger.Info("RECEIVING OPERATOR MESSAGE")
-	utils.PrintJSON(msg)
 
 	switch msg.MessageType {
 	case "TRADE_PENDING":
@@ -323,13 +322,16 @@ func (s *OrderService) handleEngineError(res *types.EngineResponse) {
 		logger.Error(err)
 	}
 
-	ws.SendOrderMessage("ERROR", res.Order.Hash, nil)
+	ws.SendOrderMessage("ERROR", res.HashID, nil)
 }
 
 // handleEngineOrderAdded returns a websocket message informing the client that his order has been added
 // to the orderbook (but currently not matched)
 func (s *OrderService) handleEngineOrderAdded(res *types.EngineResponse) {
-	ws.SendOrderMessage("ORDER_ADDED", res.Order.Hash, res.Order)
+
+	logger.Warning("ADDING ORDER", res.HashID.Hex())
+
+	ws.SendOrderMessage("ORDER_ADDED", res.HashID, res.Order)
 }
 
 // handleEngineOrderMatched returns a websocket message informing the client that his order has been added.
@@ -348,7 +350,7 @@ func (s *OrderService) handleEngineOrderMatched(res *types.EngineResponse) {
 	}
 
 	go s.handleSubmitSignatures(res)
-	ws.SendOrderMessage("REQUEST_SIGNATURE", res.Order.Hash, types.SignaturePayload{res.RemainingOrder, res.Matches})
+	ws.SendOrderMessage("REQUEST_SIGNATURE", res.HashID, types.SignaturePayload{res.RemainingOrder, res.Matches})
 }
 
 // handleSubmitSignatures wait for a submit signature message that provides the matching engine with orders
@@ -364,7 +366,7 @@ func (s *OrderService) handleSubmitSignatures(res *types.EngineResponse) {
 			if err != nil {
 				logger.Error(err)
 				s.Rollback(res)
-				ws.SendOrderMessage("ERROR", res.Order.Hash, err)
+				ws.SendOrderMessage("ERROR", res.HashID, err)
 			}
 
 			data := &types.SignaturePayload{}
@@ -372,7 +374,7 @@ func (s *OrderService) handleSubmitSignatures(res *types.EngineResponse) {
 			if err != nil {
 				logger.Error(err)
 				s.Rollback(res)
-				ws.SendOrderMessage("ERROR", res.Order.Hash, err)
+				ws.SendOrderMessage("ERROR", res.HashID, err)
 			}
 
 			// remaining order
@@ -382,7 +384,7 @@ func (s *OrderService) handleSubmitSignatures(res *types.EngineResponse) {
 					//TODO consider if we should going on with execution or not
 					logger.Error(err)
 					s.Rollback(res)
-					ws.SendOrderMessage("ERROR", res.Order.Hash, err)
+					ws.SendOrderMessage("ERROR", res.HashID, err)
 				}
 
 				bytes, err := json.Marshal(data.Order)
@@ -390,10 +392,10 @@ func (s *OrderService) handleSubmitSignatures(res *types.EngineResponse) {
 					//TODO not sure whether rolling back is good here
 					logger.Error(err)
 					s.Rollback(res)
-					ws.SendOrderMessage("ERROR", res.Order.Hash, err)
+					ws.SendOrderMessage("ERROR", res.HashID, err)
 				}
 
-				s.broker.PublishOrder(&rabbitmq.Message{Type: "ADD_ORDER", Data: bytes})
+				s.broker.PublishOrder(&rabbitmq.Message{Type: "NEW_ORDER", HashID: res.HashID, Data: bytes})
 			}
 
 			if data.Matches != nil {
@@ -412,7 +414,7 @@ func (s *OrderService) handleSubmitSignatures(res *types.EngineResponse) {
 				if err != nil {
 					logger.Error(err)
 					s.Rollback(res)
-					ws.SendOrderMessage("ERROR", res.Order.Hash, err)
+					ws.SendOrderMessage("ERROR", res.HashID, err)
 				}
 
 				for _, m := range data.Matches {
@@ -420,7 +422,7 @@ func (s *OrderService) handleSubmitSignatures(res *types.EngineResponse) {
 					if err != nil {
 						logger.Error(err)
 						s.Rollback(res)
-						ws.SendOrderMessage("ERROR", res.Order.Hash, err)
+						ws.SendOrderMessage("ERROR", res.HashID, err)
 					}
 				}
 			}
@@ -435,15 +437,12 @@ func (s *OrderService) handleSubmitSignatures(res *types.EngineResponse) {
 // handleEngineUnknownMessage returns a websocket messsage in case the engine resonse is not recognized
 func (s *OrderService) handleEngineUnknownMessage(res *types.EngineResponse) {
 	s.Rollback(res)
-	ws.SendOrderMessage("ERROR", res.Order.Hash, nil)
+	ws.SendOrderMessage("ERROR", res.HashID, nil)
 }
 
 func (s *OrderService) handleOperatorUnknownMessage(msg *types.OperatorMessage) {
 	log.Print("Receiving unknown message")
 	utils.PrintJSON(msg)
-
-	// s.Rollback(res)
-	// ws.SendOrderMessage("ERROR", msg.Order.Hash, nil)
 }
 
 func (s *OrderService) handleOperatorTradePending(msg *types.OperatorMessage) {
@@ -676,6 +675,7 @@ func (s *OrderService) BroadcastUpdate(res *types.EngineResponse) {
 	}
 
 	orders := []map[string]string{}
+
 	for _, m := range res.Matches {
 		pp := m.Order.PricePoint
 		amount, err := s.orderDao.GetOrderBookPricePoint(p, pp)

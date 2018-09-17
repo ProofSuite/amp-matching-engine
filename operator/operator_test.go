@@ -16,7 +16,6 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/rabbitmq"
 	"github.com/Proofsuite/amp-matching-engine/services"
 	"github.com/Proofsuite/amp-matching-engine/types"
-	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/Proofsuite/amp-matching-engine/utils/testutils"
 	"github.com/Proofsuite/amp-matching-engine/utils/testutils/mocks"
 	"github.com/ethereum/go-ethereum/common"
@@ -481,9 +480,6 @@ func TestHandleEvents2(t *testing.T) {
 	t1, _ := factory2.NewTrade(o1, 1)
 	o2, _ := factory1.NewOrder(zrx, 1, weth, 1)
 	t2, _ := factory2.NewTrade(o2, 1)
-
-	utils.PrintJSON(t1)
-	utils.PrintJSON(t2)
 
 	provider := ethereum.NewEthereumProvider(simulator)
 	tradeService.On("UpdateTradeTxHash", mock.Anything, mock.Anything).Return(nil).Once().Run(func(args mock.Arguments) {

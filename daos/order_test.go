@@ -704,7 +704,3 @@ func ExampleGetRawOrderBook() {
 
 	utils.PrintJSON(orders)
 }
-
-// func TestUpdateOrderFilledAmount2(t)
-
-// func TestUpdateOrderFilledAmount2(t *testing.T)
