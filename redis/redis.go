@@ -52,6 +52,14 @@ func (c *RedisConnection) FlushAll() {
 	c.Do("FLUSHALL")
 }
 
+func (c *RedisConnection) StartTx() {
+	c.Do("MULTI")
+}
+
+func (c *RedisConnection) ExecuteTx() {
+	c.Do("EXEC")
+}
+
 // GetValue gets the value saved at a given key
 func (c *RedisConnection) GetValue(key string) (string, error) {
 	value, err := redis.String(c.Do("GET", key))

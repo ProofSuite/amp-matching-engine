@@ -88,7 +88,6 @@ func NewClient(w *types.Wallet, s Server) *Client {
 		ResponseLogs:   respLogs,
 		Logs:           logs,
 		NonceGenerator: ng,
-		// ethereumClient: ethClient,
 	}
 }
 
@@ -136,9 +135,28 @@ func (c *Client) handleMessages() {
 	}()
 }
 
+// handleIncomingMessages reads incomings JSON messages from the websocket connection and
+// feeds them into the responses channel
+func (c *Client) handleIncomingMessages() {
+	message := new(types.WebSocketMessage)
+	go func() {
+		for {
+			err := c.connection.ReadJSON(&message)
+			if err != nil {
+				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+					log.Print(err)
+				}
+				break
+			}
+
+			c.Responses <- message
+		}
+	}()
+}
+
 // handleChannelMessagesOut
 func (c *Client) handleOrderChannelMessagesOut(m types.WebSocketMessage) {
-	logger.Infof("Semd %v message on channel %v", m.Payload.Type, m.Channel)
+	logger.Infof("Sending %v", m.Payload.Type)
 	err := c.send(m)
 	if err != nil {
 		log.Printf("Error: Could not send signed orders. Payload: %#v", m.Payload)
@@ -148,20 +166,22 @@ func (c *Client) handleOrderChannelMessagesOut(m types.WebSocketMessage) {
 
 // handleChannelMessagesIn
 func (c *Client) handleOrderChannelMessagesIn(p types.WebSocketPayload) {
-	logger.Infof("Receiving %v message", p.Type)
+	logger.Infof("Receiving: %v", p.Type)
 	switch p.Type {
+	case "ERROR":
+		c.handleError(p)
 	case "ORDER_ADDED":
 		c.handleOrderAdded(p)
 	case "ORDER_CANCELLED":
 		c.handleOrderCancelled(p)
+	case "ORDER_SUCCESS":
+		c.handleOrderSuccess(p)
+	case "ORDER_ERROR":
+		c.handleOrderError(p)
+	case "ORDER_PENDING":
+		c.handleOrderPending(p)
 	case "REQUEST_SIGNATURE":
 		c.handleSignatureRequested(p)
-	case "TRADE_EXECUTED":
-		c.handleTradeExecuted(p)
-	case "TRADE_TX_SUCCESS":
-		c.handleOrderTxSuccess(p)
-	case "TRADE_TX_ERROR":
-		c.handleOrderTxError(p)
 	}
 }
 
@@ -192,23 +212,9 @@ func (c *Client) handleOHLCVMessages(p types.WebSocketPayload) {
 	}
 }
 
-// handleIncomingMessages reads incomings JSON messages from the websocket connection and
-// feeds them into the responses channel
-func (c *Client) handleIncomingMessages() {
-	message := new(types.WebSocketMessage)
-	go func() {
-		for {
-			err := c.connection.ReadJSON(&message)
-			if err != nil {
-				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-					log.Print(err)
-				}
-				break
-			}
-
-			c.Responses <- message
-		}
-	}()
+// handleError handles incoming error mesasges (does not include tx errors)
+func (c *Client) handleError(p types.WebSocketPayload) {
+	utils.PrintJSON(p)
 }
 
 // handleOrderAdded handles incoming order added messages
@@ -255,6 +261,8 @@ func (c *Client) handleOrderCancelled(p types.WebSocketPayload) {
 	c.Logs <- l
 }
 
+// handleSignatureRequested handles incoming signature requested messages.
+// It follows up by signing given data and sending back a SUBMIT_SIGNATURES messages
 func (c *Client) handleSignatureRequested(p types.WebSocketPayload) {
 	data := &types.SignaturePayload{}
 	bytes, err := json.Marshal(p.Data)
@@ -297,16 +305,72 @@ func (c *Client) handleSignatureRequested(p types.WebSocketPayload) {
 	c.Requests <- req
 }
 
-func (c *Client) handleTradeExecuted(p types.WebSocketPayload) {
+// handleOrderPending handles incoming pending messages (the order has been matched/partially matched
+// and the execution tx is currently waiting to be mined)
+func (c *Client) handleOrderPending(p types.WebSocketPayload) {
+	o := &types.Order{}
 
+	bytes, err := json.Marshal(p.Data)
+	if err != nil {
+		log.Print(err)
+	}
+
+	err = o.UnmarshalJSON(bytes)
+	if err != nil {
+		log.Print(err)
+	}
+
+	l := &ClientLogMessage{
+		MessageType: "ORDER_PENDING",
+		Orders:      []*types.Order{o},
+	}
+
+	c.Logs <- l
 }
 
-func (c *Client) handleOrderTxSuccess(p types.WebSocketPayload) {
+// handleOrderSuccess handles incoming tx success messages
+func (c *Client) handleOrderSuccess(p types.WebSocketPayload) {
+	o := &types.Order{}
 
+	bytes, err := json.Marshal(p.Data)
+	if err != nil {
+		log.Print(err)
+	}
+
+	err = o.UnmarshalJSON(bytes)
+	if err != nil {
+		log.Print(err)
+	}
+
+	l := &ClientLogMessage{
+		MessageType: "ORDER_SUCCESS",
+		Orders:      []*types.Order{o},
+	}
+
+	c.Logs <- l
 }
 
-func (c *Client) handleOrderTxError(p types.WebSocketPayload) {
+// handleOrderError handles incoming tx error messages (a tx has been sent but the
+// the transaction was reverted)
+func (c *Client) handleOrderError(p types.WebSocketPayload) {
+	o := &types.Order{}
 
+	bytes, err := json.Marshal(p.Data)
+	if err != nil {
+		log.Print(err)
+	}
+
+	err = o.UnmarshalJSON(bytes)
+	if err != nil {
+		log.Print(err)
+	}
+
+	l := &ClientLogMessage{
+		MessageType: "ORDER_ERROR",
+		Orders:      []*types.Order{o},
+	}
+
+	c.Logs <- l
 }
 
 func (c *Client) handleOrderBookInit(p types.WebSocketPayload) {

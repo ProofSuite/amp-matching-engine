@@ -44,21 +44,21 @@ type OrderBook struct {
 
 // newOrder calls buyOrder/sellOrder based on type of order recieved and
 // publishes the response back to rabbitmq
-func (ob *OrderBook) newOrder(order *types.Order, hashID common.Hash) (err error) {
+func (ob *OrderBook) newOrder(o *types.Order, hashID common.Hash) (err error) {
 	// Attain lock on engineResource, so that recovery or cancel order function doesn't interfere
 	ob.mutex.Lock()
 	defer ob.mutex.Unlock()
 
 	resp := &types.EngineResponse{}
-	if order.Side == "SELL" {
-		resp, err = ob.sellOrder(order)
+	if o.Side == "SELL" {
+		resp, err = ob.sellOrder(o)
 		if err != nil {
 			logger.Error(err)
 			return err
 		}
 
-	} else if order.Side == "BUY" {
-		resp, err = ob.buyOrder(order)
+	} else if o.Side == "BUY" {
+		resp, err = ob.buyOrder(o)
 		if err != nil {
 			logger.Error(err)
 			return err
@@ -80,28 +80,28 @@ func (ob *OrderBook) newOrder(order *types.Order, hashID common.Hash) (err error
 // from orderbook. First it checks ths price point list to check whether the order can be matched
 // or not, if there are pricepoints that can satisfy the order then corresponding list of orders
 // are fetched and trade is executed
-func (ob *OrderBook) buyOrder(order *types.Order) (*types.EngineResponse, error) {
+func (ob *OrderBook) buyOrder(o *types.Order) (*types.EngineResponse, error) {
 	res := &types.EngineResponse{
-		Order:  order,
+		Order:  o,
 		Status: "NOMATCH",
 	}
 
-	remainingOrder := *order
+	remainingOrder := *o
 	res.RemainingOrder = &remainingOrder
-	oskv := order.GetOBMatchKey()
+	oskv := o.GetOBMatchKey()
 
-	// GET Range of sellOrder between minimum Sell order and order.Price
-	pps, err := ob.GetMatchingBuyPricePoints(oskv, order.PricePoint.Int64())
+	// GET Range of sellOrder between minimum Sell order and o.Price
+	pps, err := ob.GetMatchingBuyPricePoints(oskv, o.PricePoint.Int64())
 	if err != nil {
 		logger.Error(err)
 		return nil, err
 	}
 
 	if len(pps) == 0 {
-		order.Status = "OPEN"
+		o.Status = "OPEN"
 		res.Status = "NOMATCH"
 		res.RemainingOrder = nil
-		ob.addOrder(order)
+		ob.addOrder(o)
 		return res, nil
 	}
 
@@ -119,7 +119,7 @@ func (ob *OrderBook) buyOrder(order *types.Order) (*types.EngineResponse, error)
 				return nil, err
 			}
 
-			trade, err := ob.execute(order, entry)
+			trade, err := ob.execute(o, entry)
 			if err != nil {
 				logger.Error(err)
 				return nil, err
@@ -157,17 +157,17 @@ func (ob *OrderBook) buyOrder(order *types.Order) (*types.EngineResponse, error)
 // from orderbook. First it checks ths price point list to check whether the order can be matched
 // or not, if there are pricepoints that can satisfy the order then corresponding list of orders
 // are fetched and trade is executed
-func (ob *OrderBook) sellOrder(order *types.Order) (*types.EngineResponse, error) {
+func (ob *OrderBook) sellOrder(o *types.Order) (*types.EngineResponse, error) {
 	res := &types.EngineResponse{
 		Status: "NOMATCH",
-		Order:  order,
+		Order:  o,
 	}
 
-	remOrder := *order
-	res.RemainingOrder = &remOrder
-	obkv := order.GetOBMatchKey()
+	remainingOrder := *o
+	res.RemainingOrder = &remainingOrder
+	obkv := o.GetOBMatchKey()
 
-	pps, err := ob.GetMatchingSellPricePoints(obkv, order.PricePoint.Int64())
+	pps, err := ob.GetMatchingSellPricePoints(obkv, o.PricePoint.Int64())
 	if err != nil {
 		logger.Error(err)
 		return nil, err
@@ -176,8 +176,8 @@ func (ob *OrderBook) sellOrder(order *types.Order) (*types.EngineResponse, error
 	if len(pps) == 0 {
 		res.Status = "NOMATCH"
 		res.RemainingOrder = nil
-		ob.addOrder(order)
-		order.Status = "OPEN"
+		ob.addOrder(o)
+		o.Status = "OPEN"
 		return res, nil
 	}
 
@@ -188,16 +188,16 @@ func (ob *OrderBook) sellOrder(order *types.Order) (*types.EngineResponse, error
 			return nil, err
 		}
 
-		for _, o := range entries {
+		for _, b := range entries {
 			entry := &types.Order{}
-			err = json.Unmarshal(o, &entry)
+			err = json.Unmarshal(b, &entry)
 
 			if err != nil {
 				logger.Error(err)
 				return nil, err
 			}
 
-			trade, err := ob.execute(order, entry)
+			trade, err := ob.execute(o, entry)
 			if err != nil {
 				logger.Error(err)
 				return nil, err
@@ -232,35 +232,40 @@ func (ob *OrderBook) sellOrder(order *types.Order) (*types.EngineResponse, error
 }
 
 // addOrder adds an order to redis
-func (ob *OrderBook) addOrder(order *types.Order) error {
-	order.Status = "OPEN"
-	pricePointSetKey, orderHashListKey := order.GetOBKeys()
-	err := ob.AddToPricePointSet(pricePointSetKey, order.PricePoint.Int64())
+func (ob *OrderBook) addOrder(o *types.Order) error {
+	o.Status = "OPEN"
+	pricePointSetKey, orderHashListKey := o.GetOBKeys()
+
+	// ob.redisConn.StartTx()
+
+	err := ob.AddToPricePointSet(pricePointSetKey, o.PricePoint.Int64())
 	if err != nil {
 		logger.Error(err)
 		return err
 	}
 
-	err = ob.AddToOrderMap(order)
+	err = ob.AddToOrderMap(o)
 	if err != nil {
 		logger.Error(err)
 		return err
 	}
 
-	err = ob.AddToPricePointHashesSet(orderHashListKey, order.CreatedAt, order.Hash)
+	err = ob.AddToPricePointHashesSet(orderHashListKey, o.CreatedAt, o.Hash)
 	if err != nil {
 		logger.Error(err)
 		return err
 	}
+
+	// ob.redisConn.ExecuteTx()
 
 	return nil
 }
 
 // updateOrder updates the order in redis
-func (ob *OrderBook) updateOrder(order *types.Order, tradeAmount *big.Int) error {
+func (ob *OrderBook) updateOrder(o *types.Order, tradeAmount *big.Int) error {
 	stored := &types.Order{}
 
-	stored, err := ob.GetFromOrderMap(order.Hash)
+	stored, err := ob.GetFromOrderMap(o.Hash)
 	if err != nil {
 		logger.Error(err)
 		return err
@@ -413,6 +418,7 @@ func (ob *OrderBook) CancelOrder(o *types.Order) (*types.EngineResponse, error) 
 
 	stored.Status = "CANCELLED"
 	res := &types.EngineResponse{
+		HashID:         o.Hash,
 		Status:         "CANCELLED",
 		Order:          stored,
 		RemainingOrder: nil,
@@ -425,11 +431,11 @@ func (ob *OrderBook) CancelOrder(o *types.Order) (*types.EngineResponse, error) 
 // execute function is responsible for executing of matched orders
 // i.e it deletes/updates orders in case of order matching and responds
 // with trade instance and fillOrder
-func (ob *OrderBook) execute(order *types.Order, bookEntry *types.Order) (*types.Trade, error) {
+func (ob *OrderBook) execute(o *types.Order, bookEntry *types.Order) (*types.Trade, error) {
 	trade := &types.Trade{}
 	tradeAmount := big.NewInt(0)
 	bookEntryAvailableAmount := math.Sub(bookEntry.Amount, bookEntry.FilledAmount)
-	orderAvailableAmount := math.Sub(order.Amount, order.FilledAmount)
+	orderAvailableAmount := math.Sub(o.Amount, o.FilledAmount)
 
 	if math.IsGreaterThan(bookEntryAvailableAmount, orderAvailableAmount) {
 		tradeAmount = orderAvailableAmount
@@ -454,19 +460,97 @@ func (ob *OrderBook) execute(order *types.Order, bookEntry *types.Order) (*types
 		bookEntry.Status = "FILLED"
 	}
 
-	order.FilledAmount = math.Add(order.FilledAmount, tradeAmount)
+	o.FilledAmount = math.Add(o.FilledAmount, tradeAmount)
 	trade = &types.Trade{
 		Amount:         tradeAmount,
-		PricePoint:     order.PricePoint,
-		BaseToken:      order.BaseToken,
-		QuoteToken:     order.QuoteToken,
+		PricePoint:     o.PricePoint,
+		BaseToken:      o.BaseToken,
+		QuoteToken:     o.QuoteToken,
 		OrderHash:      bookEntry.Hash,
-		TakerOrderHash: order.Hash,
-		Side:           order.Side,
-		Taker:          order.UserAddress,
-		PairName:       order.PairName,
+		TakerOrderHash: o.Hash,
+		Side:           o.Side,
+		Taker:          o.UserAddress,
+		PairName:       o.PairName,
 		Maker:          bookEntry.UserAddress,
 	}
 
 	return trade, nil
+}
+
+// buyOrder is triggered when a buy order comes in, it fetches the ask list
+// from orderbook. First it checks ths price point list to check whether the order can be matched
+// or not, if there are pricepoints that can satisfy the order then corresponding list of orders
+// are fetched and trade is executed
+func (ob *OrderBook) buyOrderBis(o *types.Order) (*types.EngineResponse, error) {
+	res := &types.EngineResponse{
+		Order:  o,
+		Status: "NOMATCH",
+	}
+
+	remainingOrder := *o
+	res.RemainingOrder = &remainingOrder
+	oskv := o.GetOBMatchKey()
+
+	// GET Range of sellOrder between minimum Sell order and o.Price
+	pps, err := ob.GetMatchingBuyPricePoints(oskv, o.PricePoint.Int64())
+	if err != nil {
+		logger.Error(err)
+		return nil, err
+	}
+
+	if len(pps) == 0 {
+		o.Status = "OPEN"
+		res.Status = "NOMATCH"
+		res.RemainingOrder = nil
+		ob.addOrder(o)
+		return res, nil
+	}
+
+	for _, pp := range pps {
+		entries, err := ob.GetMatchingOrders(oskv, pp)
+		if err != nil {
+			logger.Error(err)
+			return nil, err
+		}
+
+		//TODO refactor to make the redis transaction atomic
+		for _, bookEntry := range entries {
+			entry := &types.Order{}
+			err = json.Unmarshal(bookEntry, &entry)
+			if err != nil {
+				return nil, err
+			}
+
+			trade, err := ob.execute(o, entry)
+			if err != nil {
+				logger.Error(err)
+				return nil, err
+			}
+
+			match := &types.OrderTradePair{entry, trade}
+			res.Matches = append(res.Matches, match)
+			res.RemainingOrder.Amount = math.Sub(res.RemainingOrder.Amount, trade.Amount)
+
+			if math.IsZero(res.RemainingOrder.Amount) {
+				res.Status = "FULL"
+				res.Order.Status = "FILLED"
+				res.RemainingOrder = nil
+				return res, nil
+			}
+		}
+	}
+
+	//TODO refactor this in a different function (make above function more clear in general)
+	res.Order.Status = "REPLACED"
+	res.Status = "PARTIAL"
+	res.RemainingOrder.Signature = nil
+	res.RemainingOrder.Nonce = nil
+	res.RemainingOrder.Hash = common.HexToHash("")
+	res.RemainingOrder.BuyAmount = res.RemainingOrder.Amount
+	res.RemainingOrder.SellAmount = math.Div(
+		math.Mul(res.RemainingOrder.Amount, res.Order.SellAmount),
+		res.Order.BuyAmount,
+	)
+
+	return res, nil
 }

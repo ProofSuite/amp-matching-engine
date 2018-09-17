@@ -249,7 +249,7 @@ func (s *OrderService) CancelOrder(oc *types.OrderCancel) error {
 		return err
 	}
 
-	if dbOrder.Status == "OPEN" || dbOrder.Status == "NEW" {
+	if dbOrder.Status == "OPEN" || dbOrder.Status == "OPEN" {
 		res, err := s.engine.CancelOrder(dbOrder)
 		if err != nil {
 			logger.Error(err)
@@ -291,8 +291,6 @@ func (s *OrderService) HandleEngineResponse(res *types.EngineResponse) error {
 }
 
 func (s *OrderService) HandleOperatorMessages(msg *types.OperatorMessage) error {
-	logger.Info("RECEIVING OPERATOR MESSAGE")
-
 	switch msg.MessageType {
 	case "TRADE_PENDING":
 		s.handleOperatorTradePending(msg)
@@ -312,12 +310,12 @@ func (s *OrderService) HandleOperatorMessages(msg *types.OperatorMessage) error 
 // handleEngineError returns an websocket error message to the client and recovers orders on the
 // redis key/value store
 func (s *OrderService) handleEngineError(res *types.EngineResponse) {
-	// err := s.orderDao.UpdateByHash(res.Order.Hash, res.Order)
-	// if err != nil {
-	// 	logger.Error(err)
-	// }
-
 	err := s.orderDao.UpdateOrderStatus(res.Order.Hash, "ERROR")
+	if err != nil {
+		logger.Error(err)
+	}
+
+	err = s.engine.DeleteOrder(res.Order)
 	if err != nil {
 		logger.Error(err)
 	}
@@ -328,9 +326,7 @@ func (s *OrderService) handleEngineError(res *types.EngineResponse) {
 // handleEngineOrderAdded returns a websocket message informing the client that his order has been added
 // to the orderbook (but currently not matched)
 func (s *OrderService) handleEngineOrderAdded(res *types.EngineResponse) {
-
 	logger.Warning("ADDING ORDER", res.HashID.Hex())
-
 	ws.SendOrderMessage("ORDER_ADDED", res.HashID, res.Order)
 }
 

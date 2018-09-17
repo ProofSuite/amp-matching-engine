@@ -48,7 +48,7 @@ func PrintJSON(x interface{}) {
 		fmt.Println("Error: ", err)
 	}
 
-	fmt.Print(string(b))
+	fmt.Print(string(b), "\n")
 }
 
 func PrintError(msg string, err error) {

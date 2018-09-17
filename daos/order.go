@@ -62,7 +62,7 @@ func (dao *OrderDao) Create(order *types.Order) error {
 	order.UpdatedAt = time.Now()
 
 	if order.Status == "" {
-		order.Status = "NEW"
+		order.Status = "OPEN"
 	}
 
 	err := db.Create(dao.dbName, dao.collectionName, order)
@@ -240,7 +240,6 @@ func (dao *OrderDao) GetCurrentByUserAddress(addr common.Address) ([]*types.Orde
 		"userAddress": addr.Hex(),
 		"status": bson.M{"$in": []string{
 			"OPEN",
-			"NEW",
 			"PARTIALLY_FILLED",
 		},
 		},
@@ -258,7 +257,6 @@ func (dao *OrderDao) GetHistoryByUserAddress(addr common.Address) ([]*types.Orde
 		"userAddress": addr.Hex(),
 		"status": bson.M{"$nin": []string{
 			"OPEN",
-			"NEW",
 			"PARTIALLY_FILLED",
 		},
 		},
@@ -272,7 +270,6 @@ func (dao *OrderDao) GetUserLockedBalance(account common.Address, token common.A
 	q := bson.M{
 		"userAddress": account.Hex(),
 		"status": bson.M{"$in": []string{
-			"NEW",
 			"OPEN",
 			"PARTIALLY_FILLED",
 		},
