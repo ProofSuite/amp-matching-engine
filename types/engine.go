@@ -3,8 +3,8 @@ package types
 import "github.com/ethereum/go-ethereum/common"
 
 type OrderTradePair struct {
-	Order *Order
-	Trade *Trade
+	Order *Order `json:"order"`
+	Trade *Trade `json:"trade"`
 }
 
 type EngineResponse struct {

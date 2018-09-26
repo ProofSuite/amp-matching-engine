@@ -228,8 +228,14 @@ func (dao *OrderDao) GetByHashes(hashes []common.Hash) ([]*types.Order, error) {
 func (dao *OrderDao) GetByUserAddress(addr common.Address) ([]*types.Order, error) {
 	var res []*types.Order
 	q := bson.M{"userAddress": addr.Hex()}
+
 	err := db.Get(dao.dbName, dao.collectionName, q, 0, 0, &res)
-	return res, err
+	if err != nil {
+		logger.Error(err)
+		return nil, err
+	}
+
+	return res, nil
 }
 
 // GetCurrentByUserAddress function fetches list of open/partial orders from order collection based on user address.
@@ -244,8 +250,14 @@ func (dao *OrderDao) GetCurrentByUserAddress(addr common.Address) ([]*types.Orde
 		},
 		},
 	}
+
 	err := db.Get(dao.dbName, dao.collectionName, q, 0, 0, &res)
-	return res, err
+	if err != nil {
+		logger.Error(err)
+		return nil, err
+	}
+
+	return res, nil
 }
 
 // GetHistoryByUserAddress function fetches list of orders which are not in open/partial order status
@@ -261,8 +273,14 @@ func (dao *OrderDao) GetHistoryByUserAddress(addr common.Address) ([]*types.Orde
 		},
 		},
 	}
+
 	err := db.Get(dao.dbName, dao.collectionName, q, 0, 0, &res)
-	return res, err
+	if err != nil {
+		logger.Error(err)
+		return nil, err
+	}
+
+	return res, nil
 }
 
 func (dao *OrderDao) GetUserLockedBalance(account common.Address, token common.Address) (*big.Int, error) {

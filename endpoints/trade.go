@@ -17,21 +17,32 @@ type tradeEndpoint struct {
 }
 
 // ServeTradeResource sets up the routing of trade endpoints and the corresponding handlers.
+// TODO trim down to one single endpoint with the 3 following params: base, quote, address
 func ServeTradeResource(
 	r *mux.Router,
 	tradeService interfaces.TradeService,
 ) {
 	e := &tradeEndpoint{tradeService}
-	r.HandleFunc("/trades/history/{baseToken}/{quoteToken}", e.HandleGetTradeHistory)
-	r.HandleFunc("/trades/{address}", e.HandleGetTrades)
+	r.HandleFunc("/trades/pair", e.HandleGetTradeHistory)
+	r.HandleFunc("/trades", e.HandleGetTrades)
 	ws.RegisterChannel(ws.TradeChannel, e.tradeWebSocket)
 }
 
 // history is reponsible for handling pair's trade history requests
 func (e *tradeEndpoint) HandleGetTradeHistory(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	bt := vars["baseToken"]
-	qt := vars["quoteToken"]
+	v := r.URL.Query()
+	bt := v.Get("baseToken")
+	qt := v.Get("quoteToken")
+
+	if bt == "" {
+		httputils.WriteError(w, http.StatusBadRequest, "baseToken Parameter missing")
+		return
+	}
+
+	if qt == "" {
+		httputils.WriteError(w, http.StatusBadRequest, "quoteToken Parameter missing")
+		return
+	}
 
 	if !common.IsHexAddress(bt) {
 		httputils.WriteError(w, http.StatusBadRequest, "Invalid base token address")
@@ -52,13 +63,23 @@ func (e *tradeEndpoint) HandleGetTradeHistory(w http.ResponseWriter, r *http.Req
 		return
 	}
 
+	if res == nil {
+		httputils.WriteJSON(w, http.StatusOK, []types.Trade{})
+		return
+	}
+
 	httputils.WriteJSON(w, http.StatusOK, res)
 }
 
 // get is reponsible for handling user's trade history requests
 func (e *tradeEndpoint) HandleGetTrades(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	addr := vars["address"]
+	v := r.URL.Query()
+	addr := v.Get("address")
+
+	if addr == "" {
+		httputils.WriteError(w, http.StatusBadRequest, "address Parameter missing")
+		return
+	}
 
 	if !common.IsHexAddress(addr) {
 		httputils.WriteError(w, http.StatusBadRequest, "Invalid Address")
@@ -70,6 +91,11 @@ func (e *tradeEndpoint) HandleGetTrades(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		logger.Error(err)
 		httputils.WriteError(w, http.StatusInternalServerError, "")
+		return
+	}
+
+	if res == nil {
+		httputils.WriteJSON(w, http.StatusOK, []types.Trade{})
 		return
 	}
 

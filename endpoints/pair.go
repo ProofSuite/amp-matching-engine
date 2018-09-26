@@ -24,8 +24,9 @@ func ServePairResource(
 ) {
 	e := &pairEndpoint{p}
 	r.HandleFunc("/pairs", e.HandleCreatePair).Methods("POST")
-	r.HandleFunc("/pairs/{baseToken}/{quoteToken}", e.HandleGetPair).Methods("GET")
-	r.HandleFunc("/pairs", e.HandleGetAllPairs).Methods("GET")
+	r.HandleFunc("/pairs", e.HandleGetPairs).Methods("GET")
+	r.HandleFunc("/pair", e.HandleGetPair).Methods("GET")
+	// r.HandleFunc("/pairs", e.HandleGetAllPairs).Methods("GET")
 }
 
 func (e *pairEndpoint) HandleCreatePair(w http.ResponseWriter, r *http.Request) {
@@ -71,7 +72,7 @@ func (e *pairEndpoint) HandleCreatePair(w http.ResponseWriter, r *http.Request) 
 	httputils.WriteJSON(w, http.StatusCreated, p)
 }
 
-func (e *pairEndpoint) HandleGetAllPairs(w http.ResponseWriter, r *http.Request) {
+func (e *pairEndpoint) HandleGetPairs(w http.ResponseWriter, r *http.Request) {
 	res, err := e.pairService.GetAll()
 	if err != nil {
 		logger.Error(err)
@@ -79,21 +80,37 @@ func (e *pairEndpoint) HandleGetAllPairs(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	if res == nil {
+		httputils.WriteJSON(w, http.StatusOK, []types.Pair{})
+		return
+	}
+
 	httputils.WriteJSON(w, http.StatusOK, res)
 }
 
 func (e *pairEndpoint) HandleGetPair(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
+	v := r.URL.Query()
+	baseToken := v.Get("baseToken")
+	quoteToken := v.Get("quoteToken")
 
-	baseToken := vars["baseToken"]
-	quoteToken := vars["quoteToken"]
+	if baseToken == "" {
+		httputils.WriteError(w, http.StatusBadRequest, "baseToken Parameter missing")
+		return
+	}
+
+	if quoteToken == "" {
+		httputils.WriteError(w, http.StatusBadRequest, "quoteToken Parameter missing")
+		return
+	}
 
 	if !common.IsHexAddress(baseToken) {
-		httputils.WriteError(w, http.StatusBadRequest, "Invalid Address")
+		httputils.WriteError(w, http.StatusBadRequest, "Invalid Base Token Address")
+		return
 	}
 
 	if !common.IsHexAddress(quoteToken) {
-		httputils.WriteError(w, http.StatusBadRequest, "Invalid Address")
+		httputils.WriteError(w, http.StatusBadRequest, "Invalid Quote Token Address")
+		return
 	}
 
 	baseTokenAddress := common.HexToAddress(baseToken)
@@ -102,6 +119,11 @@ func (e *pairEndpoint) HandleGetPair(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logger.Error(err)
 		httputils.WriteError(w, http.StatusInternalServerError, "")
+		return
+	}
+
+	if res == nil {
+		httputils.WriteJSON(w, http.StatusOK, []types.Pair{})
 		return
 	}
 

@@ -88,5 +88,9 @@ func CloseOrderReadChannel(h common.Hash) error {
 
 func SendOrderMessage(msgType string, hash common.Hash, data interface{}) {
 	conn := GetOrderConnection(hash)
+	if conn == nil {
+		return
+	}
+
 	SendMessage(conn, OrderChannel, msgType, data, hash)
 }
