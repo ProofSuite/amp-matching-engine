@@ -1,7 +1,6 @@
 package daos
 
 import (
-	"errors"
 	"time"
 
 	"github.com/Proofsuite/amp-matching-engine/app"
@@ -66,9 +65,13 @@ func (dao *PairDao) Create(pair *types.Pair) error {
 
 // GetAll function fetches all the pairs in the pair collection of mongodb.
 func (dao *PairDao) GetAll() ([]types.Pair, error) {
-	var response []types.Pair
-	err := db.Get(dao.dbName, dao.collectionName, bson.M{}, 0, 0, &response)
-	return response, err
+	var res []types.Pair
+	err := db.Get(dao.dbName, dao.collectionName, bson.M{}, 0, 0, &res)
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
 }
 
 // GetByID function fetches details of a pair using pair's mongo ID.
@@ -93,7 +96,7 @@ func (dao *PairDao) GetByName(name string) (*types.Pair, error) {
 	}
 
 	if len(res) == 0 {
-		return nil, errors.New("Pair not found")
+		return nil, nil
 	}
 
 	return res[0], nil
@@ -113,7 +116,7 @@ func (dao *PairDao) GetByTokenSymbols(baseTokenSymbol, quoteTokenSymbol string) 
 	}
 
 	if len(res) == 0 {
-		return nil, errors.New("No pair found")
+		return nil, nil
 	}
 
 	return res[0], nil
@@ -135,7 +138,7 @@ func (dao *PairDao) GetByTokenAddress(baseToken, quoteToken common.Address) (*ty
 	}
 
 	if len(res) == 0 {
-		return nil, errors.New("Pair not found")
+		return nil, nil
 	}
 
 	return res[0], nil
@@ -164,7 +167,7 @@ func (dao *PairDao) GetByBuySellTokenAddress(buyToken, sellToken common.Address)
 	}
 
 	if len(res) == 0 {
-		return nil, errors.New("Pair not found")
+		return nil, nil
 	}
 
 	return res[0], nil

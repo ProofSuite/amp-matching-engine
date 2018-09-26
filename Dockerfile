@@ -8,12 +8,14 @@ RUN go get github.com/codegangsta/gin
 
 WORKDIR /go/src/app
 
+ENV GO_ENV=DOCKER
 ADD Gopkg.toml Gopkg.toml
 ADD Gopkg.lock Gopkg.lock
 
 COPY ./ ./
 
 RUN dep ensure -v
-CMD ["go", "run", "server.go", "serve", "--env", "docker"]
+CMD ["go", "run", "main.go"]
+# CMD ["go", "run", "server.go", "serve", "--env", "docker"]
 
 EXPOSE 8081

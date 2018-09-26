@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/Proofsuite/amp-matching-engine/utils/math"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto/sha3"
@@ -56,6 +57,26 @@ type TradeRecord struct {
 	PricePoint     string           `json:"pricepoint" bson:"pricepoint"`
 	Side           string           `json:"side" bson:"side"`
 	Amount         string           `json:"amount" bson:"amount"`
+}
+
+func (t *Trade) Validate() error {
+
+	utils.PrintJSON(t)
+
+	if t.TradeNonce == nil {
+		return errors.New("tradeNonce is required")
+	}
+
+	if t.Amount == nil {
+		return errors.New("amount is required")
+	}
+
+	if t.Signature == nil {
+		return errors.New("signature is required")
+	}
+
+	//TODO add validations for hashes and addresses
+	return nil
 }
 
 // NewTrade returns a new unsigned trade corresponding to an Order, amount and taker address

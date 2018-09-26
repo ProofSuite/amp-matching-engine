@@ -184,7 +184,7 @@ func (dao *TradeDao) GetByUserAddress(addr common.Address) ([]*types.Trade, erro
 		{"maker": addr.Hex()}, {"taker": addr.Hex()},
 	}}
 
-	err := db.Get(dao.dbName, dao.collectionName, q, 0, 1, &response)
+	err := db.Get(dao.dbName, dao.collectionName, q, 0, 0, &response)
 	if err != nil {
 		logger.Error(err)
 		return nil, err

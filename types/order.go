@@ -44,41 +44,62 @@ type Order struct {
 	UpdatedAt time.Time `json:"updatedAt" bson:"updatedAt"`
 }
 
+// TODO: Include userAddress, token addresses checks
 func (o *Order) Validate() error {
-	// err := validation.ValidateStruct(o,
-	// 	validation.Field(o.ExchangeAddress, validation.Required),
-	// 	validation.Field(o.UserAddress, validation.Required),
-	// 	validation.Field(o.SellToken, validation.Required),
-	// 	validation.Field(o.BuyToken, validation.Required),
-	// 	validation.Field(o.MakeFee, validation.Required),
-	// 	validation.Field(o.TakeFee, validation.Required),
-	// 	validation.Field(o.Nonce, validation.Required),
-	// 	validation.Field(o.Expires, validation.Required),
-	// 	validation.Field(o.SellAmount, validation.Required),
-	// 	validation.Field(o.UserAddress, validation.Required),
-	// 	validation.Field(o.Signature, validation.Required),
-	// )
-
-	// if err != nil {
-	// 	return err
-	// }
-
 	if o.ExchangeAddress != common.HexToAddress(app.Config.Ethereum["exchange_address"]) {
 		return errors.New("Incorrect exchange address")
 	}
 
+	if o.BuyAmount == nil {
+		return errors.New("buyAmount is required")
+	}
+
+	if o.Nonce == nil {
+		return errors.New("Nonce is required")
+	}
+
+	if o.SellAmount == nil {
+		return errors.New("sellAmount is required")
+	}
+
+	if o.Expires == nil {
+		return errors.New("expires is required")
+	}
+
+	if o.MakeFee == nil {
+		return errors.New("makeFee is required")
+	}
+
+	if o.TakeFee == nil {
+		return errors.New("takeFee is required")
+	}
+
 	if math.IsSmallerThan(o.BuyAmount, big.NewInt(0)) {
-		return errors.New("Buy amount should be positive")
+		return errors.New("buyAmount should be positive")
 	}
 
 	if math.IsSmallerThan(o.SellAmount, big.NewInt(0)) {
-		return errors.New("Sell amount should be positive")
+		return errors.New("sellAmount should be positive")
 	}
 
 	if math.IsSmallerThan(o.Nonce, big.NewInt(0)) {
 		return errors.New("Nonce should be positive")
 	}
 
+	return nil
+}
+
+func (o *Order) ValidateComplete() error {
+	err := o.Validate()
+	if err != nil {
+		return err
+	}
+
+	if o.Signature == nil {
+		return errors.New("signature is required")
+	}
+
+	//TODO add validations for hashes and addresses
 	return nil
 }
 
@@ -100,7 +121,9 @@ func (o *Order) ComputeHash() common.Hash {
 
 // VerifySignature checks that the orderRequest signature corresponds to the address in the userAddress field
 func (o *Order) VerifySignature() (bool, error) {
+
 	o.Hash = o.ComputeHash()
+
 	message := crypto.Keccak256(
 		[]byte("\x19Ethereum Signed Message:\n32"),
 		o.Hash.Bytes(),

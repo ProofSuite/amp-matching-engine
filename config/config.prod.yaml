@@ -10,8 +10,8 @@ redis: redis://localhost:6379
 ethereum:
   http_url: http://localhost:8545
   ws_url: ws://localhost:8546
-  exchange_address: "0xfc074fd5702e6becb78d64acd4126a0079f42d85"
-  weth_address: "0x2EB24432177e82907dE24b7c5a6E0a5c03226135"
+  exchange_address: "0x5d0e9f8d3f66bcb133e1f97aaa44937be5a48920"
+  weth_address: "0x88facf1096d13a05f30ffe34bedf8477a8582ffd"
   fee_account: "0xe8e84ee367bc63ddb38d3d01bccef106c194dc47"
   decimal: 8
 

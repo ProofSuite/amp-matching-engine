@@ -13,24 +13,24 @@ import (
 
 // Pair struct is used to model the pair data in the system and DB
 type Pair struct {
-	ID bson.ObjectId `json:"id" bson:"_id"`
+	ID bson.ObjectId `json:"-" bson:"_id"`
 
-	BaseTokenSymbol  string         `json:"baseTokenSymbol" bson:"baseTokenSymbol"`
-	BaseTokenAddress common.Address `json:"baseTokenAddress" bson:"baseTokenAddress"`
-	BaseTokenDecimal int            `json:"baseTokenDecimal" bson:"baseTokenDecimal"`
+	BaseTokenSymbol  string         `json:"baseTokenSymbol,omitempty" bson:"baseTokenSymbol"`
+	BaseTokenAddress common.Address `json:"baseTokenAddress,omitempty" bson:"baseTokenAddress"`
+	BaseTokenDecimal int            `json:"baseTokenDecimal,omitempty" bson:"baseTokenDecimal"`
 
-	QuoteTokenSymbol  string         `json:"quoteTokenSymbol" bson:"quoteTokenSymbol"`
-	QuoteTokenAddress common.Address `json:"quoteTokenAddress" bson:"quoteTokenAddress"`
-	QuoteTokenDecimal int            `json:"quoteTokenDecimal" bson:"quoteTokenDecimal"`
+	QuoteTokenSymbol  string         `json:"quoteTokenSymbol,omitempty" bson:"quoteTokenSymbol"`
+	QuoteTokenAddress common.Address `json:"quoteTokenAddress,omitempty" bson:"quoteTokenAddress"`
+	QuoteTokenDecimal int            `json:"quoteTokenDecimal,omitempty" bson:"quoteTokenDecimal"`
 
-	PriceMultiplier *big.Int `json:"priceMultiplier" bson:"priceMultiplier"`
+	PriceMultiplier *big.Int `json:"priceMultiplier,omitempty" bson:"priceMultiplier"`
 
-	Active  bool     `json:"active" bson:"active"`
-	MakeFee *big.Int `json:"makeFee" bson:"makeFee"`
-	TakeFee *big.Int `json:"takeFee" bson:"takeFee"`
+	Active  bool     `json:"active,omitempty" bson:"active"`
+	MakeFee *big.Int `json:"makeFee,omitempty" bson:"makeFee"`
+	TakeFee *big.Int `json:"takeFee,omitempty" bson:"takeFee"`
 
-	CreatedAt time.Time `json:"createdAt" bson:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt" bson:"updatedAt"`
+	CreatedAt time.Time `json:"-" bson:"createdAt"`
+	UpdatedAt time.Time `json:"-" bson:"updatedAt"`
 }
 
 type PairSubDoc struct {

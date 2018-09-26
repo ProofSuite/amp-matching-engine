@@ -85,6 +85,8 @@ func ConnectionEndpoint(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
+			utils.PrintJSON(msg)
+
 			conn.SetCloseHandler(wsCloseHandler(conn))
 
 			if socketChannels[msg.Channel] == nil {

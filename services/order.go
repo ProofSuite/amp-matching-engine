@@ -358,6 +358,7 @@ func (s *OrderService) handleSubmitSignatures(res *types.EngineResponse) {
 	select {
 	case msg := <-ch:
 		if msg != nil && msg.Type == "SUBMIT_SIGNATURE" {
+
 			bytes, err := json.Marshal(msg.Data)
 			if err != nil {
 				logger.Error(err)
@@ -375,28 +376,46 @@ func (s *OrderService) handleSubmitSignatures(res *types.EngineResponse) {
 
 			// remaining order
 			if data.Order != nil {
-				err := s.orderDao.Create(data.Order)
+				err := data.Order.ValidateComplete()
+				if err != nil {
+					logger.Error(err)
+					s.Rollback(res)
+					ws.SendOrderMessage("ERROR", res.HashID, err)
+				}
+
+				err = s.orderDao.Create(data.Order)
 				if err != nil {
 					//TODO consider if we should going on with execution or not
 					logger.Error(err)
 					s.Rollback(res)
 					ws.SendOrderMessage("ERROR", res.HashID, err)
+					return
 				}
 
-				bytes, err := json.Marshal(data.Order)
+				orderBytes, err := json.Marshal(data.Order)
 				if err != nil {
 					//TODO not sure whether rolling back is good here
 					logger.Error(err)
 					s.Rollback(res)
 					ws.SendOrderMessage("ERROR", res.HashID, err)
+					return
 				}
 
-				s.broker.PublishOrder(&rabbitmq.Message{Type: "NEW_ORDER", HashID: res.HashID, Data: bytes})
+				s.broker.PublishOrder(&rabbitmq.Message{Type: "NEW_ORDER", HashID: res.HashID, Data: orderBytes})
 			}
 
+			// trades
 			if data.Matches != nil {
 				trades := []*types.Trade{}
 				for _, m := range data.Matches {
+					err := m.Trade.Validate()
+					if err != nil {
+						logger.Error(err)
+						s.Rollback(res)
+						ws.SendOrderMessage("ERROR", res.HashID, err)
+						return
+					}
+
 					trades = append(trades, m.Trade)
 				}
 
@@ -404,13 +423,9 @@ func (s *OrderService) handleSubmitSignatures(res *types.EngineResponse) {
 				err := s.tradeDao.Create(trades...)
 				if err != nil {
 					logger.Error(err)
-				}
-
-				_, err = json.Marshal(res.Order)
-				if err != nil {
-					logger.Error(err)
 					s.Rollback(res)
 					ws.SendOrderMessage("ERROR", res.HashID, err)
+					return
 				}
 
 				for _, m := range data.Matches {
@@ -419,9 +434,11 @@ func (s *OrderService) handleSubmitSignatures(res *types.EngineResponse) {
 						logger.Error(err)
 						s.Rollback(res)
 						ws.SendOrderMessage("ERROR", res.HashID, err)
+						return
 					}
 				}
 			}
+
 		}
 	case <-t.C:
 		s.Rollback(res)
@@ -444,7 +461,7 @@ func (s *OrderService) handleOperatorUnknownMessage(msg *types.OperatorMessage) 
 func (s *OrderService) handleOperatorTradePending(msg *types.OperatorMessage) {
 	t := msg.Trade
 
-	err := s.tradeDao.UpdateTradeStatus(t.Hash, "ORDER_PENDING")
+	err := s.tradeDao.UpdateTradeStatus(t.Hash, "PENDING")
 	if err != nil {
 		logger.Error(err)
 	}
@@ -716,3 +733,11 @@ func (s *OrderService) broadcastRawOrderUpdate(p *types.Pair, orders []*types.Or
 	id := utils.GetOrderBookChannelID(p.BaseTokenAddress, p.QuoteTokenAddress)
 	ws.GetRawOrderBookSocket().BroadcastMessage(id, orders)
 }
+
+// _, err = json.Marshal(res.Order)
+// if err != nil {
+// 	logger.Error(err)
+// 	s.Rollback(res)
+// 	ws.SendOrderMessage("ERROR", res.HashID, err)
+// 	return
+// }

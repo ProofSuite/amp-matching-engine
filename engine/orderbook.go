@@ -236,8 +236,6 @@ func (ob *OrderBook) addOrder(o *types.Order) error {
 	o.Status = "OPEN"
 	pricePointSetKey, orderHashListKey := o.GetOBKeys()
 
-	// ob.redisConn.StartTx()
-
 	err := ob.AddToPricePointSet(pricePointSetKey, o.PricePoint.Int64())
 	if err != nil {
 		logger.Error(err)
@@ -255,8 +253,6 @@ func (ob *OrderBook) addOrder(o *types.Order) error {
 		logger.Error(err)
 		return err
 	}
-
-	// ob.redisConn.ExecuteTx()
 
 	return nil
 }

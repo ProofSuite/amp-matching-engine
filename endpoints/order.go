@@ -26,18 +26,24 @@ func ServeOrderResource(
 	engine interfaces.Engine,
 ) {
 	e := &orderEndpoint{orderService, engine}
-	r.HandleFunc("/orders/{address}/history", e.handleGetOrderHistory).Methods("GET")
-	r.HandleFunc("/orders/{address}/current", e.handleGetPositions).Methods("GET")
-	r.HandleFunc("/orders/{address}", e.handleGetOrders).Methods("GET")
+	r.HandleFunc("/orders/history", e.handleGetOrderHistory).Methods("GET")
+	r.HandleFunc("/orders/positions", e.handleGetPositions).Methods("GET")
+	r.HandleFunc("/orders", e.handleGetOrders).Methods("GET")
 	ws.RegisterChannel(ws.OrderChannel, e.ws)
 }
 
 func (e *orderEndpoint) handleGetOrders(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
+	v := r.URL.Query()
+	addr := v.Get("address")
 
-	addr := vars["address"]
+	if addr == "" {
+		httputils.WriteError(w, http.StatusBadRequest, "address Parameter Missing")
+		return
+	}
+
 	if !common.IsHexAddress(addr) {
 		httputils.WriteError(w, http.StatusBadRequest, "Invalid Address")
+		return
 	}
 
 	address := common.HexToAddress(addr)
@@ -45,41 +51,66 @@ func (e *orderEndpoint) handleGetOrders(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		logger.Error(err)
 		httputils.WriteError(w, http.StatusInternalServerError, "")
+		return
 	}
 
 	httputils.WriteJSON(w, http.StatusOK, orders)
 }
 
 func (e *orderEndpoint) handleGetPositions(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
+	v := r.URL.Query()
+	addr := v.Get("address")
 
-	addr := vars["address"]
+	if addr == "" {
+		httputils.WriteError(w, http.StatusBadRequest, "address Parameter missing")
+		return
+	}
+
 	if !common.IsHexAddress(addr) {
 		httputils.WriteError(w, http.StatusBadRequest, "Invalid Address")
+		return
 	}
 
 	address := common.HexToAddress(addr)
 	orders, err := e.orderService.GetCurrentByUserAddress(address)
 	if err != nil {
 		logger.Error(err)
-		httputils.WriteError(w, http.StatusInternalServerError, "")
+		httputils.WriteError(w, http.StatusInternalServerError, "Internal Server Error")
+		return
+	}
+
+	if orders == nil {
+		httputils.WriteJSON(w, http.StatusOK, []types.Order{})
+		return
 	}
 
 	httputils.WriteJSON(w, http.StatusOK, orders)
 }
 
 func (e *orderEndpoint) handleGetOrderHistory(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
+	v := r.URL.Query()
+	addr := v.Get("address")
 
-	addr := vars["address"]
+	if addr == "" {
+		httputils.WriteError(w, http.StatusBadRequest, "address Parameter missing")
+		return
+	}
+
 	if !common.IsHexAddress(addr) {
 		httputils.WriteError(w, http.StatusBadRequest, "Invalid Address")
+		return
 	}
 
 	address := common.HexToAddress(addr)
 	orders, err := e.orderService.GetHistoryByUserAddress(address)
 	if err != nil {
-		httputils.WriteError(w, http.StatusInternalServerError, "")
+		httputils.WriteError(w, http.StatusInternalServerError, "Internal Server Error")
+		return
+	}
+
+	if orders == nil {
+		httputils.WriteJSON(w, http.StatusOK, []types.Order{})
+		return
 	}
 
 	httputils.WriteJSON(w, http.StatusOK, orders)
