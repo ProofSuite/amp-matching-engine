@@ -3,8 +3,6 @@ package types
 import (
 	"crypto/ecdsa"
 	"encoding/hex"
-	"encoding/json"
-	"fmt"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -143,13 +141,4 @@ func (w *Wallet) SignOrder(o *Order) error {
 	o.Hash = hash
 	o.Signature = sig
 	return nil
-}
-
-func (w *Wallet) Print() {
-	b, err := json.MarshalIndent(w, "", "  ")
-	if err != nil {
-		fmt.Println("Error: ", err)
-	}
-
-	fmt.Print(string(b))
 }

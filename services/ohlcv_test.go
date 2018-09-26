@@ -79,7 +79,7 @@ var testTimes = []string{
 var durationMap = make(map[string]map[int64]*types.Tick)
 
 func TestOHLCV(t *testing.T) {
-	pair := types.PairSubDoc{
+	pair := types.PairAddresses{
 		Name:       "HPC/AUT",
 		BaseToken:  common.HexToAddress("0x2034842261b82651885751fc293bba7ba5398156"),
 		QuoteToken: common.HexToAddress("0x1888a8db0b7db59413ce07150b3373972bf818d3"),
@@ -128,7 +128,7 @@ func TestOHLCV(t *testing.T) {
 
 	for unit, durationSlice := range durations {
 		for _, duration := range durationSlice {
-			response, err := ohlcvService.GetOHLCV([]types.PairSubDoc{pair}, duration, unit, 0, time.Now().Unix())
+			response, err := ohlcvService.GetOHLCV([]types.PairAddresses{pair}, duration, unit, 0, time.Now().Unix())
 			if err != nil {
 				t.Errorf("%s", err)
 				return

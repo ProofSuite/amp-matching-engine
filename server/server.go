@@ -19,6 +19,7 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/services"
 	"github.com/Proofsuite/amp-matching-engine/ws"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 
 	"github.com/Proofsuite/amp-matching-engine/engine"
@@ -46,13 +47,18 @@ func Start() {
 	provider := ethereum.NewWebsocketProvider()
 
 	router := NewRouter(provider, redisConn, rabbitConn)
-	http.Handle("/", router)
-	http.HandleFunc("/socket", ws.ConnectionEndpoint)
+	// http.Handle("/", router)
+	router.HandleFunc("/socket", ws.ConnectionEndpoint)
 
 	// start the server
 	address := fmt.Sprintf(":%v", app.Config.ServerPort)
 	log.Printf("server %v is started at %v\n", app.Version, address)
-	panic(http.ListenAndServe(address, nil))
+
+	allowedHeaders := handlers.AllowedHeaders([]string{"Content-Type", "Accept", "Authorization", "Access-Control-Allow-Origin"})
+	allowedOrigins := handlers.AllowedOrigins([]string{"*"})
+	allowedMethods := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS"})
+
+	panic(http.ListenAndServe(address, handlers.CORS(allowedHeaders, allowedOrigins, allowedMethods)(router)))
 }
 
 func NewRouter(

@@ -108,6 +108,7 @@ func (t *Trade) MarshalJSON() ([]byte, error) {
 		"tradeNonce":     t.TradeNonce.String(),
 		"pricepoint":     t.PricePoint.String(),
 		"amount":         t.Amount.String(),
+		"createdAt":      t.CreatedAt.Format(time.RFC3339Nano),
 	}
 
 	if (t.BaseToken != common.Address{}) {
@@ -220,6 +221,11 @@ func (t *Trade) UnmarshalJSON(b []byte) error {
 	if trade["tradeNonce"] != nil {
 		t.TradeNonce = new(big.Int)
 		t.TradeNonce.UnmarshalJSON([]byte(fmt.Sprintf("%v", trade["tradeNonce"])))
+	}
+
+	if trade["createdAt"] != nil {
+		tm, _ := time.Parse(time.RFC3339Nano, trade["createdAt"].(string))
+		t.CreatedAt = tm
 	}
 
 	if trade["signature"] != nil {
@@ -360,15 +366,6 @@ func (t *Trade) Sign(w *Wallet) error {
 	t.Hash = hash
 	t.Signature = signature
 	return nil
-}
-
-func (t *Trade) Print() {
-	b, err := json.MarshalIndent(t, "", "  ")
-	if err != nil {
-		logger.Error(err)
-	}
-
-	logger.Info(string(b))
 }
 
 // NewTrade returns a new trade with the given params. The trade is signed by the factory wallet.

@@ -129,7 +129,7 @@ type WalletService interface {
 type OHLCVService interface {
 	Unsubscribe(conn *ws.Conn, bt, qt common.Address, p *types.Params)
 	Subscribe(conn *ws.Conn, bt, qt common.Address, p *types.Params)
-	GetOHLCV(p []types.PairSubDoc, duration int64, unit string, timeInterval ...int64) ([]*types.Tick, error)
+	GetOHLCV(p []types.PairAddresses, duration int64, unit string, timeInterval ...int64) ([]*types.Tick, error)
 }
 
 type EthereumService interface {

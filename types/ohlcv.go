@@ -4,15 +4,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
+
 	"github.com/Proofsuite/amp-matching-engine/utils/math"
 	"github.com/ethereum/go-ethereum/common"
 	"gopkg.in/mgo.v2/bson"
-	"math/big"
 )
 
 // Tick is the format in which mongo aggregate pipeline returns data when queried for OHLCV data
 type Tick struct {
-	ID    TickID   `json:"_id,omitempty" bson:"_id"`
+	ID    TickID   `json:"id,omitempty" bson:"_id"`
 	C     *big.Int `json:"c" bson:"c"`
 	Count *big.Int `json:"count" bson:"count"`
 	H     *big.Int `json:"h" bson:"h"`
@@ -30,28 +31,28 @@ type TickID struct {
 }
 
 type TickRequest struct {
-	Pair     []PairSubDoc `json:"pair"`
-	From     int64        `json:"from"`
-	To       int64        `json:"to"`
-	Duration int64        `json:"duration"`
-	Units    string       `json:"units"`
+	Pair     []PairAddresses `json:"pair"`
+	From     int64           `json:"from"`
+	To       int64           `json:"to"`
+	Duration int64           `json:"duration"`
+	Units    string          `json:"units"`
 }
 
 // MarshalJSON returns the json encoded byte array representing the trade struct
 func (t *Tick) MarshalJSON() ([]byte, error) {
 
 	tick := map[string]interface{}{
-		"_id": map[string]interface{}{
+		"id": map[string]interface{}{
 			"pair":       t.ID.Pair,
 			"baseToken":  t.ID.BaseToken.Hex(),
-			"quoteToken": t.ID.BaseToken.Hex(),
+			"quoteToken": t.ID.QuoteToken.Hex(),
 		},
-		"ts": t.Ts,
-		"o":  t.O.String(),
-		"h":  t.H.String(),
-		"l":  t.L.String(),
-		"c":  t.C.String(),
-		"v":          t.V.String(),
+		"ts":    t.Ts,
+		"o":     t.O.String(),
+		"h":     t.H.String(),
+		"l":     t.L.String(),
+		"c":     t.C.String(),
+		"v":     t.V.String(),
 		"count": t.Count.String(),
 	}
 	tab, err := json.Marshal(tick)
@@ -68,8 +69,8 @@ func (t *Tick) UnmarshalJSON(b []byte) error {
 	}
 	fmt.Print(tick)
 	t.ID = TickID{}
-	if tick["_id"] != nil {
-		id := tick["_id"].(map[string]interface{})
+	if tick["id"] != nil {
+		id := tick["id"].(map[string]interface{})
 		if id["quoteToken"] == nil {
 			return errors.New("Quote token is not set")
 		} else {
@@ -123,7 +124,7 @@ func (t *Tick) UnmarshalJSON(b []byte) error {
 }
 
 func (t *Tick) GetBSON() (interface{}, error) {
-	fmt.Println("CAME HERE.. hopefully can be done")
+
 	type TID struct {
 		Pair       string `json:"pair" bson:"pair"`
 		BaseToken  string `json:"baseToken" bson:"baseToken"`
@@ -134,29 +135,34 @@ func (t *Tick) GetBSON() (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	o, err := bson.ParseDecimal128(t.O.String())
 	if err != nil {
 		return nil, err
 	}
+
 	h, err := bson.ParseDecimal128(t.H.String())
 	if err != nil {
 		return nil, err
 	}
+
 	l, err := bson.ParseDecimal128(t.L.String())
 	if err != nil {
 		return nil, err
 	}
+
 	c, err := bson.ParseDecimal128(t.C.String())
 	if err != nil {
 		return nil, err
 	}
+
 	v, err := bson.ParseDecimal128(t.V.String())
 	if err != nil {
 		return nil, err
 	}
 
 	return struct {
-		ID    TID             `json:"_id,omitempty" bson:"_id"`
+		ID    TID             `json:"id,omitempty" bson:"_id"`
 		Count bson.Decimal128 `json:"count" bson:"count"`
 		O     bson.Decimal128 `json:"o" bson:"o"`
 		H     bson.Decimal128 `json:"h" bson:"h"`
@@ -187,6 +193,7 @@ func (t *Tick) SetBSON(raw bson.Raw) error {
 		BaseToken  string `json:"baseToken" bson:"baseToken"`
 		QuoteToken string `json:"quoteToken" bson:"quoteToken"`
 	}
+
 	decoded := new(struct {
 		ID    TID             `json:"_id,omitempty" bson:"_id"`
 		Count bson.Decimal128 `json:"count" bson:"count"`
@@ -202,11 +209,13 @@ func (t *Tick) SetBSON(raw bson.Raw) error {
 	if err != nil {
 		return err
 	}
+
 	t.ID = TickID{
 		Pair:       decoded.ID.Pair,
 		BaseToken:  common.HexToAddress(decoded.ID.BaseToken),
 		QuoteToken: common.HexToAddress(decoded.ID.QuoteToken),
 	}
+
 	t.Count = new(big.Int)
 	t.C = new(big.Int)
 	t.H = new(big.Int)
@@ -220,6 +229,7 @@ func (t *Tick) SetBSON(raw bson.Raw) error {
 	l := decoded.L.String()
 	c := decoded.C.String()
 	v := decoded.V.String()
+
 	t.Count = math.ToBigInt(count)
 	t.C = math.ToBigInt(c)
 	t.H = math.ToBigInt(h)

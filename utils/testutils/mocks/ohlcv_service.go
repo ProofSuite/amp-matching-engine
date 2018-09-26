@@ -16,7 +16,7 @@ type OHLCVService struct {
 }
 
 // GetOHLCV provides a mock function with given fields: p, duration, unit, timeInterval
-func (_m *OHLCVService) GetOHLCV(p []types.PairSubDoc, duration int64, unit string, timeInterval ...int64) ([]*types.Tick, error) {
+func (_m *OHLCVService) GetOHLCV(p []types.PairAddresses, duration int64, unit string, timeInterval ...int64) ([]*types.Tick, error) {
 	_va := make([]interface{}, len(timeInterval))
 	for _i := range timeInterval {
 		_va[_i] = timeInterval[_i]
@@ -27,7 +27,7 @@ func (_m *OHLCVService) GetOHLCV(p []types.PairSubDoc, duration int64, unit stri
 	ret := _m.Called(_ca...)
 
 	var r0 []*types.Tick
-	if rf, ok := ret.Get(0).(func([]types.PairSubDoc, int64, string, ...int64) []*types.Tick); ok {
+	if rf, ok := ret.Get(0).(func([]types.PairAddresses, int64, string, ...int64) []*types.Tick); ok {
 		r0 = rf(p, duration, unit, timeInterval...)
 	} else {
 		if ret.Get(0) != nil {
@@ -36,7 +36,7 @@ func (_m *OHLCVService) GetOHLCV(p []types.PairSubDoc, duration int64, unit stri
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func([]types.PairSubDoc, int64, string, ...int64) error); ok {
+	if rf, ok := ret.Get(1).(func([]types.PairAddresses, int64, string, ...int64) error); ok {
 		r1 = rf(p, duration, unit, timeInterval...)
 	} else {
 		r1 = ret.Error(1)

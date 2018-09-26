@@ -211,39 +211,3 @@ func (a Account) Validate() error {
 		validation.Field(&a.Address, validation.Required),
 	)
 }
-
-func (a *Account) Print() {
-	b, err := json.MarshalIndent(a, "", "  ")
-	if err != nil {
-		logger.Error(err)
-	}
-
-	logger.Info(string(b))
-}
-
-func (a *AccountRecord) Print() {
-	b, err := json.MarshalIndent(a, "", "  ")
-	if err != nil {
-		logger.Error("Error: ", err)
-	}
-
-	logger.Info(string(b))
-}
-
-func (t *TokenBalance) Print() {
-	b, err := json.MarshalIndent(t, "", "  ")
-	if err != nil {
-		logger.Error("Error: ", err)
-	}
-
-	logger.Info(string(b))
-}
-
-func (t *TokenBalanceRecord) Print() {
-	b, err := json.MarshalIndent(t, "", "  ")
-	if err != nil {
-		logger.Error("Error: ", err)
-	}
-
-	logger.Info(string(b))
-}

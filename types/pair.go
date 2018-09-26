@@ -1,7 +1,6 @@
 package types
 
 import (
-	"encoding/json"
 	"math/big"
 	"time"
 
@@ -13,27 +12,22 @@ import (
 
 // Pair struct is used to model the pair data in the system and DB
 type Pair struct {
-	ID bson.ObjectId `json:"-" bson:"_id"`
-
-	BaseTokenSymbol  string         `json:"baseTokenSymbol,omitempty" bson:"baseTokenSymbol"`
-	BaseTokenAddress common.Address `json:"baseTokenAddress,omitempty" bson:"baseTokenAddress"`
-	BaseTokenDecimal int            `json:"baseTokenDecimal,omitempty" bson:"baseTokenDecimal"`
-
+	ID                bson.ObjectId  `json:"-" bson:"_id"`
+	BaseTokenSymbol   string         `json:"baseTokenSymbol,omitempty" bson:"baseTokenSymbol"`
+	BaseTokenAddress  common.Address `json:"baseTokenAddress,omitempty" bson:"baseTokenAddress"`
+	BaseTokenDecimal  int            `json:"baseTokenDecimal,omitempty" bson:"baseTokenDecimal"`
 	QuoteTokenSymbol  string         `json:"quoteTokenSymbol,omitempty" bson:"quoteTokenSymbol"`
 	QuoteTokenAddress common.Address `json:"quoteTokenAddress,omitempty" bson:"quoteTokenAddress"`
 	QuoteTokenDecimal int            `json:"quoteTokenDecimal,omitempty" bson:"quoteTokenDecimal"`
-
-	PriceMultiplier *big.Int `json:"priceMultiplier,omitempty" bson:"priceMultiplier"`
-
-	Active  bool     `json:"active,omitempty" bson:"active"`
-	MakeFee *big.Int `json:"makeFee,omitempty" bson:"makeFee"`
-	TakeFee *big.Int `json:"takeFee,omitempty" bson:"takeFee"`
-
-	CreatedAt time.Time `json:"-" bson:"createdAt"`
-	UpdatedAt time.Time `json:"-" bson:"updatedAt"`
+	PriceMultiplier   *big.Int       `json:"priceMultiplier,omitempty" bson:"priceMultiplier"`
+	Active            bool           `json:"active,omitempty" bson:"active"`
+	MakeFee           *big.Int       `json:"makeFee,omitempty" bson:"makeFee"`
+	TakeFee           *big.Int       `json:"takeFee,omitempty" bson:"takeFee"`
+	CreatedAt         time.Time      `json:"-" bson:"createdAt"`
+	UpdatedAt         time.Time      `json:"-" bson:"updatedAt"`
 }
 
-type PairSubDoc struct {
+type PairAddresses struct {
 	Name       string         `json:"name" bson:"name"`
 	BaseToken  common.Address `json:"baseToken" bson:"baseToken"`
 	QuoteToken common.Address `json:"quoteToken" bson:"quoteToken"`
@@ -136,13 +130,4 @@ func (p *Pair) GetOrderBookKeys() (sell, buy string) {
 
 func (p *Pair) GetKVPrefix() string {
 	return p.BaseTokenAddress.Hex() + "::" + p.QuoteTokenAddress.Hex()
-}
-
-func (p *Pair) Print() {
-	b, err := json.MarshalIndent(p, "", "  ")
-	if err != nil {
-		logger.Error(err)
-	}
-
-	logger.Info(string(b))
 }
