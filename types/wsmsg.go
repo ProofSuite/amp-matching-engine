@@ -1,7 +1,6 @@
 package types
 
 import (
-	"encoding/json"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -35,7 +34,7 @@ type WebSocketPayload struct {
 
 type WebSocketSubscription struct {
 	Event  SubscriptionEvent `json:"event"`
-	Pair   PairSubDoc        `json:"pair"`
+	Pair   PairAddresses     `json:"pair"`
 	Params `json:"params"`
 }
 
@@ -109,22 +108,4 @@ func NewSubmitSignatureWebsocketMessage(hash string, m []*OrderTradePair, o *Ord
 			Data: SignaturePayload{o, m},
 		},
 	}
-}
-
-func (w *WebSocketMessage) Print() {
-	b, err := json.MarshalIndent(w, "", "  ")
-	if err != nil {
-		logger.Error(err)
-	}
-
-	logger.Info(string(b))
-}
-
-func (w *WebSocketPayload) Print() {
-	b, err := json.MarshalIndent(w, "", "  ")
-	if err != nil {
-		logger.Error(err)
-	}
-
-	logger.Info(string(b))
 }

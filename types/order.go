@@ -3,7 +3,6 @@ package types
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"math/big"
 	"time"
 
@@ -546,13 +545,4 @@ func (o *Order) SetBSON(raw bson.Raw) error {
 	o.UpdatedAt = decoded.UpdatedAt
 
 	return nil
-}
-
-func (o *Order) Print() {
-	b, err := json.MarshalIndent(o, "", "  ")
-	if err != nil {
-		fmt.Println("Error: ", err)
-	}
-
-	fmt.Print("\n", string(b))
 }

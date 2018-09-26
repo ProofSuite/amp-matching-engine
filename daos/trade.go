@@ -109,6 +109,7 @@ func (dao *TradeDao) GetAll() ([]types.Trade, error) {
 // Aggregate function calls the aggregate pipeline of mongodb
 func (dao *TradeDao) Aggregate(q []bson.M) ([]*types.Tick, error) {
 	var response []*types.Tick
+
 	err := db.Aggregate(dao.dbName, dao.collectionName, q, &response)
 	if err != nil {
 		logger.Error(err)

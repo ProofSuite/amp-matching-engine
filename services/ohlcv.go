@@ -33,7 +33,7 @@ func (s *OHLCVService) Subscribe(conn *ws.Conn, bt, qt common.Address, params *t
 
 	socket := ws.GetOHLCVSocket()
 
-	ohlcv, err := s.GetOHLCV([]types.PairSubDoc{types.PairSubDoc{BaseToken: bt, QuoteToken: qt}},
+	ohlcv, err := s.GetOHLCV([]types.PairAddresses{types.PairAddresses{BaseToken: bt, QuoteToken: qt}},
 		params.Duration,
 		params.Units,
 		params.From,
@@ -64,43 +64,52 @@ func (s *OHLCVService) Subscribe(conn *ws.Conn, bt, qt common.Address, params *t
 // duration: in integer
 // unit: sec,min,hour,day,week,month,yr
 // timeInterval: 0-2 entries (0 argument: latest data,1st argument: from timestamp, 2nd argument: to timestamp)
-func (s *OHLCVService) GetOHLCV(pairs []types.PairSubDoc, duration int64, unit string, timeInterval ...int64) ([]*types.Tick, error) {
+func (s *OHLCVService) GetOHLCV(pairs []types.PairAddresses, duration int64, unit string, timeInterval ...int64) ([]*types.Tick, error) {
 	match := make(bson.M)
 	addFields := make(bson.M)
 	resp := make([]*types.Tick, 0)
 
-	currentTs := time.Now().UnixNano() / int64(time.Second)
+	currentTimestamp := time.Now().UnixNano() / int64(time.Second)
 	sort := bson.M{"$sort": bson.M{"createdAt": 1}}
 	toDecimal := bson.M{"$addFields": bson.M{
-		"pd": bson.M{"$toDecimal": "$price"},
-		"ad": bson.M{"$toDecimal": "$amount"},
+		"priceDecimal":  bson.M{"$toDecimal": "$pricepoint"},
+		"amountDecimal": bson.M{"$toDecimal": "$amount"},
 	}}
 
-	modTime, intervalSeconds := getModTime(currentTs, duration, unit)
+	modTime, intervalInSeconds := getModTime(currentTimestamp, duration, unit)
 	group, addFields := getGroupAddFieldBson("$createdAt", unit, duration)
 
-	lt := time.Unix(currentTs, 0)
-	gt := time.Unix(modTime-intervalSeconds, 0)
+	end := time.Unix(currentTimestamp, 0)
+	start := time.Unix(modTime-intervalInSeconds, 0)
 
 	if len(timeInterval) >= 1 {
-		lt = time.Unix(timeInterval[1], 0)
-		gt = time.Unix(timeInterval[0], 0)
+		end = time.Unix(timeInterval[1], 0)
+		start = time.Unix(timeInterval[0], 0)
 	}
-	match = getMatchQuery(lt, gt, pairs...)
+
+	match = getMatchQuery(start, end, pairs...)
 
 	match = bson.M{"$match": match}
 	group = bson.M{"$group": group}
+
 	query := []bson.M{match, sort, toDecimal, group, addFields, {"$sort": bson.M{"ts": 1}}}
+
 	resp, err := s.tradeDao.Aggregate(query)
 	if err != nil {
 		return nil, err
 	}
+
 	return resp, nil
 }
 
-func getMatchQuery(lt, gt time.Time, pairs ...types.PairSubDoc) bson.M {
-
-	match := bson.M{"createdAt": bson.M{"$gte": gt, "$lt": lt}}
+func getMatchQuery(start, end time.Time, pairs ...types.PairAddresses) bson.M {
+	match := bson.M{
+		"createdAt": bson.M{
+			"$gte": start,
+			"$lt":  end,
+		},
+		"status": bson.M{"$in": []string{"SUCCESS"}},
+	}
 
 	if len(pairs) >= 1 {
 		or := make([]bson.M, 0)
@@ -122,46 +131,46 @@ func getMatchQuery(lt, gt time.Time, pairs ...types.PairSubDoc) bson.M {
 	return match
 }
 
-func getModTime(ts, duration int64, unit string) (int64, int64) {
-	var modTime, interval int64
+func getModTime(ts, interval int64, unit string) (int64, int64) {
+	var modTime, intervalInSeconds int64
 	switch unit {
 	case "sec":
-		interval = duration
-		modTime = ts - int64(math.Mod(float64(ts), float64(interval)))
+		intervalInSeconds = interval
+		modTime = ts - int64(math.Mod(float64(ts), float64(intervalInSeconds)))
 
 	case "hour":
-		interval = duration * 60 * 60
-		modTime = ts - int64(math.Mod(float64(ts), float64(interval)))
+		intervalInSeconds = interval * 60 * 60
+		modTime = ts - int64(math.Mod(float64(ts), float64(intervalInSeconds)))
 
 	case "day":
-		interval = duration * 24 * 60 * 60
-		modTime = ts - int64(math.Mod(float64(ts), float64(interval)))
+		intervalInSeconds = interval * 24 * 60 * 60
+		modTime = ts - int64(math.Mod(float64(ts), float64(intervalInSeconds)))
 
 	case "week":
-		interval = duration * 7 * 24 * 60 * 60
-		modTime = ts - int64(math.Mod(float64(ts), float64(interval)))
+		intervalInSeconds = interval * 7 * 24 * 60 * 60
+		modTime = ts - int64(math.Mod(float64(ts), float64(intervalInSeconds)))
 
 	case "month":
 		d := time.Date(time.Now().Year(), time.Now().Month()+1, 1, 0, 0, 0, 0, time.UTC).Day()
-		interval = duration * int64(d) * 24 * 60 * 60
-		modTime = ts - int64(math.Mod(float64(ts), float64(interval)))
+		intervalInSeconds = interval * int64(d) * 24 * 60 * 60
+		modTime = ts - int64(math.Mod(float64(ts), float64(intervalInSeconds)))
 
 	case "year":
 		// Number of days in current year
 		d := time.Date(time.Now().Year()+1, 1, 1, 0, 0, 0, 0, time.UTC).Sub(time.Date(time.Now().Year(), 0, 0, 0, 0, 0, 0, time.UTC)).Hours() / 24
-		interval = duration * int64(d) * 24 * 60 * 60
-		modTime = ts - int64(math.Mod(float64(ts), float64(interval)))
+		intervalInSeconds = interval * int64(d) * 24 * 60 * 60
+		modTime = ts - int64(math.Mod(float64(ts), float64(intervalInSeconds)))
 
 	case "min":
-		interval = duration * 60
-		modTime = ts - int64(math.Mod(float64(ts), float64(interval)))
+		intervalInSeconds = interval * 60
+		modTime = ts - int64(math.Mod(float64(ts), float64(intervalInSeconds)))
 	}
-	return modTime, interval
+
+	return modTime, intervalInSeconds
 }
 
 // query for grouping of the documents and addition of required fields using aggregate pipeline
 func getGroupAddFieldBson(key, units string, duration int64) (bson.M, bson.M) {
-
 	var group, addFields bson.M
 
 	t := time.Unix(0, 0)
@@ -175,17 +184,17 @@ func getGroupAddFieldBson(key, units string, duration int64) (bson.M, bson.M) {
 	decimal1, _ := bson.ParseDecimal128("1")
 	group = bson.M{
 		"count": bson.M{"$sum": decimal1},
-		"h":     bson.M{"$max": "$pd"},
-		"l":     bson.M{"$min": "$pd"},
-		"o":     bson.M{"$first": "$pd"},
-		"c":     bson.M{"$last": "$pd"},
-		"v":     bson.M{"$sum": "$ad"},
+		"h":     bson.M{"$max": "$priceDecimal"},
+		"l":     bson.M{"$min": "$priceDecimal"},
+		"o":     bson.M{"$first": "$priceDecimal"},
+		"c":     bson.M{"$last": "$priceDecimal"},
+		"v":     bson.M{"$sum": "$amountDecimal"},
 	}
 
-	gID := make(bson.M)
+	groupID := make(bson.M)
 	switch units {
 	case "sec":
-		gID = bson.M{
+		groupID = bson.M{
 			"year":   bson.M{"$year": d},
 			"day":    bson.M{"$dayOfMonth": d},
 			"month":  bson.M{"$month": d},
@@ -194,18 +203,24 @@ func getGroupAddFieldBson(key, units string, duration int64) (bson.M, bson.M) {
 			"second": bson.M{
 				"$subtract": []interface{}{
 					bson.M{"$second": d},
-					bson.M{"$mod": []interface{}{bson.M{"$second": d}, duration}}}}}
+					bson.M{"$mod": []interface{}{bson.M{"$second": d}, duration}},
+				},
+			},
+		}
 
-		addFields = bson.M{"$addFields": bson.M{"ts": bson.M{"$subtract": []interface{}{bson.M{"$dateFromParts": bson.M{
-			"year":   "$_id.year",
-			"month":  "$_id.month",
-			"day":    "$_id.day",
-			"hour":   "$_id.hour",
-			"minute": "$_id.minute",
-			"second": "$_id.second"}}, t}}}}
+		addFields = bson.M{"$addFields": bson.M{
+			"ts": bson.M{
+				"$subtract": []interface{}{bson.M{
+					"$dateFromParts": bson.M{
+						"year":   "$_id.year",
+						"month":  "$_id.month",
+						"day":    "$_id.day",
+						"hour":   "$_id.hour",
+						"minute": "$_id.minute",
+						"second": "$_id.second"}}, t}}}}
 
 	case "min":
-		gID = bson.M{
+		groupID = bson.M{
 			"year":  bson.M{"$year": d},
 			"day":   bson.M{"$dayOfMonth": d},
 			"month": bson.M{"$month": d},
@@ -225,7 +240,7 @@ func getGroupAddFieldBson(key, units string, duration int64) (bson.M, bson.M) {
 		}}, t}}}}
 
 	case "hour":
-		gID = bson.M{
+		groupID = bson.M{
 			"year":  bson.M{"$year": d},
 			"day":   bson.M{"$dayOfMonth": d},
 			"month": bson.M{"$month": d},
@@ -242,7 +257,7 @@ func getGroupAddFieldBson(key, units string, duration int64) (bson.M, bson.M) {
 		}}, t}}}}
 
 	case "day":
-		gID = bson.M{
+		groupID = bson.M{
 			"year":  bson.M{"$year": d},
 			"month": bson.M{"$month": d},
 			"day": bson.M{
@@ -257,7 +272,7 @@ func getGroupAddFieldBson(key, units string, duration int64) (bson.M, bson.M) {
 		}}, t}}}}
 
 	case "week":
-		gID = bson.M{
+		groupID = bson.M{
 			"year": bson.M{"$isoWeekYear": d},
 			"isoWeek": bson.M{
 				"$subtract": []interface{}{
@@ -270,7 +285,7 @@ func getGroupAddFieldBson(key, units string, duration int64) (bson.M, bson.M) {
 		}}, t}}}}
 
 	case "month":
-		gID = bson.M{
+		groupID = bson.M{
 			"year": bson.M{"$year": d},
 			"month": bson.M{
 				"$subtract": []interface{}{
@@ -289,21 +304,24 @@ func getGroupAddFieldBson(key, units string, duration int64) (bson.M, bson.M) {
 		}}, t}}}}
 
 	case "year":
-		gID = bson.M{
+		groupID = bson.M{
 			"year": bson.M{
 				"$subtract": []interface{}{
 					bson.M{"$year": d},
-					bson.M{"$mod": []interface{}{bson.M{"$year": d}, duration}}}}}
+					bson.M{"$mod": []interface{}{bson.M{"$year": d}, duration}},
+				},
+			},
+		}
 
 		addFields = bson.M{"$addFields": bson.M{"ts": bson.M{"$subtract": []interface{}{bson.M{"$dateFromParts": bson.M{
 			"year": "$_id.year"}}, t}}}}
 
 	}
 
-	gID["pair"] = "$pairName"
-	gID["baseToken"] = "$baseToken"
-	gID["quoteToken"] = "$quoteToken"
-	group["_id"] = gID
+	groupID["pair"] = "$pairName"
+	groupID["baseToken"] = "$baseToken"
+	groupID["quoteToken"] = "$quoteToken"
+	group["_id"] = groupID
 
 	return group, addFields
 }

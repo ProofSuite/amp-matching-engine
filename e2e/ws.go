@@ -95,7 +95,7 @@ func getOrderbookSubscribeRequest(baseToken, quoteToken common.Address) *types.W
 			Type: "subscription",
 			Data: types.WebSocketSubscription{
 				Event: types.SUBSCRIBE,
-				Pair: types.PairSubDoc{
+				Pair: types.PairAddresses{
 					BaseToken:  baseToken,
 					QuoteToken: quoteToken,
 				},
@@ -111,7 +111,7 @@ func getTradeSubscribeRequest(baseToken, quoteToken common.Address) *types.WebSo
 			Type: "subscription",
 			Data: types.WebSocketSubscription{
 				Event: types.SUBSCRIBE,
-				Pair: types.PairSubDoc{
+				Pair: types.PairAddresses{
 					BaseToken:  baseToken,
 					QuoteToken: quoteToken,
 				},
@@ -126,7 +126,7 @@ func getOHLCVSubscribeRequest(baseToken, quoteToken common.Address) *types.WebSo
 			Type: "subscription",
 			Data: types.WebSocketSubscription{
 				Event: types.SUBSCRIBE,
-				Pair: types.PairSubDoc{
+				Pair: types.PairAddresses{
 					BaseToken:  baseToken,
 					QuoteToken: quoteToken,
 				},

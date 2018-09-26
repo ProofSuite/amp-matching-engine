@@ -3,7 +3,6 @@ package testutils
 import (
 	"encoding/json"
 	"flag"
-	"fmt"
 	"log"
 	"math/big"
 	"math/rand"
@@ -403,13 +402,4 @@ func (c *Client) SetNonce(o *types.Order) {
 
 func (c *Client) SetTradeNonce(t *types.Trade) {
 	t.TradeNonce = big.NewInt(int64(c.NonceGenerator.Intn(1e8)))
-}
-
-func (c *ClientLogMessage) Print() {
-	b, err := json.MarshalIndent(c, "", "  ")
-	if err != nil {
-		log.Print(err)
-	}
-
-	fmt.Print(string(b))
 }

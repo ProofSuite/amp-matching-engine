@@ -27,7 +27,7 @@ func (s *CronService) tickStreamingCron(c *cron.Cron) {
 // and broadcasts the tick to the client subscribed to pair's respective channel
 func (s *CronService) tickStream(unit string, duration int64) func() {
 	return func() {
-		p := make([]types.PairSubDoc, 0)
+		p := make([]types.PairAddresses, 0)
 		ticks, err := s.ohlcvService.GetOHLCV(p, duration, unit)
 		if err != nil {
 			log.Printf("%s", err)
