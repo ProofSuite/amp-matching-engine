@@ -22,24 +22,36 @@ func ServeOrderBookResource(
 	orderBookService interfaces.OrderBookService,
 ) {
 	e := &OrderBookEndpoint{orderBookService}
-	r.HandleFunc("/orderbook/{baseToken}/{quoteToken}/raw", e.handleGetRawOrderBook)
-	r.HandleFunc("/orderbook/{baseToken}/{quoteToken}/", e.handleGetOrderBook)
+	r.HandleFunc("/orderbook/raw", e.handleGetRawOrderBook)
+	r.HandleFunc("/orderbook", e.handleGetOrderBook)
 	ws.RegisterChannel(ws.LiteOrderBookChannel, e.orderBookWebSocket)
 	ws.RegisterChannel(ws.RawOrderBookChannel, e.rawOrderBookWebSocket)
 }
 
 // orderBookEndpoint
 func (e *OrderBookEndpoint) handleGetOrderBook(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	bt := vars["baseToken"]
-	qt := vars["quoteToken"]
+	v := r.URL.Query()
+	bt := v.Get("baseToken")
+	qt := v.Get("quoteToken")
+
+	if bt == "" {
+		httputils.WriteError(w, http.StatusBadRequest, "baseToken Parameter missing")
+		return
+	}
+
+	if qt == "" {
+		httputils.WriteError(w, http.StatusBadRequest, "quoteToken Parameter missing")
+		return
+	}
 
 	if !common.IsHexAddress(bt) {
-		httputils.WriteError(w, http.StatusBadRequest, "Invalid Address")
+		httputils.WriteError(w, http.StatusBadRequest, "Invalid Base Token Address")
+		return
 	}
 
 	if !common.IsHexAddress(qt) {
-		httputils.WriteError(w, http.StatusBadRequest, "Invalid Address")
+		httputils.WriteError(w, http.StatusBadRequest, "Invalid Quote Token Address")
+		return
 	}
 
 	baseTokenAddress := common.HexToAddress(bt)
@@ -47,7 +59,8 @@ func (e *OrderBookEndpoint) handleGetOrderBook(w http.ResponseWriter, r *http.Re
 	ob, err := e.orderBookService.GetOrderBook(baseTokenAddress, quoteTokenAddress)
 	if err != nil {
 		logger.Error(err)
-		httputils.WriteError(w, http.StatusInternalServerError, "")
+		httputils.WriteError(w, http.StatusInternalServerError, "Internal Server Error")
+		return
 	}
 
 	httputils.WriteJSON(w, http.StatusOK, ob)
@@ -55,23 +68,36 @@ func (e *OrderBookEndpoint) handleGetOrderBook(w http.ResponseWriter, r *http.Re
 
 // orderBookEndpoint
 func (e *OrderBookEndpoint) handleGetRawOrderBook(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	bt := vars["baseToken"]
-	qt := vars["quoteToken"]
+	v := r.URL.Query()
+	bt := v.Get("baseToken")
+	qt := v.Get("quoteToken")
+
+	if bt == "" {
+		httputils.WriteError(w, http.StatusBadRequest, "baseToken Parameter missing")
+		return
+	}
+
+	if qt == "" {
+		httputils.WriteError(w, http.StatusBadRequest, "quoteToken Parameter missing")
+		return
+	}
 
 	if !common.IsHexAddress(bt) {
-		httputils.WriteError(w, http.StatusBadRequest, "Invalid Address")
+		httputils.WriteError(w, http.StatusBadRequest, "Invalid Base Token Address")
+		return
 	}
 
 	if !common.IsHexAddress(qt) {
-		httputils.WriteError(w, http.StatusBadRequest, "Invalid Address")
+		httputils.WriteError(w, http.StatusBadRequest, "Invalid Quote Token Address")
+		return
 	}
 
 	baseTokenAddress := common.HexToAddress(bt)
 	quoteTokenAddress := common.HexToAddress(qt)
 	ob, err := e.orderBookService.GetRawOrderBook(baseTokenAddress, quoteTokenAddress)
 	if err != nil {
-		httputils.WriteError(w, http.StatusInternalServerError, "")
+		httputils.WriteError(w, http.StatusInternalServerError, "Internal Server Error")
+		return
 	}
 
 	httputils.WriteJSON(w, http.StatusOK, ob)

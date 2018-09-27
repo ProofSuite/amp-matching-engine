@@ -34,15 +34,15 @@ func (e *OHLCVEndpoint) handleGetOHLCV(w http.ResponseWriter, r *http.Request) {
 	bt := v.Get("baseToken")
 	qt := v.Get("quoteToken")
 	pair := v.Get("pairName")
-	units := v.Get("units")
+	unit := v.Get("unit")
 	duration := v.Get("duration")
 	from := v.Get("from")
 	to := v.Get("to")
 
-	if units == "" {
+	if unit == "" {
 		model.Units = "hour"
 	} else {
-		model.Units = units
+		model.Units = unit
 	}
 
 	if duration == "" {
@@ -52,15 +52,21 @@ func (e *OHLCVEndpoint) handleGetOHLCV(w http.ResponseWriter, r *http.Request) {
 		model.Duration = int64(d)
 	}
 
+	now := time.Now()
+
 	if to == "" {
-		model.To = time.Now().Unix()
+		model.To = now.Unix()
 	} else {
 		t, _ := strconv.Atoi(to)
 		model.To = int64(t)
 	}
 
-	f, _ := strconv.Atoi(from)
-	model.From = int64(f)
+	if from == "" {
+		model.From = now.AddDate(-1, 0, 0).Unix()
+	} else {
+		f, _ := strconv.Atoi(from)
+		model.From = int64(f)
+	}
 
 	if bt == "" {
 		httputils.WriteError(w, http.StatusBadRequest, "baseToken Parameter missing")
@@ -101,10 +107,10 @@ func (e *OHLCVEndpoint) handleGetOHLCV(w http.ResponseWriter, r *http.Request) {
 func (e *OHLCVEndpoint) ohlcvWebSocket(input interface{}, conn *ws.Conn) {
 	startTs := time.Date(1970, time.January, 1, 0, 0, 0, 0, time.UTC)
 
-	mab, _ := json.Marshal(input)
+	bytes, _ := json.Marshal(input)
 	var payload *types.WebSocketPayload
 
-	err := json.Unmarshal(mab, &payload)
+	err := json.Unmarshal(bytes, &payload)
 	if err != nil {
 		logger.Error(err)
 	}
@@ -116,10 +122,10 @@ func (e *OHLCVEndpoint) ohlcvWebSocket(input interface{}, conn *ws.Conn) {
 		return
 	}
 
-	dab, _ := json.Marshal(payload.Data)
+	bytes, _ = json.Marshal(payload.Data)
 	var msg *types.WebSocketSubscription
 
-	err = json.Unmarshal(dab, &msg)
+	err = json.Unmarshal(bytes, &msg)
 	if err != nil {
 		logger.Error(err)
 	}

@@ -8,7 +8,6 @@ import (
 
 	"github.com/Proofsuite/amp-matching-engine/app"
 	"github.com/Proofsuite/amp-matching-engine/contracts"
-	"github.com/Proofsuite/amp-matching-engine/crons"
 	"github.com/Proofsuite/amp-matching-engine/daos"
 	"github.com/Proofsuite/amp-matching-engine/endpoints"
 	"github.com/Proofsuite/amp-matching-engine/errors"
@@ -89,7 +88,7 @@ func NewRouter(
 	orderService := services.NewOrderService(orderDao, pairDao, accountDao, tradeDao, eng, provider, rabbitConn)
 	orderBookService := services.NewOrderBookService(pairDao, tokenDao, orderDao, eng)
 	walletService := services.NewWalletService(walletDao)
-	cronService := crons.NewCronService(ohlcvService)
+	// cronService := crons.NewCronService(ohlcvService)
 
 	// get exchange contract instance
 	exchangeAddress := common.HexToAddress(app.Config.Ethereum["exchange_address"])
@@ -132,6 +131,6 @@ func NewRouter(
 	rabbitConn.SubscribeOperator(orderService.HandleOperatorMessages)
 	rabbitConn.SubscribeEngineResponses(orderService.HandleEngineResponse)
 
-	cronService.InitCrons()
+	// cronService.InitCrons()
 	return r
 }

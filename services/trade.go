@@ -24,7 +24,7 @@ func NewTradeService(TradeDao interfaces.TradeDao) *TradeService {
 func (s *TradeService) Subscribe(conn *ws.Conn, bt, qt common.Address) {
 	socket := ws.GetTradeSocket()
 
-	trades, err := s.GetTrades(bt, qt)
+	trades, err := s.GetAllTradesByPairAddress(bt, qt)
 	if err != nil {
 		socket.SendErrorMessage(conn, err.Error())
 		return
@@ -59,14 +59,17 @@ func (s *TradeService) GetByPairName(pairName string) ([]*types.Trade, error) {
 	return s.tradeDao.GetByPairName(pairName)
 }
 
-// GetTrades is currently not implemented correctly
-func (s *TradeService) GetTrades(bt, qt common.Address) ([]types.Trade, error) {
-	return s.tradeDao.GetAll()
+func (s *TradeService) GetRecentTradesByPairAddress(baseToken, quoteToken common.Address) ([]*types.Trade, error) {
+	return s.tradeDao.GetRecentTradesByPairAddress(baseToken, quoteToken)
 }
 
 // GetByPairAddress fetches all the trades corresponding to a pair using pair's token address
-func (s *TradeService) GetByPairAddress(bt, qt common.Address) ([]*types.Trade, error) {
-	return s.tradeDao.GetByPairAddress(bt, qt)
+func (s *TradeService) GetAllTradesByPairAddress(baseToken, quoteToken common.Address) ([]*types.Trade, error) {
+	return s.tradeDao.GetAllTradesByPairAddress(baseToken, quoteToken)
+}
+
+func (s *TradeService) GetNTradesByPairAddress(baseToken, quoteToken common.Address, n int) ([]*types.Trade, error) {
+	return s.tradeDao.GetNTradesByPairAddress(baseToken, quoteToken, n)
 }
 
 // GetByUserAddress fetches all the trades corresponding to a user address
@@ -75,17 +78,17 @@ func (s *TradeService) GetByUserAddress(addr common.Address) ([]*types.Trade, er
 }
 
 // GetByHash fetches all trades corresponding to a trade hash
-func (s *TradeService) GetByHash(hash common.Hash) (*types.Trade, error) {
-	return s.tradeDao.GetByHash(hash)
+func (s *TradeService) GetByHash(h common.Hash) (*types.Trade, error) {
+	return s.tradeDao.GetByHash(h)
 }
 
 // GetByOrderHash fetches all trades corresponding to an order hash
-func (s *TradeService) GetByOrderHash(hash common.Hash) ([]*types.Trade, error) {
-	return s.tradeDao.GetByOrderHash(hash)
+func (s *TradeService) GetByOrderHash(h common.Hash) ([]*types.Trade, error) {
+	return s.tradeDao.GetByOrderHash(h)
 }
 
-func (s *TradeService) UpdateTradeTxHash(tr *types.Trade, txHash common.Hash) error {
-	tr.TxHash = txHash
+func (s *TradeService) UpdateTradeTxHash(tr *types.Trade, txh common.Hash) error {
+	tr.TxHash = txh
 
 	err := s.tradeDao.UpdateByHash(tr.Hash, tr)
 	if err != nil {

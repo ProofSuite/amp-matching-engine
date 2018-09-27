@@ -22,15 +22,26 @@ type TradeDao struct {
 func NewTradeDao() *TradeDao {
 	dbName := app.Config.DBName
 	collection := "trades"
-	index := mgo.Index{
+
+	hashIndex := mgo.Index{
 		Key:    []string{"hash"},
 		Sparse: true,
 	}
 
-	err := db.Session.DB(dbName).C(collection).EnsureIndex(index)
+	createdAtIndex := mgo.Index{
+		Key: []string{"createdAt"},
+	}
+
+	err := db.Session.DB(dbName).C(collection).EnsureIndex(hashIndex)
 	if err != nil {
 		panic(err)
 	}
+
+	err = db.Session.DB(dbName).C(collection).EnsureIndex(createdAtIndex)
+	if err != nil {
+		panic(err)
+	}
+
 	return &TradeDao{collection, dbName}
 }
 
@@ -151,47 +162,81 @@ func (dao *TradeDao) GetByHash(hash common.Hash) (*types.Trade, error) {
 }
 
 // GetByOrderHash fetches the first trade record which matches a certain order hash
-func (dao *TradeDao) GetByOrderHash(hash common.Hash) ([]*types.Trade, error) {
-	q := bson.M{"orderHash": hash.Hex()}
+func (dao *TradeDao) GetByOrderHash(h common.Hash) ([]*types.Trade, error) {
+	q := bson.M{"orderHash": h.Hex()}
 
-	response := []*types.Trade{}
-	err := db.Get(dao.dbName, dao.collectionName, q, 0, 0, &response)
+	res := []*types.Trade{}
+	err := db.Get(dao.dbName, dao.collectionName, q, 0, 0, &res)
 	if err != nil {
 		logger.Error(err)
 		return nil, err
 	}
 
-	return response, nil
+	return res, nil
+}
+
+func (dao *TradeDao) GetRecentTradesByPairAddress(baseToken, quoteToken common.Address) ([]*types.Trade, error) {
+	res := []*types.Trade{}
+
+	q := bson.M{"baseToken": baseToken.Hex(), "quoteToken": quoteToken.Hex()}
+	sort := []string{"createdAt"}
+	err := db.GetAndSort(dao.dbName, dao.collectionName, q, sort, 0, 100, &res)
+	if err != nil {
+		logger.Error(err)
+		return nil, err
+	}
+
+	return res, nil
+}
+
+func (dao *TradeDao) GetNTradesByPairAddress(baseToken, quoteToken common.Address, n int) ([]*types.Trade, error) {
+	res, err := dao.GetTradesByPairAddress(baseToken, quoteToken, n)
+	if err != nil {
+		logger.Error(err)
+		return nil, err
+	}
+
+	return res, nil
+}
+
+func (dao *TradeDao) GetAllTradesByPairAddress(baseToken, quoteToken common.Address) ([]*types.Trade, error) {
+	res, err := dao.GetTradesByPairAddress(baseToken, quoteToken, 0)
+	if err != nil {
+		logger.Error(err)
+		return nil, err
+	}
+
+	return res, nil
 }
 
 // GetByPairAddress fetches all the trades corresponding to a particular pair token address.
-func (dao *TradeDao) GetByPairAddress(baseToken, quoteToken common.Address) ([]*types.Trade, error) {
-	var response []*types.Trade
+func (dao *TradeDao) GetTradesByPairAddress(baseToken, quoteToken common.Address, n int) ([]*types.Trade, error) {
+	var res []*types.Trade
 
 	q := bson.M{"baseToken": baseToken.Hex(), "quoteToken": quoteToken.Hex()}
-	err := db.Get(dao.dbName, dao.collectionName, q, 0, 0, &response)
+	err := db.Get(dao.dbName, dao.collectionName, q, 0, 0, &res)
 	if err != nil {
 		logger.Error(err)
 		return nil, err
 	}
 
-	return response, nil
+	return res, nil
 }
 
 // GetByUserAddress fetches all the trades corresponding to a particular user address.
 func (dao *TradeDao) GetByUserAddress(addr common.Address) ([]*types.Trade, error) {
-	var response []*types.Trade
+	var res []*types.Trade
 	q := bson.M{"$or": []bson.M{
 		{"maker": addr.Hex()}, {"taker": addr.Hex()},
 	}}
 
-	err := db.Get(dao.dbName, dao.collectionName, q, 0, 0, &response)
+	err := db.Get(dao.dbName, dao.collectionName, q, 0, 0, &res)
 	if err != nil {
 		logger.Error(err)
 		return nil, err
 	}
 
-	return response, nil
+	return res, nil
 }
 
 func (dao *TradeDao) UpdateTradeStatus(hash common.Hash, status string) error {

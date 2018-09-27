@@ -3,6 +3,7 @@ package endpoints
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 
 	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/Proofsuite/amp-matching-engine/types"
@@ -33,6 +34,7 @@ func (e *tradeEndpoint) HandleGetTradeHistory(w http.ResponseWriter, r *http.Req
 	v := r.URL.Query()
 	bt := v.Get("baseToken")
 	qt := v.Get("quoteToken")
+	l := v.Get("length")
 
 	if bt == "" {
 		httputils.WriteError(w, http.StatusBadRequest, "baseToken Parameter missing")
@@ -54,9 +56,14 @@ func (e *tradeEndpoint) HandleGetTradeHistory(w http.ResponseWriter, r *http.Req
 		return
 	}
 
+	length := 300
+	if l != "" {
+		length, _ = strconv.Atoi(l)
+	}
+
 	baseToken := common.HexToAddress(bt)
 	quoteToken := common.HexToAddress(qt)
-	res, err := e.tradeService.GetByPairAddress(baseToken, quoteToken)
+	res, err := e.tradeService.GetNTradesByPairAddress(baseToken, quoteToken, length)
 	if err != nil {
 		logger.Error(err)
 		httputils.WriteError(w, http.StatusInternalServerError, "")
@@ -107,6 +114,7 @@ func (e *tradeEndpoint) tradeWebSocket(input interface{}, conn *ws.Conn) {
 	var payload *types.WebSocketPayload
 	if err := json.Unmarshal(bytes, &payload); err != nil {
 		logger.Error(err)
+		return
 	}
 
 	socket := ws.GetTradeSocket()
@@ -121,6 +129,7 @@ func (e *tradeEndpoint) tradeWebSocket(input interface{}, conn *ws.Conn) {
 	err := json.Unmarshal(bytes, &msg)
 	if err != nil {
 		logger.Error(err)
+		return
 	}
 
 	if (msg.Pair.BaseToken == common.Address{}) {
