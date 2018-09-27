@@ -121,7 +121,7 @@ func TestTradeDao(t *testing.T) {
 	testutils.CompareTrade(t, trs2[0], trs[0])
 	testutils.CompareTrade(t, trs2[1], trs[1])
 
-	trs3, err := dao.GetByPairAddress(ZRXAddress, DAIAddress)
+	trs3, err := dao.GetAllTradesByPairAddress(ZRXAddress, DAIAddress)
 	if err != nil {
 		t.Errorf("Could not retrieve objects")
 	}

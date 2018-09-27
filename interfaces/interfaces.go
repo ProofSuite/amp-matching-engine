@@ -76,7 +76,10 @@ type TradeDao interface {
 	GetByPairName(name string) ([]*types.Trade, error)
 	GetByHash(hash common.Hash) (*types.Trade, error)
 	GetByOrderHash(hash common.Hash) ([]*types.Trade, error)
-	GetByPairAddress(baseToken, quoteToken common.Address) ([]*types.Trade, error)
+	GetTradesByPairAddress(baseToken, quoteToken common.Address, n int) ([]*types.Trade, error)
+	GetRecentTradesByPairAddress(baseToken, quoteToken common.Address) ([]*types.Trade, error)
+	GetNTradesByPairAddress(baseToken, quoteToken common.Address, n int) ([]*types.Trade, error)
+	GetAllTradesByPairAddress(baseToken, quoteToken common.Address) ([]*types.Trade, error)
 	GetByUserAddress(addr common.Address) ([]*types.Trade, error)
 	UpdateTradeStatus(hash common.Hash, status string) error
 	Drop()
@@ -123,7 +126,7 @@ type WalletService interface {
 	GetDefaultAdminWallet() (*types.Wallet, error)
 	GetOperatorWallets() ([]*types.Wallet, error)
 	GetAll() ([]types.Wallet, error)
-	GetByAddress(a common.Address) (*types.Wallet, error)
+	GetByAddress(addr common.Address) (*types.Wallet, error)
 }
 
 type OHLCVService interface {
@@ -140,7 +143,7 @@ type EthereumService interface {
 
 type OrderService interface {
 	GetByID(id bson.ObjectId) (*types.Order, error)
-	GetByHash(hash common.Hash) (*types.Order, error)
+	GetByHash(h common.Hash) (*types.Order, error)
 	GetByUserAddress(addr common.Address) ([]*types.Order, error)
 	NewOrder(o *types.Order) error
 	CancelOrder(oc *types.OrderCancel) error
@@ -180,12 +183,13 @@ type TokenService interface {
 
 type TradeService interface {
 	GetByPairName(p string) ([]*types.Trade, error)
-	GetTrades(bt, qt common.Address) ([]types.Trade, error)
-	GetByPairAddress(bt, qt common.Address) ([]*types.Trade, error)
+	GetAllTradesByPairAddress(bt, qt common.Address) ([]*types.Trade, error)
+	GetRecentTradesByPairAddress(bt, qt common.Address) ([]*types.Trade, error)
+	GetNTradesByPairAddress(bt, qt common.Address, n int) ([]*types.Trade, error)
 	GetByUserAddress(addr common.Address) ([]*types.Trade, error)
-	GetByHash(hash common.Hash) (*types.Trade, error)
-	GetByOrderHash(hash common.Hash) ([]*types.Trade, error)
-	UpdateTradeTxHash(tr *types.Trade, txHash common.Hash) error
+	GetByHash(h common.Hash) (*types.Trade, error)
+	GetByOrderHash(h common.Hash) ([]*types.Trade, error)
+	UpdateTradeTxHash(tr *types.Trade, txh common.Hash) error
 	Subscribe(conn *ws.Conn, bt, qt common.Address)
 	Unsubscribe(conn *ws.Conn, bt, qt common.Address)
 }
@@ -228,7 +232,7 @@ type EthereumClient interface {
 }
 
 type EthereumProvider interface {
-	WaitMined(hash common.Hash) (*eth.Receipt, error)
+	WaitMined(h common.Hash) (*eth.Receipt, error)
 	GetBalanceAt(a common.Address) (*big.Int, error)
 	GetPendingNonceAt(a common.Address) (uint64, error)
 	BalanceOf(owner common.Address, token common.Address) (*big.Int, error)
