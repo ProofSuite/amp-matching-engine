@@ -33,6 +33,12 @@ type PairAddresses struct {
 	QuoteToken common.Address `json:"quoteToken" bson:"quoteToken"`
 }
 
+type PairAddressesRecord struct {
+	Name       string `json:"name" bson:"name"`
+	BaseToken  string `json:"baseToken" bson:"baseToken"`
+	QuoteToken string `json:"quoteToken" bson:"quoteToken"`
+}
+
 type PairRecord struct {
 	ID bson.ObjectId `json:"id" bson:"_id"`
 

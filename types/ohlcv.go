@@ -2,8 +2,6 @@ package types
 
 import (
 	"encoding/json"
-	"errors"
-	"fmt"
 	"math/big"
 
 	"github.com/Proofsuite/amp-matching-engine/utils/math"
@@ -13,19 +11,19 @@ import (
 
 // Tick is the format in which mongo aggregate pipeline returns data when queried for OHLCV data
 type Tick struct {
-	ID    TickID   `json:"id,omitempty" bson:"_id"`
-	C     *big.Int `json:"c" bson:"c"`
-	Count *big.Int `json:"count" bson:"count"`
-	H     *big.Int `json:"h" bson:"h"`
-	L     *big.Int `json:"l" bson:"l"`
-	O     *big.Int `json:"o" bson:"o"`
-	Ts    int64    `json:"ts" bson:"ts"`
-	V     *big.Int `json:"v" bson:"v"`
+	Pair      PairID   `json:"id,omitempty" bson:"_id"`
+	Close     *big.Int `json:"close" bson:"close"`
+	Count     *big.Int `json:"count" bson:"count"`
+	High      *big.Int `json:"high" bson:"high"`
+	Low       *big.Int `json:"low" bson:"low"`
+	Open      *big.Int `json:"open" bson:"open"`
+	Volume    *big.Int `json:"volume" bson:"volume"`
+	Timestamp int64    `json:"timestamp" bson:"timestamp"`
 }
 
-// TickID is the subdocument for aggregate grouping for OHLCV data
-type TickID struct {
-	Pair       string         `json:"pair" bson:"pair"`
+// PairID is the subdocument for aggregate grouping for OHLCV data
+type PairID struct {
+	PairName   string         `json:"pair" bson:"pairName"`
 	BaseToken  common.Address `json:"baseToken" bson:"baseToken"`
 	QuoteToken common.Address `json:"quoteToken" bson:"quoteToken"`
 }
@@ -40,23 +38,22 @@ type TickRequest struct {
 
 // MarshalJSON returns the json encoded byte array representing the trade struct
 func (t *Tick) MarshalJSON() ([]byte, error) {
-
 	tick := map[string]interface{}{
-		"id": map[string]interface{}{
-			"pair":       t.ID.Pair,
-			"baseToken":  t.ID.BaseToken.Hex(),
-			"quoteToken": t.ID.QuoteToken.Hex(),
+		"pair": map[string]interface{}{
+			"pairName":   t.Pair.PairName,
+			"baseToken":  t.Pair.BaseToken.Hex(),
+			"quoteToken": t.Pair.QuoteToken.Hex(),
 		},
-		"ts":    t.Ts,
-		"o":     t.O.String(),
-		"h":     t.H.String(),
-		"l":     t.L.String(),
-		"c":     t.C.String(),
-		"v":     t.V.String(),
-		"count": t.Count.String(),
+		"timestamp": t.Timestamp,
+		"open":      t.Open.String(),
+		"high":      t.High.String(),
+		"low":       t.Low.String(),
+		"close":     t.Close.String(),
+		"volume":    t.Volume.String(),
+		"count":     t.Count.String(),
 	}
-	tab, err := json.Marshal(tick)
-	return tab, err
+	bytes, err := json.Marshal(tick)
+	return bytes, err
 }
 
 // UnmarshalJSON creates a trade object from a json byte string
@@ -67,66 +64,50 @@ func (t *Tick) UnmarshalJSON(b []byte) error {
 	if err != nil {
 		return err
 	}
-	fmt.Print(tick)
-	t.ID = TickID{}
-	if tick["id"] != nil {
-		id := tick["id"].(map[string]interface{})
-		if id["quoteToken"] == nil {
-			return errors.New("Quote token is not set")
-		} else {
-			t.ID.QuoteToken = common.HexToAddress(id["quoteToken"].(string))
-		}
 
-		if id["baseToken"] == nil {
-			return errors.New("Base token is not set")
-		} else {
-			t.ID.BaseToken = common.HexToAddress(id["baseToken"].(string))
-		}
-
-		if id["pair"] == nil {
-			return errors.New("Pair is not set")
-		} else {
-			t.ID.Pair = id["pair"].(string)
+	if tick["pair"] != nil {
+		pair := tick["pair"].(map[string]interface{})
+		t.Pair = PairID{
+			PairName:   pair["pairName"].(string),
+			BaseToken:  common.HexToAddress(pair["baseToken"].(string)),
+			QuoteToken: common.HexToAddress(pair["quoteToken"].(string)),
 		}
 	}
 
-	if tick["ts"] == nil {
-		return errors.New("ts is not set")
-	} else {
-		t.Ts = int64(tick["ts"].(float64))
+	if tick["timestamp"] != nil {
+		t.Timestamp = int64(tick["timestamp"].(float64))
 	}
-	t.O = new(big.Int)
-	t.H = new(big.Int)
-	t.L = new(big.Int)
-	t.C = new(big.Int)
-	t.V = new(big.Int)
-	t.Count = new(big.Int)
 
-	if tick["o"] != nil {
-		t.O.UnmarshalJSON([]byte(fmt.Sprintf("%v", tick["o"])))
+	if tick["open"] != nil {
+		t.Open = math.ToBigInt(tick["open"].(string))
 	}
-	if tick["h"] != nil {
-		t.H.UnmarshalJSON([]byte(fmt.Sprintf("%v", tick["h"])))
+
+	if tick["high"] != nil {
+		t.High = math.ToBigInt(tick["high"].(string))
 	}
-	if tick["l"] != nil {
-		t.L.UnmarshalJSON([]byte(fmt.Sprintf("%v", tick["l"])))
+
+	if tick["low"] != nil {
+		t.Low = math.ToBigInt(tick["low"].(string))
 	}
-	if tick["c"] != nil {
-		t.C.UnmarshalJSON([]byte(fmt.Sprintf("%v", tick["c"])))
+
+	if tick["close"] != nil {
+		t.Close = math.ToBigInt(tick["close"].(string))
 	}
-	if tick["v"] != nil {
-		t.V.UnmarshalJSON([]byte(fmt.Sprintf("%v", tick["v"])))
+
+	if tick["volume"] != nil {
+		t.Volume = math.ToBigInt(tick["volume"].(string))
 	}
+
 	if tick["count"] != nil {
-		t.Count.UnmarshalJSON([]byte(fmt.Sprintf("%v", tick["count"])))
+		t.Count = math.ToBigInt(tick["count"].(string))
 	}
+
 	return nil
 }
 
 func (t *Tick) GetBSON() (interface{}, error) {
-
-	type TID struct {
-		Pair       string `json:"pair" bson:"pair"`
+	type PairID struct {
+		PairName   string `json:"pairName" bson:"pairName"`
 		BaseToken  string `json:"baseToken" bson:"baseToken"`
 		QuoteToken string `json:"quoteToken" bson:"quoteToken"`
 	}
@@ -136,73 +117,73 @@ func (t *Tick) GetBSON() (interface{}, error) {
 		return nil, err
 	}
 
-	o, err := bson.ParseDecimal128(t.O.String())
+	o, err := bson.ParseDecimal128(t.Open.String())
 	if err != nil {
 		return nil, err
 	}
 
-	h, err := bson.ParseDecimal128(t.H.String())
+	h, err := bson.ParseDecimal128(t.High.String())
 	if err != nil {
 		return nil, err
 	}
 
-	l, err := bson.ParseDecimal128(t.L.String())
+	l, err := bson.ParseDecimal128(t.Low.String())
 	if err != nil {
 		return nil, err
 	}
 
-	c, err := bson.ParseDecimal128(t.C.String())
+	c, err := bson.ParseDecimal128(t.Close.String())
 	if err != nil {
 		return nil, err
 	}
 
-	v, err := bson.ParseDecimal128(t.V.String())
+	v, err := bson.ParseDecimal128(t.Volume.String())
 	if err != nil {
 		return nil, err
 	}
 
 	return struct {
-		ID    TID             `json:"id,omitempty" bson:"_id"`
-		Count bson.Decimal128 `json:"count" bson:"count"`
-		O     bson.Decimal128 `json:"o" bson:"o"`
-		H     bson.Decimal128 `json:"h" bson:"h"`
-		L     bson.Decimal128 `json:"l" bson:"l"`
-		C     bson.Decimal128 `json:"c" bson:"c"`
-		V     bson.Decimal128 `json:"v" bson:"v"`
-		Ts    int64           `json:"ts" bson:"ts"`
+		ID        PairID          `json:"id,omitempty" bson:"_id"`
+		Count     bson.Decimal128 `json:"count" bson:"count"`
+		Open      bson.Decimal128 `json:"open" bson:"open"`
+		High      bson.Decimal128 `json:"high" bson:"high"`
+		Low       bson.Decimal128 `json:"low" bson:"low"`
+		Close     bson.Decimal128 `json:"close" bson:"close"`
+		Volume    bson.Decimal128 `json:"volume" bson:"volume"`
+		Timestamp int64           `json:"timestamp" bson:"timestamp"`
 	}{
-		ID: TID{
-			t.ID.Pair,
-			t.ID.BaseToken.Hex(),
-			t.ID.QuoteToken.Hex(),
+		ID: PairID{
+			t.Pair.PairName,
+			t.Pair.BaseToken.Hex(),
+			t.Pair.QuoteToken.Hex(),
 		},
 
-		O:     o,
-		H:     h,
-		L:     l,
-		C:     c,
-		V:     v,
-		Count: count,
-		Ts:    t.Ts,
+		Open:      o,
+		High:      h,
+		Low:       l,
+		Close:     c,
+		Volume:    v,
+		Count:     count,
+		Timestamp: t.Timestamp,
 	}, nil
 }
 
 func (t *Tick) SetBSON(raw bson.Raw) error {
-	type TID struct {
-		Pair       string `json:"pair" bson:"pair"`
+	type PairIDRecord struct {
+		PairName   string `json:"pairName" bson:"pairName"`
 		BaseToken  string `json:"baseToken" bson:"baseToken"`
 		QuoteToken string `json:"quoteToken" bson:"quoteToken"`
 	}
 
 	decoded := new(struct {
-		ID    TID             `json:"_id,omitempty" bson:"_id"`
-		Count bson.Decimal128 `json:"count" bson:"count"`
-		O     bson.Decimal128 `json:"o" bson:"o"`
-		H     bson.Decimal128 `json:"h" bson:"h"`
-		L     bson.Decimal128 `json:"l" bson:"l"`
-		C     bson.Decimal128 `json:"c" bson:"c"`
-		V     bson.Decimal128 `json:"v" bson:"v"`
-		Ts    int64           `json:"ts" bson:"ts"`
+		Pair      PairIDRecord    `json:"pair,omitempty" bson:"_id"`
+		Count     bson.Decimal128 `json:"count" bson:"count"`
+		Open      bson.Decimal128 `json:"open" bson:"open"`
+		High      bson.Decimal128 `json:"high" bson:"high"`
+		Low       bson.Decimal128 `json:"low" bson:"low"`
+		Close     bson.Decimal128 `json:"close" bson:"close"`
+		Volume    bson.Decimal128 `json:"volume" bson:"volume"`
+		Timestamp int64           `json:"timestamp" bson:"timestamp"`
 	})
 
 	err := raw.Unmarshal(decoded)
@@ -210,33 +191,33 @@ func (t *Tick) SetBSON(raw bson.Raw) error {
 		return err
 	}
 
-	t.ID = TickID{
-		Pair:       decoded.ID.Pair,
-		BaseToken:  common.HexToAddress(decoded.ID.BaseToken),
-		QuoteToken: common.HexToAddress(decoded.ID.QuoteToken),
+	t.Pair = PairID{
+		PairName:   decoded.Pair.PairName,
+		BaseToken:  common.HexToAddress(decoded.Pair.BaseToken),
+		QuoteToken: common.HexToAddress(decoded.Pair.QuoteToken),
 	}
 
 	t.Count = new(big.Int)
-	t.C = new(big.Int)
-	t.H = new(big.Int)
-	t.L = new(big.Int)
-	t.O = new(big.Int)
-	t.V = new(big.Int)
+	t.Close = new(big.Int)
+	t.High = new(big.Int)
+	t.Low = new(big.Int)
+	t.Open = new(big.Int)
+	t.Volume = new(big.Int)
 
 	count := decoded.Count.String()
-	o := decoded.O.String()
-	h := decoded.H.String()
-	l := decoded.L.String()
-	c := decoded.C.String()
-	v := decoded.V.String()
+	o := decoded.Open.String()
+	h := decoded.High.String()
+	l := decoded.Low.String()
+	c := decoded.Close.String()
+	v := decoded.Volume.String()
 
 	t.Count = math.ToBigInt(count)
-	t.C = math.ToBigInt(c)
-	t.H = math.ToBigInt(h)
-	t.L = math.ToBigInt(l)
-	t.O = math.ToBigInt(o)
-	t.V = math.ToBigInt(v)
+	t.Close = math.ToBigInt(c)
+	t.High = math.ToBigInt(h)
+	t.Low = math.ToBigInt(l)
+	t.Open = math.ToBigInt(o)
+	t.Volume = math.ToBigInt(v)
 
-	t.Ts = decoded.Ts
+	t.Timestamp = decoded.Timestamp
 	return nil
 }
