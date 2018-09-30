@@ -23,21 +23,48 @@ func NewTradeDao() *TradeDao {
 	dbName := app.Config.DBName
 	collection := "trades"
 
-	hashIndex := mgo.Index{
+	i1 := mgo.Index{
+		Key: []string{"baseToken"},
+	}
+
+	i2 := mgo.Index{
+		Key: []string{"quoteToken"},
+	}
+
+	i3 := mgo.Index{
+		Key: []string{"createdAt"},
+	}
+
+	i4 := mgo.Index{
 		Key:    []string{"hash"},
 		Sparse: true,
 	}
 
-	createdAtIndex := mgo.Index{
-		Key: []string{"createdAt"},
+	i5 := mgo.Index{
+		Key: []string{"createdAt", "status", "baseToken", "quoteToken"},
 	}
 
-	err := db.Session.DB(dbName).C(collection).EnsureIndex(hashIndex)
+	err := db.Session.DB(dbName).C(collection).EnsureIndex(i1)
 	if err != nil {
 		panic(err)
 	}
 
-	err = db.Session.DB(dbName).C(collection).EnsureIndex(createdAtIndex)
+	err = db.Session.DB(dbName).C(collection).EnsureIndex(i2)
+	if err != nil {
+		panic(err)
+	}
+
+	err = db.Session.DB(dbName).C(collection).EnsureIndex(i3)
+	if err != nil {
+		panic(err)
+	}
+
+	err = db.Session.DB(dbName).C(collection).EnsureIndex(i4)
+	if err != nil {
+		panic(err)
+	}
+
+	err = db.Session.DB(dbName).C(collection).EnsureIndex(i5)
 	if err != nil {
 		panic(err)
 	}
@@ -80,9 +107,9 @@ func (dao *TradeDao) Update(trade *types.Trade) error {
 
 // UpdateByHash updates the fields that can be normally updated in a structure. For a
 // complete update, use the Update or UpdateAllByHash function
-func (dao *TradeDao) UpdateByHash(hash common.Hash, t *types.Trade) error {
+func (dao *TradeDao) UpdateByHash(h common.Hash, t *types.Trade) error {
 	t.UpdatedAt = time.Now()
-	query := bson.M{"hash": hash.Hex()}
+	query := bson.M{"hash": h.Hex()}
 	update := bson.M{"$set": bson.M{
 		"pricepoint":     t.PricePoint.String(),
 		"tradeNonce":     t.TradeNonce.String(),
@@ -214,7 +241,7 @@ func (dao *TradeDao) GetTradesByPairAddress(baseToken, quoteToken common.Address
 	var res []*types.Trade
 
 	q := bson.M{"baseToken": baseToken.Hex(), "quoteToken": quoteToken.Hex()}
-	err := db.Get(dao.dbName, dao.collectionName, q, 0, 0, &res)
+	err := db.Get(dao.dbName, dao.collectionName, q, 0, n, &res)
 	if err != nil {
 		logger.Error(err)
 		return nil, err

@@ -18,17 +18,17 @@ import (
 type OrderDao interface {
 	Create(o *types.Order) error
 	Update(id bson.ObjectId, o *types.Order) error
-	UpdateAllByHash(hash common.Hash, o *types.Order) error
-	UpdateByHash(hash common.Hash, o *types.Order) error
+	UpdateAllByHash(h common.Hash, o *types.Order) error
+	UpdateByHash(h common.Hash, o *types.Order) error
 	GetByID(id bson.ObjectId) (*types.Order, error)
-	GetByHash(hash common.Hash) (*types.Order, error)
+	GetByHash(h common.Hash) (*types.Order, error)
 	GetByHashes(hashes []common.Hash) ([]*types.Order, error)
-	GetByUserAddress(addr common.Address) ([]*types.Order, error)
-	GetCurrentByUserAddress(addr common.Address) ([]*types.Order, error)
-	GetHistoryByUserAddress(addr common.Address) ([]*types.Order, error)
-	UpdateOrderFilledAmount(hash common.Hash, value *big.Int) error
+	GetByUserAddress(a common.Address) ([]*types.Order, error)
+	GetCurrentByUserAddress(a common.Address) ([]*types.Order, error)
+	GetHistoryByUserAddress(a common.Address) ([]*types.Order, error)
+	UpdateOrderFilledAmount(h common.Hash, value *big.Int) error
 	GetUserLockedBalance(account common.Address, token common.Address) (*big.Int, error)
-	UpdateOrderStatus(hash common.Hash, status string) error
+	UpdateOrderStatus(h common.Hash, status string) error
 	GetRawOrderBook(*types.Pair) ([]*types.Order, error)
 	GetOrderBook(*types.Pair) ([]map[string]string, []map[string]string, error)
 	GetOrderBookPricePoint(p *types.Pair, pp *big.Int) (*big.Int, error)
@@ -144,13 +144,13 @@ type EthereumService interface {
 type OrderService interface {
 	GetByID(id bson.ObjectId) (*types.Order, error)
 	GetByHash(h common.Hash) (*types.Order, error)
-	GetByUserAddress(addr common.Address) ([]*types.Order, error)
+	GetByUserAddress(a common.Address) ([]*types.Order, error)
 	NewOrder(o *types.Order) error
 	CancelOrder(oc *types.OrderCancel) error
 	CancelTrades(trades []*types.Trade) error
 	HandleEngineResponse(res *types.EngineResponse) error
-	GetCurrentByUserAddress(addr common.Address) ([]*types.Order, error)
-	GetHistoryByUserAddress(addr common.Address) ([]*types.Order, error)
+	GetCurrentByUserAddress(a common.Address) ([]*types.Order, error)
+	GetHistoryByUserAddress(a common.Address) ([]*types.Order, error)
 	Rollback(res *types.EngineResponse) *types.EngineResponse
 	RollbackOrder(o *types.Order) error
 	RollbackTrade(o *types.Order, t *types.Trade) error
@@ -169,13 +169,15 @@ type PairService interface {
 	Create(pair *types.Pair) error
 	GetByID(id bson.ObjectId) (*types.Pair, error)
 	GetByTokenAddress(bt, qt common.Address) (*types.Pair, error)
+	GetTokenPairData(bt, qt common.Address) ([]*types.Tick, error)
+	GetAllTokenPairData() ([]*types.Tick, error)
 	GetAll() ([]types.Pair, error)
 }
 
 type TokenService interface {
 	Create(token *types.Token) error
 	GetByID(id bson.ObjectId) (*types.Token, error)
-	GetByAddress(addr common.Address) (*types.Token, error)
+	GetByAddress(a common.Address) (*types.Token, error)
 	GetAll() ([]types.Token, error)
 	GetQuoteTokens() ([]types.Token, error)
 	GetBaseTokens() ([]types.Token, error)
@@ -186,7 +188,7 @@ type TradeService interface {
 	GetAllTradesByPairAddress(bt, qt common.Address) ([]*types.Trade, error)
 	GetRecentTradesByPairAddress(bt, qt common.Address) ([]*types.Trade, error)
 	GetNTradesByPairAddress(bt, qt common.Address, n int) ([]*types.Trade, error)
-	GetByUserAddress(addr common.Address) ([]*types.Trade, error)
+	GetByUserAddress(a common.Address) ([]*types.Trade, error)
 	GetByHash(h common.Hash) (*types.Trade, error)
 	GetByOrderHash(h common.Hash) ([]*types.Trade, error)
 	UpdateTradeTxHash(tr *types.Trade, txh common.Hash) error

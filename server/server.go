@@ -84,7 +84,7 @@ func NewRouter(
 	ohlcvService := services.NewOHLCVService(tradeDao)
 	tokenService := services.NewTokenService(tokenDao)
 	tradeService := services.NewTradeService(tradeDao)
-	pairService := services.NewPairService(pairDao, tokenDao, eng, tradeService)
+	pairService := services.NewPairService(pairDao, tokenDao, tradeDao, eng)
 	orderService := services.NewOrderService(orderDao, pairDao, accountDao, tradeDao, eng, provider, rabbitConn)
 	orderBookService := services.NewOrderBookService(pairDao, tokenDao, orderDao, eng)
 	walletService := services.NewWalletService(walletDao)

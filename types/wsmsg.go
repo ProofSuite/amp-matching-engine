@@ -44,7 +44,7 @@ type Params struct {
 	To       int64  `json:"to"`
 	Duration int64  `json:"duration"`
 	Units    string `json:"units"`
-	TickID   string `json:"tickID"`
+	PairID   string `json:"pair"`
 }
 
 type SignaturePayload struct {

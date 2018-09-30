@@ -2,12 +2,14 @@ package endpoints
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/Proofsuite/amp-matching-engine/types"
+	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/Proofsuite/amp-matching-engine/utils/httputils"
 	"github.com/Proofsuite/amp-matching-engine/ws"
 	"github.com/ethereum/go-ethereum/common"
@@ -39,6 +41,8 @@ func (e *OHLCVEndpoint) handleGetOHLCV(w http.ResponseWriter, r *http.Request) {
 	from := v.Get("from")
 	to := v.Get("to")
 
+	fmt.Printf(r.URL.String())
+
 	if unit == "" {
 		model.Units = "hour"
 	} else {
@@ -67,6 +71,8 @@ func (e *OHLCVEndpoint) handleGetOHLCV(w http.ResponseWriter, r *http.Request) {
 		f, _ := strconv.Atoi(from)
 		model.From = int64(f)
 	}
+
+	utils.PrintJSON(model)
 
 	if bt == "" {
 		httputils.WriteError(w, http.StatusBadRequest, "baseToken Parameter missing")

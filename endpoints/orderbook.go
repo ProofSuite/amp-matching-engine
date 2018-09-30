@@ -122,10 +122,10 @@ func (e *OrderBookEndpoint) rawOrderBookWebSocket(input interface{}, conn *ws.Co
 		return
 	}
 
-	dab, _ := json.Marshal(payload.Data)
+	b, _ := json.Marshal(payload.Data)
 	var msg *types.WebSocketSubscription
 
-	err = json.Unmarshal(dab, &msg)
+	err = json.Unmarshal(b, &msg)
 	if err != nil {
 		logger.Error(err)
 	}

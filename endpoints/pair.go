@@ -9,6 +9,7 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/Proofsuite/amp-matching-engine/services"
 	"github.com/Proofsuite/amp-matching-engine/types"
+	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/Proofsuite/amp-matching-engine/utils/httputils"
 	"github.com/gorilla/mux"
 )
@@ -26,7 +27,7 @@ func ServePairResource(
 	r.HandleFunc("/pairs", e.HandleCreatePair).Methods("POST")
 	r.HandleFunc("/pairs", e.HandleGetPairs).Methods("GET")
 	r.HandleFunc("/pair", e.HandleGetPair).Methods("GET")
-	// r.HandleFunc("/pairs", e.HandleGetAllPairs).Methods("GET")
+	r.HandleFunc("/pairs/data", e.HandleGetPairData).Methods("GET")
 }
 
 func (e *pairEndpoint) HandleCreatePair(w http.ResponseWriter, r *http.Request) {
@@ -116,6 +117,68 @@ func (e *pairEndpoint) HandleGetPair(w http.ResponseWriter, r *http.Request) {
 	baseTokenAddress := common.HexToAddress(baseToken)
 	quoteTokenAddress := common.HexToAddress(quoteToken)
 	res, err := e.pairService.GetByTokenAddress(baseTokenAddress, quoteTokenAddress)
+	if err != nil {
+		logger.Error(err)
+		httputils.WriteError(w, http.StatusInternalServerError, "")
+		return
+	}
+
+	if res == nil {
+		httputils.WriteJSON(w, http.StatusOK, []types.Pair{})
+		return
+	}
+
+	httputils.WriteJSON(w, http.StatusOK, res)
+}
+
+func (e *pairEndpoint) HandleGetPairData(w http.ResponseWriter, r *http.Request) {
+	v := r.URL.Query()
+	baseToken := v.Get("baseToken")
+	quoteToken := v.Get("quoteToken")
+
+	utils.PrintJSON("i am here")
+
+	if baseToken == "" && quoteToken == "" {
+		res, err := e.pairService.GetAllTokenPairData()
+		if err != nil {
+			logger.Error(err)
+			httputils.WriteError(w, http.StatusInternalServerError, "")
+			return
+		}
+
+		if res == nil {
+			httputils.WriteJSON(w, http.StatusOK, []types.Pair{})
+			return
+		}
+
+		httputils.WriteJSON(w, http.StatusOK, res)
+		return
+	}
+
+	if quoteToken == "" {
+		httputils.WriteError(w, http.StatusBadRequest, "quoteToken Parameter missing")
+		return
+	}
+
+	if baseToken == "" {
+		httputils.WriteError(w, http.StatusBadRequest, "baseToken Parameter missing")
+		return
+	}
+
+	if !common.IsHexAddress(baseToken) {
+		httputils.WriteError(w, http.StatusBadRequest, "Invalid Base Token Address")
+		return
+	}
+
+	if !common.IsHexAddress(quoteToken) {
+		httputils.WriteError(w, http.StatusBadRequest, "Invalid Quote Token Address")
+		return
+	}
+
+	baseTokenAddress := common.HexToAddress(baseToken)
+	quoteTokenAddress := common.HexToAddress(quoteToken)
+
+	res, err := e.pairService.GetTokenPairData(baseTokenAddress, quoteTokenAddress)
 	if err != nil {
 		logger.Error(err)
 		httputils.WriteError(w, http.StatusInternalServerError, "")
