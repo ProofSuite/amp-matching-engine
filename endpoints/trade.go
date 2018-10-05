@@ -26,7 +26,7 @@ func ServeTradeResource(
 	e := &tradeEndpoint{tradeService}
 	r.HandleFunc("/trades/pair", e.HandleGetTradeHistory)
 	r.HandleFunc("/trades", e.HandleGetTrades)
-	ws.RegisterChannel(ws.TradeChannel, e.tradeWebSocket)
+	ws.RegisterChannel(ws.TradeChannel, e.tradeWebsocket)
 }
 
 // history is reponsible for handling pair's trade history requests
@@ -56,14 +56,14 @@ func (e *tradeEndpoint) HandleGetTradeHistory(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	length := 300
+	length := 20
 	if l != "" {
 		length, _ = strconv.Atoi(l)
 	}
 
 	baseToken := common.HexToAddress(bt)
 	quoteToken := common.HexToAddress(qt)
-	res, err := e.tradeService.GetNTradesByPairAddress(baseToken, quoteToken, length)
+	res, err := e.tradeService.GetSortedTradesByDate(baseToken, quoteToken, length)
 	if err != nil {
 		logger.Error(err)
 		httputils.WriteError(w, http.StatusInternalServerError, "")
@@ -109,46 +109,52 @@ func (e *tradeEndpoint) HandleGetTrades(w http.ResponseWriter, r *http.Request) 
 	httputils.WriteJSON(w, http.StatusOK, res)
 }
 
-func (e *tradeEndpoint) tradeWebSocket(input interface{}, conn *ws.Conn) {
-	bytes, _ := json.Marshal(input)
-	var payload *types.WebSocketPayload
-	if err := json.Unmarshal(bytes, &payload); err != nil {
+func (e *tradeEndpoint) tradeWebsocket(input interface{}, c *ws.Conn) {
+	b, _ := json.Marshal(input)
+	var ev *types.WebsocketEvent
+	if err := json.Unmarshal(b, &ev); err != nil {
 		logger.Error(err)
 		return
 	}
 
 	socket := ws.GetTradeSocket()
-	if payload.Type != "subscription" {
+	if ev.Type != "SUBSCRIBE" && ev.Type != "UNSUBSCRIBE" {
+		logger.Info("Event Type", ev.Type)
 		err := map[string]string{"Message": "Invalid payload"}
-		socket.SendErrorMessage(conn, err)
+		socket.SendErrorMessage(c, err)
 		return
 	}
 
-	bytes, _ = json.Marshal(payload.Data)
-	var msg *types.WebSocketSubscription
-	err := json.Unmarshal(bytes, &msg)
+	b, _ = json.Marshal(ev.Payload)
+	var p *types.SubscriptionPayload
+	err := json.Unmarshal(b, &p)
 	if err != nil {
 		logger.Error(err)
 		return
 	}
 
-	if (msg.Pair.BaseToken == common.Address{}) {
-		err := map[string]string{"Message": "Invalid base token"}
-		socket.SendErrorMessage(conn, err)
-		return
+	if ev.Type == "SUBSCRIBE" {
+		if (p.BaseToken == common.Address{}) {
+			err := map[string]string{"Message": "Invalid base token"}
+			socket.SendErrorMessage(c, err)
+			return
+		}
+
+		if (p.QuoteToken == common.Address{}) {
+			err := map[string]string{"Message": "Invalid quote token"}
+			socket.SendErrorMessage(c, err)
+			return
+		}
+
+		e.tradeService.Subscribe(c, p.BaseToken, p.QuoteToken)
 	}
 
-	if (msg.Pair.QuoteToken == common.Address{}) {
-		err := map[string]string{"Message": "Invalid quote token"}
-		socket.SendErrorMessage(conn, err)
-		return
-	}
+	if ev.Type == "UNSUBSCRIBE" {
+		if p == nil {
+			e.tradeService.Unsubscribe(c)
+			return
+		}
 
-	if msg.Event == types.SUBSCRIBE {
-		e.tradeService.Subscribe(conn, msg.Pair.BaseToken, msg.Pair.QuoteToken)
-	}
-
-	if msg.Event == types.UNSUBSCRIBE {
-		e.tradeService.Unsubscribe(conn, msg.Pair.BaseToken, msg.Pair.QuoteToken)
+		e.tradeService.UnsubscribeChannel(c, p.BaseToken, p.QuoteToken)
 	}
 }

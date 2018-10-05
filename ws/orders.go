@@ -11,7 +11,7 @@ import (
 // It holds the reference to connection and the channel of type OrderMessage
 type OrderConnection struct {
 	Conn        *Conn
-	ReadChannel chan *types.WebSocketPayload
+	ReadChannel chan *types.WebsocketEvent
 	Active      bool
 	Once        sync.Once
 }
@@ -19,18 +19,18 @@ type OrderConnection struct {
 var orderConnections map[string]*OrderConnection
 
 // GetOrderConn returns the connection associated with an order ID
-func GetOrderConnection(hash common.Hash) (conn *Conn) {
-	c := orderConnections[hash.Hex()]
+func GetOrderConnection(h common.Hash) (conn *Conn) {
+	c := orderConnections[h.Hex()]
 	if c == nil {
 		logger.Warning("No connection found")
 		return nil
 	}
 
-	return orderConnections[hash.Hex()].Conn
+	return orderConnections[h.Hex()].Conn
 }
 
 // GetOrderChannel returns the channel associated with an order ID
-func GetOrderChannel(h common.Hash) chan *types.WebSocketPayload {
+func GetOrderChannel(h common.Hash) chan *types.WebsocketEvent {
 	hash := h.Hex()
 
 	if orderConnections[hash] == nil {
@@ -86,11 +86,11 @@ func CloseOrderReadChannel(h common.Hash) error {
 	return nil
 }
 
-func SendOrderMessage(msgType string, hash common.Hash, data interface{}) {
-	conn := GetOrderConnection(hash)
+func SendOrderMessage(msgType string, h common.Hash, payload interface{}) {
+	conn := GetOrderConnection(h)
 	if conn == nil {
 		return
 	}
 
-	SendMessage(conn, OrderChannel, msgType, data, hash)
+	SendMessage(conn, OrderChannel, msgType, payload, h)
 }

@@ -58,36 +58,37 @@ func (s *OrderBookService) GetOrderBook(bt, qt common.Address) (map[string]inter
 
 // SubscribeOrderBook is responsible for handling incoming orderbook subscription messages
 // It makes an entry of connection in pairSocket corresponding to pair,unit and duration
-func (s *OrderBookService) SubscribeOrderBook(conn *ws.Conn, bt, qt common.Address) {
+func (s *OrderBookService) SubscribeOrderBook(c *ws.Conn, bt, qt common.Address) {
 	socket := ws.GetOrderBookSocket()
 
 	ob, err := s.GetOrderBook(bt, qt)
 	if err != nil {
-		socket.SendErrorMessage(conn, err.Error())
+		socket.SendErrorMessage(c, err.Error())
 		return
 	}
 
 	id := utils.GetOrderBookChannelID(bt, qt)
-	err = socket.Subscribe(id, conn)
+	err = socket.Subscribe(id, c)
 	if err != nil {
-		message := map[string]string{
-			"Code":    "Internal Server Error",
-			"Message": err.Error(),
-		}
-
-		socket.SendErrorMessage(conn, message)
+		msg := map[string]string{"Message": err.Error()}
+		socket.SendErrorMessage(c, msg)
 		return
 	}
 
-	ws.RegisterConnectionUnsubscribeHandler(conn, socket.UnsubscribeHandler(id))
-	socket.SendInitMessage(conn, ob)
+	ws.RegisterConnectionUnsubscribeHandler(c, socket.UnsubscribeHandler(id))
+	socket.SendInitMessage(c, ob)
 }
 
-// UnSubscribeOrderBook is responsible for handling incoming orderbook unsubscription messages
-func (s *OrderBookService) UnSubscribeOrderBook(conn *ws.Conn, bt, qt common.Address) {
+// UnsubscribeOrderBook is responsible for handling incoming orderbook unsubscription messages
+func (s *OrderBookService) UnsubscribeOrderBook(c *ws.Conn) {
+	socket := ws.GetOrderBookSocket()
+	socket.Unsubscribe(c)
+}
+
+func (s *OrderBookService) UnsubscribeOrderBookChannel(c *ws.Conn, bt, qt common.Address) {
 	socket := ws.GetOrderBookSocket()
 	id := utils.GetOrderBookChannelID(bt, qt)
-	socket.Unsubscribe(id, conn)
+	socket.UnsubscribeChannel(id, c)
 }
 
 // GetRawOrderBook fetches complete orderbook from engine/redis
@@ -109,35 +110,35 @@ func (s *OrderBookService) GetRawOrderBook(bt, qt common.Address) ([]*types.Orde
 
 // SubscribeRawOrderBook is responsible for handling incoming orderbook subscription messages
 // It makes an entry of connection in pairSocket corresponding to pair,unit and duration
-func (s *OrderBookService) SubscribeRawOrderBook(conn *ws.Conn, bt, qt common.Address) {
+func (s *OrderBookService) SubscribeRawOrderBook(c *ws.Conn, bt, qt common.Address) {
 	socket := ws.GetRawOrderBookSocket()
 
 	ob, err := s.GetRawOrderBook(bt, qt)
 	if err != nil {
-		socket.SendErrorMessage(conn, err.Error())
+		socket.SendErrorMessage(c, err.Error())
 		return
 	}
 
 	id := utils.GetOrderBookChannelID(bt, qt)
-	err = socket.Subscribe(id, conn)
+	err = socket.Subscribe(id, c)
 	if err != nil {
-		message := map[string]string{
-			"Code":    "Internal Server Error",
-			"Message": err.Error(),
-		}
-
-		socket.SendErrorMessage(conn, message)
+		msg := map[string]string{"Message": err.Error()}
+		socket.SendErrorMessage(c, msg)
 		return
 	}
 
-	ws.RegisterConnectionUnsubscribeHandler(conn, socket.UnsubscribeHandler(id))
-	socket.SendInitMessage(conn, ob)
+	ws.RegisterConnectionUnsubscribeHandler(c, socket.UnsubscribeChannelHandler(id))
+	socket.SendInitMessage(c, ob)
 }
 
-// UnSubscribeRawOrderBook is responsible for handling incoming orderbook unsubscription messages
-func (s *OrderBookService) UnSubscribeRawOrderBook(conn *ws.Conn, bt, qt common.Address) {
+// UnsubscribeRawOrderBook is responsible for handling incoming orderbook unsubscription messages
+func (s *OrderBookService) UnsubscribeRawOrderBook(c *ws.Conn) {
 	socket := ws.GetRawOrderBookSocket()
+	socket.Unsubscribe(c)
+}
 
+func (s *OrderBookService) UnsubscribeRawOrderBookChannel(c *ws.Conn, bt, qt common.Address) {
+	socket := ws.GetRawOrderBookSocket()
 	id := utils.GetOrderBookChannelID(bt, qt)
-	socket.Unsubscribe(id, conn)
+	socket.UnsubscribeChannel(id, c)
 }

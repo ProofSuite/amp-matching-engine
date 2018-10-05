@@ -90,7 +90,7 @@ func (f *OrderFactory) SetExchangeAddress(addr common.Address) error {
 }
 
 // NewOrderMessage creates an order with the given params and returns a new PLACE_ORDER message
-func (f *OrderFactory) NewOrderMessage(buyToken common.Address, buyAmount int64, sellToken common.Address, sellAmount int64) (*types.WebSocketMessage, *types.Order, error) {
+func (f *OrderFactory) NewOrderMessage(buyToken common.Address, buyAmount int64, sellToken common.Address, sellAmount int64) (*types.WebsocketMessage, *types.Order, error) {
 	o, err := f.NewOrder(buyToken, buyAmount, sellToken, sellAmount)
 	if err != nil {
 		return nil, nil, err
@@ -101,7 +101,7 @@ func (f *OrderFactory) NewOrderMessage(buyToken common.Address, buyAmount int64,
 	return m, o, nil
 }
 
-func (f *OrderFactory) NewCancelOrderMessage(o *types.Order) (*types.WebSocketMessage, *types.OrderCancel, error) {
+func (f *OrderFactory) NewCancelOrderMessage(o *types.Order) (*types.WebsocketMessage, *types.OrderCancel, error) {
 	oc, err := f.NewCancelOrder(o)
 	if err != nil {
 		log.Print(err)
@@ -152,7 +152,7 @@ func (f *OrderFactory) NewLargeOrder(buyToken common.Address, buyAmount *big.Int
 	return o, nil
 }
 
-func (f *OrderFactory) NewBuyOrderMessage(price int64, amount float64) (*types.WebSocketMessage, *types.Order, error) {
+func (f *OrderFactory) NewBuyOrderMessage(price int64, amount float64) (*types.WebsocketMessage, *types.Order, error) {
 	o, err := f.NewBuyOrder(price, amount)
 	if err != nil {
 		return nil, nil, err
@@ -163,7 +163,7 @@ func (f *OrderFactory) NewBuyOrderMessage(price int64, amount float64) (*types.W
 	return m, &o, nil
 }
 
-func (f *OrderFactory) NewSellOrderMessage(price int64, amount float64) (*types.WebSocketMessage, *types.Order, error) {
+func (f *OrderFactory) NewSellOrderMessage(price int64, amount float64) (*types.WebsocketMessage, *types.Order, error) {
 	o, err := f.NewSellOrder(price, amount)
 	if err != nil {
 		return nil, nil, err

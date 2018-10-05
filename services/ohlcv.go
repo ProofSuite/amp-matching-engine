@@ -9,8 +9,6 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/Proofsuite/amp-matching-engine/ws"
 	"gopkg.in/mgo.v2/bson"
-
-	"github.com/ethereum/go-ethereum/common"
 )
 
 type OHLCVService struct {
@@ -22,40 +20,44 @@ func NewOHLCVService(TradeDao interfaces.TradeDao) *OHLCVService {
 }
 
 // Unsubscribe handles all the unsubscription messages for ticks corresponding to a pair
-func (s *OHLCVService) Unsubscribe(conn *ws.Conn, bt, qt common.Address, params *types.Params) {
-	id := utils.GetOHLCVChannelID(bt, qt, params.Units, params.Duration)
-	ws.GetTradeSocket().Unsubscribe(id, conn)
+func (s *OHLCVService) Unsubscribe(conn *ws.Conn) {
+	ws.GetOHLCVSocket().Unsubscribe(conn)
+}
+
+// Unsubscribe handles all the unsubscription messages for ticks corresponding to a pair
+func (s *OHLCVService) UnsubscribeChannel(conn *ws.Conn, p *types.SubscriptionPayload) {
+	id := utils.GetOHLCVChannelID(p.BaseToken, p.QuoteToken, p.Units, p.Duration)
+	ws.GetOHLCVSocket().UnsubscribeChannel(id, conn)
 }
 
 // Subscribe handles all the subscription messages for ticks corresponding to a pair
 // It calls the corresponding channel's subscription method and sends trade history back on the connection
-func (s *OHLCVService) Subscribe(conn *ws.Conn, bt, qt common.Address, params *types.Params) {
-
+func (s *OHLCVService) Subscribe(conn *ws.Conn, p *types.SubscriptionPayload) {
 	socket := ws.GetOHLCVSocket()
 
-	ohlcv, err := s.GetOHLCV([]types.PairAddresses{types.PairAddresses{BaseToken: bt, QuoteToken: qt}},
-		params.Duration,
-		params.Units,
-		params.From,
-		params.To,
+	ohlcv, err := s.GetOHLCV(
+		[]types.PairAddresses{types.PairAddresses{BaseToken: p.BaseToken, QuoteToken: p.QuoteToken}},
+		p.Duration,
+		p.Units,
+		p.From,
+		p.To,
 	)
 
 	if err != nil {
+		logger.Error(err)
 		socket.SendErrorMessage(conn, err.Error())
+		return
 	}
 
-	id := utils.GetOHLCVChannelID(bt, qt, params.Units, params.Duration)
+	id := utils.GetOHLCVChannelID(p.BaseToken, p.QuoteToken, p.Units, p.Duration)
 	err = socket.Subscribe(id, conn)
 	if err != nil {
-		message := map[string]string{
-			"Code":    "UNABLE_TO_SUBSCRIBE",
-			"Message": "UNABLE_TO_SUBSCRIBE: " + err.Error(),
-		}
-
-		socket.SendErrorMessage(conn, message)
+		logger.Error(err)
+		socket.SendErrorMessage(conn, err.Error())
+		return
 	}
 
-	ws.RegisterConnectionUnsubscribeHandler(conn, socket.UnsubscribeHandler(id))
+	ws.RegisterConnectionUnsubscribeHandler(conn, socket.UnsubscribeChannelHandler(id))
 	socket.SendInitMessage(conn, ohlcv)
 }
 
@@ -91,7 +93,6 @@ func (s *OHLCVService) GetOHLCV(pairs []types.PairAddresses, duration int64, uni
 	match = getMatchQuery(start, end, pairs...)
 	match = bson.M{"$match": match}
 	group = bson.M{"$group": group}
-
 	query := []bson.M{match, toDecimal, group, addFields, sort}
 
 	res, err := s.tradeDao.Aggregate(query)

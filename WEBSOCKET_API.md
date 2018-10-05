@@ -493,7 +493,7 @@ Payload:
 
 ORDER_CANCELED (engine -> client)
 
-To report an order has been successfully canceled, the matching engine sends
+To report an order has been successfully cancelled, the matching engine sends
 back an ORDER_CANCELED message.
 
 Payload:

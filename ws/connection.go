@@ -14,11 +14,11 @@ import (
 )
 
 const (
-	TradeChannel         = "trades"
-	RawOrderBookChannel  = "order_book_full"
-	LiteOrderBookChannel = "order_book_lite"
-	OrderChannel         = "orders"
-	OHLCVChannel         = "ohlcv"
+	TradeChannel        = "trades"
+	RawOrderBookChannel = "raw_orderbook"
+	OrderBookChannel    = "orderbook"
+	OrderChannel        = "orders"
+	OHLCVChannel        = "ohlcv"
 )
 
 var logger = utils.Logger
@@ -78,28 +78,27 @@ func ConnectionEndpoint(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 
-			msg := types.WebSocketMessage{}
+			msg := types.WebsocketMessage{}
 			if err := json.Unmarshal(p, &msg); err != nil {
 				logger.Error(err)
 				SendMessage(conn, msg.Channel, "ERROR", err.Error())
 				return
 			}
 
-			utils.PrintJSON(msg)
-
 			conn.SetCloseHandler(wsCloseHandler(conn))
 
 			if socketChannels[msg.Channel] == nil {
 				SendMessage(conn, msg.Channel, "ERROR", "INVALID_CHANNEL")
+				return
 			}
 
-			go socketChannels[msg.Channel](msg.Payload, conn)
+			go socketChannels[msg.Channel](msg.Event, conn)
 		}
 	}()
 }
 
-func NewConnection(conn *websocket.Conn) *Conn {
-	return &Conn{conn, sync.Mutex{}}
+func NewConnection(c *websocket.Conn) *Conn {
+	return &Conn{c, sync.Mutex{}}
 }
 
 // initConnection initializes connection in connectionUnsubscribtions map
@@ -149,43 +148,43 @@ func getChannelMap() map[string]func(interface{}, *Conn) {
 // a new channel.
 // At the time of connection closing the ConnectionUnsubscribeHandler handlers associated with
 // that connection are triggered.
-func RegisterConnectionUnsubscribeHandler(conn *Conn, fn func(*Conn)) {
-	connectionUnsubscribtions[conn] = append(connectionUnsubscribtions[conn], fn)
+func RegisterConnectionUnsubscribeHandler(c *Conn, fn func(*Conn)) {
+	connectionUnsubscribtions[c] = append(connectionUnsubscribtions[c], fn)
 }
 
 // wsCloseHandler handles the closing of connection.
 // it triggers all the UnsubscribeHandler associated with the closing
 // connection in a separate go routine
-func wsCloseHandler(conn *Conn) func(code int, text string) error {
+func wsCloseHandler(c *Conn) func(code int, text string) error {
 	return func(code int, text string) error {
-		for _, unsub := range connectionUnsubscribtions[conn] {
-			go unsub(conn)
+		for _, unsub := range connectionUnsubscribtions[c] {
+			go unsub(c)
 		}
 		return nil
 	}
 }
 
 // SendMessage constructs the message with proper structure to be sent over websocket
-func SendMessage(conn *Conn, channel string, msgType string, data interface{}, hash ...common.Hash) {
-	payload := types.WebSocketPayload{
-		Type: msgType,
-		Data: data,
-	}
-
-	if len(hash) > 0 {
-		payload.Hash = hash[0].Hex()
-	}
-
-	message := types.WebSocketMessage{
-		Channel: channel,
+func SendMessage(c *Conn, channel string, msgType string, payload interface{}, h ...common.Hash) {
+	e := types.WebsocketEvent{
+		Type:    msgType,
 		Payload: payload,
 	}
 
-	conn.mu.Lock()
-	defer conn.mu.Unlock()
-	err := conn.WriteJSON(message)
+	if len(h) > 0 {
+		e.Hash = h[0].Hex()
+	}
+
+	m := types.WebsocketMessage{
+		Channel: channel,
+		Event:   e,
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	err := c.WriteJSON(m)
 	if err != nil {
 		logger.Error(err)
-		conn.Close()
+		c.Close()
 	}
 }

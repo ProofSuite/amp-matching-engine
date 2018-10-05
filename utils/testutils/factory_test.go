@@ -206,12 +206,12 @@ func TestNewWebSocketMessage(t *testing.T) {
 		Hash:            order.Hash,
 	}
 
-	expectedMessage := &types.WebSocketMessage{
+	expectedMessage := &types.WebsocketMessage{
 		Channel: "orders",
-		Payload: types.WebSocketPayload{
-			Type: "NEW_ORDER",
-			Hash: order.Hash.Hex(),
-			Data: expectedOrder,
+		Event: types.WebsocketEvent{
+			Type:    "NEW_ORDER",
+			Hash:    order.Hash.Hex(),
+			Payload: expectedOrder,
 		},
 	}
 

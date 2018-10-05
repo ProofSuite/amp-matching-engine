@@ -54,7 +54,7 @@ func (o *Order) Validate() error {
 	}
 
 	if o.Nonce == nil {
-		return errors.New("Nonce is required")
+		return errors.New("nonce is required")
 	}
 
 	if o.SellAmount == nil {
@@ -82,7 +82,7 @@ func (o *Order) Validate() error {
 	}
 
 	if math.IsSmallerThan(o.Nonce, big.NewInt(0)) {
-		return errors.New("Nonce should be positive")
+		return errors.New("nonce should be positive")
 	}
 
 	return nil
@@ -175,6 +175,21 @@ func (o *Order) Process(p *Pair) error {
 	o.QuoteToken = p.QuoteTokenAddress
 	o.PairName = p.Name()
 	return nil
+}
+
+func (o *Order) Pair() (*Pair, error) {
+	if (o.BaseToken == common.Address{}) {
+		return nil, errors.New("Base token is not set")
+	}
+
+	if (o.QuoteToken == common.Address{}) {
+		return nil, errors.New("Quote token is set")
+	}
+
+	return &Pair{
+		BaseTokenAddress:  o.BaseToken,
+		QuoteTokenAddress: o.QuoteToken,
+	}, nil
 }
 
 func (o *Order) PairCode() (string, error) {
@@ -423,7 +438,6 @@ type OrderRecord struct {
 
 func (o *Order) GetBSON() (interface{}, error) {
 	or := OrderRecord{
-		ID:              o.ID,
 		PairName:        o.PairName,
 		ExchangeAddress: o.ExchangeAddress.Hex(),
 		UserAddress:     o.UserAddress.Hex(),
@@ -442,6 +456,12 @@ func (o *Order) GetBSON() (interface{}, error) {
 		TakeFee:         o.TakeFee.String(),
 		CreatedAt:       o.CreatedAt,
 		UpdatedAt:       o.UpdatedAt,
+	}
+
+	if o.ID.Hex() == "" {
+		or.ID = bson.NewObjectId()
+	} else {
+		or.ID = o.ID
 	}
 
 	if o.PricePoint != nil {
@@ -546,3 +566,130 @@ func (o *Order) SetBSON(raw bson.Raw) error {
 
 	return nil
 }
+
+type OrderBSONUpdate struct {
+	*Order
+}
+
+func (o OrderBSONUpdate) GetBSON() (interface{}, error) {
+	now := time.Now()
+
+	set := bson.M{
+		"pairName":        o.PairName,
+		"exchangeAddress": o.ExchangeAddress.Hex(),
+		"userAddress":     o.UserAddress.Hex(),
+		"buyToken":        o.BuyToken.Hex(),
+		"sellToken":       o.SellToken.Hex(),
+		"baseToken":       o.BaseToken.Hex(),
+		"quoteToken":      o.QuoteToken.Hex(),
+		"buyAmount":       o.BuyAmount.String(),
+		"sellAmount":      o.SellAmount.String(),
+		"status":          o.Status,
+		"side":            o.Side,
+		"nonce":           o.Nonce.String(),
+		"expires":         o.Expires.String(),
+		"makeFee":         o.MakeFee.String(),
+		"takeFee":         o.TakeFee.String(),
+		"updatedAt":       now,
+	}
+
+	if o.PricePoint != nil {
+		set["pricepoint"] = o.PricePoint.String()
+	}
+
+	if o.Amount != nil {
+		set["amount"] = o.Amount.String()
+	}
+
+	if o.FilledAmount != nil {
+		set["filledAmount"] = o.FilledAmount.String()
+	}
+
+	if o.Signature != nil {
+		set["signature"] = bson.M{
+			"V": o.Signature.V,
+			"R": o.Signature.R.Hex(),
+			"S": o.Signature.S.Hex(),
+		}
+	}
+
+	setOnInsert := bson.M{
+		"_id":       bson.NewObjectId(),
+		"hash":      o.Hash.Hex(),
+		"createdAt": now,
+	}
+
+	update := bson.M{
+		"$set":         set,
+		"$setOnInsert": setOnInsert,
+	}
+
+	return update, nil
+}
+
+// func (o *UpdatedOrder) GetBSON() (interface{}, error) {
+
+// 	return bson.M{
+// 		"pairName":        o.PairName,
+// 		"ExchangeAddress": o.ExchangeAddress.Hex(),
+// 		"UserAddress":     o.UserAddress.Hex(),
+// 		"BuyToken":        o.BuyToken.Hex(),
+// 		"SellToken":       o.SellToken.Hex(),
+// 		"BaseToken":       o.BaseToken.Hex(),
+// 		"QuoteToken":      o.QuoteToken.Hex(),
+// 		"BuyAmount":       o.BuyAmount.String(),
+// 		"SellAmount":      o.SellAmount.String(),
+// 		"Status":          o.Status,
+// 		"Side":            o.Side,
+// 		"Hash":            o.Hash.Hex(),
+// 		"Nonce":           o.Nonce.String(),
+// 		"Expires":         o.Expires.String(),
+// 		"MakeFee":         o.MakeFee.String(),
+// 		"TakeFee":         o.TakeFee.String(),
+// 		"CreatedAt":       o.CreatedAt,
+// 		"UpdatedAt":       o.UpdatedAt,
+// 	}
+// 	or := OrderRecord{
+// 		ID:              o.ID,
+// 		PairName:        o.PairName,
+// 		ExchangeAddress: o.ExchangeAddress.Hex(),
+// 		UserAddress:     o.UserAddress.Hex(),
+// 		BuyToken:        o.BuyToken.Hex(),
+// 		SellToken:       o.SellToken.Hex(),
+// 		BaseToken:       o.BaseToken.Hex(),
+// 		QuoteToken:      o.QuoteToken.Hex(),
+// 		BuyAmount:       o.BuyAmount.String(),
+// 		SellAmount:      o.SellAmount.String(),
+// 		Status:          o.Status,
+// 		Side:            o.Side,
+// 		Hash:            o.Hash.Hex(),
+// 		Nonce:           o.Nonce.String(),
+// 		Expires:         o.Expires.String(),
+// 		MakeFee:         o.MakeFee.String(),
+// 		TakeFee:         o.TakeFee.String(),
+// 		CreatedAt:       o.CreatedAt,
+// 		UpdatedAt:       o.UpdatedAt,
+// 	}
+
+// 	if o.PricePoint != nil {
+// 		or.PricePoint = o.PricePoint.String()
+// 	}
+
+// 	if o.Amount != nil {
+// 		or.Amount = o.Amount.String()
+// 	}
+
+// 	if o.FilledAmount != nil {
+// 		or.FilledAmount = o.FilledAmount.String()
+// 	}
+
+// 	if o.Signature != nil {
+// 		or.Signature = &SignatureRecord{
+// 			V: o.Signature.V,
+// 			R: o.Signature.R.Hex(),
+// 			S: o.Signature.S.Hex(),
+// 		}
+// 	}
+
+// 	return or, nil
+// }

@@ -28,7 +28,7 @@ type PairID struct {
 	QuoteToken common.Address `json:"quoteToken" bson:"quoteToken"`
 }
 
-type TickRequest struct {
+type OHLCVParams struct {
 	Pair     []PairAddresses `json:"pair"`
 	From     int64           `json:"from"`
 	To       int64           `json:"to"`

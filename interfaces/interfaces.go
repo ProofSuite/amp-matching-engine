@@ -18,8 +18,10 @@ import (
 type OrderDao interface {
 	Create(o *types.Order) error
 	Update(id bson.ObjectId, o *types.Order) error
+	Upsert(id bson.ObjectId, o *types.Order) error
 	UpdateAllByHash(h common.Hash, o *types.Order) error
 	UpdateByHash(h common.Hash, o *types.Order) error
+	UpsertByHash(h common.Hash, o *types.Order) error
 	GetByID(id bson.ObjectId) (*types.Order, error)
 	GetByHash(h common.Hash) (*types.Order, error)
 	GetByHashes(hashes []common.Hash) ([]*types.Order, error)
@@ -31,7 +33,8 @@ type OrderDao interface {
 	UpdateOrderStatus(h common.Hash, status string) error
 	GetRawOrderBook(*types.Pair) ([]*types.Order, error)
 	GetOrderBook(*types.Pair) ([]map[string]string, []map[string]string, error)
-	GetOrderBookPricePoint(p *types.Pair, pp *big.Int) (*big.Int, error)
+	GetOrderBookPricePoint(p *types.Pair, pp *big.Int, side string) (*big.Int, error)
+	FindAndModify(h common.Hash, o *types.Order) (*types.Order, error)
 	Drop() error
 }
 
@@ -70,18 +73,18 @@ type PairDao interface {
 type TradeDao interface {
 	Create(o ...*types.Trade) error
 	Update(t *types.Trade) error
-	UpdateByHash(hash common.Hash, t *types.Trade) error
+	UpdateByHash(h common.Hash, t *types.Trade) error
 	GetAll() ([]types.Trade, error)
 	Aggregate(q []bson.M) ([]*types.Tick, error)
 	GetByPairName(name string) ([]*types.Trade, error)
-	GetByHash(hash common.Hash) (*types.Trade, error)
-	GetByOrderHash(hash common.Hash) ([]*types.Trade, error)
-	GetTradesByPairAddress(baseToken, quoteToken common.Address, n int) ([]*types.Trade, error)
-	GetRecentTradesByPairAddress(baseToken, quoteToken common.Address) ([]*types.Trade, error)
-	GetNTradesByPairAddress(baseToken, quoteToken common.Address, n int) ([]*types.Trade, error)
-	GetAllTradesByPairAddress(baseToken, quoteToken common.Address) ([]*types.Trade, error)
-	GetByUserAddress(addr common.Address) ([]*types.Trade, error)
-	UpdateTradeStatus(hash common.Hash, status string) error
+	GetByHash(h common.Hash) (*types.Trade, error)
+	GetByOrderHash(h common.Hash) ([]*types.Trade, error)
+	GetSortedTradesByDate(bt, qt common.Address, n int) ([]*types.Trade, error)
+	GetNTradesByPairAddress(bt, qt common.Address, n int) ([]*types.Trade, error)
+	GetTradesByPairAddress(bt, qt common.Address, n int) ([]*types.Trade, error)
+	GetAllTradesByPairAddress(bt, qt common.Address) ([]*types.Trade, error)
+	GetByUserAddress(a common.Address) ([]*types.Trade, error)
+	UpdateTradeStatus(h common.Hash, status string) error
 	Drop()
 }
 
@@ -130,8 +133,9 @@ type WalletService interface {
 }
 
 type OHLCVService interface {
-	Unsubscribe(conn *ws.Conn, bt, qt common.Address, p *types.Params)
-	Subscribe(conn *ws.Conn, bt, qt common.Address, p *types.Params)
+	Unsubscribe(conn *ws.Conn)
+	UnsubscribeChannel(conn *ws.Conn, p *types.SubscriptionPayload)
+	Subscribe(conn *ws.Conn, p *types.SubscriptionPayload)
 	GetOHLCV(p []types.PairAddresses, duration int64, unit string, timeInterval ...int64) ([]*types.Tick, error)
 }
 
@@ -160,9 +164,11 @@ type OrderBookService interface {
 	GetOrderBook(bt, qt common.Address) (map[string]interface{}, error)
 	GetRawOrderBook(bt, qt common.Address) ([]*types.Order, error)
 	SubscribeOrderBook(conn *ws.Conn, bt, qt common.Address)
-	UnSubscribeOrderBook(conn *ws.Conn, bt, qt common.Address)
+	UnsubscribeOrderBook(conn *ws.Conn)
+	UnsubscribeOrderBookChannel(conn *ws.Conn, bt, qt common.Address)
 	SubscribeRawOrderBook(conn *ws.Conn, bt, qt common.Address)
-	UnSubscribeRawOrderBook(conn *ws.Conn, bt, qt common.Address)
+	UnsubscribeRawOrderBook(conn *ws.Conn)
+	UnsubscribeRawOrderBookChannel(conn *ws.Conn, bt, qt common.Address)
 }
 
 type PairService interface {
@@ -186,14 +192,14 @@ type TokenService interface {
 type TradeService interface {
 	GetByPairName(p string) ([]*types.Trade, error)
 	GetAllTradesByPairAddress(bt, qt common.Address) ([]*types.Trade, error)
-	GetRecentTradesByPairAddress(bt, qt common.Address) ([]*types.Trade, error)
-	GetNTradesByPairAddress(bt, qt common.Address, n int) ([]*types.Trade, error)
+	GetSortedTradesByDate(bt, qt common.Address, n int) ([]*types.Trade, error)
 	GetByUserAddress(a common.Address) ([]*types.Trade, error)
 	GetByHash(h common.Hash) (*types.Trade, error)
 	GetByOrderHash(h common.Hash) ([]*types.Trade, error)
 	UpdateTradeTxHash(tr *types.Trade, txh common.Hash) error
 	Subscribe(conn *ws.Conn, bt, qt common.Address)
-	Unsubscribe(conn *ws.Conn, bt, qt common.Address)
+	UnsubscribeChannel(conn *ws.Conn, bt, qt common.Address)
+	Unsubscribe(conn *ws.Conn)
 }
 
 type TxService interface {
