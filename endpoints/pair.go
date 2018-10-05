@@ -9,7 +9,6 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/Proofsuite/amp-matching-engine/services"
 	"github.com/Proofsuite/amp-matching-engine/types"
-	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/Proofsuite/amp-matching-engine/utils/httputils"
 	"github.com/gorilla/mux"
 )
@@ -135,8 +134,6 @@ func (e *pairEndpoint) HandleGetPairData(w http.ResponseWriter, r *http.Request)
 	v := r.URL.Query()
 	baseToken := v.Get("baseToken")
 	quoteToken := v.Get("quoteToken")
-
-	utils.PrintJSON("i am here")
 
 	if baseToken == "" && quoteToken == "" {
 		res, err := e.pairService.GetAllTokenPairData()

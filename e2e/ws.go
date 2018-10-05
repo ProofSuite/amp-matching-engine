@@ -90,7 +90,7 @@ func testInitSubscription(t *testing.T, client1 *testutils.Client, factory1 *tes
 
 func getOrderbookSubscribeRequest(baseToken, quoteToken common.Address) *types.WebSocketMessage {
 	return &types.WebSocketMessage{
-		Channel: ws.LiteOrderBookChannel,
+		Channel: ws.OrderBookChannel,
 		Payload: types.WebSocketPayload{
 			Type: "subscription",
 			Data: types.WebSocketSubscription{
@@ -178,7 +178,7 @@ func newObClient(t *testing.T, baseToken, quoteToken common.Address, testData in
 		}
 	}
 
-	expectedRes := getWebsocketMessage(ws.LiteOrderBookChannel, "INIT", "", testData)
+	expectedRes := getWebsocketMessage(ws.OrderBookChannel, "INIT", "", testData)
 
 	assert.Equal(t, expectedRes, obClient.ResponseLogs[0])
 	return obClient

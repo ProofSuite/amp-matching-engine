@@ -59,8 +59,8 @@ package services
 // 	socket.SendInitMessage(conn, ob)
 // }
 
-// // UnSubscribeOrderBook is responsible for handling incoming orderbook unsubscription messages
-// func (s *OrderBookService) UnSubscribeOrderBook(conn *ws.Conn, bt, qt common.Address) {
+// // UnsubscribeOrderBook is responsible for handling incoming orderbook unsubscription messages
+// func (s *OrderBookService) UnsubscribeOrderBook(conn *ws.Conn, bt, qt common.Address) {
 // 	socket := ws.GetOrderBookSocket()
 
 // 	id := utils.GetOrderBookChannelID(bt, qt)
@@ -119,8 +119,8 @@ package services
 // 	socket.SendInitMessage(conn, ob)
 // }
 
-// // UnSubscribeRawOrderBook is responsible for handling incoming orderbook unsubscription messages
-// func (s *OrderBookService) UnSubscribeRawOrderBook(conn *ws.Conn, bt, qt common.Address) {
+// // UnsubscribeRawOrderBook is responsible for handling incoming orderbook unsubscription messages
+// func (s *OrderBookService) UnsubscribeRawOrderBook(conn *ws.Conn, bt, qt common.Address) {
 // 	socket := ws.GetRawOrderBookSocket()
 
 // 	id := utils.GetOrderBookChannelID(bt, qt)

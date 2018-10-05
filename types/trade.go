@@ -7,7 +7,6 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/Proofsuite/amp-matching-engine/utils/math"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto/sha3"
@@ -56,13 +55,11 @@ type TradeRecord struct {
 	UpdatedAt      time.Time        `json:"updatedAt" bson:"updatedAt"`
 	PricePoint     string           `json:"pricepoint" bson:"pricepoint"`
 	Side           string           `json:"side" bson:"side"`
+	Status         string           `json:"status" bson:"status"`
 	Amount         string           `json:"amount" bson:"amount"`
 }
 
 func (t *Trade) Validate() error {
-
-	utils.PrintJSON(t)
-
 	if t.TradeNonce == nil {
 		return errors.New("tradeNonce is required")
 	}
@@ -102,6 +99,7 @@ func (t *Trade) MarshalJSON() ([]byte, error) {
 		"orderHash":      t.OrderHash,
 		"takerOrderHash": t.TakerOrderHash,
 		"side":           t.Side,
+		"status":         t.Status,
 		"hash":           t.Hash,
 		"txHash":         t.TxHash,
 		"pairName":       t.PairName,
@@ -124,7 +122,7 @@ func (t *Trade) MarshalJSON() ([]byte, error) {
 	}
 
 	if (t.TakerOrderHash != common.Hash{}) {
-
+		trade["takerOrderHash"] = t.TakerOrderHash.Hex()
 	}
 
 	// NOTE: Currently remove marshalling of IDs to simplify public API but will uncommnent
@@ -209,6 +207,10 @@ func (t *Trade) UnmarshalJSON(b []byte) error {
 		t.Side = trade["side"].(string)
 	}
 
+	if trade["status"] != nil {
+		t.Status = trade["status"].(string)
+	}
+
 	if trade["pricepoint"] != nil {
 		t.PricePoint = math.ToBigInt(fmt.Sprintf("%v", trade["pricepoint"]))
 	}
@@ -257,6 +259,7 @@ func (t *Trade) GetBSON() (interface{}, error) {
 		UpdatedAt:      t.UpdatedAt,
 		PricePoint:     t.PricePoint.String(),
 		Side:           t.Side,
+		Status:         t.Status,
 		Amount:         t.Amount.String(),
 	}
 
@@ -289,6 +292,7 @@ func (t *Trade) SetBSON(raw bson.Raw) error {
 		UpdatedAt      time.Time        `json:"updatedAt" bson:"updatedAt" redis:"updatedAt"`
 		PricePoint     string           `json:"pricepoint" bson:"pricepoint"`
 		Side           string           `json:"side" bson:"side"`
+		Status         string           `json:"status" bson:"status"`
 		Amount         string           `json:"amount" bson:"amount"`
 	})
 
@@ -307,6 +311,7 @@ func (t *Trade) SetBSON(raw bson.Raw) error {
 	t.TakerOrderHash = common.HexToHash(decoded.TakerOrderHash)
 	t.Hash = common.HexToHash(decoded.Hash)
 	t.TxHash = common.HexToHash(decoded.TxHash)
+	t.Status = decoded.Status
 
 	t.TradeNonce = math.ToBigInt(decoded.TradeNonce)
 	t.Amount = math.ToBigInt(decoded.Amount)
@@ -366,6 +371,21 @@ func (t *Trade) Sign(w *Wallet) error {
 	t.Hash = hash
 	t.Signature = signature
 	return nil
+}
+
+func (t *Trade) Pair() (*Pair, error) {
+	if (t.BaseToken == common.Address{}) {
+		return nil, errors.New("Base token is not set")
+	}
+
+	if (t.QuoteToken == common.Address{}) {
+		return nil, errors.New("Quote token is set")
+	}
+
+	return &Pair{
+		BaseTokenAddress:  t.BaseToken,
+		QuoteTokenAddress: t.QuoteToken,
+	}, nil
 }
 
 // NewTrade returns a new trade with the given params. The trade is signed by the factory wallet.

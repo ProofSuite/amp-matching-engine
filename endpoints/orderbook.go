@@ -24,7 +24,7 @@ func ServeOrderBookResource(
 	e := &OrderBookEndpoint{orderBookService}
 	r.HandleFunc("/orderbook/raw", e.handleGetRawOrderBook)
 	r.HandleFunc("/orderbook", e.handleGetOrderBook)
-	ws.RegisterChannel(ws.LiteOrderBookChannel, e.orderBookWebSocket)
+	ws.RegisterChannel(ws.OrderBookChannel, e.orderBookWebSocket)
 	ws.RegisterChannel(ws.RawOrderBookChannel, e.rawOrderBookWebSocket)
 }
 
@@ -104,11 +104,11 @@ func (e *OrderBookEndpoint) handleGetRawOrderBook(w http.ResponseWriter, r *http
 }
 
 // liteOrderBookWebSocket
-func (e *OrderBookEndpoint) rawOrderBookWebSocket(input interface{}, conn *ws.Conn) {
-	mab, _ := json.Marshal(input)
-	var payload *types.WebSocketPayload
+func (e *OrderBookEndpoint) rawOrderBookWebSocket(input interface{}, c *ws.Conn) {
+	b, _ := json.Marshal(input)
+	var ev *types.WebsocketEvent
 
-	err := json.Unmarshal(mab, &payload)
+	err := json.Unmarshal(b, &ev)
 	if err != nil {
 		logger.Error(err)
 		return
@@ -116,84 +116,74 @@ func (e *OrderBookEndpoint) rawOrderBookWebSocket(input interface{}, conn *ws.Co
 
 	socket := ws.GetRawOrderBookSocket()
 
-	if payload.Type != "subscription" {
-		logger.Error("Payload is not of subscription type")
-		socket.SendErrorMessage(conn, "Payload is not of subscription type")
-		return
-	}
+	b, _ = json.Marshal(ev.Payload)
+	var p *types.SubscriptionPayload
 
-	b, _ := json.Marshal(payload.Data)
-	var msg *types.WebSocketSubscription
-
-	err = json.Unmarshal(b, &msg)
+	err = json.Unmarshal(b, &p)
 	if err != nil {
 		logger.Error(err)
 	}
 
-	if (msg.Pair.BaseToken == common.Address{}) {
-		message := map[string]string{"Message": "Invalid Base Token"}
-		socket.SendErrorMessage(conn, message)
+	if ev.Type == "UNSUBSCRIBE" {
+		e.orderBookService.UnsubscribeRawOrderBook(c)
 		return
 	}
 
-	if (msg.Pair.QuoteToken == common.Address{}) {
-		message := map[string]string{"Message": "Invalid Quote Token"}
-		socket.SendErrorMessage(conn, message)
+	if (p.BaseToken == common.Address{}) {
+		msg := map[string]string{"Message": "Invalid Base Token"}
+		socket.SendErrorMessage(c, msg)
 		return
 	}
 
-	if msg.Event == types.SUBSCRIBE {
-		e.orderBookService.SubscribeRawOrderBook(conn, msg.Pair.BaseToken, msg.Pair.QuoteToken)
+	if (p.QuoteToken == common.Address{}) {
+		msg := map[string]string{"Message": "Invalid Quote Token"}
+		socket.SendErrorMessage(c, msg)
+		return
 	}
 
-	if msg.Event == types.UNSUBSCRIBE {
-		e.orderBookService.UnSubscribeRawOrderBook(conn, msg.Pair.BaseToken, msg.Pair.QuoteToken)
+	if ev.Type == "SUBSCRIBE" {
+		e.orderBookService.SubscribeRawOrderBook(c, p.BaseToken, p.QuoteToken)
 	}
 }
 
-// liteOrderBookWebSocket
-func (e *OrderBookEndpoint) orderBookWebSocket(input interface{}, conn *ws.Conn) {
-	bytes, _ := json.Marshal(input)
-	var payload *types.WebSocketPayload
-	err := json.Unmarshal(bytes, &payload)
+func (e *OrderBookEndpoint) orderBookWebSocket(input interface{}, c *ws.Conn) {
+	b, _ := json.Marshal(input)
+	var ev *types.WebsocketEvent
+	err := json.Unmarshal(b, &ev)
 	if err != nil {
 		logger.Error(err)
 	}
 
 	socket := ws.GetOrderBookSocket()
-	if payload.Type != "subscription" {
-		message := map[string]string{"Message": "Invalid subscription payload"}
-		socket.SendErrorMessage(conn, message)
-		return
-	}
 
-	bytes, _ = json.Marshal(payload.Data)
-	var msg *types.WebSocketSubscription
-
-	err = json.Unmarshal(bytes, &msg)
+	b, _ = json.Marshal(ev.Payload)
+	var p *types.SubscriptionPayload
+	err = json.Unmarshal(b, &p)
 	if err != nil {
 		logger.Error(err)
-		message := map[string]string{"Message": "Internal server error"}
-		socket.SendErrorMessage(conn, message)
+		msg := map[string]string{"Message": "Internal server error"}
+		socket.SendErrorMessage(c, msg)
 	}
 
-	if (msg.Pair.BaseToken == common.Address{}) {
-		message := map[string]string{"Message": "Invalid base token"}
-		socket.SendErrorMessage(conn, message)
+	if ev.Type == "UNSUBSCRIBE" {
+		e.orderBookService.UnsubscribeOrderBook(c)
 		return
 	}
 
-	if (msg.Pair.QuoteToken == common.Address{}) {
-		message := map[string]string{"Message": "Invalid quote token"}
-		socket.SendErrorMessage(conn, message)
+	if (p.BaseToken == common.Address{}) {
+		msg := map[string]string{"Message": "Invalid base token"}
+		socket.SendErrorMessage(c, msg)
 		return
 	}
 
-	if msg.Event == types.SUBSCRIBE {
-		e.orderBookService.SubscribeOrderBook(conn, msg.Pair.BaseToken, msg.Pair.QuoteToken)
+	if (p.QuoteToken == common.Address{}) {
+		msg := map[string]string{"Message": "Invalid quote token"}
+		socket.SendErrorMessage(c, msg)
+		return
 	}
 
-	if msg.Event == types.UNSUBSCRIBE {
-		e.orderBookService.UnSubscribeOrderBook(conn, msg.Pair.BaseToken, msg.Pair.QuoteToken)
+	if ev.Type == "SUBSCRIBE" {
+		e.orderBookService.SubscribeOrderBook(c, p.BaseToken, p.QuoteToken)
 	}
+
 }

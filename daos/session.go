@@ -109,6 +109,32 @@ func (d *Database) Update(dbName, collection string, query interface{}, update i
 	return nil
 }
 
+func (d *Database) Upsert(dbName, collection string, query interface{}, update interface{}) error {
+	sc := d.Session.Copy()
+	defer sc.Close()
+
+	_, err := sc.DB(dbName).C(collection).Upsert(query, update)
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	return nil
+}
+
+func (d *Database) FindAndModify(dbName, collection string, query interface{}, change mgo.Change, response interface{}) error {
+	sc := d.Session.Copy()
+	defer sc.Close()
+
+	_, err := sc.DB(dbName).C(collection).Find(query).Apply(change, response)
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	return nil
+}
+
 // Aggregate is a wrapper for mgo.Pipe function.
 // It is used to make mongo aggregate pipeline queries
 // It creates a copy of session initialized, sends query over this session

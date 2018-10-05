@@ -2,14 +2,12 @@ package endpoints
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/Proofsuite/amp-matching-engine/types"
-	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/Proofsuite/amp-matching-engine/utils/httputils"
 	"github.com/Proofsuite/amp-matching-engine/ws"
 	"github.com/ethereum/go-ethereum/common"
@@ -30,7 +28,7 @@ func ServeOHLCVResource(
 }
 
 func (e *OHLCVEndpoint) handleGetOHLCV(w http.ResponseWriter, r *http.Request) {
-	var model types.TickRequest
+	var p types.OHLCVParams
 
 	v := r.URL.Query()
 	bt := v.Get("baseToken")
@@ -41,38 +39,34 @@ func (e *OHLCVEndpoint) handleGetOHLCV(w http.ResponseWriter, r *http.Request) {
 	from := v.Get("from")
 	to := v.Get("to")
 
-	fmt.Printf(r.URL.String())
-
 	if unit == "" {
-		model.Units = "hour"
+		p.Units = "hour"
 	} else {
-		model.Units = unit
+		p.Units = unit
 	}
 
 	if duration == "" {
-		model.Duration = 24
+		p.Duration = 24
 	} else {
 		d, _ := strconv.Atoi(duration)
-		model.Duration = int64(d)
+		p.Duration = int64(d)
 	}
 
 	now := time.Now()
 
 	if to == "" {
-		model.To = now.Unix()
+		p.To = now.Unix()
 	} else {
 		t, _ := strconv.Atoi(to)
-		model.To = int64(t)
+		p.To = int64(t)
 	}
 
 	if from == "" {
-		model.From = now.AddDate(-1, 0, 0).Unix()
+		p.From = now.AddDate(-1, 0, 0).Unix()
 	} else {
 		f, _ := strconv.Atoi(from)
-		model.From = int64(f)
+		p.From = int64(f)
 	}
-
-	utils.PrintJSON(model)
 
 	if bt == "" {
 		httputils.WriteError(w, http.StatusBadRequest, "baseToken Parameter missing")
@@ -94,79 +88,84 @@ func (e *OHLCVEndpoint) handleGetOHLCV(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	model.Pair = []types.PairAddresses{{
+	p.Pair = []types.PairAddresses{{
 		BaseToken:  common.HexToAddress(bt),
 		QuoteToken: common.HexToAddress(qt),
 		Name:       pair,
 	}}
 
-	res, err := e.ohlcvService.GetOHLCV(model.Pair, model.Duration, model.Units, model.From, model.To)
+	res, err := e.ohlcvService.GetOHLCV(p.Pair, p.Duration, p.Units, p.From, p.To)
 	if err != nil {
 		logger.Error(err)
 		httputils.WriteError(w, http.StatusInternalServerError, "")
 		return
 	}
 
+	if res == nil {
+		httputils.WriteJSON(w, http.StatusOK, []*types.Tick{})
+		return
+	}
+
 	httputils.WriteJSON(w, http.StatusOK, res)
 }
 
-func (e *OHLCVEndpoint) ohlcvWebSocket(input interface{}, conn *ws.Conn) {
-	startTs := time.Date(1970, time.January, 1, 0, 0, 0, 0, time.UTC)
+func (e *OHLCVEndpoint) ohlcvWebSocket(input interface{}, c *ws.Conn) {
+	b, _ := json.Marshal(input)
+	var ev *types.WebsocketEvent
 
-	bytes, _ := json.Marshal(input)
-	var payload *types.WebSocketPayload
-
-	err := json.Unmarshal(bytes, &payload)
+	err := json.Unmarshal(b, &ev)
 	if err != nil {
 		logger.Error(err)
 	}
 
 	socket := ws.GetOHLCVSocket()
 
-	if payload.Type != "subscription" {
-		socket.SendErrorMessage(conn, "Invalid payload")
+	if ev.Type != "SUBSCRIBE" && ev.Type != "UNSUBSCRIBE" {
+		socket.SendErrorMessage(c, "Invalid payload")
 		return
 	}
 
-	bytes, _ = json.Marshal(payload.Data)
-	var msg *types.WebSocketSubscription
+	if ev.Type == "SUBSCRIBE" {
+		b, _ = json.Marshal(ev.Payload)
+		var p *types.SubscriptionPayload
 
-	err = json.Unmarshal(bytes, &msg)
-	if err != nil {
-		logger.Error(err)
+		err = json.Unmarshal(b, &p)
+		if err != nil {
+			logger.Error(err)
+		}
+
+		if (p.BaseToken == common.Address{}) {
+			socket.SendErrorMessage(c, "Invalid base token")
+			return
+		}
+
+		if (p.QuoteToken == common.Address{}) {
+			socket.SendErrorMessage(c, "Invalid Quote Token")
+			return
+		}
+
+		now := time.Now()
+
+		if p.From == 0 {
+			p.From = now.AddDate(-1, 0, 0).Unix()
+		}
+
+		if p.To == 0 {
+			p.To = now.Unix()
+		}
+
+		if p.Duration == 0 {
+			p.Duration = 24
+		}
+
+		if p.Units == "" {
+			p.Units = "hour"
+		}
+
+		e.ohlcvService.Subscribe(c, p)
 	}
 
-	if (msg.Pair.BaseToken == common.Address{}) {
-		socket.SendErrorMessage(conn, "Invalid base token")
-		return
-	}
-
-	if (msg.Pair.QuoteToken == common.Address{}) {
-		socket.SendErrorMessage(conn, "Invalid Quote Token")
-		return
-	}
-
-	if msg.Params.From == 0 {
-		msg.Params.From = startTs.Unix()
-	}
-
-	if msg.Params.To == 0 {
-		msg.Params.To = time.Now().Unix()
-	}
-
-	if msg.Params.Duration == 0 {
-		msg.Params.Duration = 24
-	}
-
-	if msg.Params.Units == "" {
-		msg.Params.Units = "hour"
-	}
-
-	if msg.Event == types.SUBSCRIBE {
-		e.ohlcvService.Subscribe(conn, msg.Pair.BaseToken, msg.Pair.QuoteToken, &msg.Params)
-	}
-
-	if msg.Event == types.UNSUBSCRIBE {
-		e.ohlcvService.Unsubscribe(conn, msg.Pair.BaseToken, msg.Pair.QuoteToken, &msg.Params)
+	if ev.Type == "UNSUBSCRIBE" {
+		e.ohlcvService.Unsubscribe(c)
 	}
 }

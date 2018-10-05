@@ -61,7 +61,7 @@ func (c *Connection) CloseOperatorChannel() error {
 	return nil
 }
 
-func (c *Connection) UnSubscribeOperator() error {
+func (c *Connection) UnsubscribeOperator() error {
 	ch := c.GetChannel("OPERATOR_SUB")
 	q := c.GetQueue(ch, "TX_MESSAGES")
 
@@ -86,7 +86,7 @@ func (c *Connection) PurgeOperatorQueue() error {
 	return nil
 }
 
-// PublishTradeCancelMessage publishes a message when a trade is canceled
+// PublishTradeCancelMessage publishes a message when a trade is cancelled
 func (c *Connection) PublishTradeCancelMessage(o *types.Order, tr *types.Trade) error {
 	ch := c.GetChannel("OPERATOR_PUB")
 	q := c.GetQueue(ch, "TX_MESSAGES")

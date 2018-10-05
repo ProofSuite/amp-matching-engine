@@ -88,10 +88,10 @@ func (dao *OrderDao) Update(id bson.ObjectId, o *types.Order) error {
 	return nil
 }
 
-func (dao *OrderDao) UpdateAllByHash(hash common.Hash, o *types.Order) error {
+func (dao *OrderDao) Upsert(id bson.ObjectId, o *types.Order) error {
 	o.UpdatedAt = time.Now()
 
-	err := db.Update(dao.dbName, dao.collectionName, bson.M{"hash": hash.Hex()}, o)
+	err := db.Upsert(dao.dbName, dao.collectionName, bson.M{"_id": id}, o)
 	if err != nil {
 		logger.Error(err)
 		return err
@@ -100,10 +100,51 @@ func (dao *OrderDao) UpdateAllByHash(hash common.Hash, o *types.Order) error {
 	return nil
 }
 
-//UpdateByHash updates fields that are considered updateable for an order.
-func (dao *OrderDao) UpdateByHash(hash common.Hash, o *types.Order) error {
+func (dao *OrderDao) UpsertByHash(h common.Hash, o *types.Order) error {
+	err := db.Upsert(dao.dbName, dao.collectionName, bson.M{"hash": h.Hex()}, types.OrderBSONUpdate{o})
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	return nil
+}
+
+func (dao *OrderDao) UpdateAllByHash(h common.Hash, o *types.Order) error {
 	o.UpdatedAt = time.Now()
-	query := bson.M{"hash": hash.Hex()}
+
+	err := db.Update(dao.dbName, dao.collectionName, bson.M{"hash": h.Hex()}, o)
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	return nil
+}
+
+func (dao *OrderDao) FindAndModify(h common.Hash, o *types.Order) (*types.Order, error) {
+	query := bson.M{"hash": h.Hex()}
+	updated := &types.Order{}
+	change := mgo.Change{
+		Update:    types.OrderBSONUpdate{o},
+		Upsert:    true,
+		Remove:    false,
+		ReturnNew: true,
+	}
+
+	err := db.FindAndModify(dao.dbName, dao.collectionName, query, change, &updated)
+	if err != nil {
+		logger.Error(err)
+		return nil, err
+	}
+
+	return updated, nil
+}
+
+//UpdateByHash updates fields that are considered updateable for an order.
+func (dao *OrderDao) UpdateByHash(h common.Hash, o *types.Order) error {
+	o.UpdatedAt = time.Now()
+	query := bson.M{"hash": h.Hex()}
 	update := bson.M{"$set": bson.M{
 		"buyAmount":    o.BuyAmount.String(),
 		"sellAmount":   o.SellAmount.String(),
@@ -125,8 +166,8 @@ func (dao *OrderDao) UpdateByHash(hash common.Hash, o *types.Order) error {
 	return nil
 }
 
-func (dao *OrderDao) UpdateOrderStatus(hash common.Hash, status string) error {
-	query := bson.M{"hash": hash.Hex()}
+func (dao *OrderDao) UpdateOrderStatus(h common.Hash, status string) error {
+	query := bson.M{"hash": h.Hex()}
 	update := bson.M{"$set": bson.M{
 		"status": status,
 	}}
@@ -160,7 +201,7 @@ func (dao *OrderDao) UpdateOrderFilledAmount(hash common.Hash, value *big.Int) e
 		filledAmount = o.Amount
 		status = "FILLED"
 	} else {
-		status = "PARTIALLY_FILLED"
+		status = "PARTIAL_FILLED"
 	}
 
 	update := bson.M{"$set": bson.M{
@@ -235,6 +276,10 @@ func (dao *OrderDao) GetByUserAddress(addr common.Address) ([]*types.Order, erro
 		return nil, err
 	}
 
+	if res == nil {
+		return []*types.Order{}, nil
+	}
+
 	return res, nil
 }
 
@@ -246,7 +291,7 @@ func (dao *OrderDao) GetCurrentByUserAddress(addr common.Address) ([]*types.Orde
 		"userAddress": addr.Hex(),
 		"status": bson.M{"$in": []string{
 			"OPEN",
-			"PARTIALLY_FILLED",
+			"PARTIAL_FILLED",
 		},
 		},
 	}
@@ -269,7 +314,7 @@ func (dao *OrderDao) GetHistoryByUserAddress(addr common.Address) ([]*types.Orde
 		"userAddress": addr.Hex(),
 		"status": bson.M{"$nin": []string{
 			"OPEN",
-			"PARTIALLY_FILLED",
+			"PARTIAL_FILLED",
 		},
 		},
 	}
@@ -289,7 +334,7 @@ func (dao *OrderDao) GetUserLockedBalance(account common.Address, token common.A
 		"userAddress": account.Hex(),
 		"status": bson.M{"$in": []string{
 			"OPEN",
-			"PARTIALLY_FILLED",
+			"PARTIAL_FILLED",
 		},
 		},
 		"sellToken": token.Hex(),
@@ -314,7 +359,7 @@ func (dao *OrderDao) GetUserLockedBalance(account common.Address, token common.A
 func (dao *OrderDao) GetRawOrderBook(p *types.Pair) ([]*types.Order, error) {
 	var orders []*types.Order
 	q := bson.M{
-		"status":     bson.M{"$in": []string{"OPEN", "PARTIALLY_FILLED"}},
+		"status":     bson.M{"$in": []string{"OPEN", "PARTIAL_FILLED"}},
 		"baseToken":  p.BaseTokenAddress.Hex(),
 		"quoteToken": p.QuoteTokenAddress.Hex(),
 	}
@@ -333,7 +378,7 @@ func (dao *OrderDao) GetOrderBook(p *types.Pair) ([]map[string]string, []map[str
 	bidsQuery := []bson.M{
 		bson.M{
 			"$match": bson.M{
-				"status":     bson.M{"$in": []string{"OPEN", "PARTIALLY_FILLED"}},
+				"status":     bson.M{"$in": []string{"OPEN", "PARTIAL_FILLED"}},
 				"baseToken":  p.BaseTokenAddress.Hex(),
 				"quoteToken": p.QuoteTokenAddress.Hex(),
 				"side":       "BUY",
@@ -366,7 +411,7 @@ func (dao *OrderDao) GetOrderBook(p *types.Pair) ([]map[string]string, []map[str
 	asksQuery := []bson.M{
 		bson.M{
 			"$match": bson.M{
-				"status":     bson.M{"$in": []string{"OPEN", "PARTIALLY_FILLED"}},
+				"status":     bson.M{"$in": []string{"OPEN", "PARTIAL_FILLED"}},
 				"baseToken":  p.BaseTokenAddress.Hex(),
 				"quoteToken": p.QuoteTokenAddress.Hex(),
 				"side":       "SELL",
@@ -413,25 +458,32 @@ func (dao *OrderDao) GetOrderBook(p *types.Pair) ([]map[string]string, []map[str
 	return bids, asks, nil
 }
 
-func (dao *OrderDao) GetOrderBookPricePoint(p *types.Pair, pp *big.Int) (*big.Int, error) {
+func (dao *OrderDao) GetOrderBookPricePoint(p *types.Pair, pp *big.Int, side string) (*big.Int, error) {
 	q := []bson.M{
 		bson.M{
 			"$match": bson.M{
-				"status":     bson.M{"$in": []string{"OPEN", "PARTIALLY_FILLED"}},
+				"status":     bson.M{"$in": []string{"OPEN", "PARTIAL_FILLED"}},
 				"baseToken":  p.BaseTokenAddress.Hex(),
 				"quoteToken": p.QuoteTokenAddress.Hex(),
 				"pricepoint": pp.String(),
+				"side":       side,
+			},
+		},
+		bson.M{
+			"$group": bson.M{
+				"_id": "$pricepoint",
+				"amount": bson.M{
+					"$sum": bson.M{
+						"$subtract": []bson.M{bson.M{"$toDecimal": "$amount"}, bson.M{"$toDecimal": "$filledAmount"}},
+					},
+				},
 			},
 		},
 		bson.M{
 			"$project": bson.M{
 				"_id":        0,
-				"pricepoint": "$pricepoint",
-				"amount": bson.M{
-					"$toString": bson.M{
-						"$subtract": []bson.M{bson.M{"$toDecimal": "$amount"}, bson.M{"$toDecimal": "$filledAmount"}},
-					},
-				},
+				"pricepoint": "$_id",
+				"amount":     bson.M{"$toString": "$amount"},
 			},
 		},
 	}

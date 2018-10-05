@@ -105,6 +105,30 @@ func (dao *TradeDao) Update(trade *types.Trade) error {
 	return nil
 }
 
+func (dao *TradeDao) Upsert(id bson.ObjectId, t *types.Trade) error {
+	t.UpdatedAt = time.Now()
+
+	err := db.Upsert(dao.dbName, dao.collectionName, bson.M{"_id": id}, t)
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	return nil
+}
+
+func (dao *TradeDao) UpsertByHash(h common.Hash, t *types.Trade) error {
+	t.UpdatedAt = time.Now()
+
+	err := db.Upsert(dao.dbName, dao.collectionName, bson.M{"hash": h}, t)
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	return nil
+}
+
 // UpdateByHash updates the fields that can be normally updated in a structure. For a
 // complete update, use the Update or UpdateAllByHash function
 func (dao *TradeDao) UpdateByHash(h common.Hash, t *types.Trade) error {
@@ -202,12 +226,12 @@ func (dao *TradeDao) GetByOrderHash(h common.Hash) ([]*types.Trade, error) {
 	return res, nil
 }
 
-func (dao *TradeDao) GetRecentTradesByPairAddress(baseToken, quoteToken common.Address) ([]*types.Trade, error) {
+func (dao *TradeDao) GetSortedTradesByDate(bt, qt common.Address, n int) ([]*types.Trade, error) {
 	res := []*types.Trade{}
 
-	q := bson.M{"baseToken": baseToken.Hex(), "quoteToken": quoteToken.Hex()}
-	sort := []string{"createdAt"}
-	err := db.GetAndSort(dao.dbName, dao.collectionName, q, sort, 0, 100, &res)
+	q := bson.M{"baseToken": bt.Hex(), "quoteToken": qt.Hex()}
+	sort := []string{"-createdAt"}
+	err := db.GetAndSort(dao.dbName, dao.collectionName, q, sort, 0, n, &res)
 	if err != nil {
 		logger.Error(err)
 		return nil, err
@@ -216,8 +240,8 @@ func (dao *TradeDao) GetRecentTradesByPairAddress(baseToken, quoteToken common.A
 	return res, nil
 }
 
-func (dao *TradeDao) GetNTradesByPairAddress(baseToken, quoteToken common.Address, n int) ([]*types.Trade, error) {
-	res, err := dao.GetTradesByPairAddress(baseToken, quoteToken, n)
+func (dao *TradeDao) GetNTradesByPairAddress(bt, qt common.Address, n int) ([]*types.Trade, error) {
+	res, err := dao.GetTradesByPairAddress(bt, qt, n)
 	if err != nil {
 		logger.Error(err)
 		return nil, err
@@ -226,8 +250,8 @@ func (dao *TradeDao) GetNTradesByPairAddress(baseToken, quoteToken common.Addres
 	return res, nil
 }
 
-func (dao *TradeDao) GetAllTradesByPairAddress(baseToken, quoteToken common.Address) ([]*types.Trade, error) {
-	res, err := dao.GetTradesByPairAddress(baseToken, quoteToken, 0)
+func (dao *TradeDao) GetAllTradesByPairAddress(bt, qt common.Address) ([]*types.Trade, error) {
+	res, err := dao.GetTradesByPairAddress(bt, qt, 0)
 	if err != nil {
 		logger.Error(err)
 		return nil, err
@@ -237,10 +261,10 @@ func (dao *TradeDao) GetAllTradesByPairAddress(baseToken, quoteToken common.Addr
 }
 
 // GetByPairAddress fetches all the trades corresponding to a particular pair token address.
-func (dao *TradeDao) GetTradesByPairAddress(baseToken, quoteToken common.Address, n int) ([]*types.Trade, error) {
+func (dao *TradeDao) GetTradesByPairAddress(bt, qt common.Address, n int) ([]*types.Trade, error) {
 	var res []*types.Trade
 
-	q := bson.M{"baseToken": baseToken.Hex(), "quoteToken": quoteToken.Hex()}
+	q := bson.M{"baseToken": bt.Hex(), "quoteToken": qt.Hex()}
 	err := db.Get(dao.dbName, dao.collectionName, q, 0, n, &res)
 	if err != nil {
 		logger.Error(err)
@@ -251,10 +275,10 @@ func (dao *TradeDao) GetTradesByPairAddress(baseToken, quoteToken common.Address
 }
 
 // GetByUserAddress fetches all the trades corresponding to a particular user address.
-func (dao *TradeDao) GetByUserAddress(addr common.Address) ([]*types.Trade, error) {
+func (dao *TradeDao) GetByUserAddress(a common.Address) ([]*types.Trade, error) {
 	var res []*types.Trade
 	q := bson.M{"$or": []bson.M{
-		{"maker": addr.Hex()}, {"taker": addr.Hex()},
+		{"maker": a.Hex()}, {"taker": a.Hex()},
 	}}
 
 	err := db.Get(dao.dbName, dao.collectionName, q, 0, 0, &res)
@@ -266,8 +290,8 @@ func (dao *TradeDao) GetByUserAddress(addr common.Address) ([]*types.Trade, erro
 	return res, nil
 }
 
-func (dao *TradeDao) UpdateTradeStatus(hash common.Hash, status string) error {
-	query := bson.M{"hash": hash.Hex()}
+func (dao *TradeDao) UpdateTradeStatus(h common.Hash, status string) error {
+	query := bson.M{"hash": h.Hex()}
 	update := bson.M{"$set": bson.M{
 		"status": status,
 	}}

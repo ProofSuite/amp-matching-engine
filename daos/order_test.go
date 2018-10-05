@@ -7,7 +7,6 @@ import (
 
 	"github.com/Proofsuite/amp-matching-engine/app"
 	"github.com/Proofsuite/amp-matching-engine/types"
-	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/Proofsuite/amp-matching-engine/utils/math"
 	"github.com/Proofsuite/amp-matching-engine/utils/testutils"
 	"github.com/Proofsuite/amp-matching-engine/utils/units"
@@ -331,7 +330,7 @@ func TestGetHistoryByUserAddress(t *testing.T) {
 		BuyAmount:       units.Ethers(10),
 		SellAmount:      units.Ethers(10),
 		FilledAmount:    units.Ethers(5),
-		Status:          "PARTIALLY_FILLED",
+		Status:          "PARTIAL_FILLED",
 		Side:            "BUY",
 		PairName:        "ZRX/WETH",
 		Expires:         big.NewInt(10000),
@@ -453,7 +452,7 @@ func TestGetUserOrderHistory(t *testing.T) {
 		SellAmount:      units.Ethers(10),
 		FilledAmount:    units.Ethers(10),
 		PricePoint:      big.NewInt(1e18),
-		Status:          "PARTIALLY_FILLED",
+		Status:          "PARTIAL_FILLED",
 		Side:            "BUY",
 		PairName:        "ZRX/WETH",
 		Expires:         big.NewInt(10000),
@@ -528,7 +527,7 @@ func TestUpdateOrderFilledAmount1(t *testing.T) {
 		t.Error("Could not retrieve order", err)
 	}
 
-	assert.Equal(t, "PARTIALLY_FILLED", stored.Status)
+	assert.Equal(t, "PARTIAL_FILLED", stored.Status)
 	assert.Equal(t, big.NewInt(5), stored.FilledAmount)
 }
 
@@ -655,8 +654,6 @@ func ExampleGetOrderBook() {
 		panic(err)
 	}
 
-	utils.PrintJSON(bids)
-	utils.PrintJSON(asks)
 }
 
 func ExampleGetOrderBookPricePoint() {
@@ -678,8 +675,6 @@ func ExampleGetOrderBookPricePoint() {
 	if err != nil {
 		panic(err)
 	}
-
-	utils.PrintJSON(orderPricePoint)
 }
 
 func ExampleGetRawOrderBook() {
@@ -701,6 +696,4 @@ func ExampleGetRawOrderBook() {
 	if err != nil {
 		panic(err)
 	}
-
-	utils.PrintJSON(orders)
 }
