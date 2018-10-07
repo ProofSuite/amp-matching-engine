@@ -18,6 +18,7 @@ var TerminalLogger = NewColoredLogger()
 
 func NewLogger(module string, logFile string) *logging.Logger {
 	_, fileName, _, _ := runtime.Caller(1)
+	logDir := path.Join(path.Dir(fileName), "../logs/")
 	mainLogFile := path.Join(path.Dir(fileName), "../logs/main.log")
 	logFile = path.Join(path.Dir(fileName), "../", logFile)
 
@@ -29,6 +30,10 @@ func NewLogger(module string, logFile string) *logging.Logger {
 	var format = logging.MustStringFormatter(
 		`%{level:.4s} %{time:15:04:05} at %{shortpkg}/%{shortfile} in %{shortfunc}():%{message}`,
 	)
+
+	if _, err := os.Stat(logDir); os.IsNotExist(err) {
+		os.Mkdir(logDir, os.ModePerm)
+	}
 
 	mainLog, err := os.OpenFile(mainLogFile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
