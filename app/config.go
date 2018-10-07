@@ -44,8 +44,6 @@ type appConfig struct {
 func (config appConfig) Validate() error {
 	return validation.ValidateStruct(&config,
 		validation.Field(&config.DSN, validation.Required),
-		validation.Field(&config.JWTSigningKey, validation.Required),
-		validation.Field(&config.JWTVerificationKey, validation.Required),
 	)
 }
 
@@ -54,25 +52,60 @@ func (config appConfig) Validate() error {
 // Environment variables with the prefix "RESTFUL_" in their names are also read automatically.
 func LoadConfig(configPath string, env string) error {
 	v := viper.New()
+
 	if env != "" {
 		v.SetConfigName("config." + env)
 	}
 
 	v.SetConfigType("yaml")
-	v.SetEnvPrefix("restful")
-	v.AutomaticEnv()
-	v.SetDefault("error_file", "config/errors.yaml")
-	v.SetDefault("server_port", 8081)
-	v.SetDefault("jwt_signing_method", "HS256")
 	v.AddConfigPath(configPath)
 
-	if err := v.ReadInConfig(); err != nil {
+	err := v.ReadInConfig()
+	if err != nil {
 		return fmt.Errorf("Failed to read the configuration file: %s", err)
 	}
 
-	if err := v.Unmarshal(&Config); err != nil {
+	err = v.Unmarshal(&Config)
+	if err != nil {
 		return err
 	}
+
+	v.SetEnvPrefix("amp")
+	v.AutomaticEnv()
+
+	Config.ServerPort = 8081
+	Config.ErrorFile = "config/errors.yaml"
+	Config.Ethereum = make(map[string]string)
+	Config.Ethereum["http_url"] = v.Get("ETHEREUM_NODE_URL").(string)
+	Config.Ethereum["ws_url"] = v.Get("ETHEREUM_NODE_URL").(string)
+	Config.DSN = v.Get("MONGO_URL").(string)
+	Config.Redis = v.Get("REDIS_URL").(string)
+	Config.Rabbitmq = v.Get("RABBITMQ_URL").(string)
+	Config.DBName = v.Get("MONGO_DBNAME").(string)
+	Config.Ethereum["exchange_address"] = v.Get("EXCHANGE_CONTRACT_ADDRESS").(string)
+	Config.Ethereum["weth_address"] = v.Get("WETH_CONTRACT_ADDRESS").(string)
+	Config.Ethereum["fee_account"] = v.Get("FEE_ACCOUNT_ADDRESS").(string)
+
+	// if env != "" {
+	// 	v.SetConfigName("config." + env)
+	// }
+
+	// v.SetConfigType("yaml")
+	// v.SetEnvPrefix("amp")
+	// v.AutomaticEnv()
+
+	// v.SetDefault("error_file", "config/errors.yaml")
+	// v.SetDefault("server_port", 8081)
+	// v.SetDefault("jwt_signing_method", "HS256")
+	// v.AddConfigPath(configPath)
+
+	// if err := v.ReadInConfig(); err != nil {
+	// 	return fmt.Errorf("Failed to read the configuration file: %s", err)
+	// }
+
+	// if err := v.Unmarshal(&Config); err != nil {
+	// 	return err
+	// }
 
 	return Config.Validate()
 }
