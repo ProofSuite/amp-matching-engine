@@ -136,8 +136,6 @@
   packages = [
     ".",
     "access",
-    "content",
-    "cors",
     "fault",
   ]
   pruneopts = "T"
@@ -167,14 +165,6 @@
   pruneopts = "T"
   revision = "6592d9cc0a499ad2d5f574fde80a2b5c5cc3b4f5"
   version = "v1.0.1"
-
-[[projects]]
-  branch = "master"
-  digest = "1:c562a26b09743c059ebe4e4ce6954411627ace9f26e0cd58ff6d432e09486390"
-  name = "github.com/golang/gddo"
-  packages = ["httputil/header"]
-  pruneopts = "T"
-  revision = "8b031907f29f163ebae1e3978af398769a5f3df6"
 
 [[projects]]
   branch = "master"
@@ -210,6 +200,14 @@
   pruneopts = "T"
   revision = "08b5f424b9271eedf6f9f0ce86cb9396ed337a42"
   version = "v1.1.1"
+
+[[projects]]
+  digest = "1:664d37ea261f0fc73dd17f4a1f5f46d01fbb0b0d75f6375af064824424109b7d"
+  name = "github.com/gorilla/handlers"
+  packages = ["."]
+  pruneopts = "T"
+  revision = "7e0847f9db758cdebd26c149d0ae9d5d0b9c98ce"
+  version = "v1.4.0"
 
 [[projects]]
   digest = "1:e73f5b0152105f18bc131fba127d9949305c8693f8a762588a82a48f61756f5f"
@@ -256,14 +254,6 @@
   pruneopts = "T"
   revision = "8cb6e5b959231cc1119e43259c4a608f9c51a241"
   version = "v1.0.0"
-
-[[projects]]
-  digest = "1:870d441fe217b8e689d7949fef6e43efbc787e50f200cb1e70dbca9204a1d6be"
-  name = "github.com/inconshreveable/mousetrap"
-  packages = ["."]
-  pruneopts = "T"
-  revision = "76626ae9c91c4f2a10f34cad8ce83ea42c93bb75"
-  version = "v1.0"
 
 [[projects]]
   digest = "1:53e8c5c79716437e601696140e8b1801aae4204f4ec54a504333702a49572c4f"
@@ -363,14 +353,6 @@
   pruneopts = "T"
   revision = "8965335b8c7107321228e3e3702cab9832751bac"
   version = "v1.2.0"
-
-[[projects]]
-  digest = "1:8be8b3743fc9795ec21bbd3e0fc28ff6234018e1a269b0a7064184be95ac13e0"
-  name = "github.com/spf13/cobra"
-  packages = ["."]
-  pruneopts = "T"
-  revision = "ef82de70bb3f60c65fb8eebacbb2d122ef517385"
-  version = "v0.0.3"
 
 [[projects]]
   digest = "1:68ea4e23713989dc20b1bded5d9da2c5f9be14ff9885beef481848edd18c26cb"
@@ -588,18 +570,16 @@
     "github.com/go-ozzo/ozzo-dbx",
     "github.com/go-ozzo/ozzo-routing",
     "github.com/go-ozzo/ozzo-routing/access",
-    "github.com/go-ozzo/ozzo-routing/content",
-    "github.com/go-ozzo/ozzo-routing/cors",
     "github.com/go-ozzo/ozzo-routing/fault",
     "github.com/go-ozzo/ozzo-validation",
     "github.com/go-test/deep",
     "github.com/gomodule/redigo/redis",
+    "github.com/gorilla/handlers",
     "github.com/gorilla/mux",
     "github.com/gorilla/websocket",
     "github.com/op/go-logging",
     "github.com/posener/wstest",
     "github.com/robfig/cron",
-    "github.com/spf13/cobra",
     "github.com/spf13/viper",
     "github.com/streadway/amqp",
     "github.com/stretchr/testify/assert",
