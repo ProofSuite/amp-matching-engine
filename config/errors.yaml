@@ -1,0 +1,13 @@
+INTERNAL_SERVER_ERROR:
+  message: "We have encountered an internal server error."
+  developer_message: "Internal server error: {error}"
+
+NOT_FOUND:
+  message: "{resource} was not found."
+
+UNAUTHORIZED:
+  message: "Authentication failed."
+  developer_message: "Authentication failed: {error}"
+
+INVALID_DATA:
+  message: "There is some problem with the data you submitted. See \"details\" for more information."
