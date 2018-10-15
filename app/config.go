@@ -76,8 +76,8 @@ func LoadConfig(configPath string, env string) error {
 	Config.ServerPort = 8081
 	Config.ErrorFile = "config/errors.yaml"
 	Config.Ethereum = make(map[string]string)
-	Config.Ethereum["http_url"] = v.Get("ETHEREUM_NODE_URL").(string)
-	Config.Ethereum["ws_url"] = v.Get("ETHEREUM_NODE_URL").(string)
+	Config.Ethereum["http_url"] = v.Get("ETHEREUM_NODE_HTTP_URL").(string)
+	Config.Ethereum["ws_url"] = v.Get("ETHEREUM_NODE_WS_URL").(string)
 	Config.DSN = v.Get("MONGO_URL").(string)
 	Config.Redis = v.Get("REDIS_URL").(string)
 	Config.Rabbitmq = v.Get("RABBITMQ_URL").(string)

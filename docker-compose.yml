@@ -1,32 +1,23 @@
-version: '2'
+version: '3'
 services:
   matching-engine:
-    container_name: "matching-engine"
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: amp-matching-engine
     ports:
-      - '8081:8081'
-    links:
-      - redis
-      - rabbitmq
-      - mongodb
+      - "8081:8081"
+    environment:
+      - AMP_ETHEREUM_NODE_URL=ws://ethereum:8546
+      - AMP_MONGO_URL=mongodb
+      - AMP_MONGO_DBNAME
+      - AMP_REDIS_URL=redis://redis:6379
+      - AMP_RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672
+      - AMP_EXCHANGE_CONTRACT_ADDRESS
+      - AMP_WETH_CONTRACT_ADDRESS
+      - AMP_FEE_ACCOUNT_ADDRESS
     depends_on:
-      - redis
-      - rabbitmq
       - mongodb
-
-  rabbitmq:
-    container_name: "rabbitmq"
-    image: rabbitmq
-    ports:
-      - '5672:5672'
-
-  redis:
-    container_name: "redis"
-    image: redis
-    ports:
-      - '6379:6379'
+      - rabbitmq
+      - redis
+      - ethereum
 
   mongodb:
     image: mongo:latest
@@ -34,29 +25,121 @@ services:
     ports:
       - '27017:27017'
 
+  rabbitmq:
+    image: rabbitmq
+    container_name: "rabbitmq"
+    ports:
+      - '5672:5672'
 
-  mongodb-seed:
-    image: mongo:latest
-    container_name: "mongodb-seed"
-    links:
-      - mongodb
+  redis:
+    image: redis
+    container_name: "redis"
+    ports:
+      - '6379:6379'
+
+  ethereum:
+    image: ethereum/client-go
+    container_name: "ethereum"
     volumes:
-      - ./utils/seed-data:/utils/seed-data
-    depends_on:
-      - mongodb
-    command:
-      - /bin/sh
-      - -c
-      - |
-        mongo proofdex --eval "db.dropDatabase()"
-        mongoimport --host mongodb --db proofdex --type json --file utils/seed-data/tokens.json
-        mongoimport --host mongodb --db proofdex --type json --file utils/seed-data/pairs.json
-        mongoimport --host mongodb --db proofdex --type json --file utils/seed-data/accounts.json
+      - ./${AMP_ETHEREUM_DATADIR}:/root/.ethereum/client-go
+    command: [
+      "--port", "3001",
+      "--networkid", $AMP_ETHEREUM_NETWORK_ID,
+      "--nodiscover",
+      "--datadir", $AMP_ETHEREUM_DATADIR,
+      "--maxpeers", "0",
+      "--rpc", "--rpcport", "8545", "--rpcaddr", "127.0.0.1",
+      "--ws", "--wsport", "8546", "--wsaddr", "0.0.0.0",
+      "--wsorigins", "*",
+      "--wsapi", "eth,net,web3,personal",
+      "--minerthreads", "1",
+      "--mine",
+      "--etherbase", $AMP_ETHERBASE,
+      "--rpccorsdomain", "*"
+    ]
+      # geth \
+      # --port 3001 \
+      # --networkid 8888 \
+      # --nodiscover \
+      # --datadir="chain" \
+      # --maxpeers=0  \
+      # --rpc \
+      # --rpcport 8545 \
+      # --rpcaddr 127.0.0.1 \
+      # --rpcapi "eth,net,web3,personal" \
+      # -ws \
+      # --wsport 8546 \
+      # --wsaddr 0.0.0.0 \
+      # --wsorigins "*" \
+      # --wsapi "eth,net,web3,personal" \
+      # --minerthreads "1" \
+      # -mine \
+      # --etherbase "0xe8e84ee367bc63ddb38d3d01bccef106c194dc47" \
+      # --rpccorsdomain="*"
 
-# USEFUL COMMANDS TO BE REINCLUDED LATER
 
-# environment:
-    #   - MONGO_DATA_DIR=/data/db
-    #   - MONGO_LOG_DIR=/dev/null
 
-# command: mongod --smallfiles /--logpath=/dev/null
+
+
+# version: '2'
+# services:
+#   matching-engine:
+#     container_name: "matching-engine"
+#     build:
+#       context: .
+#       dockerfile: Dockerfile
+#     ports:
+#       - '8081:8081'
+#     links:
+#       - redis
+#       - rabbitmq
+#       - mongodb
+#     depends_on:
+#       - redis
+#       - rabbitmq
+#       - mongodb
+
+#   rabbitmq:
+#     container_name: "rabbitmq"
+#     image: rabbitmq
+#     ports:
+#       - '5672:5672'
+
+#   redis:
+#     container_name: "redis"
+#     image: redis
+#     ports:
+#       - '6379:6379'
+
+#   mongodb:
+#     image: mongo:latest
+#     container_name: "mongodb"
+#     ports:
+#       - '27017:27017'
+
+
+#   mongodb-seed:
+#     image: mongo:latest
+#     container_name: "mongodb-seed"
+#     links:
+#       - mongodb
+#     volumes:
+#       - ./utils/seed-data:/utils/seed-data
+#     depends_on:
+#       - mongodb
+#     command:
+#       - /bin/sh
+#       - -c
+#       - |
+#         mongo proofdex --eval "db.dropDatabase()"
+#         mongoimport --host mongodb --db proofdex --type json --file utils/seed-data/tokens.json
+#         mongoimport --host mongodb --db proofdex --type json --file utils/seed-data/pairs.json
+#         mongoimport --host mongodb --db proofdex --type json --file utils/seed-data/accounts.json
+
+# # USEFUL COMMANDS TO BE REINCLUDED LATER
+
+# # environment:
+#     #   - MONGO_DATA_DIR=/data/db
+#     #   - MONGO_LOG_DIR=/dev/null
+
+# # command: mongod --smallfiles /--logpath=/dev/null
