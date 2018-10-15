@@ -1,7 +1,6 @@
 package daos
 
 import (
-	"fmt"
 	"reflect"
 
 	"github.com/Proofsuite/amp-matching-engine/app"
@@ -22,8 +21,6 @@ var logger = utils.Logger
 
 // InitSession initializes a new session with mongodb
 func InitSession(session *mgo.Session) (*mgo.Session, error) {
-	fmt.Println("DSN: ", app.Config.DSN)
-
 	if db == nil {
 		if session == nil {
 			db1, err := mgo.Dial(app.Config.DSN)
