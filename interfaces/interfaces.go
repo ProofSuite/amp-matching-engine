@@ -63,6 +63,7 @@ type WalletDao interface {
 type PairDao interface {
 	Create(o *types.Pair) error
 	GetAll() ([]types.Pair, error)
+	GetActivePairs() ([]*types.Pair, error)
 	GetByID(id bson.ObjectId) (*types.Pair, error)
 	GetByName(name string) (*types.Pair, error)
 	GetByTokenSymbols(baseTokenSymbol, quoteTokenSymbol string) (*types.Pair, error)

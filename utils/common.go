@@ -51,6 +51,15 @@ func PrintJSON(x interface{}) {
 	fmt.Print(string(b), "\n")
 }
 
+func JSON(x interface{}) string {
+	b, err := json.MarshalIndent(x, "", "  ")
+	if err != nil {
+		fmt.Println("Error: ", err)
+	}
+
+	return fmt.Sprint(string(b), "\n")
+}
+
 func PrintError(msg string, err error) {
 	log.Printf("\n%v: %v\n", msg, err)
 }

@@ -61,6 +61,11 @@ func (p *Pair) Code() string {
 	return code
 }
 
+func (p *Pair) AddressCode() string {
+	code := p.BaseTokenAddress.Hex() + "::" + p.QuoteTokenAddress.Hex()
+	return code
+}
+
 func (p *Pair) Name() string {
 	name := p.BaseTokenSymbol + "/" + p.QuoteTokenSymbol
 	return name
