@@ -1,13 +1,26 @@
 package types
 
+import "github.com/ethereum/go-ethereum/common"
+
 type OperatorMessage struct {
 	MessageType string
-	Order       *Order
-	Trade       *Trade
+	Matches     *Matches
 	ErrID       int
 }
 
-type PendingTradeMessage struct {
-	Order *Order
-	Trade *Trade
+type OperatorTxSuccessMessage struct {
+	MessageType string
+	OrderHashes []common.Hash
+	TradeHashes []common.Hash
+}
+
+// type OperatorMessage struct {
+// 	MessageType string
+// 	Order       *Order
+// 	Trade       *Trade
+// 	ErrID       int
+// }
+
+type PendingTradeBatch struct {
+	Matches *Matches
 }

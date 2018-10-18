@@ -87,12 +87,12 @@ func (c *Connection) PurgeOperatorQueue() error {
 }
 
 // PublishTradeCancelMessage publishes a message when a trade is cancelled
-func (c *Connection) PublishTradeCancelMessage(o *types.Order, tr *types.Trade) error {
+func (c *Connection) PublishTradeCancelMessage(matches *types.Matches) error {
 	ch := c.GetChannel("OPERATOR_PUB")
 	q := c.GetQueue(ch, "TX_MESSAGES")
 	msg := &types.OperatorMessage{
 		MessageType: "TRADE_CANCEL",
-		Trade:       tr,
+		Matches:     matches,
 	}
 
 	bytes, err := json.Marshal(msg)
@@ -111,13 +111,12 @@ func (c *Connection) PublishTradeCancelMessage(o *types.Order, tr *types.Trade) 
 }
 
 // PublishTradeSuccessMessage publishes a message when a trade transaction is successful
-func (c *Connection) PublishTradeSuccessMessage(o *types.Order, tr *types.Trade) error {
+func (c *Connection) PublishTradeSuccessMessage(matches *types.Matches) error {
 	ch := c.GetChannel("OPERATOR_PUB")
 	q := c.GetQueue(ch, "TX_MESSAGES")
 	msg := &types.OperatorMessage{
 		MessageType: "TRADE_SUCCESS",
-		Order:       o,
-		Trade:       tr,
+		Matches:     matches,
 	}
 
 	bytes, err := json.Marshal(msg)
@@ -136,12 +135,12 @@ func (c *Connection) PublishTradeSuccessMessage(o *types.Order, tr *types.Trade)
 }
 
 // PublishTxErrorMessage publishes a messages when a trade execution fails
-func (c *Connection) PublishTxErrorMessage(tr *types.Trade, errID int) error {
+func (c *Connection) PublishTxErrorMessage(matches *types.Matches, errID int) error {
 	ch := c.GetChannel("OPERATOR_PUB")
 	q := c.GetQueue(ch, "TX_MESSAGES")
 	msg := &types.OperatorMessage{
 		MessageType: "TRADE_ERROR",
-		Trade:       tr,
+		Matches:     matches,
 		ErrID:       errID,
 	}
 
@@ -160,12 +159,12 @@ func (c *Connection) PublishTxErrorMessage(tr *types.Trade, errID int) error {
 	return nil
 }
 
-func (c *Connection) PublishTradeInvalidMessage(or *types.Order, tr *types.Trade) error {
+func (c *Connection) PublishTradeInvalidMessage(matches *types.Matches) error {
 	ch := c.GetChannel("OPERATOR_PUB")
 	q := c.GetQueue(ch, "TX_MESSAGES")
 	msg := &types.OperatorMessage{
 		MessageType: "TRADE_INVALID",
-		Trade:       tr,
+		Matches:     matches,
 	}
 
 	bytes, err := json.Marshal(msg)
@@ -183,13 +182,12 @@ func (c *Connection) PublishTradeInvalidMessage(or *types.Order, tr *types.Trade
 	return nil
 }
 
-func (c *Connection) PublishTradeSentMessage(or *types.Order, tr *types.Trade) error {
+func (c *Connection) PublishTradeSentMessage(matches *types.Matches) error {
 	ch := c.GetChannel("OPERATOR_PUB")
 	q := c.GetQueue(ch, "TX_MESSAGES")
 	msg := &types.OperatorMessage{
 		MessageType: "TRADE_PENDING",
-		Trade:       tr,
-		Order:       or,
+		Matches:     matches,
 	}
 
 	bytes, err := json.Marshal(msg)

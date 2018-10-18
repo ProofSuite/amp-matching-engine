@@ -105,11 +105,14 @@ type Exchange interface {
 	SetFeeAccount(a common.Address, txOpts *bind.TransactOpts) (*eth.Transaction, error)
 	SetOperator(a common.Address, isOperator bool, txOpts *bind.TransactOpts) (*eth.Transaction, error)
 	CallTrade(o *types.Order, t *types.Trade, call *ethereum.CallMsg) (uint64, error)
+	CallBatchTrades(m *types.Matches, txOpts *ethereum.CallMsg) (uint64, error)
 	FeeAccount() (common.Address, error)
 	Operator(a common.Address) (bool, error)
 	Trade(o *types.Order, t *types.Trade, txOpts *bind.TransactOpts) (*eth.Transaction, error)
+	ExecuteBatchTrades(m *types.Matches, txOpts *bind.TransactOpts) (*eth.Transaction, error)
 	ListenToErrors() (chan *contractsinterfaces.ExchangeLogError, error)
 	ListenToTrades() (chan *contractsinterfaces.ExchangeLogTrade, error)
+	ListenToBatchTrades() (chan *contractsinterfaces.ExchangeLogBatchTrades, error)
 	GetErrorEvents(logs chan *contractsinterfaces.ExchangeLogError) error
 	GetTrades(logs chan *contractsinterfaces.ExchangeLogTrade) error
 	PrintTrades() error
@@ -142,11 +145,13 @@ type OHLCVService interface {
 
 type EthereumService interface {
 	WaitMined(hash common.Hash) (*eth.Receipt, error)
-	GetBalanceAt(a common.Address) (*big.Int, error)
 	GetPendingNonceAt(a common.Address) (uint64, error)
+	GetBalanceAt(a common.Address) (*big.Int, error)
 }
 
 type OrderService interface {
+	CreateOrderChannel(h common.Hash) chan *types.WebsocketEvent
+	GetOrderChannel(h common.Hash) chan *types.WebsocketEvent
 	GetByID(id bson.ObjectId) (*types.Order, error)
 	GetByHash(h common.Hash) (*types.Order, error)
 	GetByUserAddress(a common.Address) ([]*types.Order, error)
