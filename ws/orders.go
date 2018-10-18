@@ -19,78 +19,73 @@ type OrderConnection struct {
 var orderConnections map[string]*OrderConnection
 
 // GetOrderConn returns the connection associated with an order ID
-func GetOrderConnection(h common.Hash) (conn *Conn) {
-	c := orderConnections[h.Hex()]
+func GetOrderConnection(a common.Address) (conn *Conn) {
+	c := orderConnections[a.Hex()]
 	if c == nil {
 		logger.Warning("No connection found")
 		return nil
 	}
 
-	return orderConnections[h.Hex()].Conn
+	return orderConnections[a.Hex()].Conn
 }
 
 // GetOrderChannel returns the channel associated with an order ID
-func GetOrderChannel(h common.Hash) chan *types.WebsocketEvent {
-	hash := h.Hex()
-
-	if orderConnections[hash] == nil {
+func GetOrderChannel(a common.Address) chan *types.WebsocketEvent {
+	if orderConnections[a.Hex()] == nil {
 		return nil
 	}
 
-	if orderConnections[hash] == nil {
+	if orderConnections[a.Hex()] == nil {
 		return nil
-	} else if !orderConnections[hash].Active {
+	} else if !orderConnections[a.Hex()].Active {
 		return nil
 	}
 
-	return orderConnections[hash].ReadChannel
+	return orderConnections[a.Hex()].ReadChannel
 }
 
 // OrderSocketUnsubscribeHandler returns a function of type unsubscribe handler.
-func OrderSocketUnsubscribeHandler(h common.Hash) func(conn *Conn) {
-	hash := h.Hex()
+func OrderSocketUnsubscribeHandler(a common.Address) func(conn *Conn) {
 
 	return func(conn *Conn) {
-		if orderConnections[hash] != nil {
-			orderConnections[hash] = nil
-			delete(orderConnections, hash)
+		if orderConnections[a.Hex()] != nil {
+			orderConnections[a.Hex()] = nil
+			delete(orderConnections, a.Hex())
 		}
 	}
 }
 
 // RegisterOrderConnection registers a connection with and orderID.
 // It is called whenever a message is recieved over order channel
-func RegisterOrderConnection(h common.Hash, conn *OrderConnection) {
-	hash := h.Hex()
-
+func RegisterOrderConnection(a common.Address, conn *OrderConnection) {
 	if orderConnections == nil {
 		orderConnections = make(map[string]*OrderConnection)
 	}
 
-	if orderConnections[hash] == nil {
+	if orderConnections[a.Hex()] == nil {
 		conn.Active = true
-		orderConnections[hash] = conn
+		orderConnections[a.Hex()] = conn
 	}
 }
 
 // CloseOrderReadChannel is called whenever an order processing is done
 // and no further messages are to be accepted for an hash
-func CloseOrderReadChannel(h common.Hash) error {
-	hash := h.Hex()
-
-	orderConnections[hash].Once.Do(func() {
-		close(orderConnections[hash].ReadChannel)
-		orderConnections[hash].Active = false
+func CloseOrderReadChannel(a common.Address) error {
+	orderConnections[a.Hex()].Once.Do(func() {
+		close(orderConnections[a.Hex()].ReadChannel)
+		orderConnections[a.Hex()].Active = false
 	})
 
 	return nil
 }
 
-func SendOrderMessage(msgType string, h common.Hash, payload interface{}) {
-	conn := GetOrderConnection(h)
+func SendOrderMessage(msgType string, a common.Address, h common.Hash, payload interface{}) {
+	conn := GetOrderConnection(a)
 	if conn == nil {
 		return
 	}
+
+	logger.Info("Order connection", conn)
 
 	SendMessage(conn, OrderChannel, msgType, payload, h)
 }

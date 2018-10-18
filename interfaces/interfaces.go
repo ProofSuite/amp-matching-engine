@@ -142,11 +142,13 @@ type OHLCVService interface {
 
 type EthereumService interface {
 	WaitMined(hash common.Hash) (*eth.Receipt, error)
-	GetBalanceAt(a common.Address) (*big.Int, error)
 	GetPendingNonceAt(a common.Address) (uint64, error)
+	GetBalanceAt(a common.Address) (*big.Int, error)
 }
 
 type OrderService interface {
+	CreateOrderChannel(h common.Hash) chan *types.WebsocketEvent
+	GetOrderChannel(h common.Hash) chan *types.WebsocketEvent
 	GetByID(id bson.ObjectId) (*types.Order, error)
 	GetByHash(h common.Hash) (*types.Order, error)
 	GetByUserAddress(a common.Address) ([]*types.Order, error)

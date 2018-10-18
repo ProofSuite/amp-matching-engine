@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	. "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/sha3"
 )
@@ -16,16 +16,16 @@ import (
 // the OrderCancel must include a signature by the Maker of the order corresponding
 // to the OrderHash.
 type OrderCancel struct {
-	OrderHash Hash       `json:"orderHash"`
-	Hash      Hash       `json:"hash"`
-	Signature *Signature `json:"signature"`
+	OrderHash common.Hash `json:"orderHash"`
+	Hash      common.Hash `json:"hash"`
+	Signature *Signature  `json:"signature"`
 }
 
 // NewOrderCancel returns a new empty OrderCancel object
 func NewOrderCancel() *OrderCancel {
 	return &OrderCancel{
-		Hash:      Hash{},
-		OrderHash: Hash{},
+		Hash:      common.Hash{},
+		OrderHash: common.Hash{},
 		Signature: &Signature{},
 	}
 }
@@ -62,18 +62,18 @@ func (oc *OrderCancel) UnmarshalJSON(b []byte) error {
 	if parsed["orderHash"] == nil {
 		return errors.New("Order Hash is missing")
 	}
-	oc.OrderHash = HexToHash(parsed["orderHash"].(string))
+	oc.OrderHash = common.HexToHash(parsed["orderHash"].(string))
 
 	if parsed["hash"] == nil {
 		return errors.New("Hash is missing")
 	}
-	oc.Hash = HexToHash(parsed["hash"].(string))
+	oc.Hash = common.HexToHash(parsed["hash"].(string))
 
 	sig := parsed["signature"].(map[string]interface{})
 	oc.Signature = &Signature{
 		V: byte(sig["V"].(float64)),
-		R: HexToHash(sig["R"].(string)),
-		S: HexToHash(sig["S"].(string)),
+		R: common.HexToHash(sig["R"].(string)),
+		S: common.HexToHash(sig["S"].(string)),
 	}
 
 	return nil
@@ -87,7 +87,7 @@ func (oc *OrderCancel) VerifySignature(o *Order) (bool, error) {
 		oc.Hash.Bytes(),
 	)
 
-	address, err := oc.Signature.Verify(BytesToHash(message))
+	address, err := oc.Signature.Verify(common.BytesToHash(message))
 	if err != nil {
 		return false, err
 	}
@@ -99,11 +99,25 @@ func (oc *OrderCancel) VerifySignature(o *Order) (bool, error) {
 	return true, nil
 }
 
+func (oc *OrderCancel) GetSenderAddress() (common.Address, error) {
+	message := crypto.Keccak256(
+		[]byte("\x19Ethereum Signed Message:\n32"),
+		oc.Hash.Bytes(),
+	)
+
+	address, err := oc.Signature.Verify(common.BytesToHash(message))
+	if err != nil {
+		return common.Address{}, err
+	}
+
+	return address, nil
+}
+
 // ComputeHash computes the hash of an order cancel message
-func (oc *OrderCancel) ComputeHash() Hash {
+func (oc *OrderCancel) ComputeHash() common.Hash {
 	sha := sha3.NewKeccak256()
 	sha.Write(oc.OrderHash.Bytes())
-	return BytesToHash(sha.Sum(nil))
+	return common.BytesToHash(sha.Sum(nil))
 }
 
 // Sign first computes the order cancel hash, then signs and sets the signature

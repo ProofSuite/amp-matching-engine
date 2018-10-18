@@ -31,6 +31,7 @@ type OrderService struct {
 	engine           interfaces.Engine
 	ethereumProvider interfaces.EthereumProvider
 	broker           *rabbitmq.Connection
+	orderChannels    map[string]chan *types.WebsocketEvent
 }
 
 // NewOrderService returns a new instance of orderservice
@@ -43,6 +44,9 @@ func NewOrderService(
 	ethereumProvider interfaces.EthereumProvider,
 	broker *rabbitmq.Connection,
 ) *OrderService {
+
+	orderChannels := make(map[string]chan *types.WebsocketEvent)
+
 	return &OrderService{
 		orderDao,
 		pairDao,
@@ -51,6 +55,7 @@ func NewOrderService(
 		engine,
 		ethereumProvider,
 		broker,
+		orderChannels,
 	}
 }
 
@@ -228,24 +233,24 @@ func (s *OrderService) NewOrder(o *types.Order) error {
 // Only Orders which are OPEN or NEW i.e. Not yet filled/partially filled
 // can be cancelled
 func (s *OrderService) CancelOrder(oc *types.OrderCancel) error {
-	dbOrder, err := s.orderDao.GetByHash(oc.OrderHash)
+	o, err := s.orderDao.GetByHash(oc.OrderHash)
 	if err != nil {
 		logger.Error(err)
 		return err
 	}
 
-	if dbOrder == nil {
+	if o == nil {
 		return fmt.Errorf("No order with this hash present")
 	}
 
-	_, err = json.Marshal(dbOrder)
+	_, err = json.Marshal(o)
 	if err != nil {
 		logger.Error(err)
 		return err
 	}
 
-	if dbOrder.Status == "OPEN" || dbOrder.Status == "OPEN" {
-		res, err := s.engine.CancelOrder(dbOrder)
+	if o.Status == "OPEN" || o.Status == "OPEN" {
+		res, err := s.engine.CancelOrder(o)
 		if err != nil {
 			logger.Error(err)
 			return err
@@ -254,9 +259,10 @@ func (s *OrderService) CancelOrder(oc *types.OrderCancel) error {
 		err = s.orderDao.UpdateOrderStatus(res.Order.Hash, "CANCELLED")
 		if err != nil {
 			logger.Error(err)
+			return err
 		}
 
-		ws.SendOrderMessage("ORDER_CANCELLED", oc.Hash, res.Order)
+		ws.SendOrderMessage("ORDER_CANCELLED", o.UserAddress, oc.Hash, res.Order)
 		s.broadcastOrderBookUpdate([]*types.Order{res.Order})
 		return nil
 	}
@@ -315,7 +321,7 @@ func (s *OrderService) handleEngineError(res *types.EngineResponse) {
 		logger.Error(err)
 	}
 
-	ws.SendOrderMessage("ERROR", res.HashID, nil)
+	ws.SendOrderMessage("ERROR", res.Order.UserAddress, res.Order.Hash, nil)
 }
 
 // handleEngineOrderAdded returns a websocket message informing the client that his order has been added
@@ -326,7 +332,7 @@ func (s *OrderService) handleEngineOrderAdded(res *types.EngineResponse) {
 		logger.Error(err)
 	}
 
-	ws.SendOrderMessage("ORDER_ADDED", res.HashID, res.Order)
+	ws.SendOrderMessage("ORDER_ADDED", res.Order.UserAddress, res.Order.Hash, res.Order)
 	s.broadcastOrderBookUpdate([]*types.Order{res.Order})
 }
 
@@ -347,14 +353,16 @@ func (s *OrderService) handleEngineOrderMatched(res *types.EngineResponse) {
 	}
 
 	go s.handleSubmitSignatures(res)
-	ws.SendOrderMessage("REQUEST_SIGNATURE", res.HashID, types.SignaturePayload{res.RemainingOrder, res.Matches})
+	ws.SendOrderMessage("REQUEST_SIGNATURE", res.Order.UserAddress, res.Order.Hash, types.SignaturePayload{res.RemainingOrder, res.Matches})
 	s.broadcastOrderBookUpdate(orders)
 }
 
 // handleSubmitSignatures wait for a submit signature message that provides the matching engine with orders
 // that can be broadcast to the exchange smart contrct
 func (s *OrderService) handleSubmitSignatures(res *types.EngineResponse) {
-	ch := ws.GetOrderChannel(res.Order.Hash)
+	ch := s.CreateOrderChannel(res.Order.Hash)
+	defer s.DeleteOrderChannel(res.Order.Hash)
+
 	t := time.NewTimer(30 * time.Second)
 
 	select {
@@ -365,7 +373,7 @@ func (s *OrderService) handleSubmitSignatures(res *types.EngineResponse) {
 			if err != nil {
 				logger.Error(err)
 				s.Rollback(res)
-				ws.SendOrderMessage("ERROR", res.HashID, err)
+				ws.SendOrderMessage("ERROR", res.Order.UserAddress, res.Order.Hash, err)
 			}
 
 			p := &types.SignaturePayload{}
@@ -373,7 +381,7 @@ func (s *OrderService) handleSubmitSignatures(res *types.EngineResponse) {
 			if err != nil {
 				logger.Error(err)
 				s.Rollback(res)
-				ws.SendOrderMessage("ERROR", res.HashID, err)
+				ws.SendOrderMessage("ERROR", res.Order.UserAddress, res.Order.Hash, err)
 			}
 
 			// remaining order
@@ -382,7 +390,7 @@ func (s *OrderService) handleSubmitSignatures(res *types.EngineResponse) {
 				if err != nil {
 					logger.Error(err)
 					// s.Rollback(res)
-					ws.SendOrderMessage("ERROR", res.HashID, err)
+					ws.SendOrderMessage("ERROR", res.Order.UserAddress, res.Order.Hash, err)
 				}
 
 				err = s.orderDao.Create(p.Order)
@@ -390,7 +398,7 @@ func (s *OrderService) handleSubmitSignatures(res *types.EngineResponse) {
 					//TODO consider if we should going on with execution or not
 					logger.Error(err)
 					// s.Rollback(res)
-					ws.SendOrderMessage("ERROR", res.HashID, err)
+					ws.SendOrderMessage("ERROR", res.Order.UserAddress, res.Order.Hash, err)
 					return
 				}
 
@@ -399,7 +407,7 @@ func (s *OrderService) handleSubmitSignatures(res *types.EngineResponse) {
 					//TODO not sure whether rolling back is good here
 					logger.Error(err)
 					// s.Rollback(res)
-					ws.SendOrderMessage("ERROR", res.HashID, err)
+					ws.SendOrderMessage("ERROR", res.Order.UserAddress, res.Order.Hash, err)
 					return
 				}
 
@@ -414,7 +422,8 @@ func (s *OrderService) handleSubmitSignatures(res *types.EngineResponse) {
 					if err != nil {
 						logger.Error(err)
 						s.Rollback(res)
-						ws.SendOrderMessage("ERROR", res.HashID, err)
+						ws.SendOrderMessage("ERROR", m.Trade.Maker, res.HashID, err)
+						ws.SendOrderMessage("ERROR", m.Trade.Taker, res.HashID, err)
 						return
 					}
 
@@ -426,7 +435,8 @@ func (s *OrderService) handleSubmitSignatures(res *types.EngineResponse) {
 				if err != nil {
 					logger.Error(err)
 					s.Rollback(res)
-					ws.SendOrderMessage("ERROR", res.HashID, err)
+					ws.SendOrderMessage("ERROR", trades[0].Maker, res.HashID, err)
+					ws.SendOrderMessage("ERROR", trades[0].Taker, res.HashID, err)
 					return
 				}
 
@@ -435,7 +445,8 @@ func (s *OrderService) handleSubmitSignatures(res *types.EngineResponse) {
 					if err != nil {
 						logger.Error(err)
 						s.Rollback(res)
-						ws.SendOrderMessage("ERROR", res.HashID, err)
+						ws.SendOrderMessage("ERROR", m.Trade.Maker, res.HashID, err)
+						ws.SendOrderMessage("ERROR", m.Trade.Taker, res.HashID, err)
 						return
 					}
 				}
@@ -452,7 +463,11 @@ func (s *OrderService) handleSubmitSignatures(res *types.EngineResponse) {
 // handleEngineUnknownMessage returns a websocket messsage in case the engine resonse is not recognized
 func (s *OrderService) handleEngineUnknownMessage(res *types.EngineResponse) {
 	s.Rollback(res)
-	ws.SendOrderMessage("ERROR", res.HashID, nil)
+	if res.Order == nil {
+		return
+	}
+
+	ws.SendOrderMessage("ERROR", res.Order.UserAddress, res.HashID, nil)
 }
 
 func (s *OrderService) handleOperatorUnknownMessage(msg *types.OperatorMessage) {
@@ -469,8 +484,8 @@ func (s *OrderService) handleOperatorTradePending(msg *types.OperatorMessage) {
 		logger.Error(err)
 	}
 
-	ws.SendOrderMessage("ORDER_PENDING", t.OrderHash, types.OrderPendingPayload{o, t})
-	ws.SendOrderMessage("ORDER_PENDING", t.TakerOrderHash, types.OrderPendingPayload{o, t})
+	ws.SendOrderMessage("ORDER_PENDING", t.Maker, t.OrderHash, types.OrderPendingPayload{o, t})
+	ws.SendOrderMessage("ORDER_PENDING", t.Taker, t.TakerOrderHash, types.OrderPendingPayload{o, t})
 
 	//TODO separate in different function or find more idiomatic code
 	t.Status = "PENDING"
@@ -516,7 +531,7 @@ func (s *OrderService) handleTradeMakerInvalid(msg *types.OperatorMessage) {
 	}
 
 	//TODO decide whether we should also send a message to the taker
-	ws.SendOrderMessage("ORDER_INVALID", t.OrderHash, t)
+	ws.SendOrderMessage("ORDER_INVALID", t.Maker, t.OrderHash, t)
 
 	t.Status = "INVALID"
 	s.broadcastTradeUpdate([]*types.Trade{t})
@@ -558,7 +573,7 @@ func (s *OrderService) handleTradeTakerInvalid(msg *types.OperatorMessage) {
 		logger.Error(err)
 	}
 
-	ws.SendOrderMessage("ORDER_INVALID", t.TakerOrderHash, t)
+	ws.SendOrderMessage("ORDER_INVALID", t.Taker, t.TakerOrderHash, t)
 	s.broadcastTradeUpdate([]*types.Trade{t})
 	s.broadcastOrderBookUpdate([]*types.Order{op.Order})
 	//TODO decide whether we should also send a message to the maker. In
@@ -577,8 +592,8 @@ func (s *OrderService) handleOperatorTradeSuccess(msg *types.OperatorMessage) {
 		logger.Error(err)
 	}
 
-	ws.SendOrderMessage("ORDER_SUCCESS", t.OrderHash, types.OrderSuccessPayload{o, t})
-	ws.SendOrderMessage("ORDER_SUCCESS", t.TakerOrderHash, types.OrderSuccessPayload{o, t})
+	ws.SendOrderMessage("ORDER_SUCCESS", t.Maker, t.OrderHash, types.OrderSuccessPayload{o, t})
+	ws.SendOrderMessage("ORDER_SUCCESS", t.Taker, t.TakerOrderHash, types.OrderSuccessPayload{o, t})
 
 	t.Status = "SUCCESS"
 	s.broadcastTradeUpdate([]*types.Trade{t})
@@ -595,8 +610,8 @@ func (s *OrderService) handleOperatorTradeError(msg *types.OperatorMessage) {
 		logger.Error(err)
 	}
 
-	ws.SendOrderMessage("ORDER_ERROR", t.OrderHash, t)
-	ws.SendOrderMessage("ORDER_ERROR", t.TakerOrderHash, t)
+	ws.SendOrderMessage("ORDER_ERROR", t.Maker, t.OrderHash, t)
+	ws.SendOrderMessage("ORDER_ERROR", t.Taker, t.TakerOrderHash, t)
 	s.broadcastTradeUpdate([]*types.Trade{t})
 }
 
@@ -757,6 +772,35 @@ func (s *OrderService) broadcastTradeUpdate(trades []*types.Trade) {
 	ws.GetTradeSocket().BroadcastMessage(id, trades)
 }
 
+func (s *OrderService) CreateOrderChannel(h common.Hash) chan *types.WebsocketEvent {
+	if s.orderChannels == nil {
+		s.orderChannels = make(map[string]chan *types.WebsocketEvent)
+	}
+
+	ch := make(chan *types.WebsocketEvent)
+	if s.orderChannels[h.Hex()] == nil {
+		s.orderChannels[h.Hex()] = ch
+	}
+
+	return ch
+}
+
+func (s *OrderService) GetOrderChannel(h common.Hash) chan *types.WebsocketEvent {
+	if s.orderChannels[h.Hex()] == nil {
+		return nil
+	}
+
+	if s.orderChannels[h.Hex()] == nil {
+		return nil
+	}
+
+	return s.orderChannels[h.Hex()]
+}
+
+func (s *OrderService) DeleteOrderChannel(h common.Hash) {
+	delete(s.orderChannels, h.Hex())
+}
+
 // func (s *OrderService) broadcastTradeUpdate(p *types.Pair, trades []*types.Trade) {
 // 	id := utils.GetTradeChannelID(p.BaseTokenAddress, p.QuoteTokenAddress)
 // 	ws.GetTradeSocket().BroadcastMessage(id, trades)
@@ -817,5 +861,5 @@ func (s *OrderService) broadcastTradeUpdate(trades []*types.Trade) {
 
 // 	go s.broadcastTradeUpdate(p, trades)
 // 	go s.broadcastRawOrderUpdate(p, rawOrders)
-// 	go s.broadcastOrderUpdate(p, orders)
 // }
+// 	go s.broadcastOrderUpdate(p, orders)
