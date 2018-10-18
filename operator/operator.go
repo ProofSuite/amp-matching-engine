@@ -24,15 +24,15 @@ var logger = utils.OperatorLogger
 // on the contract
 type Operator struct {
 	// AccountService     interfaces.AccountService
-	WalletService      interfaces.WalletService
-	TradeService       interfaces.TradeService
-	OrderService       interfaces.OrderService
-	EthereumProvider   interfaces.EthereumProvider
-	Exchange           interfaces.Exchange
-	TxQueues           []*TxQueue
-	QueueAddressIndex  map[common.Address]*TxQueue
-	RabbitMQConnection *rabbitmq.Connection
-	mutex              *sync.Mutex
+	WalletService     interfaces.WalletService
+	TradeService      interfaces.TradeService
+	OrderService      interfaces.OrderService
+	EthereumProvider  interfaces.EthereumProvider
+	Exchange          interfaces.Exchange
+	TxQueues          []*TxQueue
+	QueueAddressIndex map[common.Address]*TxQueue
+	Broker            *rabbitmq.Connection
+	mutex             *sync.Mutex
 }
 
 type OperatorInterface interface {
@@ -108,8 +108,8 @@ func NewOperator(
 
 // SubscribeOperatorMessages
 func (op *Operator) SubscribeOperatorMessages(fn func(*types.OperatorMessage) error) error {
-	ch := op.RabbitMQConnection.GetChannel("OPERATOR_SUB")
-	q := op.RabbitMQConnection.GetQueue(ch, "TX_MESSAGES")
+	ch := op.Broker.GetChannel("OPERATOR_SUB")
+	q := op.Broker.GetQueue(ch, "TX_MESSAGES")
 
 	go func() {
 		msgs, err := ch.Consume(
@@ -151,7 +151,13 @@ func (op *Operator) SubscribeOperatorMessages(fn func(*types.OperatorMessage) er
 // order hash in the ordertrade mapping. I suspect this is because the event listener catches events from previous
 // tests. It might be helpful to see how to listen to events from up to a certain block.
 func (op *Operator) HandleEvents() error {
-	tradeEvents, err := op.Exchange.ListenToTrades()
+	// tradeEvents, err := op.Exchange.ListenToTrades()
+	// if err != nil {
+	// 	logger.Error(err)
+	// 	return err
+	// }
+
+	tradeEvents, err := op.Exchange.ListenToBatchTrades()
 	if err != nil {
 		logger.Error(err)
 		return err
@@ -176,38 +182,52 @@ func (op *Operator) HandleEvents() error {
 				logger.Error(err)
 			}
 
-			// or, err := op.OrderService.GetByHash(tr.OrderHash)
-			// if err != nil {
-			// 	logger.Error(err)
-			// }
+			or, err := op.OrderService.GetByHash(tr.OrderHash)
+			if err != nil {
+				logger.Error(err)
+			}
+
+			//TODO Currently the only possible solution i found is to return only
+			//TODO the order/trade that caused the error in the first place.
+			//TODO Ideally we want to send back all orders and trades that have been
+			//TODO cancelled
+			m := types.NewMatches([]*types.Order{or}, []*types.Trade{tr})
 
 			go func() {
-				err = op.RabbitMQConnection.PublishTxErrorMessage(tr, errID)
+				err := op.Broker.PublishTxErrorMessage(m, errID)
 				if err != nil {
 					logger.Error(err)
 				}
 			}()
 
 		case event := <-tradeEvents:
-			tr, err := op.TradeService.GetByHash(event.TradeHash)
-			if err != nil {
-				logger.Error(err)
-			}
-
-			logger.Info("TRADE_SUCCESS_EVENT")
-
-			or, err := op.OrderService.GetByHash(tr.OrderHash)
-			if err != nil {
-				logger.Error(err)
-			}
+			txh := event.Raw.TxHash
 
 			go func() {
-				_, err := op.EthereumProvider.WaitMined(tr.TxHash)
+				_, err := op.EthereumProvider.WaitMined(txh)
 				if err != nil {
 					logger.Error(err)
 				}
 
-				err = op.RabbitMQConnection.PublishTradeSuccessMessage(or, tr)
+				matches := &types.Matches{}
+				orderHashes := event.OrderHashes
+				tradeHashes := event.TradeHashes
+
+				for i, _ := range event.TradeHashes {
+					tr, err := op.TradeService.GetByHash(tradeHashes[i])
+					if err != nil {
+						logger.Error(err)
+					}
+
+					or, err := op.OrderService.GetByHash(orderHashes[i])
+					if err != nil {
+						logger.Error(err)
+					}
+
+					matches.AppendMatch(&types.OrderTradePair{or, tr})
+				}
+
+				err = op.Broker.PublishTradeSuccessMessage(matches)
 				if err != nil {
 					logger.Error(err)
 				}
@@ -217,27 +237,27 @@ func (op *Operator) HandleEvents() error {
 }
 
 func (op *Operator) HandleTrades(msg *types.OperatorMessage) error {
-	o := msg.Order
+	// o := msg.Order
 	// t := msg.Trade
 
-	//TODO move this to the order service
-	err := o.Validate()
-	if err != nil {
-		logger.Error(err)
-		return err
-	}
+	// //TODO move this to the order service
+	// err := o.Validate()
+	// if err != nil {
+	// 	logger.Error(err)
+	// 	return err
+	// }
 
-	//TODO move this to the order service
-	ok, err := o.VerifySignature()
-	if err != nil {
-		return err
-	}
+	// //TODO move this to the order service
+	// ok, err := o.VerifySignature()
+	// if err != nil {
+	// 	return err
+	// }
 
-	if !ok {
-		return errors.New("Invalid signature")
-	}
+	// if !ok {
+	// 	return errors.New("Invalid signature")
+	// }
 
-	err = op.QueueTrade(msg.Order, msg.Trade)
+	err := op.QueueTrade(msg.Matches)
 	if err != nil {
 		logger.Error(err)
 		return err
@@ -247,9 +267,11 @@ func (op *Operator) HandleTrades(msg *types.OperatorMessage) error {
 }
 
 // QueueTrade
-func (op *Operator) QueueTrade(o *types.Order, t *types.Trade) error {
+func (op *Operator) QueueTrade(m *types.Matches) error {
 	op.mutex.Lock()
 	defer op.mutex.Unlock()
+
+	logger.Info("QUEUING TRADE")
 
 	txq, len, err := op.GetShortestQueue()
 	if err != nil {
@@ -263,7 +285,7 @@ func (op *Operator) QueueTrade(o *types.Order, t *types.Trade) error {
 	}
 
 	logger.Info("QUEING TRADE", len)
-	err = txq.QueueTrade(o, t)
+	err = txq.QueueTrade(m)
 	if err != nil {
 		logger.Warning("INVALID TRADE")
 		return err

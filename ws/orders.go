@@ -85,7 +85,5 @@ func SendOrderMessage(msgType string, a common.Address, h common.Hash, payload i
 		return
 	}
 
-	logger.Info("Order connection", conn)
-
 	SendMessage(conn, OrderChannel, msgType, payload, h)
 }

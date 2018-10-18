@@ -46,14 +46,22 @@ type SignaturePayload struct {
 	Matches []*OrderTradePair `json:"matches"`
 }
 
+// type OrderPendingPayload struct {
+// 	Order *Order `json:"order"`
+// 	Trade *Trade `json:"trade"`
+// }
+
 type OrderPendingPayload struct {
-	Order *Order `json:"order"`
-	Trade *Trade `json:"trade"`
+	Matches []*OrderTradePair `json:"matches"`
 }
 
+// type OrderSuccessPayload struct {
+// 	Order *Order `json:"order"`
+// 	Trade *Trade `json:"trade"`
+// }
+
 type OrderSuccessPayload struct {
-	Order *Order `json:"order"`
-	Trade *Trade `json:"trade"`
+	Matches []*OrderTradePair `json:"matches"`
 }
 
 type SubscriptionPayload struct {

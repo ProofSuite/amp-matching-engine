@@ -20,7 +20,7 @@ type TxQueue struct {
 	OrderService     interfaces.OrderService
 	EthereumProvider interfaces.EthereumProvider
 	Exchange         interfaces.Exchange
-	RabbitMQConn     *rabbitmq.Connection
+	Broker           *rabbitmq.Connection
 }
 
 // NewTxQueue
@@ -41,7 +41,7 @@ func NewTxQueue(
 		EthereumProvider: p,
 		Wallet:           w,
 		Exchange:         ex,
-		RabbitMQConn:     rabbitConn,
+		Broker:           rabbitConn,
 	}
 
 	err := txq.PurgePendingTrades()
@@ -65,7 +65,7 @@ func (txq *TxQueue) GetTxCallOptions() *ethereum.CallMsg {
 // Length
 func (txq *TxQueue) Length() int {
 	name := "TX_QUEUES:" + txq.Name
-	ch := txq.RabbitMQConn.GetChannel(name)
+	ch := txq.Broker.GetChannel(name)
 	q, err := ch.QueueInspect(name)
 	if err != nil {
 		logger.Error(err)
@@ -79,10 +79,10 @@ func (txq *TxQueue) Length() int {
 // we return an error. Ultimately we want to account send the transaction to another queue that is handled by another ethereum account
 // func (op *Operator) QueueTrade(o *types.Order, t *types.Trade) error {
 // TODO: Currently doesn't seem thread safe and fails unless called with a sleep time between each call.
-func (txq *TxQueue) QueueTrade(o *types.Order, t *types.Trade) error {
+func (txq *TxQueue) QueueTrade(m *types.Matches) error {
 	logger.Info("QUEUE LENGTH", txq.Length())
 	if txq.Length() == 0 {
-		_, err := txq.ExecuteTrade(o, t)
+		_, err := txq.ExecuteTrade(m)
 		if err != nil {
 			logger.Error(err)
 			logger.Info("This is an invalid trade")
@@ -90,7 +90,7 @@ func (txq *TxQueue) QueueTrade(o *types.Order, t *types.Trade) error {
 		}
 	}
 
-	err := txq.PublishPendingTrade(o, t)
+	err := txq.PublishPendingTrades(m)
 	if err != nil {
 		logger.Error(err)
 		return err
@@ -102,11 +102,13 @@ func (txq *TxQueue) QueueTrade(o *types.Order, t *types.Trade) error {
 // ExecuteTrade send a trade execution order to the smart contract interface. After sending the
 // trade message, the trade is updated on the database and is published to the operator subscribers
 // (order service)
-func (txq *TxQueue) ExecuteTrade(o *types.Order, tr *types.Trade) (*eth.Transaction, error) {
-	logger.Info("EXECUTE_TRADE: ", tr.Hash.Hex())
+func (txq *TxQueue) ExecuteTrade(m *types.Matches) (*eth.Transaction, error) {
+	// logger.Info("EXECUTE_TRADE: ", tr.Hash.Hex())
+
+	logger.Info("EXECUTING TRADE", m)
 
 	callOpts := txq.GetTxCallOptions()
-	gasLimit, err := txq.Exchange.CallTrade(o, tr, callOpts)
+	gasLimit, err := txq.Exchange.CallBatchTrades(m, callOpts)
 	if err != nil {
 		logger.Error(err)
 		return nil, err
@@ -114,13 +116,13 @@ func (txq *TxQueue) ExecuteTrade(o *types.Order, tr *types.Trade) (*eth.Transact
 
 	if gasLimit < 120000 {
 		logger.Warning("GAS LIMIT: ", gasLimit)
-		err = txq.RabbitMQConn.PublishTradeInvalidMessage(o, tr)
+		err = txq.Broker.PublishTradeInvalidMessage(m)
 		if err != nil {
 			logger.Error(err)
 			return nil, err
 		}
 
-		go txq.ExecuteNextTrade(tr)
+		go txq.ExecuteNextTrade()
 		return nil, errors.New("Invalid Trade")
 	}
 
@@ -132,19 +134,20 @@ func (txq *TxQueue) ExecuteTrade(o *types.Order, tr *types.Trade) (*eth.Transact
 
 	txOpts := txq.GetTxSendOptions()
 	txOpts.Nonce = big.NewInt(int64(nonce))
-	tx, err := txq.Exchange.Trade(o, tr, txOpts)
+	tx, err := txq.Exchange.ExecuteBatchTrades(m, txOpts)
 	if err != nil {
 		logger.Error(err)
 		return nil, err
 	}
 
-	err = txq.TradeService.UpdateTradeTxHash(tr, tx.Hash())
-	if err != nil {
-		logger.Error(err)
-		return nil, errors.New("Could not update trade tx attribute")
-	}
+	//TODO maybe replace by putting a tx hash on the matches struct
+	// err = txq.TradeService.UpdateTradeTxHash(tr, tx.Hash())
+	// if err != nil {
+	// 	logger.Error(err)
+	// 	return nil, errors.New("Could not update trade tx attribute")
+	// }
 
-	err = txq.RabbitMQConn.PublishTradeSentMessage(o, tr)
+	err = txq.Broker.PublishTradeSentMessage(m)
 	if err != nil {
 		logger.Error(err)
 		return nil, errors.New("Could not update")
@@ -156,67 +159,73 @@ func (txq *TxQueue) ExecuteTrade(o *types.Order, tr *types.Trade) (*eth.Transact
 			logger.Error(err)
 		}
 
-		logger.Info("TRADE_MINED IN EXECUTE TRADE: ", tr.Hash.Hex())
+		//TODO use a better logging
+		// logger.Info("TRADE_MINED IN EXECUTE TRADE: ", tr.Hash.Hex())
 
+		//TODO in this case, what happens in the case we have a lot of trades, i think the best solution
+		//TODO is to register the events in redis, and check if they already exist.
 		len := txq.Length()
 		if len > 0 {
-			msg, err := txq.PopPendingTrade()
+			nextMatch, err := txq.PopPendingTrades()
 			if err != nil {
 				logger.Error(err)
 				return
 			}
 
+			if nextMatch.OrderTradePairs == nil {
+				return
+			}
+
 			// very hacky
-			if msg.Trade.Hash == tr.Hash {
-				msg, err = txq.PopPendingTrade()
+			if nextMatch.HashID == m.HashID {
+				nextMatch, err = txq.PopPendingTrades()
 				if err != nil {
 					logger.Error(err)
 					return
 				}
 
-				if msg == nil {
+				if nextMatch.OrderTradePairs == nil {
 					return
 				}
 			}
 
-			logger.Info("NEXT_TRADE: ", msg.Trade.Hash.Hex())
-			go txq.ExecuteTrade(msg.Order, msg.Trade)
+			go txq.ExecuteTrade(nextMatch)
 		}
 	}()
 
 	return tx, nil
 }
 
-func (txq *TxQueue) ExecuteNextTrade(tr *types.Trade) error {
+func (txq *TxQueue) ExecuteNextTrade() error {
 	len := txq.Length()
 	logger.Info("LENGTH of the queue is ", len)
 	if len > 0 {
-		msg, err := txq.PopPendingTrade()
+		match, err := txq.PopPendingTrades()
 		if err != nil {
 			logger.Error(err)
 			return err
 		}
 
-		logger.Info("NEXT_TRADE: ", msg.Trade.Hash.Hex())
-		go txq.ExecuteTrade(msg.Order, msg.Trade)
+		// logger.Info("NEXT_TRADE: ", msg.Trade.Hash.Hex())
+		go txq.ExecuteTrade(match)
 		return nil
 	}
 
 	return nil
 }
 
-func (txq *TxQueue) PublishPendingTrade(o *types.Order, t *types.Trade) error {
+func (txq *TxQueue) PublishPendingTrades(m *types.Matches) error {
 	name := "TX_QUEUES:" + txq.Name
-	ch := txq.RabbitMQConn.GetChannel(name)
-	q := txq.RabbitMQConn.GetQueue(ch, name)
-	msg := &types.PendingTradeMessage{o, t}
+	ch := txq.Broker.GetChannel(name)
+	q := txq.Broker.GetQueue(ch, name)
 
-	bytes, err := json.Marshal(msg)
+	msg := &types.PendingTradeBatch{m}
+	b, err := json.Marshal(msg)
 	if err != nil {
 		return errors.New("Failed to marshal trade object")
 	}
 
-	err = txq.RabbitMQConn.Publish(ch, q, bytes)
+	err = txq.Broker.Publish(ch, q, b)
 	if err != nil {
 		logger.Error(err)
 		return err
@@ -227,9 +236,9 @@ func (txq *TxQueue) PublishPendingTrade(o *types.Order, t *types.Trade) error {
 
 func (txq *TxQueue) PurgePendingTrades() error {
 	name := "TX_QUEUES:" + txq.Name
-	ch := txq.RabbitMQConn.GetChannel(name)
+	ch := txq.Broker.GetChannel(name)
 
-	err := txq.RabbitMQConn.Purge(ch, name)
+	err := txq.Broker.Purge(ch, name)
 	if err != nil {
 		logger.Error(err)
 		return err
@@ -239,10 +248,10 @@ func (txq *TxQueue) PurgePendingTrades() error {
 }
 
 // PopPendingTrade
-func (txq *TxQueue) PopPendingTrade() (*types.PendingTradeMessage, error) {
+func (txq *TxQueue) PopPendingTrades() (*types.Matches, error) {
 	name := "TX_QUEUES:" + txq.Name
-	ch := txq.RabbitMQConn.GetChannel(name)
-	q := txq.RabbitMQConn.GetQueue(ch, name)
+	ch := txq.Broker.GetChannel(name)
+	q := txq.Broker.GetQueue(ch, name)
 
 	msg, _, _ := ch.Get(
 		q.Name,
@@ -253,7 +262,7 @@ func (txq *TxQueue) PopPendingTrade() (*types.PendingTradeMessage, error) {
 		return nil, nil
 	}
 
-	pding := &types.PendingTradeMessage{}
+	pding := &types.Matches{}
 	err := json.Unmarshal(msg.Body, &pding)
 	if err != nil {
 		logger.Error(err)
