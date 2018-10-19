@@ -53,6 +53,14 @@ func IsEqual(x, y *big.Int) bool {
 }
 
 func IsGreaterThan(x, y *big.Int) bool {
+	if x.Cmp(y) == 1 || x.Cmp(y) == 0 {
+		return true
+	} else {
+		return false
+	}
+}
+
+func IsStrictlyGreaterThan(x, y *big.Int) bool {
 	if x.Cmp(y) == 1 {
 		return true
 	} else {
@@ -61,6 +69,14 @@ func IsGreaterThan(x, y *big.Int) bool {
 }
 
 func IsSmallerThan(x, y *big.Int) bool {
+	if x.Cmp(y) == -1 || x.Cmp(y) == 0 {
+		return true
+	} else {
+		return false
+	}
+}
+
+func IsStrictlySmallerThan(x, y *big.Int) bool {
 	if x.Cmp(y) == -1 {
 		return true
 	} else {

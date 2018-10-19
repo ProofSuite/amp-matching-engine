@@ -123,6 +123,7 @@ func (dao *OrderDao) UpdateAllByHash(h common.Hash, o *types.Order) error {
 }
 
 func (dao *OrderDao) FindAndModify(h common.Hash, o *types.Order) (*types.Order, error) {
+	o.UpdatedAt = time.Now()
 	query := bson.M{"hash": h.Hex()}
 	updated := &types.Order{}
 	change := mgo.Change{
