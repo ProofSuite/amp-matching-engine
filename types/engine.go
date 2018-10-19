@@ -10,6 +10,8 @@ type OrderTradePair struct {
 	Trade *Trade `json:"trade"`
 }
 
+type OrderTradePairs []OrderTradePair
+
 type Matches struct {
 	OrderTradePairs []*OrderTradePair
 	HashID          common.Hash
@@ -48,6 +50,29 @@ func (m *Matches) Orders() []*Order {
 	}
 
 	return orders
+}
+
+func (m *Matches) Validate() error {
+	trades := m.Trades()
+	orders := m.Orders()
+
+	for _, t := range trades {
+		err := t.ValidateComplete()
+		if err != nil {
+			logger.Error(err)
+			return err
+		}
+	}
+
+	for _, o := range orders {
+		err := o.ValidateComplete()
+		if err != nil {
+			logger.Error(err)
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (m *Matches) AppendMatch(ot *OrderTradePair) {

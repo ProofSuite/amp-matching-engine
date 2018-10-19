@@ -3,6 +3,7 @@ package contracts
 import (
 	"context"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"math/big"
 	"strings"
@@ -188,6 +189,15 @@ func (e *Exchange) CallBatchTrades(matches *types.Matches, call *ethereum.CallMs
 
 		orderValues = append(orderValues, [8]*big.Int{o.BuyAmount, o.SellAmount, o.Expires, o.Nonce, o.MakeFee, o.TakeFee, t.Amount, t.TradeNonce})
 		orderAddresses = append(orderAddresses, [4]common.Address{o.BuyToken, o.SellToken, o.UserAddress, t.Taker})
+
+		if o.Signature == nil {
+			return 0, errors.New("Order is not signed")
+		}
+
+		if t.Signature == nil {
+			return 0, errors.New("Trade is not signed")
+		}
+
 		vValues = append(vValues, [2]uint8{o.Signature.V, t.Signature.V})
 		rsValues = append(rsValues, [4][32]byte{o.Signature.R, o.Signature.S, t.Signature.R, t.Signature.S})
 	}

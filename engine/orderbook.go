@@ -433,7 +433,9 @@ func (ob *OrderBook) execute(o *types.Order, bookEntry *types.Order) (*types.Tra
 	bookEntryAvailableAmount := math.Sub(bookEntry.Amount, bookEntry.FilledAmount)
 	orderAvailableAmount := math.Sub(o.Amount, o.FilledAmount)
 
-	if math.IsGreaterThan(bookEntryAvailableAmount, orderAvailableAmount) {
+	//TODO changes 'strictly greater than' condition. The orders that are almost completely filled
+	//TODO should be removed/skipped
+	if math.IsStrictlyGreaterThan(bookEntryAvailableAmount, orderAvailableAmount) {
 		tradeAmount = orderAvailableAmount
 		bookEntry.FilledAmount = math.Add(bookEntry.FilledAmount, orderAvailableAmount)
 		bookEntry.Status = "PARTIAL_FILLED"
@@ -451,9 +453,9 @@ func (ob *OrderBook) execute(o *types.Order, bookEntry *types.Order) (*types.Tra
 			return nil, err
 		}
 
+		bookEntry.Status = "FILLED"
 		tradeAmount = bookEntryAvailableAmount
 		bookEntry.FilledAmount = bookEntry.Amount
-		bookEntry.Status = "FILLED"
 	}
 
 	o.FilledAmount = math.Add(o.FilledAmount, tradeAmount)

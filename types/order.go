@@ -46,43 +46,43 @@ type Order struct {
 // TODO: Include userAddress, token addresses checks
 func (o *Order) Validate() error {
 	if o.ExchangeAddress != common.HexToAddress(app.Config.Ethereum["exchange_address"]) {
-		return errors.New("Incorrect exchange address")
+		return errors.New("Order 'exchangeAddress' parameter is incorrect")
 	}
 
 	if o.BuyAmount == nil {
-		return errors.New("buyAmount is required")
+		return errors.New("Order 'buyAmount' parameter is required")
 	}
 
 	if o.Nonce == nil {
-		return errors.New("nonce is required")
+		return errors.New("Order 'nonce' parameter is required")
 	}
 
 	if o.SellAmount == nil {
-		return errors.New("sellAmount is required")
+		return errors.New("Order 'sellAmount' parameter is required")
 	}
 
 	if o.Expires == nil {
-		return errors.New("expires is required")
+		return errors.New("Order 'expires' parameter is required")
 	}
 
 	if o.MakeFee == nil {
-		return errors.New("makeFee is required")
+		return errors.New("Order 'makeFee' parameter is required")
 	}
 
 	if o.TakeFee == nil {
-		return errors.New("takeFee is required")
+		return errors.New("Order 'takeFee' parameter is required")
 	}
 
 	if math.IsSmallerThan(o.BuyAmount, big.NewInt(0)) {
-		return errors.New("buyAmount should be positive")
+		return errors.New("Order 'buyAmount' parameter should be positive")
 	}
 
 	if math.IsSmallerThan(o.SellAmount, big.NewInt(0)) {
-		return errors.New("sellAmount should be positive")
+		return errors.New("Order 'sellAmount' parameter should be positive")
 	}
 
 	if math.IsSmallerThan(o.Nonce, big.NewInt(0)) {
-		return errors.New("nonce should be positive")
+		return errors.New("Order 'nonce' parameter should be positive")
 	}
 
 	return nil
@@ -95,7 +95,16 @@ func (o *Order) ValidateComplete() error {
 	}
 
 	if o.Signature == nil {
-		return errors.New("signature is required")
+		return errors.New("Order 'signature' parameter is required")
+	}
+
+	valid, err := o.VerifySignature()
+	if err != nil {
+		return err
+	}
+
+	if !valid {
+		return errors.New("Order 'signature' parameter is invalid")
 	}
 
 	//TODO add validations for hashes and addresses
@@ -168,7 +177,7 @@ func (o *Order) Process(p *Pair) error {
 		o.Amount = o.SellAmount
 		o.PricePoint = math.Div(math.Mul(o.BuyAmount, p.PriceMultiplier), o.SellAmount)
 	} else {
-		return errors.New("Could not determine o side")
+		return errors.New("Could not determine order side")
 	}
 
 	o.BaseToken = p.BaseTokenAddress
@@ -234,6 +243,30 @@ func (o *Order) GetOBMatchKey() (ss string) {
 
 	ss = o.GetKVPrefix() + "::" + k
 	return
+}
+
+func (o *Order) SellTokenSymbol(p *Pair) string {
+	if o.Side == "BUY" {
+		return p.QuoteTokenSymbol
+	}
+
+	if o.Side == "SELL" {
+		return p.BaseTokenSymbol
+	}
+
+	return ""
+}
+
+func (o *Order) BuyTokenSymbol(p *Pair) string {
+	if o.Side == "BUY" {
+		return p.BaseTokenSymbol
+	}
+
+	if o.Side == "SELL" {
+		return p.QuoteTokenSymbol
+	}
+
+	return ""
 }
 
 // JSON Marshal/Unmarshal interface
