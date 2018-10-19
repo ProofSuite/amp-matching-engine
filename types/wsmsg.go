@@ -41,19 +41,30 @@ type Params struct {
 	PairID   string `json:"pair"`
 }
 
+// Signature payload is a websocket message payload struct for the "REQUEST_SIGNATURE" message
+//
 type SignaturePayload struct {
-	Order   *Order            `json:"order"`
+	Order          *Order            `json:"order"`
+	RemainingOrder *Order            `json:"remainingOrder,omitempty"`
+	Matches        []*OrderTradePair `json:"matches"`
+}
+
+// type OrderPendingPayload struct {
+// 	Order *Order `json:"order"`
+// 	Trade *Trade `json:"trade"`
+// }
+
+type OrderPendingPayload struct {
 	Matches []*OrderTradePair `json:"matches"`
 }
 
-type OrderPendingPayload struct {
-	Order *Order `json:"order"`
-	Trade *Trade `json:"trade"`
-}
+// type OrderSuccessPayload struct {
+// 	Order *Order `json:"order"`
+// 	Trade *Trade `json:"trade"`
+// }
 
 type OrderSuccessPayload struct {
-	Order *Order `json:"order"`
-	Trade *Trade `json:"trade"`
+	Matches []*OrderTradePair `json:"matches"`
 }
 
 type SubscriptionPayload struct {
@@ -102,24 +113,32 @@ func NewOrderCancelWebsocketMessage(oc *OrderCancel) *WebsocketMessage {
 	}
 }
 
-func NewRequestSignaturesWebsocketMessage(hash common.Hash, m []*OrderTradePair, o *Order) *WebsocketMessage {
+func NewRequestSignaturesWebsocketMessage(h common.Hash, order *Order, remainingOrder *Order, matches []*OrderTradePair) *WebsocketMessage {
 	return &WebsocketMessage{
 		Channel: "orders",
 		Event: WebsocketEvent{
-			Type:    "REQUEST_SIGNATURE",
-			Hash:    hash.Hex(),
-			Payload: SignaturePayload{o, m},
+			Type: "REQUEST_SIGNATURE",
+			Hash: h.Hex(),
+			Payload: SignaturePayload{
+				order,
+				remainingOrder,
+				matches,
+			},
 		},
 	}
 }
 
-func NewSubmitSignatureWebsocketMessage(hash string, m []*OrderTradePair, o *Order) *WebsocketMessage {
+func NewSubmitSignatureWebsocketMessage(hash string, order *Order, remainingOrder *Order, matches []*OrderTradePair) *WebsocketMessage {
 	return &WebsocketMessage{
 		Channel: "orders",
 		Event: WebsocketEvent{
-			Type:    "SUBMIT_SIGNATURE",
-			Hash:    hash,
-			Payload: SignaturePayload{o, m},
+			Type: "SUBMIT_SIGNATURE",
+			Hash: hash,
+			Payload: SignaturePayload{
+				order,
+				remainingOrder,
+				matches,
+			},
 		},
 	}
 }

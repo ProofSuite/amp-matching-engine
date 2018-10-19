@@ -100,6 +100,10 @@ func (s *OHLCVService) GetOHLCV(pairs []types.PairAddresses, duration int64, uni
 		return nil, err
 	}
 
+	if res == nil {
+		return []*types.Tick{}, nil
+	}
+
 	return res, nil
 }
 

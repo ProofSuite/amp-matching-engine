@@ -9,6 +9,7 @@ import (
 
 	"github.com/Proofsuite/amp-matching-engine/utils/math"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/sha3"
 
 	"gopkg.in/mgo.v2/bson"
@@ -61,18 +62,64 @@ type TradeRecord struct {
 
 func (t *Trade) Validate() error {
 	if t.TradeNonce == nil {
-		return errors.New("tradeNonce is required")
+		return errors.New("Trade 'tradeNonce' parameter is required")
 	}
 
 	if t.Amount == nil {
-		return errors.New("amount is required")
+		return errors.New("Trade 'amount' parameter is required")
 	}
 
 	if t.Signature == nil {
-		return errors.New("signature is required")
+		return errors.New("Trade 'signature' parameter is required")
+	}
+
+	if t.Side != "BUY" && t.Side != "SELL" {
+		return errors.New("Trade 'side' parameter should be either 'BUY' or 'SELL'")
+	}
+
+	if t.PricePoint == nil {
+		return errors.New("Trade 'pricepoint' paramter is required")
+	}
+
+	if math.IsSmallerThan(t.PricePoint, big.NewInt(0)) {
+		return errors.New("Trade 'pricepoint' parameter should be positive")
+	}
+
+	if t.Amount == nil {
+		return errors.New("Trade 'amount' parameter is required")
+	}
+
+	if math.IsSmallerThan(t.Amount, big.NewInt(0)) {
+		return errors.New("Trade 'amount' parameter should be positive")
 	}
 
 	//TODO add validations for hashes and addresses
+	return nil
+}
+
+func (t *Trade) ValidateComplete() error {
+	err := t.Validate()
+	if err != nil {
+		return err
+	}
+
+	if t.TradeNonce == nil {
+		return errors.New("Trade 'tradeNonce' parameter is required")
+	}
+
+	if t.Signature == nil {
+		return errors.New("Trade 'signature' parameter is required")
+	}
+
+	valid, err := t.VerifySignature()
+	if err != nil {
+		return err
+	}
+
+	if !valid {
+		return errors.New("Trade 'signature' parameter is invalid")
+	}
+
 	return nil
 }
 
@@ -347,7 +394,14 @@ func (t *Trade) ComputeHash() common.Hash {
 // VerifySignature verifies that the trade is correct and corresponds
 // to the trade Taker address
 func (t *Trade) VerifySignature() (bool, error) {
-	address, err := t.Signature.Verify(t.Hash)
+	t.Hash = t.ComputeHash()
+
+	message := crypto.Keccak256(
+		[]byte("\x19Ethereum Signed Message:\n32"),
+		t.Hash.Bytes(),
+	)
+
+	address, err := t.Signature.Verify(common.BytesToHash(message))
 	if err != nil {
 		return false, err
 	}

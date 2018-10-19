@@ -74,6 +74,23 @@ func (dao *PairDao) GetAll() ([]types.Pair, error) {
 	return res, nil
 }
 
+func (dao *PairDao) GetActivePairs() ([]*types.Pair, error) {
+	var res []*types.Pair
+
+	q := bson.M{"active": true}
+
+	err := db.Get(dao.dbName, dao.collectionName, q, 0, 0, &res)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(res) == 0 {
+		return nil, nil
+	}
+
+	return res, nil
+}
+
 // GetByID function fetches details of a pair using pair's mongo ID.
 func (dao *PairDao) GetByID(id bson.ObjectId) (*types.Pair, error) {
 	var response *types.Pair

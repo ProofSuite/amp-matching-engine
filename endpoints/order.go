@@ -142,8 +142,7 @@ func (e *orderEndpoint) ws(input interface{}, conn *ws.Conn) {
 // and received in the handleClientResponse.
 func (e *orderEndpoint) handleSubmitSignatures(p *types.WebsocketEvent, conn *ws.Conn) {
 	hash := common.HexToHash(p.Hash)
-	ch := ws.GetOrderChannel(hash)
-
+	ch := e.orderService.GetOrderChannel(hash)
 	if ch != nil {
 		ch <- p
 	}
@@ -169,8 +168,8 @@ func (e *orderEndpoint) handleNewOrder(ev *types.WebsocketEvent, conn *ws.Conn) 
 	}
 
 	o.Hash = o.ComputeHash()
-	ws.RegisterOrderConnection(o.Hash, &ws.OrderConnection{Conn: conn, ReadChannel: ch})
-	ws.RegisterConnectionUnsubscribeHandler(conn, ws.OrderSocketUnsubscribeHandler(o.Hash))
+	ws.RegisterOrderConnection(o.UserAddress, &ws.OrderConnection{Conn: conn, ReadChannel: ch})
+	ws.RegisterConnectionUnsubscribeHandler(conn, ws.OrderSocketUnsubscribeHandler(o.UserAddress))
 
 	err = e.orderService.NewOrder(o)
 	if err != nil {
@@ -191,11 +190,14 @@ func (e *orderEndpoint) handleCancelOrder(ev *types.WebsocketEvent, conn *ws.Con
 		ws.SendMessage(conn, ws.OrderChannel, "ERROR", err.Error())
 	}
 
-	ws.RegisterOrderConnection(oc.Hash, &ws.OrderConnection{Conn: conn, Active: true})
-	ws.RegisterConnectionUnsubscribeHandler(
-		conn,
-		ws.OrderSocketUnsubscribeHandler(oc.Hash),
-	)
+	addr, err := oc.GetSenderAddress()
+	if err != nil {
+		logger.Error(err)
+		ws.SendMessage(conn, ws.OrderChannel, "ERROR", err.Error())
+	}
+
+	ws.RegisterOrderConnection(addr, &ws.OrderConnection{Conn: conn, Active: true})
+	ws.RegisterConnectionUnsubscribeHandler(conn, ws.OrderSocketUnsubscribeHandler(addr))
 
 	err = e.orderService.CancelOrder(oc)
 	if err != nil {

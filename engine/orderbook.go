@@ -126,7 +126,7 @@ func (ob *OrderBook) buyOrder(o *types.Order) (*types.EngineResponse, error) {
 			}
 
 			match := &types.OrderTradePair{entry, trade}
-			res.Matches = append(res.Matches, match)
+			res.AppendMatch(match)
 			res.RemainingOrder.Amount = math.Sub(res.RemainingOrder.Amount, trade.Amount)
 
 			if math.IsZero(res.RemainingOrder.Amount) {
@@ -204,7 +204,7 @@ func (ob *OrderBook) sellOrder(o *types.Order) (*types.EngineResponse, error) {
 			}
 
 			match := &types.OrderTradePair{entry, trade}
-			res.Matches = append(res.Matches, match)
+			res.AppendMatch(match)
 			res.RemainingOrder.Amount = math.Sub(res.RemainingOrder.Amount, trade.Amount)
 
 			if math.IsZero(res.RemainingOrder.Amount) {
@@ -433,7 +433,9 @@ func (ob *OrderBook) execute(o *types.Order, bookEntry *types.Order) (*types.Tra
 	bookEntryAvailableAmount := math.Sub(bookEntry.Amount, bookEntry.FilledAmount)
 	orderAvailableAmount := math.Sub(o.Amount, o.FilledAmount)
 
-	if math.IsGreaterThan(bookEntryAvailableAmount, orderAvailableAmount) {
+	//TODO changes 'strictly greater than' condition. The orders that are almost completely filled
+	//TODO should be removed/skipped
+	if math.IsStrictlyGreaterThan(bookEntryAvailableAmount, orderAvailableAmount) {
 		tradeAmount = orderAvailableAmount
 		bookEntry.FilledAmount = math.Add(bookEntry.FilledAmount, orderAvailableAmount)
 		bookEntry.Status = "PARTIAL_FILLED"
@@ -451,9 +453,9 @@ func (ob *OrderBook) execute(o *types.Order, bookEntry *types.Order) (*types.Tra
 			return nil, err
 		}
 
+		bookEntry.Status = "FILLED"
 		tradeAmount = bookEntryAvailableAmount
 		bookEntry.FilledAmount = bookEntry.Amount
-		bookEntry.Status = "FILLED"
 	}
 
 	o.FilledAmount = math.Add(o.FilledAmount, tradeAmount)
@@ -473,80 +475,80 @@ func (ob *OrderBook) execute(o *types.Order, bookEntry *types.Order) (*types.Tra
 	return trade, nil
 }
 
-// buyOrder is triggered when a buy order comes in, it fetches the ask list
-// from orderbook. First it checks ths price point list to check whether the order can be matched
-// or not, if there are pricepoints that can satisfy the order then corresponding list of orders
-// are fetched and trade is executed
-func (ob *OrderBook) buyOrderBis(o *types.Order) (*types.EngineResponse, error) {
-	res := &types.EngineResponse{
-		Order:  o,
-		Status: "NOMATCH",
-	}
+// // buyOrder is triggered when a buy order comes in, it fetches the ask list
+// // from orderbook. First it checks ths price point list to check whether the order can be matched
+// // or not, if there are pricepoints that can satisfy the order then corresponding list of orders
+// // are fetched and trade is executed
+// func (ob *OrderBook) buyOrderBis(o *types.Order) (*types.EngineResponse, error) {
+// 	res := &types.EngineResponse{
+// 		Order:  o,
+// 		Status: "NOMATCH",
+// 	}
 
-	remainingOrder := *o
-	res.RemainingOrder = &remainingOrder
-	oskv := o.GetOBMatchKey()
+// 	remainingOrder := *o
+// 	res.RemainingOrder = &remainingOrder
+// 	oskv := o.GetOBMatchKey()
 
-	// GET Range of sellOrder between minimum Sell order and o.Price
-	pps, err := ob.GetMatchingBuyPricePoints(oskv, o.PricePoint.Int64())
-	if err != nil {
-		logger.Error(err)
-		return nil, err
-	}
+// 	// GET Range of sellOrder between minimum Sell order and o.Price
+// 	pps, err := ob.GetMatchingBuyPricePoints(oskv, o.PricePoint.Int64())
+// 	if err != nil {
+// 		logger.Error(err)
+// 		return nil, err
+// 	}
 
-	if len(pps) == 0 {
-		o.Status = "OPEN"
-		res.Status = "NOMATCH"
-		res.RemainingOrder = nil
-		ob.addOrder(o)
-		return res, nil
-	}
+// 	if len(pps) == 0 {
+// 		o.Status = "OPEN"
+// 		res.Status = "NOMATCH"
+// 		res.RemainingOrder = nil
+// 		ob.addOrder(o)
+// 		return res, nil
+// 	}
 
-	for _, pp := range pps {
-		entries, err := ob.GetMatchingOrders(oskv, pp)
-		if err != nil {
-			logger.Error(err)
-			return nil, err
-		}
+// 	for _, pp := range pps {
+// 		entries, err := ob.GetMatchingOrders(oskv, pp)
+// 		if err != nil {
+// 			logger.Error(err)
+// 			return nil, err
+// 		}
 
-		//TODO refactor to make the redis transaction atomic
-		for _, bookEntry := range entries {
-			entry := &types.Order{}
-			err = json.Unmarshal(bookEntry, &entry)
-			if err != nil {
-				return nil, err
-			}
+// 		//TODO refactor to make the redis transaction atomic
+// 		for _, bookEntry := range entries {
+// 			entry := &types.Order{}
+// 			err = json.Unmarshal(bookEntry, &entry)
+// 			if err != nil {
+// 				return nil, err
+// 			}
 
-			trade, err := ob.execute(o, entry)
-			if err != nil {
-				logger.Error(err)
-				return nil, err
-			}
+// 			trade, err := ob.execute(o, entry)
+// 			if err != nil {
+// 				logger.Error(err)
+// 				return nil, err
+// 			}
 
-			match := &types.OrderTradePair{entry, trade}
-			res.Matches = append(res.Matches, match)
-			res.RemainingOrder.Amount = math.Sub(res.RemainingOrder.Amount, trade.Amount)
+// 			match := &types.OrderTradePair{entry, trade}
+// 			res.AppendMatch(match)
+// 			res.RemainingOrder.Amount = math.Sub(res.RemainingOrder.Amount, trade.Amount)
 
-			if math.IsZero(res.RemainingOrder.Amount) {
-				res.Status = "FULL"
-				res.Order.Status = "FILLED"
-				res.RemainingOrder = nil
-				return res, nil
-			}
-		}
-	}
+// 			if math.IsZero(res.RemainingOrder.Amount) {
+// 				res.Status = "FULL"
+// 				res.Order.Status = "FILLED"
+// 				res.RemainingOrder = nil
+// 				return res, nil
+// 			}
+// 		}
+// 	}
 
-	//TODO refactor this in a different function (make above function more clear in general)
-	res.Order.Status = "REPLACED"
-	res.Status = "PARTIAL"
-	res.RemainingOrder.Signature = nil
-	res.RemainingOrder.Nonce = nil
-	res.RemainingOrder.Hash = common.HexToHash("")
-	res.RemainingOrder.BuyAmount = res.RemainingOrder.Amount
-	res.RemainingOrder.SellAmount = math.Div(
-		math.Mul(res.RemainingOrder.Amount, res.Order.SellAmount),
-		res.Order.BuyAmount,
-	)
+// 	//TODO refactor this in a different function (make above function more clear in general)
+// 	res.Order.Status = "REPLACED"
+// 	res.Status = "PARTIAL"
+// 	res.RemainingOrder.Signature = nil
+// 	res.RemainingOrder.Nonce = nil
+// 	res.RemainingOrder.Hash = common.HexToHash("")
+// 	res.RemainingOrder.BuyAmount = res.RemainingOrder.Amount
+// 	res.RemainingOrder.SellAmount = math.Div(
+// 		math.Mul(res.RemainingOrder.Amount, res.Order.SellAmount),
+// 		res.Order.BuyAmount,
+// 	)
 
-	return res, nil
-}
+// 	return res, nil
+// }

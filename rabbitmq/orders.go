@@ -68,23 +68,47 @@ func (c *Connection) SubscribeTrades(fn func(*types.OperatorMessage) error) erro
 	return nil
 }
 
-func (c *Connection) PublishTrade(o *types.Order, t *types.Trade) error {
+// func (c *Connection) PublishTrade(o *types.Order, t *types.Trade) error {
+// 	ch := c.GetChannel("tradePublish")
+// 	q := c.GetQueue(ch, "trades")
+
+// 	msg := &types.OperatorMessage{
+// 		MessageType: "NEW_ORDER",
+// 		Order:       o,
+// 		Trade:       t,
+// 	}
+
+// 	bytes, err := json.Marshal(msg)
+// 	if err != nil {
+// 		logger.Error(err)
+// 		return err
+// 	}
+
+// 	err = c.Publish(ch, q, bytes)
+// 	if err != nil {
+// 		logger.Error(err)
+// 		return err
+// 	}
+
+// 	return nil
+// }
+
+func (c *Connection) PublishTrades(matches *types.Matches) error {
 	ch := c.GetChannel("tradePublish")
 	q := c.GetQueue(ch, "trades")
 
 	msg := &types.OperatorMessage{
 		MessageType: "NEW_ORDER",
-		Order:       o,
-		Trade:       t,
+		Matches:     matches,
 	}
 
-	bytes, err := json.Marshal(msg)
+	b, err := json.Marshal(msg)
 	if err != nil {
 		logger.Error(err)
 		return err
 	}
 
-	err = c.Publish(ch, q, bytes)
+	err = c.Publish(ch, q, b)
 	if err != nil {
 		logger.Error(err)
 		return err

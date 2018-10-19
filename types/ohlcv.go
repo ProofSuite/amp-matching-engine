@@ -12,13 +12,13 @@ import (
 // Tick is the format in which mongo aggregate pipeline returns data when queried for OHLCV data
 type Tick struct {
 	Pair      PairID   `json:"id,omitempty" bson:"_id"`
-	Close     *big.Int `json:"close" bson:"close"`
-	Count     *big.Int `json:"count" bson:"count"`
-	High      *big.Int `json:"high" bson:"high"`
-	Low       *big.Int `json:"low" bson:"low"`
-	Open      *big.Int `json:"open" bson:"open"`
-	Volume    *big.Int `json:"volume" bson:"volume"`
-	Timestamp int64    `json:"timestamp" bson:"timestamp"`
+	Close     *big.Int `json:"close,omitempty" bson:"close"`
+	Count     *big.Int `json:"count,omitempty" bson:"count"`
+	High      *big.Int `json:"high,omitempty" bson:"high"`
+	Low       *big.Int `json:"low,omitempty" bson:"low"`
+	Open      *big.Int `json:"open,omitempty" bson:"open"`
+	Volume    *big.Int `json:"volume,omitempty" bson:"volume"`
+	Timestamp int64    `json:"timestamp,omitempty" bson:"timestamp"`
 }
 
 // PairID is the subdocument for aggregate grouping for OHLCV data
@@ -45,13 +45,32 @@ func (t *Tick) MarshalJSON() ([]byte, error) {
 			"quoteToken": t.Pair.QuoteToken.Hex(),
 		},
 		"timestamp": t.Timestamp,
-		"open":      t.Open.String(),
-		"high":      t.High.String(),
-		"low":       t.Low.String(),
-		"close":     t.Close.String(),
-		"volume":    t.Volume.String(),
-		"count":     t.Count.String(),
 	}
+
+	if t.Open != nil {
+		tick["open"] = t.Open.String()
+	}
+
+	if t.High != nil {
+		tick["high"] = t.High.String()
+	}
+
+	if t.Low != nil {
+		tick["low"] = t.Low.String()
+	}
+
+	if t.Volume != nil {
+		tick["volume"] = t.Volume.String()
+	}
+
+	if t.Close != nil {
+		tick["close"] = t.Close.String()
+	}
+
+	if t.Count != nil {
+		tick["count"] = t.Count.String()
+	}
+
 	bytes, err := json.Marshal(tick)
 	return bytes, err
 }
@@ -220,4 +239,9 @@ func (t *Tick) SetBSON(raw bson.Raw) error {
 
 	t.Timestamp = decoded.Timestamp
 	return nil
+}
+
+func (t *Tick) AddressCode() string {
+	code := t.Pair.BaseToken.Hex() + "::" + t.Pair.QuoteToken.Hex()
+	return code
 }

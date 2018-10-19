@@ -3,12 +3,14 @@ package app
 import (
 	"fmt"
 
+	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/go-ozzo/ozzo-validation"
 	"github.com/spf13/viper"
 )
 
 // Config stores the application-wide configurations
 var Config appConfig
+var logger = utils.Logger
 
 type appConfig struct {
 	// the path to the error message file. Defaults to "config/errors.yaml"
@@ -78,34 +80,15 @@ func LoadConfig(configPath string, env string) error {
 	Config.Ethereum = make(map[string]string)
 	Config.Ethereum["http_url"] = v.Get("ETHEREUM_NODE_HTTP_URL").(string)
 	Config.Ethereum["ws_url"] = v.Get("ETHEREUM_NODE_WS_URL").(string)
-	Config.DSN = v.Get("MONGO_URL").(string)
+	Config.DSN = v.Get("MONGODB_URL").(string)
 	Config.Redis = v.Get("REDIS_URL").(string)
 	Config.Rabbitmq = v.Get("RABBITMQ_URL").(string)
-	Config.DBName = v.Get("MONGO_DBNAME").(string)
+	Config.DBName = v.Get("MONGODB_DBNAME").(string)
 	Config.Ethereum["exchange_address"] = v.Get("EXCHANGE_CONTRACT_ADDRESS").(string)
 	Config.Ethereum["weth_address"] = v.Get("WETH_CONTRACT_ADDRESS").(string)
 	Config.Ethereum["fee_account"] = v.Get("FEE_ACCOUNT_ADDRESS").(string)
 
-	// if env != "" {
-	// 	v.SetConfigName("config." + env)
-	// }
-
-	// v.SetConfigType("yaml")
-	// v.SetEnvPrefix("amp")
-	// v.AutomaticEnv()
-
-	// v.SetDefault("error_file", "config/errors.yaml")
-	// v.SetDefault("server_port", 8081)
-	// v.SetDefault("jwt_signing_method", "HS256")
-	// v.AddConfigPath(configPath)
-
-	// if err := v.ReadInConfig(); err != nil {
-	// 	return fmt.Errorf("Failed to read the configuration file: %s", err)
-	// }
-
-	// if err := v.Unmarshal(&Config); err != nil {
-	// 	return err
-	// }
+	logger.Info("Configuration: ", utils.JSON(Config))
 
 	return Config.Validate()
 }

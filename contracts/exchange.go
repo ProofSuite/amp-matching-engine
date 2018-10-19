@@ -3,6 +3,7 @@ package contracts
 import (
 	"context"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"math/big"
 	"strings"
@@ -133,6 +134,31 @@ func (e *Exchange) Operator(a common.Address) (bool, error) {
 	return isOperator, nil
 }
 
+func (e *Exchange) ExecuteBatchTrades(matches *types.Matches, txOpts *bind.TransactOpts) (*eth.Transaction, error) {
+	orderValues := [][8]*big.Int{}
+	orderAddresses := [][4]common.Address{}
+	vValues := [][2]uint8{}
+	rsValues := [][4][32]byte{}
+
+	for _, m := range matches.OrderTradePairs {
+		o := m.Order
+		t := m.Trade
+
+		orderValues = append(orderValues, [8]*big.Int{o.BuyAmount, o.SellAmount, o.Expires, o.Nonce, o.MakeFee, o.TakeFee, t.Amount, t.TradeNonce})
+		orderAddresses = append(orderAddresses, [4]common.Address{o.BuyToken, o.SellToken, o.UserAddress, t.Taker})
+		vValues = append(vValues, [2]uint8{o.Signature.V, t.Signature.V})
+		rsValues = append(rsValues, [4][32]byte{o.Signature.R, o.Signature.S, t.Signature.R, t.Signature.S})
+	}
+
+	tx, err := e.Interface.ExecuteBatchTrades(txOpts, orderValues, orderAddresses, vValues, rsValues)
+	if err != nil {
+		logger.Error(err)
+		return nil, err
+	}
+
+	return tx, nil
+}
+
 // Trade executes a settlements transaction. The order and trade payloads need to be signed respectively
 // by the Maker and the Taker of the trade. Only the operator account can send a Trade function to the
 // Exchange smart contract.
@@ -149,6 +175,51 @@ func (e *Exchange) Trade(o *types.Order, t *types.Trade, txOpts *bind.TransactOp
 	}
 
 	return tx, nil
+}
+
+func (e *Exchange) CallBatchTrades(matches *types.Matches, call *ethereum.CallMsg) (uint64, error) {
+	orderValues := [][8]*big.Int{}
+	orderAddresses := [][4]common.Address{}
+	vValues := [][2]uint8{}
+	rsValues := [][4][32]byte{}
+
+	for _, m := range matches.OrderTradePairs {
+		o := m.Order
+		t := m.Trade
+
+		orderValues = append(orderValues, [8]*big.Int{o.BuyAmount, o.SellAmount, o.Expires, o.Nonce, o.MakeFee, o.TakeFee, t.Amount, t.TradeNonce})
+		orderAddresses = append(orderAddresses, [4]common.Address{o.BuyToken, o.SellToken, o.UserAddress, t.Taker})
+
+		if o.Signature == nil {
+			return 0, errors.New("Order is not signed")
+		}
+
+		if t.Signature == nil {
+			return 0, errors.New("Trade is not signed")
+		}
+
+		vValues = append(vValues, [2]uint8{o.Signature.V, t.Signature.V})
+		rsValues = append(rsValues, [4][32]byte{o.Signature.R, o.Signature.S, t.Signature.R, t.Signature.S})
+	}
+
+	exchangeABI, err := abi.JSON(strings.NewReader(contractsinterfaces.ExchangeABI))
+	if err != nil {
+		return 0, err
+	}
+
+	data, err := exchangeABI.Pack("executeBatchTrades", orderValues, orderAddresses, vValues, rsValues)
+	if err != nil {
+		return 0, err
+	}
+
+	call.Data = data
+	gasLimit, err := e.Client.(bind.ContractBackend).EstimateGas(context.Background(), *call)
+	if err != nil {
+		logger.Error(err)
+		return 0, err
+	}
+
+	return gasLimit, nil
 }
 
 func (e *Exchange) CallTrade(o *types.Order, t *types.Trade, call *ethereum.CallMsg) (uint64, error) {
@@ -209,6 +280,19 @@ func (e *Exchange) ListenToTrades() (chan *contractsinterfaces.ExchangeLogTrade,
 	opts := &bind.WatchOpts{nil, nil}
 
 	_, err := e.Interface.WatchLogTrade(opts, events, nil, nil, nil)
+	if err != nil {
+		logger.Error(err)
+		return nil, err
+	}
+
+	return events, nil
+}
+
+func (e *Exchange) ListenToBatchTrades() (chan *contractsinterfaces.ExchangeLogBatchTrades, error) {
+	events := make(chan *contractsinterfaces.ExchangeLogBatchTrades)
+	opts := &bind.WatchOpts{nil, nil}
+
+	_, err := e.Interface.WatchLogBatchTrades(opts, events, nil, nil)
 	if err != nil {
 		logger.Error(err)
 		return nil, err
