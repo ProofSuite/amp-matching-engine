@@ -21,6 +21,9 @@ Retrieve the account information for a certain Ethereum address (mainly token ba
 
 Retrieve the token balance of a certain Ethereum address
 
+* {userAddress} is the Ethereum address of a user/client wallet
+* {tokenAddress} is the Ethereum address of a token (base or quote)
+
 
 # Pairs resource
 
@@ -37,7 +40,7 @@ Retrieve all pairs currently registered on the exchange
 
 ### GET /pairs/data?baseToken={baseToken}&quoteToken={quoteToken}
 
-Retrieve pair data corresponding to a baseToekn and quoteToken where
+Retrieve pair data corresponding to a baseToken and quoteToken where
 
 * {baseToken} is the Ethereum address of a base token
 * {quoteToken} is the Ethereum address of a quote token
@@ -64,6 +67,8 @@ Retrieve all quote tokens currently registered on the exchange
 
 Retrieve token information for a token at a certain address
 
+* {address} is an Ethereum address
+
 
 # Orderbook resource
 
@@ -89,9 +94,14 @@ corresponding to a baseToken and a quoteToken.
 
 Retrieve the sorted list of trades for an Ethereum address
 
+* {address} is an Ethereum address
+
 ### GET /trades/pair?baseToken={baseToken}&quoteToken={quoteToken}
 
 Retrieve all trades corresponding to a baseToken and a quoteToken
+
+* {baseToken} is the Ethereum address of a base token
+* {quoteToken} is the Ethereum address of a quote token
 
 
 
@@ -106,9 +116,13 @@ Retrieve the sorted list of orders for an Ethereum address
 Retrieve the list of positions for an Ethereum address. Positions are order that have been sent
 to the matching engine and that are waiting to be matched
 
+* {address} is an Ethereum address
+
 ### GET /orders/history?address={address}
 
 Retrieve the list of filled order for an Ethereum address.
+
+* {address} is an Ethereum address
 
 
 # OHLCV resource
