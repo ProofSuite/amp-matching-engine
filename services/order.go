@@ -311,24 +311,25 @@ func (s *OrderService) HandleOperatorMessages(msg *types.OperatorMessage) error 
 // handleEngineError returns an websocket error message to the client and recovers orders on the
 // redis key/value store
 func (s *OrderService) handleEngineError(res *types.EngineResponse) {
-	err := s.orderDao.UpdateOrderStatus(res.Order.Hash, "ERROR")
+	o := res.Order
+
+	err := s.orderDao.UpdateOrderStatus(o.Hash, "ERROR")
 	if err != nil {
 		logger.Error(err)
 	}
 
-	err = s.engine.DeleteOrder(res.Order)
+	err = s.engine.DeleteOrder(o)
 	if err != nil {
 		logger.Error(err)
 	}
 
-	ws.SendOrderMessage("ERROR", res.Order.UserAddress, res.Order.Hash, nil)
+	ws.SendOrderMessage("ERROR", o.UserAddress, o.Hash, nil)
 }
 
 // handleEngineOrderAdded returns a websocket message informing the client that his order has been added
 // to the orderbook (but currently not matched)
 func (s *OrderService) handleEngineOrderAdded(res *types.EngineResponse) {
 	o := res.Order
-	o.CreatedAt = time.Now()
 
 	_, err := s.orderDao.FindAndModify(o.Hash, o)
 	if err != nil {
@@ -344,7 +345,6 @@ func (s *OrderService) handleEngineOrderAdded(res *types.EngineResponse) {
 func (s *OrderService) handleEngineOrderMatched(res *types.EngineResponse) {
 	//res.Order is the "taker" order
 	o := res.Order
-	o.CreatedAt = time.Now()
 	orders := []*types.Order{o}
 
 	//res.Matches is an array of (order, trade) pairs where each order is an "maker" order that is being matched

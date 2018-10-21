@@ -183,6 +183,8 @@ func (o *Order) Process(p *Pair) error {
 	o.BaseToken = p.BaseTokenAddress
 	o.QuoteToken = p.QuoteTokenAddress
 	o.PairName = p.Name()
+	o.CreatedAt = time.Now()
+	o.UpdatedAt = time.Now()
 	return nil
 }
 

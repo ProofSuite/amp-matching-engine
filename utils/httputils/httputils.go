@@ -10,8 +10,11 @@ func WriteError(w http.ResponseWriter, code int, message string) {
 }
 
 func WriteJSON(w http.ResponseWriter, code int, payload interface{}) {
-	response, _ := json.Marshal(payload)
+	Write(w, code, map[string]interface{}{"data": payload})
+}
 
+func Write(w http.ResponseWriter, code int, payload interface{}) {
+	response, _ := json.Marshal(payload)
 	w.WriteHeader(code)
 	w.Write(response)
 }
