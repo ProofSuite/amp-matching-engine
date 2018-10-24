@@ -503,6 +503,60 @@ func (dao *OrderDao) GetOrderBookPricePoint(p *types.Pair, pp *big.Int, side str
 	return math.ToBigInt(res[0]["amount"]), nil
 }
 
+func (dao *OrderDao) GetMatchingBuyOrders(o *types.Order) ([]*types.Order, error) {
+	var orders []*types.Order
+
+	q := []bson.M{
+		bson.M{
+			"$match": bson.M{
+				"status":     bson.M{"$in": []string{"OPEN", "PARTIAL_FILLED"}},
+				"baseToken":  o.BaseToken.Hex(),
+				"quoteToken": o.QuoteToken.Hex(),
+				"side":       "BUY",
+				"pricepoint": bson.M{"$gte": o.PricePoint.Int64()},
+			},
+		},
+		bson.M{
+			"$sort": bson.M{"pricepoint": -1, "createdAt": 1},
+		},
+	}
+
+	err := db.Aggregate(dao.dbName, dao.collectionName, q, &orders)
+	if err != nil {
+		logger.Error(err)
+		return nil, err
+	}
+
+	return orders, nil
+}
+
+func (dao *OrderDao) GetMatchingSellOrders(o *types.Order) ([]*types.Order, error) {
+	var orders []*types.Order
+
+	q := []bson.M{
+		bson.M{
+			"$match": bson.M{
+				"status":     bson.M{"$in": []string{"OPEN", "PARTIAL_FILLED"}},
+				"baseToken":  o.BaseToken.Hex(),
+				"quoteToken": o.QuoteToken.Hex(),
+				"side":       "SELL",
+				"pricepoint": bson.M{"$lte": o.PricePoint.Int64()},
+			},
+		},
+		bson.M{
+			"$sort": bson.M{"pricepoint": 1, "createdAt": 1},
+		},
+	}
+
+	err := db.Aggregate(dao.dbName, dao.collectionName, q, &orders)
+	if err != nil {
+		logger.Error(err)
+		return nil, err
+	}
+
+	return orders, nil
+}
+
 // Drop drops all the order documents in the current database
 func (dao *OrderDao) Drop() error {
 	err := db.DropCollection(dao.dbName, dao.collectionName)

@@ -268,14 +268,6 @@ func (s *OrderService) CancelOrder(oc *types.OrderCancel) error {
 			logger.Error(err)
 		}
 
-		//TODO what do we do if there is no order in mongo ?
-		//TODO replace this with modify/return so that the response doesn't rely on res.Order
-		err = s.orderDao.UpdateOrderStatus(oc.OrderHash, "CANCELLED")
-		if err != nil {
-			logger.Error(err)
-			return err
-		}
-
 		ws.SendOrderMessage("ORDER_CANCELLED", o.UserAddress, oc.OrderHash, res.Order)
 		s.broadcastOrderBookUpdate([]*types.Order{res.Order})
 		return nil
@@ -300,8 +292,6 @@ func (s *OrderService) HandleEngineResponse(res *types.EngineResponse) error {
 		s.handleEngineUnknownMessage(res)
 	}
 
-	// s.BroadcastUpdate(res)
-	// ws.CloseOrderReadChannel(res.Order.Hash)
 	return nil
 }
 
@@ -326,17 +316,6 @@ func (s *OrderService) HandleOperatorMessages(msg *types.OperatorMessage) error 
 // redis key/value store
 func (s *OrderService) handleEngineError(res *types.EngineResponse) {
 	o := res.Order
-
-	err := s.orderDao.UpdateOrderStatus(o.Hash, "ERROR")
-	if err != nil {
-		logger.Error(err)
-	}
-
-	err = s.engine.DeleteOrder(o)
-	if err != nil {
-		logger.Error(err)
-	}
-
 	ws.SendOrderMessage("ERROR", o.UserAddress, o.Hash, nil)
 }
 
@@ -344,12 +323,6 @@ func (s *OrderService) handleEngineError(res *types.EngineResponse) {
 // to the orderbook (but currently not matched)
 func (s *OrderService) handleEngineOrderAdded(res *types.EngineResponse) {
 	o := res.Order
-
-	_, err := s.orderDao.FindAndModify(o.Hash, o)
-	if err != nil {
-		logger.Error(err)
-	}
-
 	ws.SendOrderMessage("ORDER_ADDED", o.UserAddress, o.Hash, o)
 	s.broadcastOrderBookUpdate([]*types.Order{o})
 }
@@ -364,15 +337,6 @@ func (s *OrderService) handleEngineOrderMatched(res *types.EngineResponse) {
 	//res.Matches is an array of (order, trade) pairs where each order is an "maker" order that is being matched
 	for _, m := range res.Matches.OrderTradePairs {
 		orders = append(orders, m.Order)
-	}
-
-	for _, o := range orders {
-		_, err := s.orderDao.FindAndModify(o.Hash, o)
-		if err != nil {
-			logger.Error(err)
-			s.Rollback(res)
-			ws.SendOrderMessage("ERROR", res.Order.UserAddress, res.Order.Hash, err.Error())
-		}
 	}
 
 	go s.handleSubmitSignatures(res)
@@ -416,26 +380,13 @@ func (s *OrderService) handleSubmitSignatures(res *types.EngineResponse) {
 			if ro != nil {
 				err := ro.ValidateComplete()
 				if err != nil {
-					logger.Error(err)
-					// s.Rollback(res)
-					ws.SendOrderMessage("ERROR", res.Order.UserAddress, res.Order.Hash, err.Error())
-					return
-				}
-
-				ro, err = s.orderDao.FindAndModify(ro.Hash, ro)
-				if err != nil {
-					//TODO consider if we should going on with execution or not
-					logger.Error(err)
-					// s.Rollback(res)
 					ws.SendOrderMessage("ERROR", res.Order.UserAddress, res.Order.Hash, err.Error())
 					return
 				}
 
 				b, err := json.Marshal(ro)
 				if err != nil {
-					//TODO not sure whether rolling back is good here
 					logger.Error(err)
-					// s.Rollback(res)
 					ws.SendOrderMessage("ERROR", res.Order.UserAddress, res.Order.Hash, err.Error())
 					return
 				}
@@ -701,18 +652,7 @@ func (s *OrderService) Rollback(res *types.EngineResponse) *types.EngineResponse
 	if matches != nil && len(matches.OrderTradePairs) > 0 {
 		for _, m := range matches.OrderTradePairs {
 			t := m.Trade
-
-			err := s.orderDao.UpdateOrderFilledAmount(t.OrderHash, math.Neg(t.Amount))
-			if err != nil {
-				logger.Error(err)
-			}
-
-			err = s.orderDao.UpdateOrderStatus(t.TakerOrderHash, "ERROR")
-			if err != nil {
-				logger.Error(err)
-			}
-
-			err = s.tradeDao.UpdateTradeStatus(t.Hash, "ERROR")
+			err := s.tradeDao.UpdateTradeStatus(t.Hash, "ERROR")
 			if err != nil {
 				logger.Error(err)
 			}
@@ -733,11 +673,6 @@ func (s *OrderService) Rollback(res *types.EngineResponse) *types.EngineResponse
 }
 
 func (s *OrderService) RollbackOrder(o *types.Order) (err error) {
-	err = s.orderDao.UpdateOrderStatus(o.Hash, "ERROR")
-	if err != nil {
-		logger.Error(err)
-	}
-
 	err = s.engine.DeleteOrder(o)
 	if err != nil {
 		logger.Error(err)
@@ -748,12 +683,6 @@ func (s *OrderService) RollbackOrder(o *types.Order) (err error) {
 
 func (s *OrderService) RollbackTrade(o *types.Order, t *types.Trade) (err error) {
 	err = s.tradeDao.UpdateTradeStatus(t.Hash, "ERROR")
-	if err != nil {
-		logger.Error(err)
-	}
-
-	//TODO check that this also updates the order status
-	err = s.orderDao.UpdateOrderFilledAmount(t.OrderHash, math.Neg(t.Amount))
 	if err != nil {
 		logger.Error(err)
 	}
@@ -775,17 +704,18 @@ func (s *OrderService) CancelTrades(trades []*types.Trade) error {
 		amounts = append(amounts, t.Amount)
 	}
 
-	orders, err := s.orderDao.GetByHashes(orderHashes)
+	_, err := s.orderDao.GetByHashes(orderHashes)
 	if err != nil {
 		logger.Error(err)
 		return err
 	}
 
-	err = s.engine.CancelTrades(orders, amounts)
-	if err != nil {
-		logger.Error(err)
-		return err
-	}
+	//TODO implement cancel trades
+	// err = s.engine.CancelTrades(orders, amounts)
+	// if err != nil {
+	// 	logger.Error(err)
+	// 	return err
+	// }
 
 	return nil
 }

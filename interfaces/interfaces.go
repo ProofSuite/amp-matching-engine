@@ -26,6 +26,8 @@ type OrderDao interface {
 	GetByHash(h common.Hash) (*types.Order, error)
 	GetByHashes(hashes []common.Hash) ([]*types.Order, error)
 	GetByUserAddress(a common.Address) ([]*types.Order, error)
+	GetMatchingBuyOrders(o *types.Order) ([]*types.Order, error)
+	GetMatchingSellOrders(o *types.Order) ([]*types.Order, error)
 	GetCurrentByUserAddress(a common.Address) ([]*types.Order, error)
 	GetHistoryByUserAddress(a common.Address) ([]*types.Order, error)
 	UpdateOrderFilledAmount(h common.Hash, value *big.Int) error
@@ -124,9 +126,7 @@ type Engine interface {
 	HandleOrders(msg *rabbitmq.Message) error
 	RecoverOrders(orders []*types.OrderTradePair) error
 	CancelOrder(order *types.Order) (*types.EngineResponse, error)
-	CancelTrades(orders []*types.Order, amount []*big.Int) error
 	DeleteOrder(o *types.Order) error
-	DeleteOrders(orders ...types.Order) error
 }
 
 type WalletService interface {

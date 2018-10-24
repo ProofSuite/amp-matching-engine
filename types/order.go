@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/Proofsuite/amp-matching-engine/app"
-	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/Proofsuite/amp-matching-engine/utils/math"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -203,48 +202,8 @@ func (o *Order) Pair() (*Pair, error) {
 	}, nil
 }
 
-func (o *Order) PairCode() (string, error) {
-	if o.PairName == "" {
-		return "", errors.New("Pair name is required")
-	}
-
-	return o.PairName + "::" + o.BaseToken.Hex() + "::" + o.QuoteToken.Hex(), nil
-}
-
-// GetKVPrefix returns the key value store(redis) prefix to be used
-// by matching engine correspondind to a particular order.
-func (o *Order) GetKVPrefix() string {
-	return o.BaseToken.Hex() + "::" + o.QuoteToken.Hex()
-}
-
-// GetOBKeys returns the keys corresponding to an order
-// orderbook price point key
-// orderbook list key corresponding to order price.
-func (o *Order) GetOBKeys() (ss, list string) {
-	var k string
-	if o.Side == "BUY" {
-		k = "BUY"
-	} else if o.Side == "SELL" {
-		k = "SELL"
-	}
-
-	ss = o.GetKVPrefix() + "::" + k
-	list = o.GetKVPrefix() + "::" + k + "::" + utils.UintToPaddedString(o.PricePoint.Int64())
-	return
-}
-
-// GetOBMatchKey returns the orderbook price point key
-// aginst which the order needs to be matched
-func (o *Order) GetOBMatchKey() (ss string) {
-	var k string
-	if o.Side == "BUY" {
-		k = "SELL"
-	} else if o.Side == "SELL" {
-		k = "BUY"
-	}
-
-	ss = o.GetKVPrefix() + "::" + k
-	return
+func (o *Order) RemainingAmount() *big.Int {
+	return math.Sub(o.Amount, o.FilledAmount)
 }
 
 func (o *Order) SellTokenSymbol(p *Pair) string {
@@ -269,6 +228,14 @@ func (o *Order) BuyTokenSymbol(p *Pair) string {
 	}
 
 	return ""
+}
+
+func (o *Order) PairCode() (string, error) {
+	if o.PairName == "" {
+		return "", errors.New("Pair name is required")
+	}
+
+	return o.PairName + "::" + o.BaseToken.Hex() + "::" + o.QuoteToken.Hex(), nil
 }
 
 // JSON Marshal/Unmarshal interface
@@ -457,7 +424,7 @@ type OrderRecord struct {
 	Status          string           `json:"status" bson:"status"`
 	Side            string           `json:"side" bson:"side"`
 	Hash            string           `json:"hash" bson:"hash"`
-	PricePoint      string           `json:"pricepoint" bson:"pricepoint"`
+	PricePoint      int64            `json:"pricepoint" bson:"pricepoint"`
 	Amount          string           `json:"amount" bson:"amount"`
 	FilledAmount    string           `json:"filledAmount" bson:"filledAmount"`
 	Nonce           string           `json:"nonce" bson:"nonce"`
@@ -500,7 +467,7 @@ func (o *Order) GetBSON() (interface{}, error) {
 	}
 
 	if o.PricePoint != nil {
-		or.PricePoint = o.PricePoint.String()
+		or.PricePoint = o.PricePoint.Int64()
 	}
 
 	if o.Amount != nil {
@@ -537,7 +504,7 @@ func (o *Order) SetBSON(raw bson.Raw) error {
 		Status          string           `json:"status" bson:"status"`
 		Side            string           `json:"side" bson:"side"`
 		Hash            string           `json:"hash" bson:"hash"`
-		PricePoint      string           `json:"pricepoint" bson:"pricepoint"`
+		PricePoint      int64            `json:"pricepoint" bson:"pricepoint"`
 		Amount          string           `json:"amount" bson:"amount"`
 		FilledAmount    string           `json:"filledAmount" bson:"filledAmount"`
 		Nonce           string           `json:"nonce" bson:"nonce"`
@@ -584,8 +551,8 @@ func (o *Order) SetBSON(raw bson.Raw) error {
 		o.FilledAmount = math.ToBigInt(decoded.FilledAmount)
 	}
 
-	if decoded.PricePoint != "" {
-		o.PricePoint = math.ToBigInt(decoded.PricePoint)
+	if decoded.PricePoint != 0 {
+		o.PricePoint = big.NewInt(decoded.PricePoint)
 	}
 
 	if decoded.Signature != nil {
@@ -629,7 +596,7 @@ func (o OrderBSONUpdate) GetBSON() (interface{}, error) {
 	}
 
 	if o.PricePoint != nil {
-		set["pricepoint"] = o.PricePoint.String()
+		set["pricepoint"] = o.PricePoint.Int64()
 	}
 
 	if o.Amount != nil {
@@ -726,5 +693,26 @@ func (o OrderBSONUpdate) GetBSON() (interface{}, error) {
 // 		}
 // 	}
 
-// 	return or, nil
+// // 	return or, nil
+// // }
+// // GetKVPrefix returns the key value store(redis) prefix to be used
+// // by matching engine correspondind to a particular order.
+// func (o *Order) GetKVPrefix() string {
+// 	return o.BaseToken.Hex() + "::" + o.QuoteToken.Hex()
+// }
+
+// // GetOBKeys returns the keys corresponding to an order
+// // orderbook price point key
+// // orderbook list key corresponding to order price.
+// func (o *Order) GetOBKeys() (ss, list string) {
+// 	var k string
+// 	if o.Side == "BUY" {
+// 		k = "BUY"
+// 	} else if o.Side == "SELL" {
+// 		k = "SELL"
+// 	}
+
+// 	ss = o.GetKVPrefix() + "::" + k
+// 	list = o.GetKVPrefix() + "::" + k + "::" + utils.UintToPaddedString(o.PricePoint.Int64())
+// 	return
 // }

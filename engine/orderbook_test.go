@@ -1,19 +1,21 @@
 package engine
 
 import (
+	"io/ioutil"
 	"log"
 	"testing"
 
+	"github.com/Proofsuite/amp-matching-engine/daos"
 	"github.com/Proofsuite/amp-matching-engine/rabbitmq"
-	"github.com/Proofsuite/amp-matching-engine/redis"
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/Proofsuite/amp-matching-engine/utils/testutils"
 	"github.com/Proofsuite/amp-matching-engine/utils/testutils/mocks"
 	"github.com/Proofsuite/amp-matching-engine/utils/units"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/stretchr/testify/assert"
 )
+
+var db *daos.Database
 
 func setupTest() (
 	*Engine,
@@ -30,19 +32,25 @@ func setupTest() (
 	log.SetFlags(log.LstdFlags | log.Llongfile)
 	log.SetPrefix("\nLOG: ")
 
+	mongoServer := testutils.NewDBTestServer()
+	temp, _ := ioutil.TempDir("", "test")
+	mongoServer.SetPath(temp)
+
+	session := mongoServer.Session()
+	daos.InitSession(session)
 	rabbitConn := rabbitmq.InitConnection("amqp://guest:guest@localhost:5672/")
-	redisConn := redis.NewRedisConnection("redis://localhost:6379")
-	redisConn.FlushAll()
+
+	opts := daos.OrderDaoDBOption("test")
+	orderDao := daos.NewOrderDao(opts)
 
 	pair := testutils.GetZRXWETHTestPair()
 	pairDao := new(mocks.PairDao)
 	pairDao.On("GetAll").Return([]types.Pair{*pair}, nil)
 
-	eng := NewEngine(redisConn, rabbitConn, pairDao)
+	eng := NewEngine(rabbitConn, orderDao, pairDao)
 	ex := testutils.GetTestAddress1()
 	maker := testutils.GetTestWallet1()
 	taker := testutils.GetTestWallet2()
-
 	zrx := pair.BaseTokenAddress
 	weth := pair.QuoteTokenAddress
 
@@ -64,260 +72,8 @@ func setupTest() (
 	return eng, ob, ex, maker, taker, pair, zrx, weth, factory1, factory2
 }
 
-func TestAddOrder(t *testing.T) {
-	e, ob, _, _, _, _, _, _, factory1, factory2 := setupTest()
-	defer e.redisConn.FlushAll()
-
-	o1, _ := factory1.NewSellOrder(1e3, 1e8)
-	o2, _ := factory2.NewSellOrder(1e3, 1e8)
-
-	e.addOrder(&o1)
-
-	pricePointSetKey, orderHashListKey := o1.GetOBKeys()
-
-	pricepoints, err := e.redisConn.GetSortedSet(pricePointSetKey)
-	if err != nil {
-		t.Error("Error getting sorted set")
-	}
-
-	pricePointHashes, err := e.redisConn.GetSortedSet(orderHashListKey)
-	if err != nil {
-		t.Error("Error getting pricepoints order hashes set")
-	}
-
-	stored, err := ob.GetFromOrderMap(o1.Hash)
-	if err != nil {
-		t.Error("Error getting sorted set", err)
-	}
-
-	// volume, err := ob.GetPricePointVolume(pricePointSetKey, o1.PricePoint.Int64())
-	// if err != nil {
-	// 	t.Error("Error getting volume set", err)
-	// }
-
-	assert.Equal(t, 1, len(pricepoints))
-	assert.Contains(t, pricepoints, utils.UintToPaddedString(o1.PricePoint.Int64()))
-	assert.Equal(t, 1, len(pricePointHashes))
-	assert.Contains(t, pricePointHashes, o1.Hash.Hex())
-	assert.Equal(t, int64(pricePointHashes[o1.Hash.Hex()]), o1.CreatedAt.Unix())
-	// assert.Equal(t, int64(1e8), volume)
-	testutils.CompareOrder(t, &o1, stored)
-
-	e.addOrder(&o2)
-
-	pricePointSetKey, orderHashListKey = o2.GetOBKeys()
-	pricepoints, err = e.redisConn.GetSortedSet(pricePointSetKey)
-	if err != nil {
-		t.Error(err)
-	}
-
-	pricePointHashes, err = e.redisConn.GetSortedSet(orderHashListKey)
-	if err != nil {
-		t.Error("Error getting pricepoints order hashes set")
-	}
-
-	stored, err = ob.GetFromOrderMap(o2.Hash)
-	if err != nil {
-		t.Error("Error getting order from map", err)
-	}
-
-	// volume, err = ob.GetPricePointVolume(pricePointSetKey, o2.PricePoint.Int64())
-	// if err != nil {
-	// 	t.Error("Error getting volume set", err)
-	// }
-
-	assert.Equal(t, 1, len(pricepoints))
-	assert.Contains(t, pricepoints, utils.UintToPaddedString(o2.PricePoint.Int64()))
-	assert.Equal(t, 2, len(pricePointHashes))
-	assert.Contains(t, pricePointHashes, o2.Hash.Hex())
-	assert.Equal(t, int64(pricePointHashes[o2.Hash.Hex()]), o2.CreatedAt.Unix())
-	// assert.Equal(t, int64(2e8), volume)
-	testutils.CompareOrder(t, &o2, stored)
-}
-
-func TestUpdateOrder(t *testing.T) {
-	e, ob, _, _, _, _, _, _, factory1, _ := setupTest()
-	defer e.redisConn.FlushAll()
-
-	o1, _ := factory1.NewSellOrder(1e3, 1e8)
-
-	exp1 := o1
-	exp1.Status = "PARTIAL_FILLED"
-	exp1.FilledAmount = units.Ethers(1e3)
-
-	err := ob.addOrder(&o1)
-	if err != nil {
-		t.Error("Could not add order")
-	}
-
-	err = ob.updateOrder(&o1, units.Ethers(1e3))
-	if err != nil {
-		t.Error("Could not update order")
-	}
-
-	pricePointSetKey, orderHashListKey := o1.GetOBKeys()
-
-	pricepoints, err := ob.redisConn.GetSortedSet(pricePointSetKey)
-	if err != nil {
-		t.Error("Error getting pricepoint set", err)
-	}
-
-	pricePointHashes, err := ob.redisConn.GetSortedSet(orderHashListKey)
-	if err != nil {
-		t.Error("Error getting pricepoint hash set", err)
-	}
-
-	// volume, err := ob.GetPricePointVolume(pricePointSetKey, o1.PricePoint.Int64())
-	// if err != nil {
-	// 	t.Error("Error getting pricepoint volume", err)
-	// }
-
-	stored, err := ob.GetFromOrderMap(o1.Hash)
-	if err != nil {
-		t.Error(err)
-	}
-
-	assert.Equal(t, 1, len(pricepoints))
-	assert.Contains(t, pricepoints, utils.UintToPaddedString(o1.PricePoint.Int64()))
-	testutils.Compare(t, &exp1, stored)
-
-	assert.Equal(t, 1, len(pricePointHashes))
-	assert.Contains(t, pricePointHashes, o1.Hash.Hex())
-	assert.Equal(t, int64(pricePointHashes[o1.Hash.Hex()]), o1.CreatedAt.Unix())
-	// assert.Equal(t, int64(99999000), volume)
-}
-
-func TestDeleteOrder(t *testing.T) {
-	e, ob, _, _, _, _, _, _, factory1, _ := setupTest()
-	defer e.redisConn.FlushAll()
-
-	o1, _ := factory1.NewSellOrder(1e3, 1e8)
-
-	e.addOrder(&o1)
-
-	pricePointSetKey, orderHashListKey := o1.GetOBKeys()
-
-	pricepoints, err := e.redisConn.GetSortedSet(pricePointSetKey)
-	if err != nil {
-		t.Error(err)
-	}
-
-	pricePointHashes, err := e.redisConn.GetSortedSet(orderHashListKey)
-	if err != nil {
-		t.Error(err)
-	}
-
-	// volume, err := ob.GetPricePointVolume(pricePointSetKey, o1.PricePoint.Int64())
-	// if err != nil {
-	// 	t.Error(err)
-	// }
-
-	stored, err := ob.GetFromOrderMap(o1.Hash)
-	if err != nil {
-		t.Error(err)
-	}
-
-	assert.Equal(t, 1, len(pricepoints))
-	assert.Contains(t, pricepoints, utils.UintToPaddedString(o1.PricePoint.Int64()))
-	testutils.CompareOrder(t, &o1, stored)
-
-	assert.Equal(t, 1, len(pricePointHashes))
-	assert.Contains(t, pricePointHashes, o1.Hash.Hex())
-	assert.Equal(t, int64(pricePointHashes[o1.Hash.Hex()]), o1.CreatedAt.Unix())
-	// assert.Equal(t, int64(100000000), volume)
-
-	err = ob.deleteOrder(&o1)
-	if err != nil {
-		t.Error(err)
-	}
-
-	pricePointSetKey, orderHashListKey = o1.GetOBKeys()
-
-	if e.redisConn.Exists(pricePointSetKey) {
-		t.Errorf("Key: %v expected to be deleted but exists", pricePointSetKey)
-	}
-
-	if e.redisConn.Exists(orderHashListKey) {
-		t.Errorf("Key: %v expected to be deleted but key exists", pricePointSetKey)
-	}
-
-	if e.redisConn.Exists(orderHashListKey + "::" + o1.Hash.Hex()) {
-		t.Errorf("Key: %v expected to be deleted but key exists", pricePointSetKey)
-	}
-
-	if e.redisConn.Exists(pricePointSetKey + "::book::" + utils.UintToPaddedString(o1.PricePoint.Int64())) {
-		t.Errorf("Key: %v expected to be deleted but key exists", pricePointSetKey)
-	}
-}
-
-func TestCancelOrder(t *testing.T) {
-	e, ob, _, _, _, _, _, _, factory1, _ := setupTest()
-	defer e.redisConn.FlushAll()
-
-	o1, _ := factory1.NewSellOrder(1e3, 1e8)
-	o2, _ := factory1.NewSellOrder(1e3, 1e8)
-
-	e.addOrder(&o1)
-	e.addOrder(&o2)
-
-	expectedOrder := o2
-	expectedOrder.Status = "CANCELLED"
-	expected := &types.EngineResponse{
-		Status:         "CANCELLED",
-		HashID:         o2.Hash,
-		Order:          &expectedOrder,
-		RemainingOrder: nil,
-		Matches:        nil,
-	}
-
-	pricePointSetKey, orderHashListKey := o1.GetOBKeys()
-
-	pricepoints, _ := e.redisConn.GetSortedSet(pricePointSetKey)
-	pricePointHashes, _ := e.redisConn.GetSortedSet(orderHashListKey)
-	// volume, _ := ob.GetPricePointVolume(pricePointSetKey, o2.PricePoint.Int64())
-	stored1, _ := ob.GetFromOrderMap(o1.Hash)
-	stored2, _ := ob.GetFromOrderMap(o2.Hash)
-
-	assert.Equal(t, 1, len(pricepoints))
-	assert.Contains(t, pricepoints, utils.UintToPaddedString(o1.PricePoint.Int64()))
-	assert.Equal(t, 2, len(pricePointHashes))
-	assert.Contains(t, pricePointHashes, o1.Hash.Hex())
-	assert.Contains(t, pricePointHashes, o2.Hash.Hex())
-	assert.Equal(t, int64(pricePointHashes[o1.Hash.Hex()]), o1.CreatedAt.Unix())
-	assert.Equal(t, int64(pricePointHashes[o2.Hash.Hex()]), o2.CreatedAt.Unix())
-	// assert.Equal(t, int64(200000000), volume)
-	testutils.Compare(t, &o1, stored1)
-	testutils.Compare(t, &o2, stored2)
-
-	res, err := ob.CancelOrder(&o2)
-	if err != nil {
-		t.Error("Error when cancelling order: ", err)
-	}
-
-	testutils.Compare(t, expected, res)
-
-	pricePointSetKey, orderHashListKey = o1.GetOBKeys()
-
-	pricepoints, _ = e.redisConn.GetSortedSet(pricePointSetKey)
-	pricePointHashes, _ = e.redisConn.GetSortedSet(orderHashListKey)
-	// volume, _ = ob.GetPricePointVolume(pricePointSetKey, o2.PricePoint.Int64())
-	stored1, _ = ob.GetFromOrderMap(o1.Hash)
-	stored2, _ = ob.GetFromOrderMap(o2.Hash)
-
-	assert.Equal(t, 1, len(pricepoints))
-	assert.Contains(t, pricepoints, utils.UintToPaddedString(o1.PricePoint.Int64()))
-	assert.Equal(t, 1, len(pricePointHashes))
-	assert.Contains(t, pricePointHashes, o1.Hash.Hex())
-	assert.NotContains(t, pricePointHashes, o2.Hash.Hex())
-	assert.Equal(t, int64(pricePointHashes[o1.Hash.Hex()]), o1.CreatedAt.Unix())
-	// assert.Equal(t, int64(100000000), volume)
-	testutils.Compare(t, &o1, stored1)
-	testutils.Compare(t, nil, stored2)
-}
-
 func TestSellOrder(t *testing.T) {
-	e, ob, _, _, _, _, _, _, factory1, _ := setupTest()
-	defer e.redisConn.FlushAll()
+	_, ob, _, _, _, _, _, _, factory1, _ := setupTest()
 
 	o1, _ := factory1.NewSellOrder(1e3, 1e8, 0)
 
@@ -335,12 +91,11 @@ func TestSellOrder(t *testing.T) {
 		t.Error("Error in sell order: ", err)
 	}
 
-	assert.Equal(t, expected, res)
+	testutils.CompareEngineResponse(t, expected, res)
 }
 
 func TestBuyOrder(t *testing.T) {
-	e, ob, _, _, _, _, _, _, factory1, _ := setupTest()
-	defer e.redisConn.FlushAll()
+	_, ob, _, _, _, _, _, _, factory1, _ := setupTest()
 
 	o1, _ := factory1.NewBuyOrder(1e3, 1e8, 0)
 
@@ -358,12 +113,11 @@ func TestBuyOrder(t *testing.T) {
 		t.Error("Error in buy order: ", err)
 	}
 
-	assert.Equal(t, expected, res)
+	testutils.CompareEngineResponse(t, expected, res)
 }
 
 func TestFillOrder1(t *testing.T) {
-	e, ob, _, _, _, _, _, _, factory1, factory2 := setupTest()
-	defer e.redisConn.FlushAll()
+	_, ob, _, _, _, _, _, _, factory1, factory2 := setupTest()
 
 	o1, _ := factory1.NewSellOrder(1e3, 1e8)
 	o2, _ := factory2.NewBuyOrder(1e3, 1e8)
@@ -402,13 +156,12 @@ func TestFillOrder1(t *testing.T) {
 		t.Errorf("Error when calling buy order")
 	}
 
-	testutils.Compare(t, expectedBuyOrderResponse, buyOrderResponse)
-	testutils.Compare(t, expectedSellOrderResponse, sellOrderResponse)
+	testutils.CompareEngineResponse(t, expectedBuyOrderResponse, buyOrderResponse)
+	testutils.CompareEngineResponse(t, expectedSellOrderResponse, sellOrderResponse)
 }
 
 func TestFillOrder2(t *testing.T) {
-	e, ob, _, _, _, _, _, _, factory1, factory2 := setupTest()
-	defer e.redisConn.FlushAll()
+	_, ob, _, _, _, _, _, _, factory1, factory2 := setupTest()
 
 	o1, _ := factory1.NewBuyOrder(1e3, 1e8)
 	o2, _ := factory2.NewSellOrder(1e3, 1e8)
@@ -447,13 +200,12 @@ func TestFillOrder2(t *testing.T) {
 		t.Error("Error when sending sell order")
 	}
 
-	testutils.Compare(t, expectedBuyOrderResponse, res1)
-	testutils.Compare(t, expectedSellOrderResponse, res2)
+	testutils.CompareEngineResponse(t, expectedBuyOrderResponse, res1)
+	testutils.CompareEngineResponse(t, expectedSellOrderResponse, res2)
 }
 
 func TestMultiMatchOrder1(t *testing.T) {
-	e, ob, _, _, _, _, _, _, factory1, factory2 := setupTest()
-	defer e.redisConn.FlushAll()
+	_, ob, _, _, _, _, _, _, factory1, factory2 := setupTest()
 
 	so1, _ := factory1.NewSellOrder(1e3+1, 1e8)
 	so2, _ := factory1.NewSellOrder(1e3+2, 1e8)
@@ -496,12 +248,11 @@ func TestMultiMatchOrder1(t *testing.T) {
 		t.Errorf("Error in sellOrder: %s", err)
 	}
 
-	testutils.Compare(t, expectedResponse, response)
+	testutils.CompareEngineResponse(t, expectedResponse, response)
 }
 
 func TestMultiMatchOrder2(t *testing.T) {
-	e, ob, _, _, _, _, _, _, factory1, factory2 := setupTest()
-	defer e.redisConn.FlushAll()
+	_, ob, _, _, _, _, _, _, factory1, factory2 := setupTest()
 
 	bo1, _ := factory1.NewBuyOrder(1e3+1, 1e8)
 	bo2, _ := factory1.NewBuyOrder(1e3+2, 1e8)
@@ -543,7 +294,7 @@ func TestMultiMatchOrder2(t *testing.T) {
 		t.Errorf("Error in sell order: %s", err)
 	}
 
-	testutils.Compare(t, expectedResponse.Matches, res.Matches)
+	testutils.CompareMatches(t, expectedResponse.Matches, res.Matches)
 }
 
 func TestPartialMatchOrder1(t *testing.T) {
@@ -597,7 +348,7 @@ func TestPartialMatchOrder1(t *testing.T) {
 		expectedMatches,
 	}
 
-	testutils.Compare(t, expectedResponse, res)
+	testutils.CompareEngineResponse(t, expectedResponse, res)
 }
 
 func TestPartialMatchOrder2(t *testing.T) {
@@ -652,9 +403,7 @@ func TestPartialMatchOrder2(t *testing.T) {
 		expectedMatches,
 	}
 
-	utils.PrintJSON(res)
-
-	testutils.Compare(t, expectedResponse, res)
+	testutils.CompareEngineResponse(t, expectedResponse, res)
 }
 
 // func TestRecoverOrders(t *testing.T) {

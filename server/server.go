@@ -77,7 +77,7 @@ func NewRouter(
 	walletDao := daos.NewWalletDao()
 
 	// instantiate engine
-	eng := engine.NewEngine(redisConn, rabbitConn, pairDao)
+	eng := engine.NewEngine(rabbitConn, orderDao, pairDao)
 
 	// get services for injection
 	accountService := services.NewAccountService(accountDao, tokenDao)
