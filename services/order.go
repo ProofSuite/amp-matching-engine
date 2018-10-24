@@ -266,16 +266,17 @@ func (s *OrderService) CancelOrder(oc *types.OrderCancel) error {
 		res, err := s.engine.CancelOrder(o)
 		if err != nil {
 			logger.Error(err)
-			return err
 		}
 
-		err = s.orderDao.UpdateOrderStatus(res.Order.Hash, "CANCELLED")
+		//TODO what do we do if there is no order in mongo ?
+		//TODO replace this with modify/return so that the response doesn't rely on res.Order
+		err = s.orderDao.UpdateOrderStatus(oc.OrderHash, "CANCELLED")
 		if err != nil {
 			logger.Error(err)
 			return err
 		}
 
-		ws.SendOrderMessage("ORDER_CANCELLED", o.UserAddress, oc.Hash, res.Order)
+		ws.SendOrderMessage("ORDER_CANCELLED", o.UserAddress, oc.OrderHash, res.Order)
 		s.broadcastOrderBookUpdate([]*types.Order{res.Order})
 		return nil
 	}

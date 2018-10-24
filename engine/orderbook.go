@@ -31,6 +31,7 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/rabbitmq"
 	"github.com/Proofsuite/amp-matching-engine/redis"
 	"github.com/Proofsuite/amp-matching-engine/types"
+	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/Proofsuite/amp-matching-engine/utils/math"
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -105,12 +106,18 @@ func (ob *OrderBook) buyOrder(o *types.Order) (*types.EngineResponse, error) {
 		return res, nil
 	}
 
+	logger.Info("LENGTH")
+	logger.Info(pps)
+
 	for _, pp := range pps {
 		entries, err := ob.GetMatchingOrders(oskv, pp)
 		if err != nil {
 			logger.Error(err)
 			return nil, err
 		}
+
+		logger.Info("ENTRIES")
+		utils.PrintJSON(len(entries))
 
 		for _, bookEntry := range entries {
 			entry := &types.Order{}
@@ -181,12 +188,18 @@ func (ob *OrderBook) sellOrder(o *types.Order) (*types.EngineResponse, error) {
 		return res, nil
 	}
 
+	logger.Info("LENGTH")
+	logger.Info(pps)
+
 	for _, pp := range pps {
 		entries, err := ob.GetMatchingOrders(obkv, pp)
 		if err != nil {
 			logger.Error(err)
 			return nil, err
 		}
+
+		logger.Info("ENTRIES")
+		utils.PrintJSON(len(entries))
 
 		for _, b := range entries {
 			entry := &types.Order{}
@@ -236,7 +249,8 @@ func (ob *OrderBook) addOrder(o *types.Order) error {
 	o.Status = "OPEN"
 	pricePointSetKey, orderHashListKey := o.GetOBKeys()
 
-	err := ob.AddToPricePointSet(pricePointSetKey, o.PricePoint.Int64())
+	//TODO use amount - filledAmount to be certain
+	err := ob.AddToPricePointSet(pricePointSetKey, o.PricePoint, o.Amount)
 	if err != nil {
 		logger.Error(err)
 		return err
@@ -267,19 +281,51 @@ func (ob *OrderBook) updateOrder(o *types.Order, tradeAmount *big.Int) error {
 		return err
 	}
 
+	pricePointSetKey, _ := stored.GetOBKeys()
 	filledAmount := math.Add(stored.FilledAmount, tradeAmount)
+
 	if math.IsEqualOrSmallerThan(filledAmount, big.NewInt(0)) {
 		stored.Status = "OPEN"
 		stored.FilledAmount = big.NewInt(0)
-	} else if math.IsEqualOrGreaterThan(filledAmount, stored.Amount) {
-		stored.Status = "FILLED"
-		stored.FilledAmount = stored.Amount
-	} else {
-		stored.Status = "PARTIAL_FILLED"
-		stored.FilledAmount = filledAmount
+		err = ob.AddToOrderMap(stored)
+		if err != nil {
+			logger.Error(err)
+			return err
+		}
+
+		//TODO limit the amount update in case filledAmount is under 0
+		err = ob.AddToPricePointSet(pricePointSetKey, stored.PricePoint, math.Neg(tradeAmount))
+		if err != nil {
+			logger.Error(err)
+			return err
+		}
+
+		return nil
 	}
 
+	if math.IsEqualOrGreaterThan(filledAmount, stored.Amount) {
+		stored.Status = "FILLED"
+		stored.FilledAmount = big.NewInt(0)
+		err := ob.deleteOrder(stored)
+		if err != nil {
+			logger.Error(err)
+			return err
+		}
+
+		return nil
+	}
+
+	utils.PrintJSON("IN PARTIAL FILLED")
+	logger.Info(tradeAmount)
+	stored.Status = "PARTIAL_FILLED"
+	stored.FilledAmount = filledAmount
 	err = ob.AddToOrderMap(stored)
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	err = ob.AddToPricePointSet(pricePointSetKey, stored.PricePoint, math.Neg(tradeAmount))
 	if err != nil {
 		logger.Error(err)
 		return err
@@ -293,9 +339,8 @@ func (ob *OrderBook) deleteOrder(o *types.Order) (err error) {
 	//TODO decide to put the mutex on deleteOrder or on cancelOrder
 	// ob.mutex.Lock()
 	// defer ob.mutex.Unlock()
-
 	pricePointSetKey, orderHashListKey := o.GetOBKeys()
-	pp := o.PricePoint.Int64()
+	pp := o.PricePoint
 
 	err = ob.RemoveFromPricePointHashesSet(orderHashListKey, o.Hash)
 	if err != nil {
@@ -309,6 +354,12 @@ func (ob *OrderBook) deleteOrder(o *types.Order) (err error) {
 
 	if pplen == 0 {
 		err = ob.RemoveFromPricePointSet(pricePointSetKey, pp)
+		if err != nil {
+			logger.Error(err)
+		}
+	} else {
+		amount := math.Sub(o.Amount, o.FilledAmount)
+		err = ob.AddToPricePointSet(pricePointSetKey, pp, math.Neg(amount))
 		if err != nil {
 			logger.Error(err)
 		}
@@ -428,6 +479,7 @@ func (ob *OrderBook) CancelOrder(o *types.Order) (*types.EngineResponse, error) 
 // i.e it deletes/updates orders in case of order matching and responds
 // with trade instance and fillOrder
 func (ob *OrderBook) execute(o *types.Order, bookEntry *types.Order) (*types.Trade, error) {
+	logger.Info("Calling execute")
 	trade := &types.Trade{}
 	tradeAmount := big.NewInt(0)
 	bookEntryAvailableAmount := math.Sub(bookEntry.Amount, bookEntry.FilledAmount)
@@ -440,6 +492,7 @@ func (ob *OrderBook) execute(o *types.Order, bookEntry *types.Order) (*types.Tra
 		bookEntry.FilledAmount = math.Add(bookEntry.FilledAmount, orderAvailableAmount)
 		bookEntry.Status = "PARTIAL_FILLED"
 
+		logger.Info("Calling update order")
 		err := ob.updateOrder(bookEntry, tradeAmount)
 		if err != nil {
 			logger.Error(err)
@@ -447,6 +500,7 @@ func (ob *OrderBook) execute(o *types.Order, bookEntry *types.Order) (*types.Tra
 		}
 
 	} else {
+		logger.Info("Calling delete order")
 		err := ob.deleteOrder(bookEntry)
 		if err != nil {
 			logger.Error(err)

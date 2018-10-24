@@ -3,10 +3,12 @@ package engine
 import (
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/Proofsuite/amp-matching-engine/utils"
+	"github.com/Proofsuite/amp-matching-engine/utils/math"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -39,7 +41,7 @@ func (ob *OrderBook) GetFromOrderMap(hash common.Hash) (*types.Order, error) {
 	}
 
 	if len(keys) == 0 {
-		return nil, fmt.Errorf("Key doesn't exists")
+		return nil, fmt.Errorf("Key doesn't exist")
 	}
 
 	serialized, err := ob.redisConn.GetValue(keys[0])
@@ -68,8 +70,19 @@ func (ob *OrderBook) GetMatchingOrders(obKey string, pricePoint int64) ([][]byte
 }
 
 // AddPricePointToSet
-func (ob *OrderBook) AddToPricePointSet(pricePointSetKey string, pricePoint int64) error {
-	err := ob.redisConn.ZAdd(pricePointSetKey, 0, utils.UintToPaddedString(pricePoint))
+// func (ob *OrderBook) AddToPricePointSet(pricePointSetKey string, pricePoint int64) error {
+// 	err := ob.redisConn.ZAdd(pricePointSetKey, 0, utils.UintToPaddedString(pricePoint))
+// 	if err != nil {
+// 		logger.Error(err)
+// 		return err
+// 	}
+
+// 	return nil
+// }
+
+func (ob *OrderBook) AddToPricePointSet(pricePointSetKey string, pricepoint *big.Int, amount *big.Int) error {
+	volume := math.Div(amount, big.NewInt(1e18)).Int64()
+	_, err := ob.redisConn.ZIncrBy(pricePointSetKey, volume, utils.UintToPaddedString(pricepoint.Int64()))
 	if err != nil {
 		logger.Error(err)
 		return err
@@ -78,9 +91,8 @@ func (ob *OrderBook) AddToPricePointSet(pricePointSetKey string, pricePoint int6
 	return nil
 }
 
-// RemoveFromPricePointSet
-func (ob *OrderBook) RemoveFromPricePointSet(pricePointSetKey string, pricePoint int64) error {
-	err := ob.redisConn.ZRem(pricePointSetKey, utils.UintToPaddedString(pricePoint))
+func (ob *OrderBook) RemoveFromPricePointSet(pricePointSetKey string, pricepoint *big.Int) error {
+	err := ob.redisConn.ZRem(pricePointSetKey, utils.UintToPaddedString(pricepoint.Int64()))
 	if err != nil {
 		logger.Error(err)
 		return err
@@ -88,6 +100,22 @@ func (ob *OrderBook) RemoveFromPricePointSet(pricePointSetKey string, pricePoint
 
 	return nil
 }
+
+// func (ob *OrderBook) UpdatePricePointSet(pricePointSetKey string, pricepoint *big.Int, amount *big.Int) error {
+// 	volume := math.Div(amount, big.NewInt(1e18))
+// 	err := ob.redisConn.ZAdd(pricePointSetKey, )
+// }
+
+// // RemoveFromPricePointSet
+// func (ob *OrderBook) RemoveFromPricePointSet(pricePointSetKey string, pricePoint int64) error {
+// 	err := ob.redisConn.ZRem(pricePointSetKey, utils.UintToPaddedString(pricePoint))
+// 	if err != nil {
+// 		logger.Error(err)
+// 		return err
+// 	}
+
+// 	return nil
+// }
 
 func (ob *OrderBook) GetPricePointSetLength(pricePointSetKey string) (int64, error) {
 	count, err := ob.redisConn.ZCount(pricePointSetKey)

@@ -547,8 +547,8 @@ func TestMultiMatchOrder2(t *testing.T) {
 }
 
 func TestPartialMatchOrder1(t *testing.T) {
-	e, ob, _, _, _, _, _, _, factory1, factory2 := setupTest()
-	defer e.redisConn.FlushAll()
+	_, ob, _, _, _, _, _, _, factory1, factory2 := setupTest()
+	// defer e.redisConn.FlushAll()
 
 	so1, _ := factory1.NewSellOrder(1e3+1, 1e8)
 	so2, _ := factory1.NewSellOrder(1e3+2, 1e8)
@@ -601,8 +601,8 @@ func TestPartialMatchOrder1(t *testing.T) {
 }
 
 func TestPartialMatchOrder2(t *testing.T) {
-	e, ob, _, _, _, _, _, _, factory1, factory2 := setupTest()
-	defer e.redisConn.FlushAll()
+	_, ob, _, _, _, _, _, _, factory1, factory2 := setupTest()
+	// defer e.redisConn.FlushAll()
 
 	bo1, _ := factory1.NewBuyOrder(1e3+5, 1e8)
 	bo2, _ := factory1.NewBuyOrder(1e3+4, 1e8)
@@ -651,6 +651,8 @@ func TestPartialMatchOrder2(t *testing.T) {
 		nil,
 		expectedMatches,
 	}
+
+	utils.PrintJSON(res)
 
 	testutils.Compare(t, expectedResponse, res)
 }
