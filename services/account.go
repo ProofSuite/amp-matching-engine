@@ -47,13 +47,15 @@ func (s *AccountService) Create(a *types.Account) error {
 	// currently by default, the tokens balances are set to 0
 	for _, token := range tokens {
 		a.TokenBalances[token.ContractAddress] = &types.TokenBalance{
-			Address:       token.ContractAddress,
-			Symbol:        token.Symbol,
-			Balance:       big.NewInt(0),
-			Allowance:     big.NewInt(0),
-			LockedBalance: big.NewInt(0),
+			Address:        token.ContractAddress,
+			Symbol:         token.Symbol,
+			Balance:        big.NewInt(0),
+			Allowance:      big.NewInt(0),
+			LockedBalance:  big.NewInt(0),
+			PendingBalance: big.NewInt(0),
 		}
 	}
+
 	if a != nil {
 		err = s.AccountDao.Create(a)
 		if err != nil {

@@ -92,15 +92,19 @@ func (s *OrderService) GetHistoryByUserAddress(addr common.Address) ([]*types.Or
 // If valid: Order is inserted in DB with order status as new and order is publiched
 // on rabbitmq queue for matching engine to process the order
 func (s *OrderService) NewOrder(o *types.Order) error {
-	// Validate if the address is not blacklisted
+
 	acc, err := s.accountDao.GetByAddress(o.UserAddress)
 	if err != nil {
 		logger.Error(err)
 		return err
 	}
 
+	if acc == nil {
+		return errors.New("Account not found")
+	}
+
 	if acc.IsBlocked {
-		return fmt.Errorf("Address: %+v isBlocked", acc)
+		return fmt.Errorf("Account %+v is blocked", acc)
 	}
 
 	if err := o.Validate(); err != nil {
@@ -139,6 +143,7 @@ func (s *OrderService) NewOrder(o *types.Order) error {
 	wethAddress := common.HexToAddress(app.Config.Ethereum["weth_address"])
 	exchangeAddress := common.HexToAddress(app.Config.Ethereum["exchange_address"])
 	balanceRecord, err := s.accountDao.GetTokenBalances(o.UserAddress)
+
 	if err != nil {
 		logger.Error(err)
 		return err
@@ -201,9 +206,17 @@ func (s *OrderService) NewOrder(o *types.Order) error {
 	}
 
 	sellTokenBalanceRecord := balanceRecord[o.SellToken]
+	if sellTokenBalanceRecord == nil {
+		return errors.New("Account error: Balance record not found")
+	}
+
+	wethTokenBalanceRecord := balanceRecord[wethAddress]
+	if wethTokenBalanceRecord == nil {
+		return errors.New("Account error: Balance record not found")
+	}
+
 	sellTokenBalanceRecord.Balance.Set(sellTokenBalance)
 	sellTokenBalanceRecord.Allowance.Set(sellTokenAllowance)
-	wethTokenBalanceRecord := balanceRecord[wethAddress]
 	wethTokenBalanceRecord.Balance.Set(wethBalance)
 	wethTokenBalanceRecord.Allowance.Set(wethAllowance)
 

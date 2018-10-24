@@ -292,21 +292,21 @@ func (f *OrderFactory) NewTrade(o *types.Order, amount int64) (types.Trade, erro
 	return t, nil
 }
 
-func (f *OrderFactory) NewPendingTrade(o *types.Order, amount int64) *types.PendingTradeMessage {
-	t := &types.Trade{}
+// func (f *OrderFactory) NewPendingTrade(o *types.Order, amount int64) *types.PendingTradeMessage {
+// 	t := &types.Trade{}
 
-	t.Maker = o.UserAddress
-	t.Taker = f.Wallet.Address
-	t.BaseToken = o.BaseToken
-	t.QuoteToken = o.QuoteToken
-	t.TradeNonce = big.NewInt(int64(f.NonceGenerator.Intn(1e8)))
-	t.OrderHash = o.Hash
-	t.Amount = big.NewInt(amount)
+// 	t.Maker = o.UserAddress
+// 	t.Taker = f.Wallet.Address
+// 	t.BaseToken = o.BaseToken
+// 	t.QuoteToken = o.QuoteToken
+// 	t.TradeNonce = big.NewInt(int64(f.NonceGenerator.Intn(1e8)))
+// 	t.OrderHash = o.Hash
+// 	t.Amount = big.NewInt(amount)
 
-	t.Sign(f.Wallet)
+// 	t.Sign(f.Wallet)
 
-	return &types.PendingTradeMessage{o, t}
-}
+// 	return &types.PendingTradeMessage{o, t}
+// }
 
 // NewOrderCancel creates a new OrderCancel object from a given order
 // func (f *OrderFactory) NewOrderCancel(o *types.Order) (*OrderCancel, error) {

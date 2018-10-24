@@ -1,7 +1,6 @@
 package endpoints
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/Proofsuite/amp-matching-engine/interfaces"
@@ -21,32 +20,22 @@ func ServeAccountResource(
 ) {
 
 	e := &accountEndpoint{accountService}
-	r.HandleFunc("/account", e.handleCreateAccount).Methods("POST")
+	r.HandleFunc("/account/create", e.handleCreateAccount).Methods("POST")
 	r.HandleFunc("/account/<address>", e.handleGetAccount).Methods("GET")
 	r.HandleFunc("/account/{address}/{token}", e.handleGetAccountTokenBalance).Methods("GET")
 }
 
 func (e *accountEndpoint) handleCreateAccount(w http.ResponseWriter, r *http.Request) {
-	a := &types.Account{}
-	decoder := json.NewDecoder(r.Body)
+	v := r.URL.Query()
+	addr := v.Get("address")
 
-	err := decoder.Decode(a)
-	if err != nil {
-		logger.Error(err)
-		httputils.WriteError(w, http.StatusBadRequest, "Invalid payload")
+	if !common.IsHexAddress(addr) {
+		httputils.WriteError(w, http.StatusBadRequest, "Invalid Address")
 		return
 	}
 
-	defer r.Body.Close()
-
-	err = a.Validate()
-	if err != nil {
-		logger.Error(err)
-		httputils.WriteError(w, http.StatusBadRequest, "Invalid payload")
-		return
-	}
-
-	err = e.accountService.Create(a)
+	a := &types.Account{Address: common.HexToAddress(addr)}
+	err := e.accountService.Create(a)
 	if err != nil {
 		logger.Error(err)
 		httputils.WriteError(w, http.StatusInternalServerError, "")
