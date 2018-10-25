@@ -103,8 +103,6 @@ func (txq *TxQueue) QueueTrade(m *types.Matches) error {
 // trade message, the trade is updated on the database and is published to the operator subscribers
 // (order service)
 func (txq *TxQueue) ExecuteTrade(m *types.Matches) (*eth.Transaction, error) {
-	// logger.Info("EXECUTE_TRADE: ", tr.Hash.Hex())
-
 	logger.Info("EXECUTING TRADE", m)
 
 	callOpts := txq.GetTxCallOptions()

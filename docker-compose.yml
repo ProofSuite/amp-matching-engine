@@ -5,7 +5,7 @@ services:
     ports:
       - "8081:8081"
     environment:
-      - AMP_ETHEREUM_NODE_URL=ws://ethereum:8546
+      - AMP_ETHEREUM_NODE_WS_URL=ws://ethereum:8546
       - AMP_MONGO_URL=mongodb
       - AMP_MONGO_DBNAME
       - AMP_REDIS_URL=redis://redis:6379

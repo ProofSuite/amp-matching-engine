@@ -54,6 +54,11 @@ type TokenBalanceRecord struct {
 
 // GetBSON implements bson.Getter
 func (a *Account) GetBSON() (interface{}, error) {
+	ar := AccountRecord{
+		IsBlocked: a.IsBlocked,
+		Address:   a.Address.Hex(),
+	}
+
 	tokenBalances := make(map[string]TokenBalanceRecord)
 
 	for key, value := range a.TokenBalances {
@@ -67,11 +72,15 @@ func (a *Account) GetBSON() (interface{}, error) {
 		}
 	}
 
-	return AccountRecord{
-		ID:            a.ID,
-		Address:       a.Address.Hex(),
-		TokenBalances: tokenBalances,
-	}, nil
+	ar.TokenBalances = tokenBalances
+
+	if a.ID.Hex() == "" {
+		ar.ID = bson.NewObjectId()
+	} else {
+		ar.ID = a.ID
+	}
+
+	return ar, nil
 }
 
 // SetBSON implemenets bson.Setter
@@ -210,4 +219,42 @@ func (a Account) Validate() error {
 	return validation.ValidateStruct(&a,
 		validation.Field(&a.Address, validation.Required),
 	)
+}
+
+type AccountBSONUpdate struct {
+	*Account
+}
+
+func (a *AccountBSONUpdate) GetBSON() (interface{}, error) {
+	now := time.Now()
+	tokenBalances := make(map[string]TokenBalanceRecord)
+
+	//TODO validate this. All the fields have to be set
+	for key, value := range a.TokenBalances {
+		tokenBalances[key.Hex()] = TokenBalanceRecord{
+			Address:        value.Address.Hex(),
+			Symbol:         value.Symbol,
+			Balance:        value.Balance.String(),
+			Allowance:      value.Allowance.String(),
+			LockedBalance:  value.LockedBalance.String(),
+			PendingBalance: value.PendingBalance.String(),
+		}
+	}
+
+	set := bson.M{
+		"updatedAt": now,
+		"address":   a.Address,
+	}
+
+	setOnInsert := bson.M{
+		"_id":       bson.NewObjectId(),
+		"createdAt": now,
+	}
+
+	update := bson.M{
+		"$set":         set,
+		"$setOnInsert": setOnInsert,
+	}
+
+	return update, nil
 }

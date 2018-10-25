@@ -6,6 +6,7 @@ import (
 
 	"github.com/Proofsuite/amp-matching-engine/app"
 	"github.com/Proofsuite/amp-matching-engine/types"
+	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/Proofsuite/amp-matching-engine/utils/math"
 	"github.com/ethereum/go-ethereum/common"
 	mgo "gopkg.in/mgo.v2"
@@ -403,7 +404,7 @@ func (dao *OrderDao) GetOrderBook(p *types.Pair) ([]map[string]string, []map[str
 		bson.M{
 			"$project": bson.M{
 				"_id":        0,
-				"pricepoint": "$_id",
+				"pricepoint": bson.M{"$toString": "$_id"},
 				"amount":     bson.M{"$toString": "$amount"},
 			},
 		},
@@ -436,7 +437,7 @@ func (dao *OrderDao) GetOrderBook(p *types.Pair) ([]map[string]string, []map[str
 		bson.M{
 			"$project": bson.M{
 				"_id":        0,
-				"pricepoint": "$_id",
+				"pricepoint": bson.M{"$toString": "$_id"},
 				"amount":     bson.M{"$toString": "$amount"},
 			},
 		},
@@ -456,6 +457,9 @@ func (dao *OrderDao) GetOrderBook(p *types.Pair) ([]map[string]string, []map[str
 		return nil, nil, err
 	}
 
+	utils.PrintJSON(bids)
+	utils.PrintJSON(asks)
+
 	return bids, asks, nil
 }
 
@@ -466,7 +470,7 @@ func (dao *OrderDao) GetOrderBookPricePoint(p *types.Pair, pp *big.Int, side str
 				"status":     bson.M{"$in": []string{"OPEN", "PARTIAL_FILLED"}},
 				"baseToken":  p.BaseTokenAddress.Hex(),
 				"quoteToken": p.QuoteTokenAddress.Hex(),
-				"pricepoint": pp.String(),
+				"pricepoint": pp.Int64(),
 				"side":       side,
 			},
 		},
@@ -501,6 +505,60 @@ func (dao *OrderDao) GetOrderBookPricePoint(p *types.Pair, pp *big.Int, side str
 	}
 
 	return math.ToBigInt(res[0]["amount"]), nil
+}
+
+func (dao *OrderDao) GetMatchingBuyOrders(o *types.Order) ([]*types.Order, error) {
+	var orders []*types.Order
+
+	q := []bson.M{
+		bson.M{
+			"$match": bson.M{
+				"status":     bson.M{"$in": []string{"OPEN", "PARTIAL_FILLED"}},
+				"baseToken":  o.BaseToken.Hex(),
+				"quoteToken": o.QuoteToken.Hex(),
+				"side":       "BUY",
+				"pricepoint": bson.M{"$gte": o.PricePoint.Int64()},
+			},
+		},
+		bson.M{
+			"$sort": bson.M{"pricepoint": -1, "createdAt": 1},
+		},
+	}
+
+	err := db.Aggregate(dao.dbName, dao.collectionName, q, &orders)
+	if err != nil {
+		logger.Error(err)
+		return nil, err
+	}
+
+	return orders, nil
+}
+
+func (dao *OrderDao) GetMatchingSellOrders(o *types.Order) ([]*types.Order, error) {
+	var orders []*types.Order
+
+	q := []bson.M{
+		bson.M{
+			"$match": bson.M{
+				"status":     bson.M{"$in": []string{"OPEN", "PARTIAL_FILLED"}},
+				"baseToken":  o.BaseToken.Hex(),
+				"quoteToken": o.QuoteToken.Hex(),
+				"side":       "SELL",
+				"pricepoint": bson.M{"$lte": o.PricePoint.Int64()},
+			},
+		},
+		bson.M{
+			"$sort": bson.M{"pricepoint": 1, "createdAt": 1},
+		},
+	}
+
+	err := db.Aggregate(dao.dbName, dao.collectionName, q, &orders)
+	if err != nil {
+		logger.Error(err)
+		return nil, err
+	}
+
+	return orders, nil
 }
 
 // Drop drops all the order documents in the current database

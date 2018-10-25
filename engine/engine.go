@@ -3,12 +3,10 @@ package engine
 import (
 	"encoding/json"
 	"errors"
-	"math/big"
 	"sync"
 
 	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/Proofsuite/amp-matching-engine/rabbitmq"
-	"github.com/Proofsuite/amp-matching-engine/redis"
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/ethereum/go-ethereum/common"
@@ -17,7 +15,6 @@ import (
 // Engine contains daos and redis connection required for engine to work
 type Engine struct {
 	orderbooks   map[string]*OrderBook
-	redisConn    *redis.RedisConnection
 	rabbitMQConn *rabbitmq.Connection
 }
 
@@ -25,12 +22,12 @@ var logger = utils.EngineLogger
 
 // NewEngine initializes the engine singleton instance
 func NewEngine(
-	redisConn *redis.RedisConnection,
 	rabbitMQConn *rabbitmq.Connection,
+	orderDao interfaces.OrderDao,
 	pairDao interfaces.PairDao,
 ) *Engine {
-
 	pairs, err := pairDao.GetAll()
+
 	if err != nil {
 		panic(err)
 	}
@@ -38,8 +35,8 @@ func NewEngine(
 	obs := map[string]*OrderBook{}
 	for _, p := range pairs {
 		ob := &OrderBook{
-			redisConn:    redisConn,
 			rabbitMQConn: rabbitMQConn,
+			orderDao:     orderDao,
 			pair:         &p,
 			mutex:        &sync.Mutex{},
 		}
@@ -47,7 +44,7 @@ func NewEngine(
 		obs[p.Code()] = ob
 	}
 
-	engine := &Engine{obs, redisConn, rabbitMQConn}
+	engine := &Engine{obs, rabbitMQConn}
 	return engine
 }
 
@@ -121,7 +118,6 @@ func (e *Engine) newOrder(o *types.Order, hashID common.Hash) error {
 }
 
 func (e *Engine) RecoverOrders(matches []*types.OrderTradePair) error {
-	//TODO for now we assume all order/trades have the same token pair
 	o := matches[0].Order
 	code, err := o.PairCode()
 	if err != nil {
@@ -165,28 +161,6 @@ func (e *Engine) CancelOrder(o *types.Order) (*types.EngineResponse, error) {
 	return res, nil
 }
 
-func (e *Engine) DeleteOrders(orders ...types.Order) error {
-	//we assume all the orders correspond to the same pair
-	code, err := orders[0].PairCode()
-	if err != nil {
-		logger.Error(err)
-		return err
-	}
-
-	ob := e.orderbooks[code]
-	if ob == nil {
-		return errors.New("Orderbook error")
-	}
-
-	err = ob.deleteOrders(orders...)
-	if err != nil {
-		logger.Error(err)
-		return err
-	}
-
-	return nil
-}
-
 func (e *Engine) DeleteOrder(o *types.Order) error {
 	//we assume all the orders correspond to the same pair
 	code, err := o.PairCode()
@@ -200,29 +174,7 @@ func (e *Engine) DeleteOrder(o *types.Order) error {
 		return errors.New("Orderbook error")
 	}
 
-	err = ob.deleteOrder(o)
-	if err != nil {
-		logger.Error(err)
-		return err
-	}
-
-	return nil
-}
-
-func (e *Engine) CancelTrades(orders []*types.Order, amounts []*big.Int) error {
-	//we assume all orders are for the same pair
-	code, err := orders[0].PairCode()
-	if err != nil {
-		logger.Error(err)
-		return err
-	}
-
-	ob := e.orderbooks[code]
-	if ob == nil {
-		return errors.New("Orderbook error")
-	}
-
-	err = ob.CancelTrades(orders, amounts)
+	_, err = ob.DeleteOrder(o)
 	if err != nil {
 		logger.Error(err)
 		return err

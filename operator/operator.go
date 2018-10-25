@@ -201,6 +201,7 @@ func (op *Operator) HandleEvents() error {
 			}()
 
 		case event := <-tradeEvents:
+			fmt.Println("TRADE_SUCCESS_EVENT")
 			txh := event.Raw.TxHash
 
 			go func() {
