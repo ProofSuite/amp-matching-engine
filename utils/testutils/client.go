@@ -275,7 +275,11 @@ func (c *Client) handleSignatureRequested(e types.WebsocketEvent) {
 		logger.Error(err)
 	}
 
-	for _, m := range data.Matches {
+	order := data.Order //initial order
+	remainingOrder := data.RemainingOrder
+	matches := data.Matches
+
+	for _, m := range matches {
 		t := m.Trade
 		c.SetTradeNonce(t)
 
@@ -286,9 +290,9 @@ func (c *Client) handleSignatureRequested(e types.WebsocketEvent) {
 	}
 
 	//sign and return the remaining part of the previous order.
-	if data.Order != nil {
-		c.SetNonce(data.Order)
-		err = c.Wallet.SignOrder(data.Order)
+	if remainingOrder != nil {
+		c.SetNonce(remainingOrder)
+		err = c.Wallet.SignOrder(remainingOrder)
 		if err != nil {
 			logger.Error(err)
 		}
@@ -297,11 +301,11 @@ func (c *Client) handleSignatureRequested(e types.WebsocketEvent) {
 	l := &ClientLogMessage{
 		MessageType: "REQUEST_SIGNATURE",
 		Orders:      []*types.Order{data.Order},
-		Matches:     data.Matches,
+		Matches:     matches,
 	}
 
 	c.Logs <- l
-	req := types.NewSubmitSignatureWebsocketMessage(e.Hash, data.Matches, data.Order)
+	req := types.NewSubmitSignatureWebsocketMessage(e.Hash, order, remainingOrder, matches)
 	c.Requests <- req
 }
 

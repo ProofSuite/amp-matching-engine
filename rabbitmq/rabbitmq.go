@@ -1,7 +1,6 @@
 package rabbitmq
 
 import (
-	"fmt"
 	"log"
 
 	"github.com/Proofsuite/amp-matching-engine/utils"
@@ -27,8 +26,6 @@ type Message struct {
 
 // InitConnection Initializes single rabbitmq connection for whole system
 func InitConnection(address string) *Connection {
-	fmt.Println("rabbitmq", address)
-
 	if conn == nil {
 		newConn, err := amqp.Dial(address)
 		if err != nil {

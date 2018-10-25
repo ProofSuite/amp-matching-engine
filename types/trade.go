@@ -150,7 +150,6 @@ func (t *Trade) MarshalJSON() ([]byte, error) {
 		"hash":           t.Hash,
 		"txHash":         t.TxHash,
 		"pairName":       t.PairName,
-		"tradeNonce":     t.TradeNonce.String(),
 		"pricepoint":     t.PricePoint.String(),
 		"amount":         t.Amount.String(),
 		"createdAt":      t.CreatedAt.Format(time.RFC3339Nano),
@@ -170,6 +169,10 @@ func (t *Trade) MarshalJSON() ([]byte, error) {
 
 	if (t.TakerOrderHash != common.Hash{}) {
 		trade["takerOrderHash"] = t.TakerOrderHash.Hex()
+	}
+
+	if t.TradeNonce != nil {
+		trade["tradeNonce"] = t.TradeNonce.String()
 	}
 
 	// NOTE: Currently remove marshalling of IDs to simplify public API but will uncommnent

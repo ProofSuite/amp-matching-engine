@@ -660,3 +660,435 @@ package engine
 
 // 	return nil
 // }
+
+// // GetPricePoints returns the pricepoints matching a certain (pair, pricepoint)
+// func (ob *OrderBook) GetMatchingBuyPricePoints(obKey string, pricePoint int64) ([]int64, error) {
+// 	pps, err := ob.redisConn.ZRangeByLexInt(obKey, "-", "["+utils.UintToPaddedString(pricePoint))
+// 	if err != nil {
+// 		logger.Error(err)
+// 		return nil, err
+// 	}
+
+// 	return pps, nil
+// }
+
+// func (ob *OrderBook) GetMatchingSellPricePoints(obkv string, pricePoint int64) ([]int64, error) {
+// 	pps, err := ob.redisConn.ZRevRangeByLexInt(obkv, "+", "["+utils.UintToPaddedString(pricePoint))
+// 	if err != nil {
+// 		logger.Error(err)
+// 		return nil, err
+// 	}
+
+// 	return pps, nil
+// }
+
+// func (ob *OrderBook) GetFromOrderMap(hash common.Hash) (*types.Order, error) {
+// 	o := &types.Order{}
+// 	keys, err := ob.redisConn.Keys("*::" + hash.Hex())
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	if len(keys) == 0 {
+// 		return nil, fmt.Errorf("Key doesn't exist")
+// 	}
+
+// 	serialized, err := ob.redisConn.GetValue(keys[0])
+// 	if err != nil {
+// 		logger.Error(err)
+// 		return nil, err
+// 	}
+
+// 	err = json.Unmarshal([]byte(serialized), &o)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	return o, nil
+// }
+
+// // GetPricePointOrders returns the orders hashes for a (pair, pricepoint)
+// func (ob *OrderBook) GetMatchingOrders(obKey string, pricePoint int64) ([][]byte, error) {
+// 	k := obKey + "::" + utils.UintToPaddedString(pricePoint)
+// 	orders, err := ob.redisConn.Sort(k, "", true, false, k+"::orders::*")
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	return orders, nil
+// }
+
+// AddPricePointToSet
+// func (ob *OrderBook) AddToPricePointSet(pricePointSetKey string, pricePoint int64) error {
+// 	err := ob.redisConn.ZAdd(pricePointSetKey, 0, utils.UintToPaddedString(pricePoint))
+// 	if err != nil {
+// 		logger.Error(err)
+// 		return err
+// 	}
+
+// 	return nil
+// }
+
+// func (ob *OrderBook) AddToPricePointSet(pricePointSetKey string, pricepoint *big.Int, amount *big.Int) error {
+// 	volume := math.Div(amount, big.NewInt(1e18)).Int64()
+
+// 	_, err := ob.redisConn.ZIncrBy(pricePointSetKey, pricepoint.Int64(), utils.UintToPaddedString())
+// 	_, err := ob.redisConn.ZIncrBy(pricePointSetKey, volume, utils.UintToPaddedString(pricepoint.Int64()))
+// 	if err != nil {
+// 		logger.Error(err)
+// 		return err
+// 	}
+
+// 	return nil
+// }
+
+// func (ob *OrderBook) RemoveFromPricePointSet(pricePointSetKey string, pricepoint *big.Int) error {
+// 	err := ob.redisConn.ZRem(pricePointSetKey, utils.UintToPaddedString(pricepoint.Int64()))
+// 	if err != nil {
+// 		logger.Error(err)
+// 		return err
+// 	}
+
+// 	return nil
+// }
+
+// func (ob *OrderBook) UpdatePricePointSet(pricePointSetKey string, pricepoint *big.Int, amount *big.Int) error {
+// 	volume := math.Div(amount, big.NewInt(1e18))
+// 	err := ob.redisConn.ZAdd(pricePointSetKey, )
+// }
+
+// // RemoveFromPricePointSet
+// func (ob *OrderBook) RemoveFromPricePointSet(pricePointSetKey string, pricePoint int64) error {
+// 	err := ob.redisConn.ZRem(pricePointSetKey, utils.UintToPaddedString(pricePoint))
+// 	if err != nil {
+// 		logger.Error(err)
+// 		return err
+// 	}
+
+// 	return nil
+// }
+
+// func (ob *OrderBook) GetPricePointSetLength(pricePointSetKey string) (int64, error) {
+// 	count, err := ob.redisConn.ZCount(pricePointSetKey)
+// 	if err != nil {
+// 		logger.Error(err)
+// 		return 0, err
+// 	}
+
+// 	return count, nil
+// }
+
+// // AddPricePointHashesSet
+// func (ob *OrderBook) AddToPricePointHashesSet(orderHashListKey string, createdAt time.Time, hash common.Hash) error {
+// 	err := ob.redisConn.ZAdd(orderHashListKey, createdAt.Unix(), hash.Hex())
+// 	if err != nil {
+// 		logger.Error(err)
+// 		return err
+// 	}
+
+// 	return nil
+// }
+
+// // RemoveFromPricePointHashesSet
+// func (ob *OrderBook) RemoveFromPricePointHashesSet(orderHashListKey string, hash common.Hash) error {
+// 	err := ob.redisConn.ZRem(orderHashListKey, hash.Hex())
+// 	if err != nil {
+// 		logger.Error(err)
+// 		return err
+// 	}
+
+// 	return nil
+// }
+
+// func (ob *OrderBook) GetPricePointHashesSetLength(orderHashListKey string) (int64, error) {
+// 	count, err := ob.redisConn.ZCount(orderHashListKey)
+// 	if err != nil {
+// 		logger.Error(err)
+// 		return 0, err
+// 	}
+
+// 	return count, nil
+// }
+
+// // AddToOrderMap
+// func (ob *OrderBook) AddToOrderMap(o *types.Order) error {
+// 	bytes, err := json.Marshal(o)
+// 	if err != nil {
+// 		logger.Error(err)
+// 		return err
+// 	}
+
+// 	decoded := &types.Order{}
+// 	json.Unmarshal(bytes, decoded)
+// 	_, orderHashListKey := o.GetOBKeys()
+// 	err = ob.redisConn.Set(orderHashListKey+"::orders::"+o.Hash.Hex(), string(bytes))
+// 	if err != nil {
+// 		logger.Error(err)
+// 		return err
+// 	}
+
+// 	return nil
+// }
+
+// // RemoveFromOrderMap
+// func (ob *OrderBook) RemoveFromOrderMap(hash common.Hash) error {
+// 	keys, _ := ob.redisConn.Keys("*::" + hash.Hex())
+// 	err := ob.redisConn.Del(keys[0])
+// 	if err != nil {
+// 		logger.Error(err)
+// 		return err
+// 	}
+
+// 	return nil
+// }
+
+// func TestAddOrder(t *testing.T) {
+// 	e, ob, _, _, _, _, _, _, factory1, factory2 := setupTest()
+// 	defer e.redisConn.FlushAll()
+
+// 	o1, _ := factory1.NewSellOrder(1e3, 1e8)
+// 	o2, _ := factory2.NewSellOrder(1e3, 1e8)
+
+// 	e.addOrder(&o1)
+
+// 	pricePointSetKey, orderHashListKey := o1.GetOBKeys()
+
+// 	pricepoints, err := e.redisConn.GetSortedSet(pricePointSetKey)
+// 	if err != nil {
+// 		t.Error("Error getting sorted set")
+// 	}
+
+// 	pricePointHashes, err := e.redisConn.GetSortedSet(orderHashListKey)
+// 	if err != nil {
+// 		t.Error("Error getting pricepoints order hashes set")
+// 	}
+
+// 	stored, err := ob.GetFromOrderMap(o1.Hash)
+// 	if err != nil {
+// 		t.Error("Error getting sorted set", err)
+// 	}
+
+// 	// volume, err := ob.GetPricePointVolume(pricePointSetKey, o1.PricePoint.Int64())
+// 	// if err != nil {
+// 	// 	t.Error("Error getting volume set", err)
+// 	// }
+
+// 	assert.Equal(t, 1, len(pricepoints))
+// 	assert.Contains(t, pricepoints, utils.UintToPaddedString(o1.PricePoint.Int64()))
+// 	assert.Equal(t, 1, len(pricePointHashes))
+// 	assert.Contains(t, pricePointHashes, o1.Hash.Hex())
+// 	assert.Equal(t, int64(pricePointHashes[o1.Hash.Hex()]), o1.CreatedAt.Unix())
+// 	// assert.Equal(t, int64(1e8), volume)
+// 	testutils.CompareOrder(t, &o1, stored)
+
+// 	e.addOrder(&o2)
+
+// 	pricePointSetKey, orderHashListKey = o2.GetOBKeys()
+// 	pricepoints, err = e.redisConn.GetSortedSet(pricePointSetKey)
+// 	if err != nil {
+// 		t.Error(err)
+// 	}
+
+// 	pricePointHashes, err = e.redisConn.GetSortedSet(orderHashListKey)
+// 	if err != nil {
+// 		t.Error("Error getting pricepoints order hashes set")
+// 	}
+
+// 	stored, err = ob.GetFromOrderMap(o2.Hash)
+// 	if err != nil {
+// 		t.Error("Error getting order from map", err)
+// 	}
+
+// 	// volume, err = ob.GetPricePointVolume(pricePointSetKey, o2.PricePoint.Int64())
+// 	// if err != nil {
+// 	// 	t.Error("Error getting volume set", err)
+// 	// }
+
+// 	assert.Equal(t, 1, len(pricepoints))
+// 	assert.Contains(t, pricepoints, utils.UintToPaddedString(o2.PricePoint.Int64()))
+// 	assert.Equal(t, 2, len(pricePointHashes))
+// 	assert.Contains(t, pricePointHashes, o2.Hash.Hex())
+// 	assert.Equal(t, int64(pricePointHashes[o2.Hash.Hex()]), o2.CreatedAt.Unix())
+// 	// assert.Equal(t, int64(2e8), volume)
+// 	testutils.CompareOrder(t, &o2, stored)
+// }
+
+// func TestUpdateOrder(t *testing.T) {
+// 	e, ob, _, _, _, _, _, _, factory1, _ := setupTest()
+// 	defer e.redisConn.FlushAll()
+
+// 	o1, _ := factory1.NewSellOrder(1e3, 1e8)
+
+// 	exp1 := o1
+// 	exp1.Status = "PARTIAL_FILLED"
+// 	exp1.FilledAmount = units.Ethers(1e3)
+
+// 	err := ob.addOrder(&o1)
+// 	if err != nil {
+// 		t.Error("Could not add order")
+// 	}
+
+// 	err = ob.updateOrder(&o1, units.Ethers(1e3))
+// 	if err != nil {
+// 		t.Error("Could not update order")
+// 	}
+
+// 	pricePointSetKey, orderHashListKey := o1.GetOBKeys()
+
+// 	pricepoints, err := ob.redisConn.GetSortedSet(pricePointSetKey)
+// 	if err != nil {
+// 		t.Error("Error getting pricepoint set", err)
+// 	}
+
+// 	pricePointHashes, err := ob.redisConn.GetSortedSet(orderHashListKey)
+// 	if err != nil {
+// 		t.Error("Error getting pricepoint hash set", err)
+// 	}
+
+// 	// volume, err := ob.GetPricePointVolume(pricePointSetKey, o1.PricePoint.Int64())
+// 	// if err != nil {
+// 	// 	t.Error("Error getting pricepoint volume", err)
+// 	// }
+
+// 	stored, err := ob.GetFromOrderMap(o1.Hash)
+// 	if err != nil {
+// 		t.Error(err)
+// 	}
+
+// 	assert.Equal(t, 1, len(pricepoints))
+// 	assert.Contains(t, pricepoints, utils.UintToPaddedString(o1.PricePoint.Int64()))
+// 	testutils.Compare(t, &exp1, stored)
+
+// 	assert.Equal(t, 1, len(pricePointHashes))
+// 	assert.Contains(t, pricePointHashes, o1.Hash.Hex())
+// 	assert.Equal(t, int64(pricePointHashes[o1.Hash.Hex()]), o1.CreatedAt.Unix())
+// 	// assert.Equal(t, int64(99999000), volume)
+// }
+
+// func TestDeleteOrder(t *testing.T) {
+// 	e, ob, _, _, _, _, _, _, factory1, _ := setupTest()
+// 	defer e.redisConn.FlushAll()
+
+// 	o1, _ := factory1.NewSellOrder(1e3, 1e8)
+
+// 	e.addOrder(&o1)
+
+// 	pricePointSetKey, orderHashListKey := o1.GetOBKeys()
+
+// 	pricepoints, err := e.redisConn.GetSortedSet(pricePointSetKey)
+// 	if err != nil {
+// 		t.Error(err)
+// 	}
+
+// 	pricePointHashes, err := e.redisConn.GetSortedSet(orderHashListKey)
+// 	if err != nil {
+// 		t.Error(err)
+// 	}
+
+// 	// volume, err := ob.GetPricePointVolume(pricePointSetKey, o1.PricePoint.Int64())
+// 	// if err != nil {
+// 	// 	t.Error(err)
+// 	// }
+
+// 	stored, err := ob.GetFromOrderMap(o1.Hash)
+// 	if err != nil {
+// 		t.Error(err)
+// 	}
+
+// 	assert.Equal(t, 1, len(pricepoints))
+// 	assert.Contains(t, pricepoints, utils.UintToPaddedString(o1.PricePoint.Int64()))
+// 	testutils.CompareOrder(t, &o1, stored)
+
+// 	assert.Equal(t, 1, len(pricePointHashes))
+// 	assert.Contains(t, pricePointHashes, o1.Hash.Hex())
+// 	assert.Equal(t, int64(pricePointHashes[o1.Hash.Hex()]), o1.CreatedAt.Unix())
+// 	// assert.Equal(t, int64(100000000), volume)
+
+// 	err = ob.deleteOrder(&o1)
+// 	if err != nil {
+// 		t.Error(err)
+// 	}
+
+// 	pricePointSetKey, orderHashListKey = o1.GetOBKeys()
+
+// 	if e.redisConn.Exists(pricePointSetKey) {
+// 		t.Errorf("Key: %v expected to be deleted but exists", pricePointSetKey)
+// 	}
+
+// 	if e.redisConn.Exists(orderHashListKey) {
+// 		t.Errorf("Key: %v expected to be deleted but key exists", pricePointSetKey)
+// 	}
+
+// 	if e.redisConn.Exists(orderHashListKey + "::" + o1.Hash.Hex()) {
+// 		t.Errorf("Key: %v expected to be deleted but key exists", pricePointSetKey)
+// 	}
+
+// 	if e.redisConn.Exists(pricePointSetKey + "::book::" + utils.UintToPaddedString(o1.PricePoint.Int64())) {
+// 		t.Errorf("Key: %v expected to be deleted but key exists", pricePointSetKey)
+// 	}
+// }
+
+// func TestCancelOrder(t *testing.T) {
+// 	e, ob, _, _, _, _, _, _, factory1, _ := setupTest()
+// 	defer e.redisConn.FlushAll()
+
+// 	o1, _ := factory1.NewSellOrder(1e3, 1e8)
+// 	o2, _ := factory1.NewSellOrder(1e3, 1e8)
+
+// 	e.addOrder(&o1)
+// 	e.addOrder(&o2)
+
+// 	expectedOrder := o2
+// 	expectedOrder.Status = "CANCELLED"
+// 	expected := &types.EngineResponse{
+// 		Status:         "CANCELLED",
+// 		HashID:         o2.Hash,
+// 		Order:          &expectedOrder,
+// 		RemainingOrder: nil,
+// 		Matches:        nil,
+// 	}
+
+// 	pricePointSetKey, orderHashListKey := o1.GetOBKeys()
+
+// 	pricepoints, _ := e.redisConn.GetSortedSet(pricePointSetKey)
+// 	pricePointHashes, _ := e.redisConn.GetSortedSet(orderHashListKey)
+// 	// volume, _ := ob.GetPricePointVolume(pricePointSetKey, o2.PricePoint.Int64())
+// 	stored1, _ := ob.GetFromOrderMap(o1.Hash)
+// 	stored2, _ := ob.GetFromOrderMap(o2.Hash)
+
+// 	assert.Equal(t, 1, len(pricepoints))
+// 	assert.Contains(t, pricepoints, utils.UintToPaddedString(o1.PricePoint.Int64()))
+// 	assert.Equal(t, 2, len(pricePointHashes))
+// 	assert.Contains(t, pricePointHashes, o1.Hash.Hex())
+// 	assert.Contains(t, pricePointHashes, o2.Hash.Hex())
+// 	assert.Equal(t, int64(pricePointHashes[o1.Hash.Hex()]), o1.CreatedAt.Unix())
+// 	assert.Equal(t, int64(pricePointHashes[o2.Hash.Hex()]), o2.CreatedAt.Unix())
+// 	// assert.Equal(t, int64(200000000), volume)
+// 	testutils.Compare(t, &o1, stored1)
+// 	testutils.Compare(t, &o2, stored2)
+
+// 	res, err := ob.CancelOrder(&o2)
+// 	if err != nil {
+// 		t.Error("Error when cancelling order: ", err)
+// 	}
+
+// 	testutils.Compare(t, expected, res)
+
+// 	pricePointSetKey, orderHashListKey = o1.GetOBKeys()
+
+// 	pricepoints, _ = e.redisConn.GetSortedSet(pricePointSetKey)
+// 	pricePointHashes, _ = e.redisConn.GetSortedSet(orderHashListKey)
+// 	// volume, _ = ob.GetPricePointVolume(pricePointSetKey, o2.PricePoint.Int64())
+// 	stored1, _ = ob.GetFromOrderMap(o1.Hash)
+// 	stored2, _ = ob.GetFromOrderMap(o2.Hash)
+
+// 	assert.Equal(t, 1, len(pricepoints))
+// 	assert.Contains(t, pricepoints, utils.UintToPaddedString(o1.PricePoint.Int64()))
+// 	assert.Equal(t, 1, len(pricePointHashes))
+// 	assert.Contains(t, pricePointHashes, o1.Hash.Hex())
+// 	assert.NotContains(t, pricePointHashes, o2.Hash.Hex())
+// 	assert.Equal(t, int64(pricePointHashes[o1.Hash.Hex()]), o1.CreatedAt.Unix())
+// 	// assert.Equal(t, int64(100000000), volume)
+// 	testutils.Compare(t, &o1, stored1)
+// 	testutils.Compare(t, nil, stored2)
+// }
