@@ -189,6 +189,8 @@ func (s *OrderService) NewOrder(o *types.Order) error {
 	availableWethBalance := math.Sub(wethBalance, wethLockedBalance)
 	availableSellTokenBalance := math.Sub(sellTokenBalance, sellTokenLockedBalance)
 
+	utils.PrintJSON("I am here")
+
 	if availableWethBalance.Cmp(fee) == -1 {
 		return errors.New("Insufficient WETH Balance")
 	}

@@ -403,6 +403,8 @@ func TestPartialMatchOrder2(t *testing.T) {
 		expectedMatches,
 	}
 
+	utils.PrintJSON(res)
+
 	testutils.CompareEngineResponse(t, expectedResponse, res)
 }
 
