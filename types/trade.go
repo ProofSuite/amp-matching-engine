@@ -490,3 +490,54 @@ func NewUnsignedTrade1(maker *Order, taker *Order, amount *big.Int) (Trade, erro
 
 	return t, nil
 }
+
+type TradeBSONUpdate struct {
+	*Trade
+}
+
+func (t TradeBSONUpdate) GetBSON() (interface{}, error) {
+	now := time.Now()
+
+	set := bson.M{
+		"taker":          t.Taker.Hex(),
+		"maker":          t.Maker.Hex(),
+		"baseToken":      t.BaseToken.Hex(),
+		"quoteToken":     t.QuoteToken.Hex(),
+		"orderHash":      t.OrderHash.Hex(),
+		"hash":           t.Hash.Hex(),
+		"txHash":         t.TxHash.Hex(),
+		"takerOrderHash": t.TakerOrderHash.Hex(),
+		"pairName":       t.PairName,
+		"side":           t.Side,
+		"status":         t.Status,
+	}
+
+	if t.PricePoint != nil {
+		set["pricepoint"] = t.PricePoint.Int64()
+	}
+
+	if t.Amount != nil {
+		set["amount"] = t.Amount.String()
+	}
+
+	if t.Signature != nil {
+		set["signature"] = bson.M{
+			"V": t.Signature.V,
+			"R": t.Signature.R.Hex(),
+			"S": t.Signature.S.Hex(),
+		}
+	}
+
+	setOnInsert := bson.M{
+		"_id":       bson.NewObjectId(),
+		"hash":      t.Hash.Hex(),
+		"createdAt": now,
+	}
+
+	update := bson.M{
+		"$set":         set,
+		"$setOnInsert": setOnInsert,
+	}
+
+	return update, nil
+}

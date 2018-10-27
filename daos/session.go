@@ -168,7 +168,7 @@ func (d *Database) Remove(dbName, collection string, query []bson.M) error {
 }
 
 // RemoveAll removes all the documents from a collection matching a certain query
-func (d *Database) RemoveAll(dbName, collection string, query []bson.M) error {
+func (d *Database) RemoveAll(dbName, collection string, query interface{}) error {
 	sc := d.Session.Copy()
 	defer sc.Close()
 

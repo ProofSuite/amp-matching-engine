@@ -46,12 +46,12 @@ type Client struct {
 // allow the client log message to take in a lot of different types of messages
 // An error id of -1 means that there was no error.
 type ClientLogMessage struct {
-	MessageType string                  `json:"messageType"`
-	Orders      []*types.Order          `json:"order"`
-	Trades      []*types.Trade          `json:"trade"`
-	Matches     []*types.OrderTradePair `json:"matches"`
-	Tx          *common.Hash            `json:"tx"`
-	ErrorID     int8                    `json:"errorID"`
+	MessageType string           `json:"messageType"`
+	Orders      []*types.Order   `json:"order"`
+	Trades      []*types.Trade   `json:"trade"`
+	Matches     []*types.Matches `json:"matches"`
+	Tx          *common.Hash     `json:"tx"`
+	ErrorID     int8             `json:"errorID"`
 }
 
 type Server interface {
