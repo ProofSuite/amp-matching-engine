@@ -77,15 +77,16 @@ func NewRouter(
 	walletDao := daos.NewWalletDao()
 
 	// instantiate engine
-	eng := engine.NewEngine(rabbitConn, orderDao, pairDao)
+	eng := engine.NewEngine(rabbitConn, orderDao, tradeDao, pairDao)
 
 	// get services for injection
 	accountService := services.NewAccountService(accountDao, tokenDao)
 	ohlcvService := services.NewOHLCVService(tradeDao)
 	tokenService := services.NewTokenService(tokenDao)
 	tradeService := services.NewTradeService(tradeDao)
+	validatorService := services.NewValidatorService(provider, accountDao, orderDao)
 	pairService := services.NewPairService(pairDao, tokenDao, tradeDao, eng)
-	orderService := services.NewOrderService(orderDao, pairDao, accountDao, tradeDao, eng, provider, rabbitConn)
+	orderService := services.NewOrderService(orderDao, pairDao, accountDao, tradeDao, eng, validatorService, rabbitConn)
 	orderBookService := services.NewOrderBookService(pairDao, tokenDao, orderDao, eng)
 	walletService := services.NewWalletService(walletDao)
 	// cronService := crons.NewCronService(ohlcvService)

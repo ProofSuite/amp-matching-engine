@@ -200,6 +200,7 @@ func (op *Operator) HandleEvents() error {
 				}
 			}()
 
+		//TODO what do we do if we don't pick up the event
 		case event := <-tradeEvents:
 			fmt.Println("TRADE_SUCCESS_EVENT")
 			txh := event.Raw.TxHash
@@ -210,7 +211,7 @@ func (op *Operator) HandleEvents() error {
 					logger.Error(err)
 				}
 
-				matches := &types.Matches{}
+				matches := types.Matches{}
 				orderHashes := event.OrderHashes
 				tradeHashes := event.TradeHashes
 
@@ -225,10 +226,10 @@ func (op *Operator) HandleEvents() error {
 						logger.Error(err)
 					}
 
-					matches.AppendMatch(&types.OrderTradePair{or, tr})
+					matches = append(matches, &types.Match{or, tr})
 				}
 
-				err = op.Broker.PublishTradeSuccessMessage(matches)
+				err = op.Broker.PublishTradeSuccessMessage(&matches)
 				if err != nil {
 					logger.Error(err)
 				}

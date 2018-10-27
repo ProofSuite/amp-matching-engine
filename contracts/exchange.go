@@ -140,7 +140,7 @@ func (e *Exchange) ExecuteBatchTrades(matches *types.Matches, txOpts *bind.Trans
 	vValues := [][2]uint8{}
 	rsValues := [][4][32]byte{}
 
-	for _, m := range matches.OrderTradePairs {
+	for _, m := range *matches {
 		o := m.Order
 		t := m.Trade
 
@@ -183,7 +183,7 @@ func (e *Exchange) CallBatchTrades(matches *types.Matches, call *ethereum.CallMs
 	vValues := [][2]uint8{}
 	rsValues := [][4][32]byte{}
 
-	for _, m := range matches.OrderTradePairs {
+	for _, m := range *matches {
 		o := m.Order
 		t := m.Trade
 

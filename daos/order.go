@@ -57,16 +57,41 @@ func NewOrderDao(opts ...OrderDaoOption) *OrderDao {
 }
 
 // Create function performs the DB insertion task for Order collection
-func (dao *OrderDao) Create(order *types.Order) error {
-	order.ID = bson.NewObjectId()
-	order.CreatedAt = time.Now()
-	order.UpdatedAt = time.Now()
+func (dao *OrderDao) Create(o *types.Order) error {
+	o.ID = bson.NewObjectId()
+	o.CreatedAt = time.Now()
+	o.UpdatedAt = time.Now()
 
-	if order.Status == "" {
-		order.Status = "OPEN"
+	if o.Status == "" {
+		o.Status = "OPEN"
 	}
 
-	err := db.Create(dao.dbName, dao.collectionName, order)
+	err := db.Create(dao.dbName, dao.collectionName, o)
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	return nil
+}
+
+func (dao *OrderDao) DeleteByHashes(hashes ...common.Hash) error {
+	err := db.RemoveAll(dao.dbName, dao.collectionName, bson.M{"hash": bson.M{"$in": hashes}})
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	return nil
+}
+
+func (dao *OrderDao) Delete(orders ...*types.Order) error {
+	hashes := []common.Hash{}
+	for _, o := range orders {
+		hashes = append(hashes, o.Hash)
+	}
+
+	err := db.RemoveAll(dao.dbName, dao.collectionName, bson.M{"hash": bson.M{"$in": hashes}})
 	if err != nil {
 		logger.Error(err)
 		return err
@@ -183,6 +208,36 @@ func (dao *OrderDao) UpdateOrderStatus(h common.Hash, status string) error {
 	return nil
 }
 
+func (dao *OrderDao) UpdateOrderStatusesByHashes(status string, hashes ...common.Hash) ([]*types.Order, error) {
+	hexes := []string{}
+	for _, h := range hashes {
+		hexes = append(hexes, h.Hex())
+	}
+
+	query := bson.M{"hash": bson.M{"$in": hexes}}
+	update := bson.M{
+		"$set": bson.M{
+			"updatedAt": time.Now(),
+			"status":    status,
+		},
+	}
+	updated := []*types.Order{}
+	change := mgo.Change{
+		Update:    update,
+		Upsert:    true,
+		Remove:    false,
+		ReturnNew: true,
+	}
+
+	err := db.FindAndModify(dao.dbName, dao.collectionName, query, change, &updated)
+	if err != nil {
+		logger.Error(err)
+		return nil, err
+	}
+
+	return updated, nil
+}
+
 func (dao *OrderDao) UpdateOrderFilledAmount(hash common.Hash, value *big.Int) error {
 	q := bson.M{"hash": hash.Hex()}
 	res := []types.Order{}
@@ -218,6 +273,60 @@ func (dao *OrderDao) UpdateOrderFilledAmount(hash common.Hash, value *big.Int) e
 	}
 
 	return nil
+}
+
+func (dao *OrderDao) UpdateOrderFilledAmounts(hashes []common.Hash, amount []*big.Int) ([]*types.Order, error) {
+	hexes := []string{}
+	orders := []*types.Order{}
+	for i, _ := range hashes {
+		hexes = append(hexes, hashes[i].Hex())
+	}
+
+	query := bson.M{"hash": bson.M{"$in": hexes}}
+	err := db.Get(dao.dbName, dao.collectionName, query, 0, 1, &orders)
+	if err != nil {
+		logger.Error(err)
+		return nil, err
+	}
+
+	updatedOrders := []*types.Order{}
+	for i, o := range orders {
+		status := ""
+		filledAmount := math.Add(o.FilledAmount, amount[i])
+
+		if math.IsEqualOrSmallerThan(filledAmount, big.NewInt(0)) {
+			filledAmount = big.NewInt(0)
+			status = "OPEN"
+		} else if math.IsEqualOrGreaterThan(filledAmount, o.Amount) {
+			filledAmount = o.Amount
+			status = "FILLED"
+		} else {
+			status = "PARTIAL_FILLED"
+		}
+
+		query := bson.M{"hash": o.Hash.Hex()}
+		update := bson.M{"$set": bson.M{
+			"status":       status,
+			"filledAmount": filledAmount.String(),
+		}}
+		change := mgo.Change{
+			Update:    update,
+			Upsert:    true,
+			Remove:    false,
+			ReturnNew: true,
+		}
+
+		updated := &types.Order{}
+		err := db.FindAndModify(dao.dbName, dao.collectionName, query, change, updated)
+		if err != nil {
+			logger.Error(err)
+			return nil, err
+		}
+
+		updatedOrders = append(updatedOrders, updated)
+	}
+
+	return updatedOrders, nil
 }
 
 // GetByID function fetches a single document from order collection based on mongoDB ID.
