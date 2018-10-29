@@ -9,7 +9,6 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/rabbitmq"
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/Proofsuite/amp-matching-engine/utils"
-	"github.com/ethereum/go-ethereum/common"
 )
 
 // Engine contains daos and redis connection required for engine to work
@@ -24,6 +23,7 @@ var logger = utils.EngineLogger
 func NewEngine(
 	rabbitMQConn *rabbitmq.Connection,
 	orderDao interfaces.OrderDao,
+	tradeDao interfaces.TradeDao,
 	pairDao interfaces.PairDao,
 ) *Engine {
 	pairs, err := pairDao.GetAll()
@@ -37,6 +37,7 @@ func NewEngine(
 		ob := &OrderBook{
 			rabbitMQConn: rabbitMQConn,
 			orderDao:     orderDao,
+			tradeDao:     tradeDao,
 			pair:         &p,
 			mutex:        &sync.Mutex{},
 		}
@@ -51,31 +52,53 @@ func NewEngine(
 // HandleOrders parses incoming rabbitmq order messages and redirects them to the appropriate
 // engine function
 func (e *Engine) HandleOrders(msg *rabbitmq.Message) error {
-	o := &types.Order{}
-	err := json.Unmarshal(msg.Data, o)
-	if err != nil {
-		logger.Error(err)
-		return err
-	}
-
-	if msg.Type == "NEW_ORDER" {
-		err := e.newOrder(o, msg.HashID)
+	switch msg.Type {
+	case "NEW_ORDER":
+		err := e.handleNewOrder(msg.Data)
 		if err != nil {
 			logger.Error(err)
 			return err
 		}
-	} else if msg.Type == "ADD_ORDER" {
-		err := e.addOrder(o)
+	case "ADD_ORDER":
+		err := e.handleAddOrder(msg.Data)
 		if err != nil {
 			logger.Error(err)
 			return err
 		}
+	case "CANCEL_ORDER":
+		err := e.handleCancelOrder(msg.Data)
+		if err != nil {
+			logger.Error(err)
+			return err
+		}
+	case "INVALIDATE_MAKER_ORDERS":
+		utils.PrintJSON("receiving invalidate maker orders")
+		err := e.handleInvalidateMakerOrders(msg.Data)
+		if err != nil {
+			logger.Error(err)
+			return err
+		}
+	case "INVALIDATE_TAKER_ORDERS":
+		err := e.handleInvalidateTakerOrders(msg.Data)
+		if err != nil {
+			logger.Error(err)
+			return err
+		}
+	default:
+		logger.Error("Unknown message", msg)
 	}
 
 	return nil
 }
 
-func (e *Engine) addOrder(o *types.Order) error {
+func (e *Engine) handleAddOrder(bytes []byte) error {
+	o := &types.Order{}
+	err := json.Unmarshal(bytes, o)
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
 	code, err := o.PairCode()
 	if err != nil {
 		logger.Error(err)
@@ -96,7 +119,14 @@ func (e *Engine) addOrder(o *types.Order) error {
 	return nil
 }
 
-func (e *Engine) newOrder(o *types.Order, hashID common.Hash) error {
+func (e *Engine) handleNewOrder(bytes []byte) error {
+	o := &types.Order{}
+	err := json.Unmarshal(bytes, o)
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
 	code, err := o.PairCode()
 	if err != nil {
 		logger.Error(err)
@@ -108,7 +138,7 @@ func (e *Engine) newOrder(o *types.Order, hashID common.Hash) error {
 		return errors.New("Orderbook error")
 	}
 
-	err = ob.newOrder(o, hashID)
+	err = ob.newOrder(o)
 	if err != nil {
 		logger.Error(err)
 		return err
@@ -117,8 +147,14 @@ func (e *Engine) newOrder(o *types.Order, hashID common.Hash) error {
 	return nil
 }
 
-func (e *Engine) RecoverOrders(matches []*types.OrderTradePair) error {
-	o := matches[0].Order
+func (e *Engine) handleCancelOrder(bytes []byte) error {
+	o := &types.Order{}
+	err := json.Unmarshal(bytes, o)
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
 	code, err := o.PairCode()
 	if err != nil {
 		logger.Error(err)
@@ -130,7 +166,7 @@ func (e *Engine) RecoverOrders(matches []*types.OrderTradePair) error {
 		return errors.New("Orderbook error")
 	}
 
-	err = ob.RecoverOrders(matches)
+	err = ob.cancelOrder(o)
 	if err != nil {
 		logger.Error(err)
 		return err
@@ -139,31 +175,15 @@ func (e *Engine) RecoverOrders(matches []*types.OrderTradePair) error {
 	return nil
 }
 
-//Cancel order is currently not sent through a queue. Not sure i agree with this mechanism
-func (e *Engine) CancelOrder(o *types.Order) (*types.EngineResponse, error) {
-	code, err := o.PairCode()
+func (e *Engine) handleInvalidateMakerOrders(bytes []byte) error {
+	m := types.Matches{}
+	err := json.Unmarshal(bytes, &m)
 	if err != nil {
 		logger.Error(err)
-		return nil, err
+		return err
 	}
 
-	ob := e.orderbooks[code]
-	if ob == nil {
-		return nil, errors.New("Orderbook error")
-	}
-
-	res, err := ob.CancelOrder(o)
-	if err != nil {
-		logger.Error(err)
-		return nil, err
-	}
-
-	return res, nil
-}
-
-func (e *Engine) DeleteOrder(o *types.Order) error {
-	//we assume all the orders correspond to the same pair
-	code, err := o.PairCode()
+	code, err := m.PairCode()
 	if err != nil {
 		logger.Error(err)
 		return err
@@ -174,7 +194,7 @@ func (e *Engine) DeleteOrder(o *types.Order) error {
 		return errors.New("Orderbook error")
 	}
 
-	_, err = ob.DeleteOrder(o)
+	err = ob.invalidateMakerOrders(m)
 	if err != nil {
 		logger.Error(err)
 		return err
@@ -182,3 +202,55 @@ func (e *Engine) DeleteOrder(o *types.Order) error {
 
 	return nil
 }
+
+func (e *Engine) handleInvalidateTakerOrders(bytes []byte) error {
+	m := types.Matches{}
+	err := json.Unmarshal(bytes, m)
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	code, err := m.PairCode()
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	ob := e.orderbooks[code]
+	if ob == nil {
+		logger.Error(err)
+		return err
+	}
+
+	err = ob.invalidateTakerOrders(m)
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	return nil
+}
+
+// func (e *Engine) deleteOrders(bytes []byte) error {
+// 	//we assume all the orders correspond to the same pair
+// 	orders := []*types.Order{}
+// 	code, err := orders[0].PairCode()
+// 	if err != nil {
+// 		logger.Error(err)
+// 		return err
+// 	}
+
+// 	ob := e.orderbooks[code]
+// 	if ob == nil {
+// 		return errors.New("Orderbook error")
+// 	}
+
+// 	err = ob.deleteOrders(orders...)
+// 	if err != nil {
+// 		logger.Error(err)
+// 		return err
+// 	}
+
+// 	return nil
+// }

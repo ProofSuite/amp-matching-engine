@@ -19,6 +19,8 @@ type OrderDao interface {
 	Create(o *types.Order) error
 	Update(id bson.ObjectId, o *types.Order) error
 	Upsert(id bson.ObjectId, o *types.Order) error
+	Delete(orders ...*types.Order) error
+	DeleteByHashes(hashes ...common.Hash) error
 	UpdateAllByHash(h common.Hash, o *types.Order) error
 	UpdateByHash(h common.Hash, o *types.Order) error
 	UpsertByHash(h common.Hash, o *types.Order) error
@@ -31,6 +33,8 @@ type OrderDao interface {
 	GetCurrentByUserAddress(a common.Address) ([]*types.Order, error)
 	GetHistoryByUserAddress(a common.Address) ([]*types.Order, error)
 	UpdateOrderFilledAmount(h common.Hash, value *big.Int) error
+	UpdateOrderFilledAmounts(h []common.Hash, values []*big.Int) ([]*types.Order, error)
+	UpdateOrderStatusesByHashes(status string, hashes ...common.Hash) ([]*types.Order, error)
 	GetUserLockedBalance(account common.Address, token common.Address) (*big.Int, error)
 	UpdateOrderStatus(h common.Hash, status string) error
 	GetRawOrderBook(*types.Pair) ([]*types.Order, error)
@@ -83,12 +87,15 @@ type TradeDao interface {
 	GetByPairName(name string) ([]*types.Trade, error)
 	GetByHash(h common.Hash) (*types.Trade, error)
 	GetByOrderHash(h common.Hash) ([]*types.Trade, error)
+	GetByOrderHashes(hashes []common.Hash) ([]*types.Trade, error)
 	GetSortedTradesByDate(bt, qt common.Address, n int) ([]*types.Trade, error)
 	GetNTradesByPairAddress(bt, qt common.Address, n int) ([]*types.Trade, error)
 	GetTradesByPairAddress(bt, qt common.Address, n int) ([]*types.Trade, error)
 	GetAllTradesByPairAddress(bt, qt common.Address) ([]*types.Trade, error)
 	GetByUserAddress(a common.Address) ([]*types.Trade, error)
 	UpdateTradeStatus(h common.Hash, status string) error
+	UpdateTradeStatuses(status string, hashes ...common.Hash) ([]*types.Trade, error)
+	UpdateTradeStatusesByOrderHashes(status string, hashes ...common.Hash) ([]*types.Trade, error)
 	Drop()
 }
 
@@ -124,9 +131,9 @@ type Exchange interface {
 
 type Engine interface {
 	HandleOrders(msg *rabbitmq.Message) error
-	RecoverOrders(orders []*types.OrderTradePair) error
-	CancelOrder(order *types.Order) (*types.EngineResponse, error)
-	DeleteOrder(o *types.Order) error
+	// RecoverOrders(matches types.Matches) error
+	// CancelOrder(order *types.Order) (*types.EngineResponse, error)
+	// DeleteOrder(o *types.Order) error
 }
 
 type WalletService interface {
@@ -158,13 +165,9 @@ type OrderService interface {
 	GetByUserAddress(a common.Address) ([]*types.Order, error)
 	NewOrder(o *types.Order) error
 	CancelOrder(oc *types.OrderCancel) error
-	CancelTrades(trades []*types.Trade) error
 	HandleEngineResponse(res *types.EngineResponse) error
 	GetCurrentByUserAddress(a common.Address) ([]*types.Order, error)
 	GetHistoryByUserAddress(a common.Address) ([]*types.Order, error)
-	Rollback(res *types.EngineResponse) *types.EngineResponse
-	RollbackOrder(o *types.Order) error
-	RollbackTrade(o *types.Order, t *types.Trade) error
 }
 
 type OrderBookService interface {
@@ -226,6 +229,10 @@ type AccountService interface {
 	GetTokenBalances(owner common.Address) (map[common.Address]*types.TokenBalance, error)
 }
 
+type ValidatorService interface {
+	ValidateBalance(o *types.Order) error
+}
+
 type EthereumConfig interface {
 	GetURL() string
 	ExchangeAddress() common.Address
@@ -236,6 +243,7 @@ type EthereumClient interface {
 	CodeAt(ctx context.Context, contract common.Address, blockNumber *big.Int) ([]byte, error)
 	CallContract(ctx context.Context, call ethereum.CallMsg, blockNumber *big.Int) ([]byte, error)
 	PendingCodeAt(ctx context.Context, account common.Address) ([]byte, error)
+	PendingCallContract(ctx context.Context, call ethereum.CallMsg) ([]byte, error)
 	TransactionReceipt(ctx context.Context, txHash common.Hash) (*eth.Receipt, error)
 	EstimateGas(ctx context.Context, call ethereum.CallMsg) (gas uint64, err error)
 	SendTransaction(ctx context.Context, tx *eth.Transaction) error

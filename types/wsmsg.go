@@ -44,9 +44,9 @@ type Params struct {
 // Signature payload is a websocket message payload struct for the "REQUEST_SIGNATURE" message
 //
 type SignaturePayload struct {
-	Order          *Order            `json:"order"`
-	RemainingOrder *Order            `json:"remainingOrder,omitempty"`
-	Matches        []*OrderTradePair `json:"matches"`
+	Order          *Order   `json:"order"`
+	RemainingOrder *Order   `json:"remainingOrder,omitempty"`
+	Matches        *Matches `json:"matches"`
 }
 
 // type OrderPendingPayload struct {
@@ -55,7 +55,7 @@ type SignaturePayload struct {
 // }
 
 type OrderPendingPayload struct {
-	Matches []*OrderTradePair `json:"matches"`
+	Matches *Matches `json:"matches"`
 }
 
 // type OrderSuccessPayload struct {
@@ -64,7 +64,7 @@ type OrderPendingPayload struct {
 // }
 
 type OrderSuccessPayload struct {
-	Matches []*OrderTradePair `json:"matches"`
+	Matches *Matches `json:"matches"`
 }
 
 type SubscriptionPayload struct {
@@ -113,7 +113,7 @@ func NewOrderCancelWebsocketMessage(oc *OrderCancel) *WebsocketMessage {
 	}
 }
 
-func NewRequestSignaturesWebsocketMessage(h common.Hash, order *Order, remainingOrder *Order, matches []*OrderTradePair) *WebsocketMessage {
+func NewRequestSignaturesWebsocketMessage(h common.Hash, order *Order, remainingOrder *Order, matches *Matches) *WebsocketMessage {
 	return &WebsocketMessage{
 		Channel: "orders",
 		Event: WebsocketEvent{
@@ -128,7 +128,7 @@ func NewRequestSignaturesWebsocketMessage(h common.Hash, order *Order, remaining
 	}
 }
 
-func NewSubmitSignatureWebsocketMessage(hash string, order *Order, remainingOrder *Order, matches []*OrderTradePair) *WebsocketMessage {
+func NewSubmitSignatureWebsocketMessage(hash string, order *Order, remainingOrder *Order, matches *Matches) *WebsocketMessage {
 	return &WebsocketMessage{
 		Channel: "orders",
 		Event: WebsocketEvent{

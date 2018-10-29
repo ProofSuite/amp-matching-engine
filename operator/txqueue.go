@@ -170,19 +170,19 @@ func (txq *TxQueue) ExecuteTrade(m *types.Matches) (*eth.Transaction, error) {
 				return
 			}
 
-			if nextMatch.OrderTradePairs == nil {
+			if nextMatch == nil {
 				return
 			}
 
 			// very hacky
-			if nextMatch.HashID == m.HashID {
+			if nextMatch.HashID() == m.HashID() {
 				nextMatch, err = txq.PopPendingTrades()
 				if err != nil {
 					logger.Error(err)
 					return
 				}
 
-				if nextMatch.OrderTradePairs == nil {
+				if nextMatch == nil {
 					return
 				}
 			}

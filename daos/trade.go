@@ -94,6 +94,31 @@ func (dao *TradeDao) Create(trades ...*types.Trade) error {
 	return nil
 }
 
+func (dao *TradeDao) DeleteByHashes(hashes ...common.Hash) error {
+	err := db.RemoveAll(dao.dbName, dao.collectionName, bson.M{"hash": bson.M{"$in": hashes}})
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	return nil
+}
+
+func (dao *TradeDao) Delete(trades ...*types.Trade) error {
+	hashes := []common.Hash{}
+	for _, t := range trades {
+		hashes = append(hashes, t.Hash)
+	}
+
+	err := db.RemoveAll(dao.dbName, dao.collectionName, bson.M{"hash": bson.M{"$in": hashes}})
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	return nil
+}
+
 func (dao *TradeDao) Update(trade *types.Trade) error {
 	trade.UpdatedAt = time.Now()
 	err := db.Update(dao.dbName, dao.collectionName, bson.M{"_id": trade.ID}, trade)
@@ -127,6 +152,26 @@ func (dao *TradeDao) UpsertByHash(h common.Hash, t *types.Trade) error {
 	}
 
 	return nil
+}
+
+func (dao *TradeDao) FindAndModify(h common.Hash, t *types.Trade) (*types.Trade, error) {
+	t.UpdatedAt = time.Now()
+	query := bson.M{"hash": h.Hex()}
+	updated := &types.Trade{}
+	change := mgo.Change{
+		Update:    types.TradeBSONUpdate{t},
+		Upsert:    true,
+		Remove:    false,
+		ReturnNew: true,
+	}
+
+	err := db.FindAndModify(dao.dbName, dao.collectionName, query, change, &updated)
+	if err != nil {
+		logger.Error(err)
+		return nil, err
+	}
+
+	return updated, nil
 }
 
 // UpdateByHash updates the fields that can be normally updated in a structure. For a
@@ -170,46 +215,46 @@ func (dao *TradeDao) GetAll() ([]types.Trade, error) {
 
 // Aggregate function calls the aggregate pipeline of mongodb
 func (dao *TradeDao) Aggregate(q []bson.M) ([]*types.Tick, error) {
-	var response []*types.Tick
+	var res []*types.Tick
 
-	err := db.Aggregate(dao.dbName, dao.collectionName, q, &response)
+	err := db.Aggregate(dao.dbName, dao.collectionName, q, &res)
 	if err != nil {
 		logger.Error(err)
 		return nil, err
 	}
 
-	return response, nil
+	return res, nil
 }
 
 // GetByPairName fetches all the trades corresponding to a particular pair name.
 func (dao *TradeDao) GetByPairName(name string) ([]*types.Trade, error) {
-	var response []*types.Trade
+	var res []*types.Trade
 	q := bson.M{"pairName": bson.RegEx{
 		Pattern: name,
 		Options: "i",
 	}}
 
-	err := db.Get(dao.dbName, dao.collectionName, q, 0, 0, &response)
+	err := db.Get(dao.dbName, dao.collectionName, q, 0, 0, &res)
 	if err != nil {
 		logger.Error(err)
 		return nil, err
 	}
 
-	return response, nil
+	return res, nil
 }
 
 // GetByHash fetches the first record that matches a certain hash
-func (dao *TradeDao) GetByHash(hash common.Hash) (*types.Trade, error) {
-	q := bson.M{"hash": hash.Hex()}
+func (dao *TradeDao) GetByHash(h common.Hash) (*types.Trade, error) {
+	q := bson.M{"hash": h.Hex()}
 
-	response := []*types.Trade{}
-	err := db.Get(dao.dbName, dao.collectionName, q, 0, 0, &response)
+	res := []*types.Trade{}
+	err := db.Get(dao.dbName, dao.collectionName, q, 0, 0, &res)
 	if err != nil {
 		logger.Error(err)
 		return nil, err
 	}
 
-	return response[0], nil
+	return res[0], nil
 }
 
 // GetByOrderHash fetches the first trade record which matches a certain order hash
@@ -217,6 +262,24 @@ func (dao *TradeDao) GetByOrderHash(h common.Hash) ([]*types.Trade, error) {
 	q := bson.M{"orderHash": h.Hex()}
 
 	res := []*types.Trade{}
+	err := db.Get(dao.dbName, dao.collectionName, q, 0, 0, &res)
+	if err != nil {
+		logger.Error(err)
+		return nil, err
+	}
+
+	return res, nil
+}
+
+func (dao *TradeDao) GetByOrderHashes(hashes []common.Hash) ([]*types.Trade, error) {
+	hexes := []string{}
+	for _, h := range hashes {
+		hexes = append(hexes, h.Hex())
+	}
+
+	q := bson.M{"orderHash": bson.M{"$in": hexes}}
+	res := []*types.Trade{}
+
 	err := db.Get(dao.dbName, dao.collectionName, q, 0, 0, &res)
 	if err != nil {
 		logger.Error(err)
@@ -277,9 +340,7 @@ func (dao *TradeDao) GetTradesByPairAddress(bt, qt common.Address, n int) ([]*ty
 // GetByUserAddress fetches all the trades corresponding to a particular user address.
 func (dao *TradeDao) GetByUserAddress(a common.Address) ([]*types.Trade, error) {
 	var res []*types.Trade
-	q := bson.M{"$or": []bson.M{
-		{"maker": a.Hex()}, {"taker": a.Hex()},
-	}}
+	q := bson.M{"$or": []bson.M{{"maker": a.Hex()}, {"taker": a.Hex()}}}
 
 	err := db.Get(dao.dbName, dao.collectionName, q, 0, 0, &res)
 	if err != nil {
@@ -292,9 +353,7 @@ func (dao *TradeDao) GetByUserAddress(a common.Address) ([]*types.Trade, error) 
 
 func (dao *TradeDao) UpdateTradeStatus(h common.Hash, status string) error {
 	query := bson.M{"hash": h.Hex()}
-	update := bson.M{"$set": bson.M{
-		"status": status,
-	}}
+	update := bson.M{"$set": bson.M{"status": status}}
 
 	err := db.Update(dao.dbName, dao.collectionName, query, update)
 	if err != nil {
@@ -303,6 +362,96 @@ func (dao *TradeDao) UpdateTradeStatus(h common.Hash, status string) error {
 	}
 
 	return nil
+}
+
+func (dao *TradeDao) UpdateTradeStatuses(status string, hashes ...common.Hash) ([]*types.Trade, error) {
+	hexes := []string{}
+	for _, h := range hashes {
+		hexes = append(hexes, h.Hex())
+	}
+
+	query := bson.M{"hash": bson.M{"$in": hexes}}
+	update := bson.M{
+		"$set": bson.M{
+			"updatedAt": time.Now(),
+			"status":    status,
+		},
+	}
+
+	err := db.UpdateAll(dao.dbName, dao.collectionName, query, update)
+	if err != nil {
+		logger.Error(err)
+		return nil, nil
+	}
+
+	trades := []*types.Trade{}
+	err = db.Get(dao.dbName, dao.collectionName, query, 0, 0, &trades)
+	if err != nil {
+		logger.Error(err)
+		return nil, nil
+	}
+
+	return trades, nil
+}
+
+func (dao *TradeDao) UpdateTradeStatusesByOrderHashes(status string, hashes ...common.Hash) ([]*types.Trade, error) {
+	hexes := []string{}
+	for _, h := range hashes {
+		hexes = append(hexes, h.Hex())
+	}
+
+	query := bson.M{"orderHash": bson.M{"$in": hexes}}
+	update := bson.M{
+		"$set": bson.M{
+			"updatedAt": time.Now(),
+			"status":    status,
+		},
+	}
+
+	err := db.UpdateAll(dao.dbName, dao.collectionName, query, update)
+	if err != nil {
+		logger.Error(err)
+		return nil, nil
+	}
+
+	trades := []*types.Trade{}
+	err = db.Get(dao.dbName, dao.collectionName, query, 0, 0, &trades)
+	if err != nil {
+		logger.Error(err)
+		return nil, nil
+	}
+
+	return trades, nil
+}
+
+func (dao *TradeDao) UpdateTradeStatusesByHashes(status string, hashes ...common.Hash) ([]*types.Trade, error) {
+	hexes := []string{}
+	for _, h := range hashes {
+		hexes = append(hexes, h.Hex())
+	}
+
+	query := bson.M{"hash": bson.M{"$in": hexes}}
+	update := bson.M{
+		"$set": bson.M{
+			"updatedAt": time.Now(),
+			"status":    status,
+		},
+	}
+
+	err := db.UpdateAll(dao.dbName, dao.collectionName, query, update)
+	if err != nil {
+		logger.Error(err)
+		return nil, nil
+	}
+
+	trades := []*types.Trade{}
+	err = db.Get(dao.dbName, dao.collectionName, query, 0, 0, &trades)
+	if err != nil {
+		logger.Error(err)
+		return nil, nil
+	}
+
+	return trades, nil
 }
 
 // Drop drops all the order documents in the current database

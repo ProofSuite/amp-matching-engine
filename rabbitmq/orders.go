@@ -6,6 +6,7 @@ import (
 	"log"
 
 	"github.com/Proofsuite/amp-matching-engine/types"
+	"github.com/Proofsuite/amp-matching-engine/utils"
 )
 
 func (c *Connection) SubscribeOrders(fn func(*Message) error) error {
@@ -102,6 +103,8 @@ func (c *Connection) PublishTrades(matches *types.Matches) error {
 		Matches:     matches,
 	}
 
+	utils.PrintJSON("Publishing trades")
+
 	b, err := json.Marshal(msg)
 	if err != nil {
 		logger.Error(err)
@@ -109,6 +112,90 @@ func (c *Connection) PublishTrades(matches *types.Matches) error {
 	}
 
 	err = c.Publish(ch, q, b)
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	return nil
+}
+
+func (c *Connection) PublishNewOrderMessage(o *types.Order) error {
+	b, err := json.Marshal(o)
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	err = c.PublishOrder(&Message{
+		Type:   "NEW_ORDER",
+		HashID: o.Hash,
+		Data:   b,
+	})
+
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	return nil
+}
+
+func (c *Connection) PublishCancelOrderMessage(o *types.Order) error {
+	b, err := json.Marshal(o)
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	err = c.PublishOrder(&Message{
+		Type:   "CANCEL_ORDER",
+		HashID: o.Hash,
+		Data:   b,
+	})
+
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	return nil
+}
+
+func (c *Connection) PublishInvalidateMakerOrdersMessage(m types.Matches) error {
+	utils.PrintJSON("In publish invalidate")
+
+	b, err := json.Marshal(m)
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	err = c.PublishOrder(&Message{
+		Type: "INVALIDATE_MAKER_ORDERS",
+		Data: b,
+	})
+
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	return nil
+}
+
+func (c *Connection) PublishInvalidateTakerOrdersMessage(m types.Matches) error {
+	b, err := json.Marshal(m)
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	err = c.PublishOrder(&Message{
+		Type: "INVALIDATE_TAKER_ORDERS",
+		Data: b,
+	})
+
 	if err != nil {
 		logger.Error(err)
 		return err

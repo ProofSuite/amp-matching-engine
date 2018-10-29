@@ -109,6 +109,19 @@ func (d *Database) Update(dbName, collection string, query interface{}, update i
 	return nil
 }
 
+func (d *Database) UpdateAll(dbName, collection string, query interface{}, update interface{}) error {
+	sc := d.Session.Copy()
+	defer sc.Close()
+
+	_, err := sc.DB(dbName).C(collection).UpdateAll(query, update)
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	return nil
+}
+
 func (d *Database) Upsert(dbName, collection string, query interface{}, update interface{}) error {
 	sc := d.Session.Copy()
 	defer sc.Close()
@@ -168,7 +181,7 @@ func (d *Database) Remove(dbName, collection string, query []bson.M) error {
 }
 
 // RemoveAll removes all the documents from a collection matching a certain query
-func (d *Database) RemoveAll(dbName, collection string, query []bson.M) error {
+func (d *Database) RemoveAll(dbName, collection string, query interface{}) error {
 	sc := d.Session.Copy()
 	defer sc.Close()
 
