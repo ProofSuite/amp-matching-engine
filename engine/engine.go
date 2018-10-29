@@ -52,13 +52,6 @@ func NewEngine(
 // HandleOrders parses incoming rabbitmq order messages and redirects them to the appropriate
 // engine function
 func (e *Engine) HandleOrders(msg *rabbitmq.Message) error {
-	o := &types.Order{}
-	err := json.Unmarshal(msg.Data, o)
-	if err != nil {
-		logger.Error(err)
-		return err
-	}
-
 	switch msg.Type {
 	case "NEW_ORDER":
 		err := e.handleNewOrder(msg.Data)
@@ -79,6 +72,7 @@ func (e *Engine) HandleOrders(msg *rabbitmq.Message) error {
 			return err
 		}
 	case "INVALIDATE_MAKER_ORDERS":
+		utils.PrintJSON("receiving invalidate maker orders")
 		err := e.handleInvalidateMakerOrders(msg.Data)
 		if err != nil {
 			logger.Error(err)
@@ -183,7 +177,7 @@ func (e *Engine) handleCancelOrder(bytes []byte) error {
 
 func (e *Engine) handleInvalidateMakerOrders(bytes []byte) error {
 	m := types.Matches{}
-	err := json.Unmarshal(bytes, m)
+	err := json.Unmarshal(bytes, &m)
 	if err != nil {
 		logger.Error(err)
 		return err

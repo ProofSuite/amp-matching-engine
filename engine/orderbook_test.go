@@ -45,9 +45,10 @@ func setupTest() (
 
 	pair := testutils.GetZRXWETHTestPair()
 	pairDao := new(mocks.PairDao)
+	tradeDao := new(mocks.TradeDao)
 	pairDao.On("GetAll").Return([]types.Pair{*pair}, nil)
 
-	eng := NewEngine(rabbitConn, orderDao, pairDao)
+	eng := NewEngine(rabbitConn, orderDao, tradeDao, pairDao)
 	ex := testutils.GetTestAddress1()
 	maker := testutils.GetTestWallet1()
 	taker := testutils.GetTestWallet2()

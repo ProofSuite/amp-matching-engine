@@ -34,13 +34,15 @@ func CompareEngineResponse(t *testing.T, a, b *types.EngineResponse) {
 }
 
 func CompareMatches(t *testing.T, a, b *types.Matches) {
-	if a.OrderTradePairs != nil && b.OrderTradePairs != nil {
-		assert.NotNil(t, a.OrderTradePairs)
-		assert.NotNil(t, b.OrderTradePairs)
+	if a != nil && b != nil {
+		assert.NotNil(t, a)
+		assert.NotNil(t, b)
 
-		for i, _ := range a.OrderTradePairs {
-			ComparePublicOrder(t, a.OrderTradePairs[i].Order, b.OrderTradePairs[i].Order)
-			ComparePublicTrade(t, a.OrderTradePairs[i].Trade, b.OrderTradePairs[i].Trade)
+		aMatches := *a
+		bMatches := *b
+		for i, _ := range *a {
+			ComparePublicOrder(t, aMatches[i].Order, bMatches[i].Order)
+			ComparePublicTrade(t, aMatches[i].Trade, bMatches[i].Trade)
 		}
 	}
 }

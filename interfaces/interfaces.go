@@ -94,6 +94,7 @@ type TradeDao interface {
 	GetAllTradesByPairAddress(bt, qt common.Address) ([]*types.Trade, error)
 	GetByUserAddress(a common.Address) ([]*types.Trade, error)
 	UpdateTradeStatus(h common.Hash, status string) error
+	UpdateTradeStatuses(status string, hashes ...common.Hash) ([]*types.Trade, error)
 	UpdateTradeStatusesByOrderHashes(status string, hashes ...common.Hash) ([]*types.Trade, error)
 	Drop()
 }
@@ -242,6 +243,7 @@ type EthereumClient interface {
 	CodeAt(ctx context.Context, contract common.Address, blockNumber *big.Int) ([]byte, error)
 	CallContract(ctx context.Context, call ethereum.CallMsg, blockNumber *big.Int) ([]byte, error)
 	PendingCodeAt(ctx context.Context, account common.Address) ([]byte, error)
+	PendingCallContract(ctx context.Context, call ethereum.CallMsg) ([]byte, error)
 	TransactionReceipt(ctx context.Context, txHash common.Hash) (*eth.Receipt, error)
 	EstimateGas(ctx context.Context, call ethereum.CallMsg) (gas uint64, err error)
 	SendTransaction(ctx context.Context, tx *eth.Transaction) error

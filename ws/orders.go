@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"github.com/Proofsuite/amp-matching-engine/types"
+	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -25,6 +26,9 @@ func GetOrderConnection(a common.Address) (conn *Conn) {
 		logger.Warning("No connection found")
 		return nil
 	}
+
+	utils.PrintJSON("Connection")
+	logger.Info(c)
 
 	return orderConnections[a.Hex()].Conn
 }

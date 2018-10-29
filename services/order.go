@@ -165,12 +165,14 @@ func (s *OrderService) CancelOrder(oc *types.OrderCancel) error {
 		return fmt.Errorf("No order with this hash present")
 	}
 
-	if o.Status == "OPEN" || o.Status == "NEW" {
-		err := s.broker.PublishCancelOrderMessage(o)
-		if err != nil {
-			logger.Error(err)
-			return err
-		}
+	if o.Status == "FILLED" || o.Status == "ERROR" {
+		return fmt.Errorf("Cannot cancel order (Order status is %v)", o.Status)
+	}
+
+	err = s.broker.PublishCancelOrderMessage(o)
+	if err != nil {
+		logger.Error(err)
+		return err
 	}
 
 	return nil
@@ -197,7 +199,7 @@ func (s *OrderService) HandleEngineResponse(res *types.EngineResponse) error {
 	case "ORDER_CANCELLED":
 		s.handleOrderCancelled(res)
 	case "TRADES_CANCELLED":
-		s.handleTradesCancelled(res)
+		s.handleOrdersInvalidated(res)
 	default:
 		s.handleEngineUnknownMessage(res)
 	}
@@ -222,7 +224,22 @@ func (s *OrderService) HandleOperatorMessages(msg *types.OperatorMessage) error 
 	return nil
 }
 
-func (s *OrderService) handleTradesCancelled(res *types.EngineResponse) error {
+func (s *OrderService) handleOrdersInvalidated(res *types.EngineResponse) error {
+	orders := res.InvalidatedOrders
+	trades := res.CancelledTrades
+
+	for _, o := range *orders {
+		ws.SendOrderMessage("ORDER_INVALIDATED", o.UserAddress, o.Hash, o)
+	}
+
+	if orders != nil && len(*orders) != 0 {
+		s.broadcastOrderBookUpdate(*orders)
+	}
+
+	if trades != nil && len(*trades) != 0 {
+		s.broadcastTradeUpdate(*trades)
+	}
+
 	return nil
 }
 
@@ -268,21 +285,31 @@ func (s *OrderService) handleEngineOrderMatched(res *types.EngineResponse) {
 
 	go s.handleSubmitSignatures(res)
 
-	ws.SendOrderMessage("REQUEST_SIGNATURE",
-		o.UserAddress,
-		o.Hash,
-		types.SignaturePayload{res.Order, res.RemainingOrder, res.Matches},
-	)
+	if len(matches) > 0 {
+		ws.SendOrderMessage("REQUEST_SIGNATURE",
+			o.UserAddress,
+			o.Hash,
+			types.SignaturePayload{res.Order, res.RemainingOrder, &matches},
+		)
+	}
 
+	// if there are any invalid matches, the maker orders are at cause (since maker orders have been validated in the
+	// newOrder() function. We remove the maker orders from the orderbook)
 	if len(invalidMatches) > 0 {
+		utils.PrintJSON("one more invalid match")
 		err := s.broker.PublishInvalidateMakerOrdersMessage(invalidMatches)
 		if err != nil {
 			logger.Error(err)
 		}
 	}
 
-	s.broadcastOrderBookUpdate(orders)
-	// s.broadcastTradeUpdate(trades)
+	// we only update the orderbook with the current set of orders if there are no invalid matches.
+	// If there are invalid matches, the corresponding maker orders will be removed and the taker order
+	// amount filled will be updated as a result, and therefore does not represent the current state of the orderbook
+	if len(invalidMatches) == 0 {
+		s.broadcastOrderBookUpdate(orders)
+	}
+
 }
 
 // handleSubmitSignatures wait for a submit signature message that provides the matching engine with orders
@@ -411,17 +438,20 @@ func (s *OrderService) handleOperatorTradePending(msg *types.OperatorMessage) {
 // the trade status in the database and
 func (s *OrderService) handleOperatorTradeSuccess(msg *types.OperatorMessage) {
 	matches := msg.Matches
+	hashes := []common.Hash{}
 	trades := matches.Trades()
-	orders := matches.Orders()
 
 	for _, t := range trades {
-		err := s.tradeDao.UpdateTradeStatus(t.Hash, "SUCCESS")
-		if err != nil {
-			logger.Error(err)
-		}
+		hashes = append(hashes, t.Hash)
+	}
 
-		//TODO do this change in the trade dao
-		t.Status = "SUCCESS"
+	if len(hashes) == 0 {
+		return
+	}
+
+	trades, err := s.tradeDao.UpdateTradeStatuses("SUCCESS", hashes...)
+	if err != nil {
+		logger.Error(err)
 	}
 
 	//TODO VERIFY that the status of the trades in the matches are modified to "SUCCESS"
@@ -429,11 +459,12 @@ func (s *OrderService) handleOperatorTradeSuccess(msg *types.OperatorMessage) {
 	takerHash := trades[0].TakerOrderHash
 	ws.SendOrderMessage("ORDER_SUCCESS", taker, takerHash, types.OrderSuccessPayload{matches})
 
-	for _, o := range orders {
-		maker := o.UserAddress
-		orderHash := o.Hash
+	for _, m := range *matches {
+		maker := m.Order.UserAddress
+		orderHash := m.Order.Hash
 		//TODO Only send the corresponding order in the payload
-		ws.SendOrderMessage("ORDER_SUCCESS", maker, orderHash, types.OrderSuccessPayload{matches})
+		payload := types.Matches{m}
+		ws.SendOrderMessage("ORDER_SUCCESS", maker, orderHash, types.OrderSuccessPayload{&payload})
 	}
 
 	s.broadcastTradeUpdate(trades)

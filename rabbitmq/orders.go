@@ -163,6 +163,8 @@ func (c *Connection) PublishCancelOrderMessage(o *types.Order) error {
 }
 
 func (c *Connection) PublishInvalidateMakerOrdersMessage(m types.Matches) error {
+	utils.PrintJSON("In publish invalidate")
+
 	b, err := json.Marshal(m)
 	if err != nil {
 		logger.Error(err)
@@ -190,7 +192,7 @@ func (c *Connection) PublishInvalidateTakerOrdersMessage(m types.Matches) error 
 	}
 
 	err = c.PublishOrder(&Message{
-		Type: "INVALITE_TAKER_ORDERS",
+		Type: "INVALIDATE_TAKER_ORDERS",
 		Data: b,
 	})
 

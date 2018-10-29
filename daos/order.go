@@ -6,7 +6,6 @@ import (
 
 	"github.com/Proofsuite/amp-matching-engine/app"
 	"github.com/Proofsuite/amp-matching-engine/types"
-	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/Proofsuite/amp-matching-engine/utils/math"
 	"github.com/ethereum/go-ethereum/common"
 	mgo "gopkg.in/mgo.v2"
@@ -175,7 +174,7 @@ func (dao *OrderDao) UpdateByHash(h common.Hash, o *types.Order) error {
 	update := bson.M{"$set": bson.M{
 		"buyAmount":    o.BuyAmount.String(),
 		"sellAmount":   o.SellAmount.String(),
-		"pricepoint":   o.PricePoint.String(),
+		"pricepoint":   o.PricePoint.Int64(),
 		"amount":       o.Amount.String(),
 		"status":       o.Status,
 		"filledAmount": o.FilledAmount.String(),
@@ -221,21 +220,21 @@ func (dao *OrderDao) UpdateOrderStatusesByHashes(status string, hashes ...common
 			"status":    status,
 		},
 	}
-	updated := []*types.Order{}
-	change := mgo.Change{
-		Update:    update,
-		Upsert:    true,
-		Remove:    false,
-		ReturnNew: true,
-	}
 
-	err := db.FindAndModify(dao.dbName, dao.collectionName, query, change, &updated)
+	err := db.UpdateAll(dao.dbName, dao.collectionName, query, update)
 	if err != nil {
 		logger.Error(err)
-		return nil, err
+		return nil, nil
 	}
 
-	return updated, nil
+	orders := []*types.Order{}
+	err = db.Get(dao.dbName, dao.collectionName, query, 0, 0, &orders)
+	if err != nil {
+		logger.Error(err)
+		return nil, nil
+	}
+
+	return orders, nil
 }
 
 func (dao *OrderDao) UpdateOrderFilledAmount(hash common.Hash, value *big.Int) error {
@@ -283,7 +282,7 @@ func (dao *OrderDao) UpdateOrderFilledAmounts(hashes []common.Hash, amount []*bi
 	}
 
 	query := bson.M{"hash": bson.M{"$in": hexes}}
-	err := db.Get(dao.dbName, dao.collectionName, query, 0, 1, &orders)
+	err := db.Get(dao.dbName, dao.collectionName, query, 0, 0, &orders)
 	if err != nil {
 		logger.Error(err)
 		return nil, err
@@ -292,7 +291,7 @@ func (dao *OrderDao) UpdateOrderFilledAmounts(hashes []common.Hash, amount []*bi
 	updatedOrders := []*types.Order{}
 	for i, o := range orders {
 		status := ""
-		filledAmount := math.Add(o.FilledAmount, amount[i])
+		filledAmount := math.Sub(o.FilledAmount, amount[i])
 
 		if math.IsEqualOrSmallerThan(filledAmount, big.NewInt(0)) {
 			filledAmount = big.NewInt(0)
@@ -565,9 +564,6 @@ func (dao *OrderDao) GetOrderBook(p *types.Pair) ([]map[string]string, []map[str
 		logger.Error(err)
 		return nil, nil, err
 	}
-
-	utils.PrintJSON(bids)
-	utils.PrintJSON(asks)
 
 	return bids, asks, nil
 }

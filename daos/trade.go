@@ -377,24 +377,54 @@ func (dao *TradeDao) UpdateTradeStatuses(status string, hashes ...common.Hash) (
 			"status":    status,
 		},
 	}
-	updated := []*types.Trade{}
-	change := mgo.Change{
-		Update:    update,
-		Upsert:    true,
-		Remove:    false,
-		ReturnNew: true,
-	}
 
-	err := db.FindAndModify(dao.dbName, dao.collectionName, query, change, &updated)
+	err := db.UpdateAll(dao.dbName, dao.collectionName, query, update)
 	if err != nil {
 		logger.Error(err)
-		return nil, err
+		return nil, nil
 	}
 
-	return updated, nil
+	trades := []*types.Trade{}
+	err = db.Get(dao.dbName, dao.collectionName, query, 0, 0, &trades)
+	if err != nil {
+		logger.Error(err)
+		return nil, nil
+	}
+
+	return trades, nil
 }
 
 func (dao *TradeDao) UpdateTradeStatusesByOrderHashes(status string, hashes ...common.Hash) ([]*types.Trade, error) {
+	hexes := []string{}
+	for _, h := range hashes {
+		hexes = append(hexes, h.Hex())
+	}
+
+	query := bson.M{"orderHash": bson.M{"$in": hexes}}
+	update := bson.M{
+		"$set": bson.M{
+			"updatedAt": time.Now(),
+			"status":    status,
+		},
+	}
+
+	err := db.UpdateAll(dao.dbName, dao.collectionName, query, update)
+	if err != nil {
+		logger.Error(err)
+		return nil, nil
+	}
+
+	trades := []*types.Trade{}
+	err = db.Get(dao.dbName, dao.collectionName, query, 0, 0, &trades)
+	if err != nil {
+		logger.Error(err)
+		return nil, nil
+	}
+
+	return trades, nil
+}
+
+func (dao *TradeDao) UpdateTradeStatusesByHashes(status string, hashes ...common.Hash) ([]*types.Trade, error) {
 	hexes := []string{}
 	for _, h := range hashes {
 		hexes = append(hexes, h.Hex())
@@ -407,21 +437,21 @@ func (dao *TradeDao) UpdateTradeStatusesByOrderHashes(status string, hashes ...c
 			"status":    status,
 		},
 	}
-	updated := []*types.Trade{}
-	change := mgo.Change{
-		Update:    update,
-		Upsert:    true,
-		Remove:    false,
-		ReturnNew: true,
-	}
 
-	err := db.FindAndModify(dao.dbName, dao.collectionName, query, change, &updated)
+	err := db.UpdateAll(dao.dbName, dao.collectionName, query, update)
 	if err != nil {
 		logger.Error(err)
-		return nil, err
+		return nil, nil
 	}
 
-	return updated, nil
+	trades := []*types.Trade{}
+	err = db.Get(dao.dbName, dao.collectionName, query, 0, 0, &trades)
+	if err != nil {
+		logger.Error(err)
+		return nil, nil
+	}
+
+	return trades, nil
 }
 
 // Drop drops all the order documents in the current database

@@ -89,11 +89,11 @@ func (s *ValidatorService) ValidateBalance(o *types.Order) error {
 	}
 
 	if availableSellTokenBalance.Cmp(o.SellAmount) != 1 {
-		return errors.New(fmt.Sprintf("Insufficient Sell Token %v Balance", o.SellToken))
+		return errors.New(fmt.Sprintf("Insufficient Sell Token %v Balance", o.SellToken.Hex()))
 	}
 
 	if sellTokenAllowance.Cmp(o.SellAmount) != 1 {
-		return errors.New(fmt.Sprintf("Insufficient Buy Token %v allowance", o.BuyToken))
+		return errors.New(fmt.Sprintf("Insufficient Buy Token %v allowance", o.BuyToken.Hex()))
 	}
 
 	sellTokenBalanceRecord := balanceRecord[o.SellToken]

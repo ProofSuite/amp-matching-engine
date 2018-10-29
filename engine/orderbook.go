@@ -30,6 +30,7 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/Proofsuite/amp-matching-engine/rabbitmq"
 	"github.com/Proofsuite/amp-matching-engine/types"
+	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/Proofsuite/amp-matching-engine/utils/math"
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -48,6 +49,8 @@ func (ob *OrderBook) newOrder(o *types.Order) (err error) {
 	// Attain lock on engineResource, so that recovery or cancel order function doesn't interfere
 	ob.mutex.Lock()
 	defer ob.mutex.Unlock()
+
+	utils.PrintJSON("In new order")
 
 	res := &types.EngineResponse{}
 	if o.Side == "SELL" {
@@ -77,10 +80,13 @@ func (ob *OrderBook) newOrder(o *types.Order) (err error) {
 
 // addOrder adds an order to redis
 func (ob *OrderBook) addOrder(o *types.Order) error {
-	o.Status = "OPEN"
+	if o.FilledAmount == nil || math.IsZero(o.FilledAmount) {
+		o.Status = "OPEN"
+	}
 
 	_, err := ob.orderDao.FindAndModify(o.Hash, o)
 	if err != nil {
+		// we add this condition in the case an order is re-run through the orderbook (in case of invalid counterpart order for example)
 		logger.Error(err)
 		return err
 	}
@@ -104,9 +110,7 @@ func (ob *OrderBook) buyOrder(o *types.Order) (*types.EngineResponse, error) {
 
 	// case where no order is matched
 	if len(matchingOrders) == 0 {
-		o.Status = "OPEN"
 		ob.addOrder(o)
-
 		res.Status = "ORDER_ADDED"
 		res.Order = o
 		return res, nil
@@ -323,6 +327,8 @@ func (ob *OrderBook) invalidateMakerOrders(matches types.Matches) error {
 	ob.mutex.Lock()
 	defer ob.mutex.Unlock()
 
+	logger.Info("In invalidate maker orders")
+
 	orders := matches.Orders()
 	trades := matches.Trades()
 	tradeAmounts := matches.TradeAmounts()
@@ -330,8 +336,8 @@ func (ob *OrderBook) invalidateMakerOrders(matches types.Matches) error {
 	takerOrderHashes := []common.Hash{}
 
 	for i, _ := range orders {
-		makerOrderHashes = append(makerOrderHashes, trades[i].Hash)
-		takerOrderHashes = append(takerOrderHashes, trades[i].OrderHash)
+		makerOrderHashes = append(makerOrderHashes, trades[i].OrderHash)
+		takerOrderHashes = append(takerOrderHashes, trades[i].TakerOrderHash)
 	}
 
 	takerOrders, err := ob.orderDao.UpdateOrderFilledAmounts(takerOrderHashes, tradeAmounts)
@@ -346,7 +352,8 @@ func (ob *OrderBook) invalidateMakerOrders(matches types.Matches) error {
 		return err
 	}
 
-	cancelledTrades, err := ob.tradeDao.UpdateTradeStatusesByOrderHashes("CANCELLED", makerOrderHashes...)
+	//TODO in the case the trades are not in the database they should not be created.
+	cancelledTrades, err := ob.tradeDao.UpdateTradeStatusesByOrderHashes("CANCELLED", takerOrderHashes...)
 	if err != nil {
 		logger.Error(err)
 		return err
@@ -354,7 +361,6 @@ func (ob *OrderBook) invalidateMakerOrders(matches types.Matches) error {
 
 	res := &types.EngineResponse{
 		Status:            "TRADES_CANCELLED",
-		RecoveredOrders:   &takerOrders,
 		InvalidatedOrders: &makerOrders,
 		CancelledTrades:   &cancelledTrades,
 	}
@@ -362,7 +368,13 @@ func (ob *OrderBook) invalidateMakerOrders(matches types.Matches) error {
 	err = ob.rabbitMQConn.PublishEngineResponse(res)
 	if err != nil {
 		logger.Error(err)
-		return err
+	}
+
+	for _, o := range takerOrders {
+		err := ob.rabbitMQConn.PublishNewOrderMessage(o)
+		if err != nil {
+			logger.Error(err)
+		}
 	}
 
 	return nil
@@ -379,8 +391,8 @@ func (ob *OrderBook) invalidateTakerOrders(matches types.Matches) error {
 	takerOrderHashes := []common.Hash{}
 
 	for i, _ := range orders {
-		makerOrderHashes = append(makerOrderHashes, trades[i].Hash)
-		takerOrderHashes = append(takerOrderHashes, trades[i].OrderHash)
+		makerOrderHashes = append(makerOrderHashes, trades[i].OrderHash)
+		takerOrderHashes = append(takerOrderHashes, trades[i].TakerOrderHash)
 	}
 
 	makerOrders, err := ob.orderDao.UpdateOrderFilledAmounts(makerOrderHashes, tradeAmounts)
@@ -403,7 +415,6 @@ func (ob *OrderBook) invalidateTakerOrders(matches types.Matches) error {
 
 	res := &types.EngineResponse{
 		Status:            "TRADES_CANCELLED",
-		RecoveredOrders:   &makerOrders,
 		InvalidatedOrders: &takerOrders,
 		CancelledTrades:   &cancelledTrades,
 	}
@@ -412,6 +423,13 @@ func (ob *OrderBook) invalidateTakerOrders(matches types.Matches) error {
 	if err != nil {
 		logger.Error(err)
 		return err
+	}
+
+	for _, o := range makerOrders {
+		err := ob.rabbitMQConn.PublishNewOrderMessage(o)
+		if err != nil {
+			logger.Error(err)
+		}
 	}
 
 	return nil
