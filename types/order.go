@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"math/big"
+	"strings"
 	"time"
 
 	"github.com/Proofsuite/amp-matching-engine/app"
@@ -206,25 +207,25 @@ func (o *Order) RemainingAmount() *big.Int {
 	return math.Sub(o.Amount, o.FilledAmount)
 }
 
-func (o *Order) SellTokenSymbol(p *Pair) string {
+func (o *Order) SellTokenSymbol() string {
 	if o.Side == "BUY" {
-		return p.QuoteTokenSymbol
+		return o.QuoteTokenSymbol()
 	}
 
 	if o.Side == "SELL" {
-		return p.BaseTokenSymbol
+		return o.BaseTokenSymbol()
 	}
 
 	return ""
 }
 
-func (o *Order) BuyTokenSymbol(p *Pair) string {
+func (o *Order) BuyTokenSymbol() string {
 	if o.Side == "BUY" {
-		return p.BaseTokenSymbol
+		return o.BaseTokenSymbol()
 	}
 
 	if o.Side == "SELL" {
-		return p.QuoteTokenSymbol
+		return o.QuoteTokenSymbol()
 	}
 
 	return ""
@@ -236,6 +237,22 @@ func (o *Order) PairCode() (string, error) {
 	}
 
 	return o.PairName + "::" + o.BaseToken.Hex() + "::" + o.QuoteToken.Hex(), nil
+}
+
+func (o *Order) BaseTokenSymbol() string {
+	if o.PairName == "" {
+		return ""
+	}
+
+	return o.PairName[:strings.IndexByte(o.PairName, '/')]
+}
+
+func (o *Order) QuoteTokenSymbol() string {
+	if o.PairName == "" {
+		return ""
+	}
+
+	return o.PairName[strings.IndexByte(o.PairName, '/')+1:]
 }
 
 // JSON Marshal/Unmarshal interface

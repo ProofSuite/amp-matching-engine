@@ -77,20 +77,11 @@ func (s *ValidatorService) ValidateBalance(o *types.Order) error {
 		return err
 	}
 
-	logger.Info("WETH balance")
-	logger.Info(wethBalance)
-	logger.Info("WETH balance")
-	utils.PrintJSON(wethBalance)
-
 	fee := math.Max(o.MakeFee, o.TakeFee)
 	availableWethBalance := math.Sub(wethBalance, wethLockedBalance)
 	availableSellTokenBalance := math.Sub(sellTokenBalance, sellTokenLockedBalance)
 
-	logger.Info("Fee")
-	utils.PrintJSON(fee)
-	logger.Info("Available WETH balance")
-	utils.PrintJSON(availableWethBalance)
-
+	//WETH Token Balance (for fees)
 	if availableWethBalance.Cmp(fee) == -1 {
 		return errors.New("Insufficient WETH Balance")
 	}
@@ -99,13 +90,20 @@ func (s *ValidatorService) ValidateBalance(o *types.Order) error {
 		return errors.New("Insufficient WETH Allowance")
 	}
 
-	if availableSellTokenBalance.Cmp(o.SellAmount) != 1 {
-		return errors.New(fmt.Sprintf("Insufficient Sell Token %v Balance", o.SellToken.Hex()))
+	//Sell Token Balance
+	if sellTokenBalance.Cmp(o.SellAmount) == -1 {
+		return fmt.Errorf("Insufficient %v Balance", o.SellTokenSymbol())
 	}
 
-	if sellTokenAllowance.Cmp(o.SellAmount) != 1 {
-		return errors.New(fmt.Sprintf("Insufficient Buy Token %v allowance", o.BuyToken.Hex()))
+	if availableSellTokenBalance.Cmp(o.SellAmount) == -1 {
+		return fmt.Errorf("Insufficient %v Balance", o.SellTokenSymbol())
 	}
+
+	if sellTokenAllowance.Cmp(o.SellAmount) == -1 {
+		return fmt.Errorf("Insufficient %v Allowance", o.SellTokenSymbol())
+	}
+
+	utils.PrintJSON(sellTokenAllowance)
 
 	sellTokenBalanceRecord := balanceRecord[o.SellToken]
 	if sellTokenBalanceRecord == nil {

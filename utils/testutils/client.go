@@ -30,7 +30,7 @@ var logger = utils.TerminalLogger
 // mutex is used to prevent concurrent writes on the websocket connection
 type Client struct {
 	// ethereumClient *ethclient.Client
-	connection     *ws.Conn
+	connection     *ws.Client
 	Requests       chan *types.WebsocketMessage
 	Responses      chan *types.WebsocketMessage
 	Logs           chan *ClientLogMessage
