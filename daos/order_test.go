@@ -7,6 +7,7 @@ import (
 
 	"github.com/Proofsuite/amp-matching-engine/app"
 	"github.com/Proofsuite/amp-matching-engine/types"
+	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/Proofsuite/amp-matching-engine/utils/math"
 	"github.com/Proofsuite/amp-matching-engine/utils/testutils"
 	"github.com/Proofsuite/amp-matching-engine/utils/units"
@@ -635,6 +636,156 @@ func TestUpdateOrderFilledAmount3(t *testing.T) {
 	assert.Equal(t, big.NewInt(0), stored.FilledAmount)
 }
 
+func TestUpdateOrderFilledAmounts(t *testing.T) {
+	dao := NewOrderDao()
+	err := dao.Drop()
+	if err != nil {
+		t.Error("Could not drop previous order collection")
+	}
+
+	user := common.HexToAddress("0x1")
+	exchange := common.HexToAddress("0x2")
+	buyToken := common.HexToAddress("0x3")
+	sellToken := common.HexToAddress("0x4")
+	hash1 := common.HexToHash("0x5")
+	hash2 := common.HexToHash("0x6")
+
+	o1 := &types.Order{
+		ID:              bson.ObjectIdHex("537f700b537461b70c5f0001"),
+		UserAddress:     user,
+		ExchangeAddress: exchange,
+		BuyToken:        buyToken,
+		SellToken:       sellToken,
+		BuyAmount:       units.Ethers(2),
+		SellAmount:      units.Ethers(2),
+		Amount:          units.Ethers(2),
+		FilledAmount:    units.Ethers(0),
+		Status:          "FILLED",
+		Side:            "BUY",
+		PairName:        "ZRX/WETH",
+		Expires:         big.NewInt(10000),
+		MakeFee:         big.NewInt(0),
+		Nonce:           big.NewInt(1000),
+		TakeFee:         big.NewInt(0),
+		Hash:            hash1,
+	}
+
+	o2 := &types.Order{
+		ID:              bson.ObjectIdHex("537f700b537461b70c5f0001"),
+		UserAddress:     user,
+		ExchangeAddress: exchange,
+		BuyToken:        buyToken,
+		SellToken:       sellToken,
+		BuyAmount:       units.Ethers(1),
+		SellAmount:      units.Ethers(1),
+		Amount:          units.Ethers(1),
+		FilledAmount:    units.Ethers(0),
+		Status:          "FILLED",
+		Side:            "BUY",
+		PairName:        "ZRX/WETH",
+		Expires:         big.NewInt(10000),
+		MakeFee:         big.NewInt(0),
+		Nonce:           big.NewInt(1000),
+		TakeFee:         big.NewInt(0),
+		Hash:            hash2,
+	}
+
+	err = dao.Create(o1)
+	if err != nil {
+		t.Error("Could not create order")
+	}
+
+	err = dao.Create(o2)
+	if err != nil {
+		t.Error("Could not create order")
+	}
+
+	hashes := []common.Hash{hash1, hash2}
+	amounts := []*big.Int{big.NewInt(-1), big.NewInt(-2)}
+	orders, err := dao.UpdateOrderFilledAmounts(hashes, amounts)
+	if err != nil {
+		t.Error(err)
+	}
+
+	assert.Equal(t, 2, len(orders))
+	assert.Equal(t, big.NewInt(1), orders[0].FilledAmount)
+	assert.Equal(t, big.NewInt(2), orders[1].FilledAmount)
+}
+
+func TestOrderStatusesByHashes(t *testing.T) {
+	dao := NewOrderDao()
+	err := dao.Drop()
+	if err != nil {
+		t.Error("Could not drop previous order collection")
+	}
+
+	user := common.HexToAddress("0x1")
+	exchange := common.HexToAddress("0x2")
+	buyToken := common.HexToAddress("0x3")
+	sellToken := common.HexToAddress("0x4")
+	hash1 := common.HexToHash("0x5")
+	hash2 := common.HexToHash("0x6")
+
+	o1 := &types.Order{
+		ID:              bson.ObjectIdHex("537f700b537461b70c5f0001"),
+		UserAddress:     user,
+		ExchangeAddress: exchange,
+		BuyToken:        buyToken,
+		SellToken:       sellToken,
+		BuyAmount:       units.Ethers(1),
+		SellAmount:      units.Ethers(1),
+		Amount:          units.Ethers(1),
+		FilledAmount:    units.Ethers(1),
+		Status:          "FILLED",
+		Side:            "BUY",
+		PairName:        "ZRX/WETH",
+		Expires:         big.NewInt(10000),
+		MakeFee:         big.NewInt(0),
+		Nonce:           big.NewInt(1000),
+		TakeFee:         big.NewInt(0),
+		Hash:            hash1,
+	}
+
+	o2 := &types.Order{
+		ID:              bson.ObjectIdHex("537f700b537461b70c5f0002"),
+		UserAddress:     user,
+		ExchangeAddress: exchange,
+		BuyToken:        buyToken,
+		SellToken:       sellToken,
+		BuyAmount:       units.Ethers(1),
+		SellAmount:      units.Ethers(1),
+		Amount:          units.Ethers(1),
+		FilledAmount:    units.Ethers(1),
+		Status:          "FILLED",
+		Side:            "BUY",
+		PairName:        "ZRX/WETH",
+		Expires:         big.NewInt(10000),
+		MakeFee:         big.NewInt(0),
+		Nonce:           big.NewInt(1000),
+		TakeFee:         big.NewInt(0),
+		Hash:            hash2,
+	}
+
+	err = dao.Create(o1)
+	if err != nil {
+		t.Error("Could not create order")
+	}
+
+	err = dao.Create(o2)
+	if err != nil {
+		t.Error("Could not create order")
+	}
+
+	orders, err := dao.UpdateOrderStatusesByHashes("INVALIDATED", hash1, hash2)
+	if err != nil {
+		t.Error("Error in updateOrderStatusHashes", err)
+	}
+
+	assert.Equal(t, 2, len(orders))
+	assert.Equal(t, "INVALIDATED", orders[0].Status)
+	assert.Equal(t, "INVALIDATED", orders[1].Status)
+}
+
 func ExampleGetOrderBook() {
 	session, err := mgo.Dial(app.Config.DSN)
 	if err != nil {
@@ -654,6 +805,8 @@ func ExampleGetOrderBook() {
 		panic(err)
 	}
 
+	utils.PrintJSON(bids)
+	utils.PrintJSON(asks)
 }
 
 func ExampleGetOrderBookPricePoint() {
@@ -671,10 +824,12 @@ func ExampleGetOrderBookPricePoint() {
 		panic(err)
 	}
 
-	orderPricePoint, err := orderDao.GetOrderBookPricePoint(pair, big.NewInt(59303))
+	orderPricePoint, err := orderDao.GetOrderBookPricePoint(pair, big.NewInt(59303), "BUY")
 	if err != nil {
 		panic(err)
 	}
+
+	utils.PrintJSON(orderPricePoint)
 }
 
 func ExampleGetRawOrderBook() {
@@ -696,4 +851,6 @@ func ExampleGetRawOrderBook() {
 	if err != nil {
 		panic(err)
 	}
+
+	utils.PrintJSON(orders)
 }

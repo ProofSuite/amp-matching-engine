@@ -2,23 +2,18 @@ package ws
 
 import (
 	"encoding/json"
-	"errors"
-	"fmt"
 	"net/http"
-	"sync"
+	"time"
 
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/Proofsuite/amp-matching-engine/utils"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/websocket"
 )
 
 const (
-	TradeChannel        = "trades"
-	RawOrderBookChannel = "raw_orderbook"
-	OrderBookChannel    = "orderbook"
-	OrderChannel        = "orders"
-	OHLCVChannel        = "ohlcv"
+	writeWait  = 60 * time.Second
+	pongWait   = 60 * time.Second
+	pingPeriod = (pongWait * 9) / 10
 )
 
 var logger = utils.Logger
@@ -31,162 +26,113 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-type Conn struct {
-	*websocket.Conn
-	mu sync.Mutex
-}
-
-var connectionUnsubscribtions map[*Conn][]func(*Conn)
-var socketChannels map[string]func(interface{}, *Conn)
-
 // ConnectionEndpoint is the the handleFunc function for websocket connections
 // It handles incoming websocket messages and routes the message according to
 // channel parameter in channelMessage
 func ConnectionEndpoint(w http.ResponseWriter, r *http.Request) {
-	c, err := upgrader.Upgrade(w, r, nil)
+	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		logger.Error(err)
 		return
 	}
 
-	conn := &Conn{c, sync.Mutex{}}
-	initConnection(conn)
+	c := NewClient(conn)
+	c.SetCloseHandler(closeHandler(c))
 
-	go func() {
-		// Recover in case of any panic in websocket. So that the app doesn't crash ===
-		defer func() {
-			if r := recover(); r != nil {
-				err, ok := r.(error)
-				if err != nil {
-					logger.Error(err)
-				}
+	go readHandler(c)
+	go writeHandler(c)
+}
 
-				if !ok {
-					logger.Error("Failed attempt at recovering websocket panic")
-				}
+func readHandler(c *Client) {
+	defer func() {
+		logger.Info("Closing connection")
+		c.closeConnection()
+	}()
+
+	c.SetReadDeadline(time.Now().Add(pongWait))
+	c.SetPongHandler(func(string) error {
+		logger.Info("Receiving pong message")
+		c.SetReadDeadline(time.Now().Add(pongWait))
+		return nil
+	})
+
+	for {
+		msgType, payload, err := c.ReadMessage()
+		if err != nil {
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+				logger.Error(err)
 			}
-		}()
 
-		for {
-			messageType, p, err := conn.ReadMessage()
+			return
+		}
+
+		if msgType != 1 {
+			return
+		}
+
+		msg := types.WebsocketMessage{}
+		if err := json.Unmarshal(payload, &msg); err != nil {
+			logger.Error(err)
+			c.SendMessage(msg.Channel, "ERROR", err.Error())
+			return
+		}
+
+		utils.PrintJSON(msg)
+
+		if socketChannels[msg.Channel] == nil {
+			c.SendMessage(msg.Channel, "ERROR", "INVALID_CHANNEL")
+			return
+		}
+
+		go socketChannels[msg.Channel](msg.Event, c)
+	}
+}
+
+func writeHandler(c *Client) {
+	ticker := time.NewTicker(pingPeriod)
+	defer func() {
+		logger.Info("Closing connection")
+		ticker.Stop()
+		c.closeConnection()
+	}()
+
+	for {
+		select {
+		case <-ticker.C:
+			logger.Info("Writing ping message")
+			c.SetWriteDeadline(time.Now().Add(writeWait))
+			if err := c.WriteMessage(websocket.PingMessage, nil); err != nil {
+				logger.Error(err)
+				return
+			}
+
+		case m, ok := <-c.send:
+			c.SetWriteDeadline(time.Now().Add(writeWait))
+			if !ok {
+				c.WriteMessage(websocket.CloseMessage, []byte{})
+			}
+
+			err := c.WriteJSON(m)
 			if err != nil {
 				logger.Error(err)
-				conn.Close()
-			}
-
-			if messageType != 1 {
 				return
 			}
-
-			msg := types.WebsocketMessage{}
-			if err := json.Unmarshal(p, &msg); err != nil {
-				logger.Error(err)
-				SendMessage(conn, msg.Channel, "ERROR", err.Error())
-				return
-			}
-
-			utils.PrintJSON(msg)
-
-			conn.SetCloseHandler(wsCloseHandler(conn))
-
-			if socketChannels[msg.Channel] == nil {
-				SendMessage(conn, msg.Channel, "ERROR", "INVALID_CHANNEL")
-				return
-			}
-
-			go socketChannels[msg.Channel](msg.Event, conn)
 		}
-	}()
-}
-
-func NewConnection(c *websocket.Conn) *Conn {
-	return &Conn{c, sync.Mutex{}}
-}
-
-// initConnection initializes connection in connectionUnsubscribtions map
-func initConnection(conn *Conn) {
-	if connectionUnsubscribtions == nil {
-		connectionUnsubscribtions = make(map[*Conn][]func(*Conn))
-	}
-
-	if connectionUnsubscribtions[conn] == nil {
-		connectionUnsubscribtions[conn] = make([]func(*Conn), 0)
 	}
 }
 
-// RegisterChannel function needs to be called whenever the system is interested in listening to
-// a new channel. A channel needs function which will handle the incoming messages for that channel.
-//
-// channelMessage handler function receives message from channelMessage and pointer to connection
-func RegisterChannel(channel string, fn func(interface{}, *Conn)) error {
-	if channel == "" {
-		return errors.New("Channel can not be empty string")
+func closeHandler(c *Client) func(code int, text string) error {
+	return func(code int, text string) error {
+		c.closeConnection()
+		return nil
 	}
-
-	if fn == nil {
-		logger.Error("Handler should not be nil")
-		return errors.New("Handler should not be nil")
-	}
-
-	ch := getChannelMap()
-	if ch[channel] != nil {
-		logger.Error("Channel already registered")
-		return fmt.Errorf("Channel already registered")
-	}
-
-	ch[channel] = fn
-	return nil
-}
-
-// getChannelMap returns singleton map of channels with there handler functions
-func getChannelMap() map[string]func(interface{}, *Conn) {
-	if socketChannels == nil {
-		socketChannels = make(map[string]func(interface{}, *Conn))
-	}
-	return socketChannels
 }
 
 // RegisterConnectionUnsubscribeHandler needs to be called whenever a connection subscribes to
 // a new channel.
 // At the time of connection closing the ConnectionUnsubscribeHandler handlers associated with
 // that connection are triggered.
-func RegisterConnectionUnsubscribeHandler(c *Conn, fn func(*Conn)) {
-	connectionUnsubscribtions[c] = append(connectionUnsubscribtions[c], fn)
-}
-
-// wsCloseHandler handles the closing of connection.
-// it triggers all the UnsubscribeHandler associated with the closing
-// connection in a separate go routine
-func wsCloseHandler(c *Conn) func(code int, text string) error {
-	return func(code int, text string) error {
-		for _, unsub := range connectionUnsubscribtions[c] {
-			go unsub(c)
-		}
-		return nil
-	}
-}
-
-// SendMessage constructs the message with proper structure to be sent over websocket
-func SendMessage(c *Conn, channel string, msgType string, payload interface{}, h ...common.Hash) {
-	e := types.WebsocketEvent{
-		Type:    msgType,
-		Payload: payload,
-	}
-
-	if len(h) > 0 {
-		e.Hash = h[0].Hex()
-	}
-
-	m := types.WebsocketMessage{
-		Channel: channel,
-		Event:   e,
-	}
-
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	err := c.WriteJSON(m)
-	if err != nil {
-		logger.Error(err)
-		c.Close()
-	}
+func RegisterConnectionUnsubscribeHandler(c *Client, fn func(*Client)) {
+	logger.Info("Registering a new unsubscribe handler")
+	unsubscribeHandlers[c] = append(unsubscribeHandlers[c], fn)
 }

@@ -1,8 +1,6 @@
 package ws
 
 import (
-	"sync"
-
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -10,23 +8,21 @@ import (
 // OrderConn is websocket order connection struct
 // It holds the reference to connection and the channel of type OrderMessage
 type OrderConnection struct {
-	Conn        *Conn
+	Client      *Client
 	ReadChannel chan *types.WebsocketEvent
-	Active      bool
-	Once        sync.Once
 }
 
 var orderConnections map[string]*OrderConnection
 
 // GetOrderConn returns the connection associated with an order ID
-func GetOrderConnection(a common.Address) (conn *Conn) {
+func GetOrderConnection(a common.Address) *Client {
 	c := orderConnections[a.Hex()]
 	if c == nil {
 		logger.Warning("No connection found")
 		return nil
 	}
 
-	return orderConnections[a.Hex()].Conn
+	return orderConnections[a.Hex()].Client
 }
 
 // GetOrderChannel returns the channel associated with an order ID
@@ -35,20 +31,14 @@ func GetOrderChannel(a common.Address) chan *types.WebsocketEvent {
 		return nil
 	}
 
-	if orderConnections[a.Hex()] == nil {
-		return nil
-	} else if !orderConnections[a.Hex()].Active {
-		return nil
-	}
-
 	return orderConnections[a.Hex()].ReadChannel
 }
 
 // OrderSocketUnsubscribeHandler returns a function of type unsubscribe handler.
-func OrderSocketUnsubscribeHandler(a common.Address) func(conn *Conn) {
-
-	return func(conn *Conn) {
+func OrderSocketUnsubscribeHandler(a common.Address) func(client *Client) {
+	return func(client *Client) {
 		if orderConnections[a.Hex()] != nil {
+			logger.Info("Unsubscribing order connection")
 			orderConnections[a.Hex()] = nil
 			delete(orderConnections, a.Hex())
 		}
@@ -57,33 +47,24 @@ func OrderSocketUnsubscribeHandler(a common.Address) func(conn *Conn) {
 
 // RegisterOrderConnection registers a connection with and orderID.
 // It is called whenever a message is recieved over order channel
-func RegisterOrderConnection(a common.Address, conn *OrderConnection) {
+func RegisterOrderConnection(a common.Address, c *OrderConnection) {
 	if orderConnections == nil {
 		orderConnections = make(map[string]*OrderConnection)
 	}
 
 	if orderConnections[a.Hex()] == nil {
-		conn.Active = true
-		orderConnections[a.Hex()] = conn
+		logger.Info("Registering a new order connection")
+		orderConnections[a.Hex()] = c
+
+		RegisterConnectionUnsubscribeHandler(c.Client, OrderSocketUnsubscribeHandler(a))
 	}
-}
-
-// CloseOrderReadChannel is called whenever an order processing is done
-// and no further messages are to be accepted for an hash
-func CloseOrderReadChannel(a common.Address) error {
-	orderConnections[a.Hex()].Once.Do(func() {
-		close(orderConnections[a.Hex()].ReadChannel)
-		orderConnections[a.Hex()].Active = false
-	})
-
-	return nil
 }
 
 func SendOrderMessage(msgType string, a common.Address, h common.Hash, payload interface{}) {
-	conn := GetOrderConnection(a)
-	if conn == nil {
+	c := GetOrderConnection(a)
+	if c == nil {
 		return
 	}
 
-	SendMessage(conn, OrderChannel, msgType, payload, h)
+	c.SendMessage(OrderChannel, msgType, payload, h)
 }

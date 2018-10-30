@@ -1,6 +1,8 @@
 package math
 
-import "math/big"
+import (
+	"math/big"
+)
 
 func Mul(x, y *big.Int) *big.Int {
 	return big.NewInt(0).Mul(x, y)
@@ -26,6 +28,23 @@ func ToBigInt(s string) *big.Int {
 	res := big.NewInt(0)
 	res.SetString(s, 10)
 	return res
+}
+
+func BigIntToBigFloat(a *big.Int) *big.Float {
+	b := new(big.Float).SetInt(a)
+	return b
+}
+
+func ToDecimal(value *big.Int) float64 {
+	bigFloatValue := BigIntToBigFloat(value)
+	result := DivFloat(bigFloatValue, big.NewFloat(1e18))
+
+	floatValue, _ := result.Float64()
+	return floatValue
+}
+
+func DivFloat(x, y *big.Float) *big.Float {
+	return big.NewFloat(0).Quo(x, y)
 }
 
 func Max(a, b *big.Int) *big.Int {

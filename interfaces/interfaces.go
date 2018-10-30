@@ -94,6 +94,7 @@ type TradeDao interface {
 	GetAllTradesByPairAddress(bt, qt common.Address) ([]*types.Trade, error)
 	GetByUserAddress(a common.Address) ([]*types.Trade, error)
 	UpdateTradeStatus(h common.Hash, status string) error
+	UpdateTradeStatuses(status string, hashes ...common.Hash) ([]*types.Trade, error)
 	UpdateTradeStatusesByOrderHashes(status string, hashes ...common.Hash) ([]*types.Trade, error)
 	Drop()
 }
@@ -144,9 +145,9 @@ type WalletService interface {
 }
 
 type OHLCVService interface {
-	Unsubscribe(conn *ws.Conn)
-	UnsubscribeChannel(conn *ws.Conn, p *types.SubscriptionPayload)
-	Subscribe(conn *ws.Conn, p *types.SubscriptionPayload)
+	Unsubscribe(c *ws.Client)
+	UnsubscribeChannel(c *ws.Client, p *types.SubscriptionPayload)
+	Subscribe(c *ws.Client, p *types.SubscriptionPayload)
 	GetOHLCV(p []types.PairAddresses, duration int64, unit string, timeInterval ...int64) ([]*types.Tick, error)
 }
 
@@ -172,12 +173,12 @@ type OrderService interface {
 type OrderBookService interface {
 	GetOrderBook(bt, qt common.Address) (map[string]interface{}, error)
 	GetRawOrderBook(bt, qt common.Address) ([]*types.Order, error)
-	SubscribeOrderBook(conn *ws.Conn, bt, qt common.Address)
-	UnsubscribeOrderBook(conn *ws.Conn)
-	UnsubscribeOrderBookChannel(conn *ws.Conn, bt, qt common.Address)
-	SubscribeRawOrderBook(conn *ws.Conn, bt, qt common.Address)
-	UnsubscribeRawOrderBook(conn *ws.Conn)
-	UnsubscribeRawOrderBookChannel(conn *ws.Conn, bt, qt common.Address)
+	SubscribeOrderBook(c *ws.Client, bt, qt common.Address)
+	UnsubscribeOrderBook(c *ws.Client)
+	UnsubscribeOrderBookChannel(c *ws.Client, bt, qt common.Address)
+	SubscribeRawOrderBook(c *ws.Client, bt, qt common.Address)
+	UnsubscribeRawOrderBook(c *ws.Client)
+	UnsubscribeRawOrderBookChannel(c *ws.Client, bt, qt common.Address)
 }
 
 type PairService interface {
@@ -206,9 +207,9 @@ type TradeService interface {
 	GetByHash(h common.Hash) (*types.Trade, error)
 	GetByOrderHash(h common.Hash) ([]*types.Trade, error)
 	UpdateTradeTxHash(tr *types.Trade, txh common.Hash) error
-	Subscribe(conn *ws.Conn, bt, qt common.Address)
-	UnsubscribeChannel(conn *ws.Conn, bt, qt common.Address)
-	Unsubscribe(conn *ws.Conn)
+	Subscribe(c *ws.Client, bt, qt common.Address)
+	UnsubscribeChannel(c *ws.Client, bt, qt common.Address)
+	Unsubscribe(c *ws.Client)
 }
 
 type TxService interface {
@@ -242,6 +243,7 @@ type EthereumClient interface {
 	CodeAt(ctx context.Context, contract common.Address, blockNumber *big.Int) ([]byte, error)
 	CallContract(ctx context.Context, call ethereum.CallMsg, blockNumber *big.Int) ([]byte, error)
 	PendingCodeAt(ctx context.Context, account common.Address) ([]byte, error)
+	PendingCallContract(ctx context.Context, call ethereum.CallMsg) ([]byte, error)
 	TransactionReceipt(ctx context.Context, txHash common.Hash) (*eth.Receipt, error)
 	EstimateGas(ctx context.Context, call ethereum.CallMsg) (gas uint64, err error)
 	SendTransaction(ctx context.Context, tx *eth.Transaction) error

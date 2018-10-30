@@ -7,6 +7,7 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/app"
 	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/Proofsuite/amp-matching-engine/types"
+	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/Proofsuite/amp-matching-engine/utils/math"
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -80,6 +81,7 @@ func (s *ValidatorService) ValidateBalance(o *types.Order) error {
 	availableWethBalance := math.Sub(wethBalance, wethLockedBalance)
 	availableSellTokenBalance := math.Sub(sellTokenBalance, sellTokenLockedBalance)
 
+	//WETH Token Balance (for fees)
 	if availableWethBalance.Cmp(fee) == -1 {
 		return errors.New("Insufficient WETH Balance")
 	}
@@ -88,13 +90,20 @@ func (s *ValidatorService) ValidateBalance(o *types.Order) error {
 		return errors.New("Insufficient WETH Allowance")
 	}
 
-	if availableSellTokenBalance.Cmp(o.SellAmount) != 1 {
-		return errors.New(fmt.Sprintf("Insufficient Sell Token %v Balance", o.SellToken))
+	//Sell Token Balance
+	if sellTokenBalance.Cmp(o.SellAmount) == -1 {
+		return fmt.Errorf("Insufficient %v Balance", o.SellTokenSymbol())
 	}
 
-	if sellTokenAllowance.Cmp(o.SellAmount) != 1 {
-		return errors.New(fmt.Sprintf("Insufficient Buy Token %v allowance", o.BuyToken))
+	if availableSellTokenBalance.Cmp(o.SellAmount) == -1 {
+		return fmt.Errorf("Insufficient %v Balance", o.SellTokenSymbol())
 	}
+
+	if sellTokenAllowance.Cmp(o.SellAmount) == -1 {
+		return fmt.Errorf("Insufficient %v Allowance", o.SellTokenSymbol())
+	}
+
+	utils.PrintJSON(sellTokenAllowance)
 
 	sellTokenBalanceRecord := balanceRecord[o.SellToken]
 	if sellTokenBalanceRecord == nil {

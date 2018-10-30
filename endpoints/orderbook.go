@@ -104,7 +104,7 @@ func (e *OrderBookEndpoint) handleGetRawOrderBook(w http.ResponseWriter, r *http
 }
 
 // liteOrderBookWebSocket
-func (e *OrderBookEndpoint) rawOrderBookWebSocket(input interface{}, c *ws.Conn) {
+func (e *OrderBookEndpoint) rawOrderBookWebSocket(input interface{}, c *ws.Client) {
 	b, _ := json.Marshal(input)
 	var ev *types.WebsocketEvent
 
@@ -146,7 +146,7 @@ func (e *OrderBookEndpoint) rawOrderBookWebSocket(input interface{}, c *ws.Conn)
 	}
 }
 
-func (e *OrderBookEndpoint) orderBookWebSocket(input interface{}, c *ws.Conn) {
+func (e *OrderBookEndpoint) orderBookWebSocket(input interface{}, c *ws.Client) {
 	b, _ := json.Marshal(input)
 	var ev *types.WebsocketEvent
 	err := json.Unmarshal(b, &ev)

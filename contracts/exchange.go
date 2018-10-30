@@ -22,6 +22,7 @@ type ethereumClientInterface interface {
 	CodeAt(ctx context.Context, contract common.Address, blockNumber *big.Int) ([]byte, error)
 	CallContract(ctx context.Context, call ethereum.CallMsg, blockNumber *big.Int) ([]byte, error)
 	PendingCodeAt(ctx context.Context, account common.Address) ([]byte, error)
+	// PendingCallContract(ctx context.Context, call ethereum.CallMsg) ([]byte, error)
 	PendingNonceAt(ctx context.Context, account common.Address) (uint64, error)
 	SuggestGasPrice(ctx context.Context) (*big.Int, error)
 	EstimateGas(ctx context.Context, call ethereum.CallMsg) (gas uint64, err error)
@@ -211,6 +212,13 @@ func (e *Exchange) CallBatchTrades(matches *types.Matches, call *ethereum.CallMs
 	if err != nil {
 		return 0, err
 	}
+
+	// call.Data = data
+	// b, err := e.Client.PendingCallContract(context.Background(), *call)
+	// if err != nil {
+	// 	logger.Error(err)
+	// 	return 0, err
+	// }
 
 	call.Data = data
 	gasLimit, err := e.Client.(bind.ContractBackend).EstimateGas(context.Background(), *call)

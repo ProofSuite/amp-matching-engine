@@ -109,6 +109,19 @@ func (d *Database) Update(dbName, collection string, query interface{}, update i
 	return nil
 }
 
+func (d *Database) UpdateAll(dbName, collection string, query interface{}, update interface{}) error {
+	sc := d.Session.Copy()
+	defer sc.Close()
+
+	_, err := sc.DB(dbName).C(collection).UpdateAll(query, update)
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	return nil
+}
+
 func (d *Database) Upsert(dbName, collection string, query interface{}, update interface{}) error {
 	sc := d.Session.Copy()
 	defer sc.Close()

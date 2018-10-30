@@ -58,7 +58,7 @@ func (s *OrderBookService) GetOrderBook(bt, qt common.Address) (map[string]inter
 
 // SubscribeOrderBook is responsible for handling incoming orderbook subscription messages
 // It makes an entry of connection in pairSocket corresponding to pair,unit and duration
-func (s *OrderBookService) SubscribeOrderBook(c *ws.Conn, bt, qt common.Address) {
+func (s *OrderBookService) SubscribeOrderBook(c *ws.Client, bt, qt common.Address) {
 	socket := ws.GetOrderBookSocket()
 
 	ob, err := s.GetOrderBook(bt, qt)
@@ -80,12 +80,12 @@ func (s *OrderBookService) SubscribeOrderBook(c *ws.Conn, bt, qt common.Address)
 }
 
 // UnsubscribeOrderBook is responsible for handling incoming orderbook unsubscription messages
-func (s *OrderBookService) UnsubscribeOrderBook(c *ws.Conn) {
+func (s *OrderBookService) UnsubscribeOrderBook(c *ws.Client) {
 	socket := ws.GetOrderBookSocket()
 	socket.Unsubscribe(c)
 }
 
-func (s *OrderBookService) UnsubscribeOrderBookChannel(c *ws.Conn, bt, qt common.Address) {
+func (s *OrderBookService) UnsubscribeOrderBookChannel(c *ws.Client, bt, qt common.Address) {
 	socket := ws.GetOrderBookSocket()
 	id := utils.GetOrderBookChannelID(bt, qt)
 	socket.UnsubscribeChannel(id, c)
@@ -110,7 +110,7 @@ func (s *OrderBookService) GetRawOrderBook(bt, qt common.Address) ([]*types.Orde
 
 // SubscribeRawOrderBook is responsible for handling incoming orderbook subscription messages
 // It makes an entry of connection in pairSocket corresponding to pair,unit and duration
-func (s *OrderBookService) SubscribeRawOrderBook(c *ws.Conn, bt, qt common.Address) {
+func (s *OrderBookService) SubscribeRawOrderBook(c *ws.Client, bt, qt common.Address) {
 	socket := ws.GetRawOrderBookSocket()
 
 	ob, err := s.GetRawOrderBook(bt, qt)
@@ -132,12 +132,12 @@ func (s *OrderBookService) SubscribeRawOrderBook(c *ws.Conn, bt, qt common.Addre
 }
 
 // UnsubscribeRawOrderBook is responsible for handling incoming orderbook unsubscription messages
-func (s *OrderBookService) UnsubscribeRawOrderBook(c *ws.Conn) {
+func (s *OrderBookService) UnsubscribeRawOrderBook(c *ws.Client) {
 	socket := ws.GetRawOrderBookSocket()
 	socket.Unsubscribe(c)
 }
 
-func (s *OrderBookService) UnsubscribeRawOrderBookChannel(c *ws.Conn, bt, qt common.Address) {
+func (s *OrderBookService) UnsubscribeRawOrderBookChannel(c *ws.Client, bt, qt common.Address) {
 	socket := ws.GetRawOrderBookSocket()
 	id := utils.GetOrderBookChannelID(bt, qt)
 	socket.UnsubscribeChannel(id, c)
