@@ -89,21 +89,6 @@ func (s *OrderService) GetHistoryByUserAddress(addr common.Address) ([]*types.Or
 // If valid: Order is inserted in DB with order status as new and order is publiched
 // on rabbitmq queue for matching engine to process the order
 func (s *OrderService) NewOrder(o *types.Order) error {
-
-	acc, err := s.accountDao.GetByAddress(o.UserAddress)
-	if err != nil {
-		logger.Error(err)
-		return err
-	}
-
-	if acc == nil {
-		return errors.New("Account not found")
-	}
-
-	if acc.IsBlocked {
-		return fmt.Errorf("Account %+v is blocked", acc)
-	}
-
 	if err := o.Validate(); err != nil {
 		logger.Error(err)
 		return err

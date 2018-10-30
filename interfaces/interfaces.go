@@ -221,10 +221,11 @@ type TxService interface {
 }
 
 type AccountService interface {
+	GetAll() ([]types.Account, error)
 	Create(account *types.Account) error
 	GetByID(id bson.ObjectId) (*types.Account, error)
-	GetAll() ([]types.Account, error)
 	GetByAddress(a common.Address) (*types.Account, error)
+	FindOrCreate(a common.Address) (*types.Account, error)
 	GetTokenBalance(owner common.Address, token common.Address) (*types.TokenBalance, error)
 	GetTokenBalances(owner common.Address) (map[common.Address]*types.TokenBalance, error)
 }
