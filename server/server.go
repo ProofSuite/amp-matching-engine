@@ -124,7 +124,7 @@ func NewRouter(
 	endpoints.ServeOrderBookResource(r, orderBookService)
 	endpoints.ServeOHLCVResource(r, ohlcvService)
 	endpoints.ServeTradeResource(r, tradeService)
-	endpoints.ServeOrderResource(r, orderService, eng)
+	endpoints.ServeOrderResource(r, orderService, accountService, eng)
 
 	//initialize rabbitmq subscriptions
 	rabbitConn.SubscribeOrders(eng.HandleOrders)

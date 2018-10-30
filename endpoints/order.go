@@ -15,17 +15,19 @@ import (
 )
 
 type orderEndpoint struct {
-	orderService interfaces.OrderService
-	engine       interfaces.Engine
+	orderService   interfaces.OrderService
+	accountService interfaces.AccountService
+	engine         interfaces.Engine
 }
 
 // ServeOrderResource sets up the routing of order endpoints and the corresponding handlers.
 func ServeOrderResource(
 	r *mux.Router,
 	orderService interfaces.OrderService,
+	accountService interfaces.AccountService,
 	engine interfaces.Engine,
 ) {
-	e := &orderEndpoint{orderService, engine}
+	e := &orderEndpoint{orderService, accountService, engine}
 	r.HandleFunc("/orders/history", e.handleGetOrderHistory).Methods("GET")
 	r.HandleFunc("/orders/positions", e.handleGetPositions).Methods("GET")
 	r.HandleFunc("/orders", e.handleGetOrders).Methods("GET")
@@ -169,6 +171,15 @@ func (e *orderEndpoint) handleNewOrder(ev *types.WebsocketEvent, c *ws.Client) {
 
 	o.Hash = o.ComputeHash()
 	ws.RegisterOrderConnection(o.UserAddress, &ws.OrderConnection{Client: c, ReadChannel: ch})
+
+	acc, err := e.accountService.FindOrCreate(o.UserAddress)
+	if err != nil {
+		logger.Error(err)
+	}
+
+	if acc.IsBlocked {
+		c.SendMessage(ws.OrderChannel, "ERROR", "Account blocked")
+	}
 
 	err = e.orderService.NewOrder(o)
 	if err != nil {
