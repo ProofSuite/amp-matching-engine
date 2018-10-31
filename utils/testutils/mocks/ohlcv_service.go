@@ -46,11 +46,11 @@ func (_m *OHLCVService) GetOHLCV(p []types.PairAddresses, duration int64, unit s
 }
 
 // Subscribe provides a mock function with given fields: conn, bt, qt, p
-func (_m *OHLCVService) Subscribe(conn *ws.Conn, bt common.Address, qt common.Address, p *types.Params) {
+func (_m *OHLCVService) Subscribe(conn *ws.Client, bt common.Address, qt common.Address, p *types.Params) {
 	_m.Called(conn, bt, qt, p)
 }
 
 // Unsubscribe provides a mock function with given fields: conn, bt, qt, p
-func (_m *OHLCVService) Unsubscribe(conn *ws.Conn, bt common.Address, qt common.Address, p *types.Params) {
+func (_m *OHLCVService) Unsubscribe(conn *ws.Client, bt common.Address, qt common.Address, p *types.Params) {
 	_m.Called(conn, bt, qt, p)
 }

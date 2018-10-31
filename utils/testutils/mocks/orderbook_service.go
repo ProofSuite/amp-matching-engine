@@ -37,11 +37,11 @@ func (_m *OrderBookService) GetOrderBook(bt common.Address, qt common.Address) (
 }
 
 // Subscribe provides a mock function with given fields: conn, bt, qt
-func (_m *OrderBookService) Subscribe(conn *ws.Conn, bt common.Address, qt common.Address) {
+func (_m *OrderBookService) Subscribe(conn *ws.Client, bt common.Address, qt common.Address) {
 	_m.Called(conn, bt, qt)
 }
 
 // Unsubscribe provides a mock function with given fields: conn, bt, qt
-func (_m *OrderBookService) Unsubscribe(conn *ws.Conn, bt common.Address, qt common.Address) {
+func (_m *OrderBookService) Unsubscribe(conn *ws.Client, bt common.Address, qt common.Address) {
 	_m.Called(conn, bt, qt)
 }

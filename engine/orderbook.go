@@ -234,7 +234,7 @@ func (ob *OrderBook) sellOrder(o *types.Order) (*types.EngineResponse, error) {
 	remainingOrder.Hash = common.HexToHash("")
 	remainingOrder.BuyAmount = remainingOrder.Amount
 	remainingOrder.SellAmount = math.Div(
-		math.Mul(res.RemainingOrder.Amount, o.SellAmount),
+		math.Mul(remainingOrder.Amount, o.SellAmount),
 		o.BuyAmount,
 	)
 

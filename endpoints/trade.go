@@ -109,7 +109,7 @@ func (e *tradeEndpoint) HandleGetTrades(w http.ResponseWriter, r *http.Request) 
 	httputils.WriteJSON(w, http.StatusOK, res)
 }
 
-func (e *tradeEndpoint) tradeWebsocket(input interface{}, c *ws.Conn) {
+func (e *tradeEndpoint) tradeWebsocket(input interface{}, c *ws.Client) {
 	b, _ := json.Marshal(input)
 	var ev *types.WebsocketEvent
 	if err := json.Unmarshal(b, &ev); err != nil {

@@ -21,7 +21,7 @@ func ServeAccountResource(
 
 	e := &accountEndpoint{accountService}
 	r.HandleFunc("/account/create", e.handleCreateAccount).Methods("POST")
-	r.HandleFunc("/account/<address>", e.handleGetAccount).Methods("GET")
+	r.HandleFunc("/account/{address}", e.handleGetAccount).Methods("GET")
 	r.HandleFunc("/account/{address}/{token}", e.handleGetAccountTokenBalance).Methods("GET")
 }
 
@@ -34,15 +34,28 @@ func (e *accountEndpoint) handleCreateAccount(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	a := &types.Account{Address: common.HexToAddress(addr)}
-	err := e.accountService.Create(a)
+	a := common.HexToAddress(addr)
+	existingAccount, err := e.accountService.GetByAddress(a)
 	if err != nil {
 		logger.Error(err)
 		httputils.WriteError(w, http.StatusInternalServerError, "")
 		return
 	}
 
-	httputils.WriteJSON(w, http.StatusCreated, a)
+	if existingAccount != nil {
+		httputils.WriteJSON(w, http.StatusOK, "Account already exists")
+		return
+	}
+
+	acc := &types.Account{Address: a}
+	err = e.accountService.Create(acc)
+	if err != nil {
+		logger.Error(err)
+		httputils.WriteError(w, http.StatusInternalServerError, "")
+		return
+	}
+
+	httputils.WriteJSON(w, http.StatusCreated, acc)
 }
 
 func (e *accountEndpoint) handleGetAccount(w http.ResponseWriter, r *http.Request) {

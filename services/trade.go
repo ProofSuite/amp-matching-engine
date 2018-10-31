@@ -21,7 +21,7 @@ func NewTradeService(TradeDao interfaces.TradeDao) *TradeService {
 }
 
 // Subscribe
-func (s *TradeService) Subscribe(c *ws.Conn, bt, qt common.Address) {
+func (s *TradeService) Subscribe(c *ws.Client, bt, qt common.Address) {
 	socket := ws.GetTradeSocket()
 
 	numTrades := 40
@@ -45,7 +45,7 @@ func (s *TradeService) Subscribe(c *ws.Conn, bt, qt common.Address) {
 }
 
 // Unsubscribe
-func (s *TradeService) UnsubscribeChannel(c *ws.Conn, bt, qt common.Address) {
+func (s *TradeService) UnsubscribeChannel(c *ws.Client, bt, qt common.Address) {
 	socket := ws.GetTradeSocket()
 
 	id := utils.GetTradeChannelID(bt, qt)
@@ -53,7 +53,7 @@ func (s *TradeService) UnsubscribeChannel(c *ws.Conn, bt, qt common.Address) {
 }
 
 // Unsubscribe
-func (s *TradeService) Unsubscribe(c *ws.Conn) {
+func (s *TradeService) Unsubscribe(c *ws.Client) {
 	socket := ws.GetTradeSocket()
 	socket.Unsubscribe(c)
 }
