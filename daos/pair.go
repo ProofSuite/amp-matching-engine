@@ -160,32 +160,3 @@ func (dao *PairDao) GetByTokenAddress(baseToken, quoteToken common.Address) (*ty
 
 	return res[0], nil
 }
-
-// GetByBuySellTokenAddress function fetches pair based on
-// CONTRACT ADDRESS of buy token and sell token
-func (dao *PairDao) GetByBuySellTokenAddress(buyToken, sellToken common.Address) (*types.Pair, error) {
-	var res []*types.Pair
-	q := bson.M{
-		"$or": []bson.M{
-			bson.M{
-				"baseTokenAddress":  buyToken.Hex(),
-				"quoteTokenAddress": sellToken.Hex(),
-			},
-			bson.M{
-				"baseTokenAddress":  sellToken.Hex(),
-				"quoteTokenAddress": buyToken.Hex(),
-			},
-		},
-	}
-
-	err := db.Get(dao.dbName, dao.collectionName, q, 0, 1, &res)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(res) == 0 {
-		return nil, nil
-	}
-
-	return res[0], nil
-}

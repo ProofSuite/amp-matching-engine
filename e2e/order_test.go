@@ -133,8 +133,7 @@ func TestBuyOrder(t *testing.T) {
 	assert.Equal(t, "ZRX/WETH", dbo1.PairName)
 	assert.Equal(t, ZRX, dbo1.BaseToken)
 	assert.Equal(t, WETH, dbo1.QuoteToken)
-	assert.Equal(t, big.NewInt(1), dbo1.BuyAmount)
-	assert.Equal(t, big.NewInt(1), dbo1.SellAmount)
+	assert.Equal(t, big.NewInt(1), dbo1.Amount)
 	assert.Equal(t, o1.Signature, dbo1.Signature)
 
 	utils.PrintJSON(dbo1)
@@ -405,7 +404,7 @@ func TestMatchPartialOrder2(t *testing.T) {
 		PairName:   "ZRX/WETH",
 		Maker:      factory1.GetAddress(),
 		Taker:      factory2.GetAddress(),
-		TradeNonce: big.NewInt(0),
+		Nonce:      big.NewInt(0),
 	}
 
 	t2 := &types.Trade{
@@ -418,7 +417,7 @@ func TestMatchPartialOrder2(t *testing.T) {
 		PairName:   "ZRX/WETH",
 		Maker:      factory1.GetAddress(),
 		Taker:      factory2.GetAddress(),
-		TradeNonce: big.NewInt(0),
+		Nonce:      big.NewInt(0),
 	}
 
 	t1.Hash = t1.ComputeHash()
@@ -484,17 +483,13 @@ func TestMatchPartialOrder3(t *testing.T) {
 		PairName:   "ZRX/WETH",
 		Maker:      factory1.GetAddress(),
 		Taker:      factory2.GetAddress(),
-		TradeNonce: big.NewInt(0),
+		Nonce:      big.NewInt(0),
 	}
 
 	ro1 := &types.Order{
 		Amount:          big.NewInt(1e18),
 		BaseToken:       ZRX,
 		QuoteToken:      WETH,
-		BuyToken:        ZRX,
-		SellToken:       WETH,
-		BuyAmount:       big.NewInt(1e18),
-		SellAmount:      big.NewInt(1e18),
 		FilledAmount:    big.NewInt(0),
 		ExchangeAddress: factory2.GetExchangeAddress(),
 		UserAddress:     factory2.GetAddress(),
@@ -504,7 +499,6 @@ func TestMatchPartialOrder3(t *testing.T) {
 		Status:          "OPEN",
 		TakeFee:         big.NewInt(0),
 		MakeFee:         big.NewInt(0),
-		Expires:         o1.Expires,
 	}
 
 	t1.Hash = t1.ComputeHash()
@@ -572,7 +566,7 @@ func TestMatchPartialOrder4(t *testing.T) {
 		PairName:   "ZRX/WETH",
 		Maker:      factory1.GetAddress(),
 		Taker:      factory2.GetAddress(),
-		TradeNonce: big.NewInt(0),
+		Nonce:      big.NewInt(0),
 	}
 
 	t2 := &types.Trade{
@@ -585,28 +579,7 @@ func TestMatchPartialOrder4(t *testing.T) {
 		PairName:   "ZRX/WETH",
 		Maker:      factory1.GetAddress(),
 		Taker:      factory2.GetAddress(),
-		TradeNonce: big.NewInt(0),
-	}
-
-	//Remaining order
-	ro1 := &types.Order{
-		Amount:          big.NewInt(1e18),
-		BaseToken:       ZRX,
-		QuoteToken:      WETH,
-		BuyToken:        ZRX,
-		SellToken:       WETH,
-		BuyAmount:       big.NewInt(1e18),
-		SellAmount:      big.NewInt(1e18),
-		FilledAmount:    big.NewInt(0),
-		ExchangeAddress: factory2.GetExchangeAddress(),
-		UserAddress:     factory2.GetAddress(),
-		PricePoint:      big.NewInt(1e8),
-		Side:            "BUY",
-		PairName:        "ZRX/WETH",
-		Status:          "OPEN",
-		TakeFee:         big.NewInt(0),
-		MakeFee:         big.NewInt(0),
-		Expires:         o1.Expires,
+		Nonce:      big.NewInt(0),
 	}
 
 	t1.Hash = t1.ComputeHash()
@@ -674,7 +647,7 @@ func TestMatchPartialOrder5(t *testing.T) {
 		PairName:   "ZRX/WETH",
 		Maker:      factory1.GetAddress(),
 		Taker:      factory2.GetAddress(),
-		TradeNonce: big.NewInt(0),
+		Nonce:      big.NewInt(0),
 	}
 
 	t1.Hash = t1.ComputeHash()
@@ -789,7 +762,7 @@ func TestOrders1(t *testing.T) {
 		PairName:   "ZRX/WETH",
 		Maker:      factory1.GetAddress(),
 		Taker:      factory2.GetAddress(),
-		TradeNonce: big.NewInt(0),
+		Nonce:      big.NewInt(0),
 	}
 
 	t2 := &types.Trade{
@@ -802,7 +775,7 @@ func TestOrders1(t *testing.T) {
 		PairName:   "ZRX/WETH",
 		Maker:      factory1.GetAddress(),
 		Taker:      factory2.GetAddress(),
-		TradeNonce: big.NewInt(0),
+		Nonce:      big.NewInt(0),
 	}
 
 	//Remaining order
@@ -810,10 +783,6 @@ func TestOrders1(t *testing.T) {
 		Amount:          big.NewInt(1e18),
 		BaseToken:       ZRX,
 		QuoteToken:      WETH,
-		BuyToken:        ZRX,
-		SellToken:       WETH,
-		BuyAmount:       big.NewInt(1e18),
-		SellAmount:      big.NewInt(1e18),
 		FilledAmount:    big.NewInt(0),
 		ExchangeAddress: factory2.GetExchangeAddress(),
 		UserAddress:     factory2.GetAddress(),
@@ -823,7 +792,6 @@ func TestOrders1(t *testing.T) {
 		Status:          "OPEN",
 		TakeFee:         big.NewInt(0),
 		MakeFee:         big.NewInt(0),
-		Expires:         o1.Expires,
 	}
 
 	t1.Hash = t1.ComputeHash()

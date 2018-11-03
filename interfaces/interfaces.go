@@ -75,7 +75,6 @@ type PairDao interface {
 	GetByName(name string) (*types.Pair, error)
 	GetByTokenSymbols(baseTokenSymbol, quoteTokenSymbol string) (*types.Pair, error)
 	GetByTokenAddress(baseToken, quoteToken common.Address) (*types.Pair, error)
-	GetByBuySellTokenAddress(buyToken, sellToken common.Address) (*types.Pair, error)
 }
 
 type TradeDao interface {
