@@ -30,7 +30,6 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/Proofsuite/amp-matching-engine/rabbitmq"
 	"github.com/Proofsuite/amp-matching-engine/types"
-	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/Proofsuite/amp-matching-engine/utils/math"
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -49,8 +48,6 @@ func (ob *OrderBook) newOrder(o *types.Order) (err error) {
 	// Attain lock on engineResource, so that recovery or cancel order function doesn't interfere
 	ob.mutex.Lock()
 	defer ob.mutex.Unlock()
-
-	utils.PrintJSON("In new order")
 
 	res := &types.EngineResponse{}
 	if o.Side == "SELL" {
@@ -116,7 +113,7 @@ func (ob *OrderBook) buyOrder(o *types.Order) (*types.EngineResponse, error) {
 		return res, nil
 	}
 
-	matches := types.Matches{}
+	matches := types.Matches{TakerOrder: o}
 	for _, mo := range matchingOrders {
 		trade, err := ob.execute(o, mo)
 		if err != nil {
@@ -124,7 +121,7 @@ func (ob *OrderBook) buyOrder(o *types.Order) (*types.EngineResponse, error) {
 			return nil, err
 		}
 
-		matches = append(matches, &types.Match{mo, trade})
+		matches.AppendMatch(mo, trade)
 		remainingOrder.Amount = math.Sub(remainingOrder.Amount, trade.Amount)
 
 		if math.IsZero(remainingOrder.Amount) {
@@ -139,7 +136,6 @@ func (ob *OrderBook) buyOrder(o *types.Order) (*types.EngineResponse, error) {
 
 			res.Status = "ORDER_FILLED"
 			res.Order = o
-			res.RemainingOrder = nil
 			res.Matches = &matches
 			return res, nil
 		}
@@ -153,18 +149,8 @@ func (ob *OrderBook) buyOrder(o *types.Order) (*types.EngineResponse, error) {
 		return nil, err
 	}
 
-	remainingOrder.Signature = nil
-	remainingOrder.Nonce = nil
-	remainingOrder.Hash = common.HexToHash("")
-	remainingOrder.BuyAmount = remainingOrder.Amount
-	remainingOrder.SellAmount = math.Div(
-		math.Mul(remainingOrder.Amount, o.SellAmount),
-		o.BuyAmount,
-	)
-
 	res.Status = "ORDER_PARTIALLY_FILLED"
 	res.Order = o
-	res.RemainingOrder = &remainingOrder
 	res.Matches = &matches
 	return res, nil
 }
@@ -192,7 +178,7 @@ func (ob *OrderBook) sellOrder(o *types.Order) (*types.EngineResponse, error) {
 		return res, nil
 	}
 
-	matches := types.Matches{}
+	matches := types.Matches{TakerOrder: o}
 	for _, mo := range matchingOrders {
 		trade, err := ob.execute(o, mo)
 		if err != nil {
@@ -200,7 +186,7 @@ func (ob *OrderBook) sellOrder(o *types.Order) (*types.EngineResponse, error) {
 			return nil, err
 		}
 
-		matches = append(matches, &types.Match{mo, trade})
+		matches.AppendMatch(mo, trade)
 		remainingOrder.Amount = math.Sub(remainingOrder.Amount, trade.Amount)
 
 		if math.IsZero(remainingOrder.Amount) {
@@ -215,7 +201,6 @@ func (ob *OrderBook) sellOrder(o *types.Order) (*types.EngineResponse, error) {
 
 			res.Status = "ORDER_FILLED"
 			res.Order = o
-			res.RemainingOrder = nil
 			res.Matches = &matches
 			return res, nil
 		}
@@ -229,18 +214,8 @@ func (ob *OrderBook) sellOrder(o *types.Order) (*types.EngineResponse, error) {
 		return nil, err
 	}
 
-	remainingOrder.Signature = nil
-	remainingOrder.Nonce = nil
-	remainingOrder.Hash = common.HexToHash("")
-	remainingOrder.BuyAmount = remainingOrder.Amount
-	remainingOrder.SellAmount = math.Div(
-		math.Mul(remainingOrder.Amount, o.SellAmount),
-		o.BuyAmount,
-	)
-
 	res.Status = "ORDER_PARTIALLY_FILLED"
 	res.Order = o
-	res.RemainingOrder = &remainingOrder
 	res.Matches = &matches
 	return res, nil
 }
@@ -282,9 +257,8 @@ func (ob *OrderBook) execute(takerOrder *types.Order, makerOrder *types.Order) (
 		PricePoint:     takerOrder.PricePoint,
 		BaseToken:      takerOrder.BaseToken,
 		QuoteToken:     takerOrder.QuoteToken,
-		OrderHash:      makerOrder.Hash,
+		MakerOrderHash: makerOrder.Hash,
 		TakerOrderHash: takerOrder.Hash,
-		Side:           takerOrder.Side,
 		Taker:          takerOrder.UserAddress,
 		PairName:       takerOrder.PairName,
 		Maker:          makerOrder.UserAddress,
@@ -307,10 +281,9 @@ func (ob *OrderBook) cancelOrder(o *types.Order) error {
 	}
 
 	res := &types.EngineResponse{
-		Status:         "ORDER_CANCELLED",
-		Order:          o,
-		RemainingOrder: nil,
-		Matches:        nil,
+		Status:  "ORDER_CANCELLED",
+		Order:   o,
+		Matches: nil,
 	}
 
 	err = ob.rabbitMQConn.PublishEngineResponse(res)
@@ -327,16 +300,14 @@ func (ob *OrderBook) invalidateMakerOrders(matches types.Matches) error {
 	ob.mutex.Lock()
 	defer ob.mutex.Unlock()
 
-	logger.Info("In invalidate maker orders")
-
-	orders := matches.Orders()
-	trades := matches.Trades()
+	orders := matches.MakerOrders
+	trades := matches.Trades
 	tradeAmounts := matches.TradeAmounts()
 	makerOrderHashes := []common.Hash{}
 	takerOrderHashes := []common.Hash{}
 
 	for i, _ := range orders {
-		makerOrderHashes = append(makerOrderHashes, trades[i].OrderHash)
+		makerOrderHashes = append(makerOrderHashes, trades[i].MakerOrderHash)
 		takerOrderHashes = append(takerOrderHashes, trades[i].TakerOrderHash)
 	}
 
@@ -384,15 +355,14 @@ func (ob *OrderBook) invalidateTakerOrders(matches types.Matches) error {
 	ob.mutex.Lock()
 	defer ob.mutex.Unlock()
 
-	orders := matches.Orders()
-	trades := matches.Trades()
+	makerOrders := matches.MakerOrders
+	takerOrder := matches.TakerOrder
+	trades := matches.Trades
 	tradeAmounts := matches.TradeAmounts()
-	makerOrderHashes := []common.Hash{}
-	takerOrderHashes := []common.Hash{}
 
-	for i, _ := range orders {
-		makerOrderHashes = append(makerOrderHashes, trades[i].OrderHash)
-		takerOrderHashes = append(takerOrderHashes, trades[i].TakerOrderHash)
+	makerOrderHashes := []common.Hash{}
+	for i, _ := range trades {
+		makerOrderHashes = append(makerOrderHashes, trades[i].MakerOrderHash)
 	}
 
 	makerOrders, err := ob.orderDao.UpdateOrderFilledAmounts(makerOrderHashes, tradeAmounts)
@@ -401,7 +371,7 @@ func (ob *OrderBook) invalidateTakerOrders(matches types.Matches) error {
 		return err
 	}
 
-	takerOrders, err := ob.orderDao.UpdateOrderStatusesByHashes("INVALIDATED", takerOrderHashes...)
+	invalidatedOrders, err := ob.orderDao.UpdateOrderStatusesByHashes("INVALIDATED", takerOrder.Hash)
 	if err != nil {
 		logger.Error(err)
 		return err
@@ -415,7 +385,7 @@ func (ob *OrderBook) invalidateTakerOrders(matches types.Matches) error {
 
 	res := &types.EngineResponse{
 		Status:            "TRADES_CANCELLED",
-		InvalidatedOrders: &takerOrders,
+		InvalidatedOrders: &invalidatedOrders,
 		CancelledTrades:   &cancelledTrades,
 	}
 
@@ -534,10 +504,9 @@ func (ob *OrderBook) InvalidateOrder(o *types.Order) (*types.EngineResponse, err
 	}
 
 	res := &types.EngineResponse{
-		Status:         "INVALIDATED",
-		Order:          o,
-		RemainingOrder: nil,
-		Matches:        nil,
+		Status:  "INVALIDATED",
+		Order:   o,
+		Matches: nil,
 	}
 
 	return res, nil

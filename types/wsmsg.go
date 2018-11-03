@@ -41,14 +41,6 @@ type Params struct {
 	PairID   string `json:"pair"`
 }
 
-// Signature payload is a websocket message payload struct for the "REQUEST_SIGNATURE" message
-//
-type SignaturePayload struct {
-	Order          *Order   `json:"order"`
-	RemainingOrder *Order   `json:"remainingOrder,omitempty"`
-	Matches        *Matches `json:"matches"`
-}
-
 // type OrderPendingPayload struct {
 // 	Order *Order `json:"order"`
 // 	Trade *Trade `json:"trade"`
@@ -109,36 +101,6 @@ func NewOrderCancelWebsocketMessage(oc *OrderCancel) *WebsocketMessage {
 			Type:    "CANCEL_ORDER",
 			Hash:    oc.Hash.Hex(),
 			Payload: oc,
-		},
-	}
-}
-
-func NewRequestSignaturesWebsocketMessage(h common.Hash, order *Order, remainingOrder *Order, matches *Matches) *WebsocketMessage {
-	return &WebsocketMessage{
-		Channel: "orders",
-		Event: WebsocketEvent{
-			Type: "REQUEST_SIGNATURE",
-			Hash: h.Hex(),
-			Payload: SignaturePayload{
-				order,
-				remainingOrder,
-				matches,
-			},
-		},
-	}
-}
-
-func NewSubmitSignatureWebsocketMessage(hash string, order *Order, remainingOrder *Order, matches *Matches) *WebsocketMessage {
-	return &WebsocketMessage{
-		Channel: "orders",
-		Event: WebsocketEvent{
-			Type: "SUBMIT_SIGNATURE",
-			Hash: hash,
-			Payload: SignaturePayload{
-				order,
-				remainingOrder,
-				matches,
-			},
 		},
 	}
 }

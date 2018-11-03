@@ -41,6 +41,16 @@ func NewTradeDao() *TradeDao {
 	}
 
 	i5 := mgo.Index{
+		Key:    []string{"orderHash"},
+		Sparse: true,
+	}
+
+	i6 := mgo.Index{
+		Key:    []string{"takerOrderHash"},
+		Sparse: true,
+	}
+
+	i7 := mgo.Index{
 		Key: []string{"createdAt", "status", "baseToken", "quoteToken"},
 	}
 
@@ -65,6 +75,16 @@ func NewTradeDao() *TradeDao {
 	}
 
 	err = db.Session.DB(dbName).C(collection).EnsureIndex(i5)
+	if err != nil {
+		panic(err)
+	}
+
+	err = db.Session.DB(dbName).C(collection).EnsureIndex(i6)
+	if err != nil {
+		panic(err)
+	}
+
+	err = db.Session.DB(dbName).C(collection).EnsureIndex(i7)
 	if err != nil {
 		panic(err)
 	}
@@ -181,15 +201,11 @@ func (dao *TradeDao) UpdateByHash(h common.Hash, t *types.Trade) error {
 	query := bson.M{"hash": h.Hex()}
 	update := bson.M{"$set": bson.M{
 		"pricepoint":     t.PricePoint.String(),
-		"tradeNonce":     t.TradeNonce.String(),
+		"amount":         t.Amount.String(),
 		"txHash":         t.TxHash.String(),
 		"takerOrderHash": t.TakerOrderHash.String(),
-		"signature": &types.SignatureRecord{
-			V: t.Signature.V,
-			R: t.Signature.R.Hex(),
-			S: t.Signature.S.Hex(),
-		},
-		"updatedAt": t.UpdatedAt,
+		"makerOrderHash": t.MakerOrderHash.String(),
+		"updatedAt":      t.UpdatedAt,
 	}}
 
 	err := db.Update(dao.dbName, dao.collectionName, query, update)
@@ -258,8 +274,21 @@ func (dao *TradeDao) GetByHash(h common.Hash) (*types.Trade, error) {
 }
 
 // GetByOrderHash fetches the first trade record which matches a certain order hash
-func (dao *TradeDao) GetByOrderHash(h common.Hash) ([]*types.Trade, error) {
-	q := bson.M{"orderHash": h.Hex()}
+func (dao *TradeDao) GetByMakerOrderHash(h common.Hash) ([]*types.Trade, error) {
+	q := bson.M{"makerOrderHash": h.Hex()}
+
+	res := []*types.Trade{}
+	err := db.Get(dao.dbName, dao.collectionName, q, 0, 0, &res)
+	if err != nil {
+		logger.Error(err)
+		return nil, err
+	}
+
+	return res, nil
+}
+
+func (dao *TradeDao) GetByTakerOrderHash(h common.Hash) ([]*types.Trade, error) {
+	q := bson.M{"takerOrderHash": h.Hex()}
 
 	res := []*types.Trade{}
 	err := db.Get(dao.dbName, dao.collectionName, q, 0, 0, &res)

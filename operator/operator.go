@@ -173,28 +173,35 @@ func (op *Operator) HandleEvents() error {
 		select {
 		case event := <-errorEvents:
 			fmt.Println("TRADE_ERROR_EVENT")
-			tradeHash := event.TradeHash
+			makerOrderHash := event.OrderHash
+			takerOrderHash := event.TradeHash
 			errID := int(event.ErrorId)
 
 			logger.Info("The error ID is: ", errID)
-			tr, err := op.TradeService.GetByHash(tradeHash)
+
+			trades, err := op.TradeService.GetByTakerOrderHash(takerOrderHash)
 			if err != nil {
 				logger.Error(err)
 			}
 
-			or, err := op.OrderService.GetByHash(tr.OrderHash)
+			to, err := op.OrderService.GetByHash(takerOrderHash)
 			if err != nil {
 				logger.Error(err)
 			}
 
-			//TODO Currently the only possible solution i found is to return only
-			//TODO the order/trade that caused the error in the first place.
-			//TODO Ideally we want to send back all orders and trades that have been
-			//TODO cancelled
-			m := types.NewMatches([]*types.Order{or}, []*types.Trade{tr})
+			makerOrders, err := op.OrderService.GetByHash(makerOrderHash)
+			if err != nil {
+				logger.Error(err)
+			}
+
+			matches := &types.Matches{
+				MakerOrders: []*types.Order{makerOrders},
+				TakerOrder:  to,
+				Trades:      trades,
+			}
 
 			go func() {
-				err := op.Broker.PublishTxErrorMessage(m, errID)
+				err := op.Broker.PublishTxErrorMessage(matches, errID)
 				if err != nil {
 					logger.Error(err)
 				}
@@ -211,22 +218,32 @@ func (op *Operator) HandleEvents() error {
 					logger.Error(err)
 				}
 
-				matches := types.Matches{}
-				orderHashes := event.OrderHashes
-				tradeHashes := event.TradeHashes
+				takerOrderHash := event.TakerOrderHashes[0]
+				makerOrderHashes := []common.Hash{}
 
-				for i, _ := range event.TradeHashes {
-					tr, err := op.TradeService.GetByHash(tradeHashes[i])
-					if err != nil {
-						logger.Error(err)
-					}
+				for _, h := range event.MakerOrderHashes {
+					makerOrderHashes = append(makerOrderHashes, common.BytesToHash(h[:]))
+				}
 
-					or, err := op.OrderService.GetByHash(orderHashes[i])
-					if err != nil {
-						logger.Error(err)
-					}
+				trades, err := op.TradeService.GetByTakerOrderHash(takerOrderHash)
+				if err != nil {
+					logger.Error(err)
+				}
 
-					matches = append(matches, &types.Match{or, tr})
+				to, err := op.OrderService.GetByHash(takerOrderHash)
+				if err != nil {
+					logger.Error(err)
+				}
+
+				makerOrders, err := op.OrderService.GetByHashes(makerOrderHashes)
+				if err != nil {
+					logger.Error(err)
+				}
+
+				matches := types.Matches{
+					MakerOrders: makerOrders,
+					TakerOrder:  to,
+					Trades:      trades,
 				}
 
 				err = op.Broker.PublishTradeSuccessMessage(&matches)

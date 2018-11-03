@@ -172,8 +172,6 @@ func (dao *OrderDao) UpdateByHash(h common.Hash, o *types.Order) error {
 	o.UpdatedAt = time.Now()
 	query := bson.M{"hash": h.Hex()}
 	update := bson.M{"$set": bson.M{
-		"buyAmount":    o.BuyAmount.String(),
-		"sellAmount":   o.SellAmount.String(),
 		"pricepoint":   o.PricePoint.Int64(),
 		"amount":       o.Amount.String(),
 		"status":       o.Status,
@@ -456,10 +454,16 @@ func (dao *OrderDao) GetUserLockedBalance(account common.Address, token common.A
 		return nil, err
 	}
 
+	//TODO verify and refactor
 	totalLockedBalance := big.NewInt(0)
 	for _, o := range orders {
-		filledSellAmount := math.Div(math.Mul(o.FilledAmount, o.SellAmount), o.BuyAmount)
-		lockedBalance := math.Sub(o.SellAmount, filledSellAmount)
+		lockedBalance := big.NewInt(0)
+		if o.Side == "BUY" {
+			lockedBalance = math.Sub(o.Amount, o.FilledAmount)
+		} else if o.Side == "SELL" {
+			lockedBalance = math.Mul(math.Sub(o.Amount, o.FilledAmount), o.PricePoint)
+		}
+
 		totalLockedBalance = math.Add(totalLockedBalance, lockedBalance)
 	}
 

@@ -86,7 +86,8 @@ type TradeDao interface {
 	Aggregate(q []bson.M) ([]*types.Tick, error)
 	GetByPairName(name string) ([]*types.Trade, error)
 	GetByHash(h common.Hash) (*types.Trade, error)
-	GetByOrderHash(h common.Hash) ([]*types.Trade, error)
+	GetByMakerOrderHash(h common.Hash) ([]*types.Trade, error)
+	GetByTakerOrderHash(h common.Hash) ([]*types.Trade, error)
 	GetByOrderHashes(hashes []common.Hash) ([]*types.Trade, error)
 	GetSortedTradesByDate(bt, qt common.Address, n int) ([]*types.Trade, error)
 	GetNTradesByPairAddress(bt, qt common.Address, n int) ([]*types.Trade, error)
@@ -114,11 +115,11 @@ type Exchange interface {
 	GetTxCallOptions() *bind.CallOpts
 	SetFeeAccount(a common.Address, txOpts *bind.TransactOpts) (*eth.Transaction, error)
 	SetOperator(a common.Address, isOperator bool, txOpts *bind.TransactOpts) (*eth.Transaction, error)
-	CallTrade(o *types.Order, t *types.Trade, call *ethereum.CallMsg) (uint64, error)
+	CallTrade(m *types.Matches, call *ethereum.CallMsg) (uint64, error)
 	CallBatchTrades(m *types.Matches, txOpts *ethereum.CallMsg) (uint64, error)
 	FeeAccount() (common.Address, error)
 	Operator(a common.Address) (bool, error)
-	Trade(o *types.Order, t *types.Trade, txOpts *bind.TransactOpts) (*eth.Transaction, error)
+	Trade(m *types.Matches, txOpts *bind.TransactOpts) (*eth.Transaction, error)
 	ExecuteBatchTrades(m *types.Matches, txOpts *bind.TransactOpts) (*eth.Transaction, error)
 	ListenToErrors() (chan *contractsinterfaces.ExchangeLogError, error)
 	ListenToTrades() (chan *contractsinterfaces.ExchangeLogTrade, error)
@@ -162,6 +163,7 @@ type OrderService interface {
 	GetOrderChannel(h common.Hash) chan *types.WebsocketEvent
 	GetByID(id bson.ObjectId) (*types.Order, error)
 	GetByHash(h common.Hash) (*types.Order, error)
+	GetByHashes(hashes []common.Hash) ([]*types.Order, error)
 	GetByUserAddress(a common.Address) ([]*types.Order, error)
 	NewOrder(o *types.Order) error
 	CancelOrder(oc *types.OrderCancel) error
@@ -205,7 +207,9 @@ type TradeService interface {
 	GetSortedTradesByDate(bt, qt common.Address, n int) ([]*types.Trade, error)
 	GetByUserAddress(a common.Address) ([]*types.Trade, error)
 	GetByHash(h common.Hash) (*types.Trade, error)
-	GetByOrderHash(h common.Hash) ([]*types.Trade, error)
+	GetByOrderHashes(h []common.Hash) ([]*types.Trade, error)
+	GetByMakerOrderHash(h common.Hash) ([]*types.Trade, error)
+	GetByTakerOrderHash(h common.Hash) ([]*types.Trade, error)
 	UpdateTradeTxHash(tr *types.Trade, txh common.Hash) error
 	Subscribe(c *ws.Client, bt, qt common.Address)
 	UnsubscribeChannel(c *ws.Client, bt, qt common.Address)

@@ -82,9 +82,16 @@ func (s *TradeService) GetByHash(h common.Hash) (*types.Trade, error) {
 	return s.tradeDao.GetByHash(h)
 }
 
-// GetByOrderHash fetches all trades corresponding to an order hash
-func (s *TradeService) GetByOrderHash(h common.Hash) ([]*types.Trade, error) {
-	return s.tradeDao.GetByOrderHash(h)
+func (s *TradeService) GetByMakerOrderHash(h common.Hash) ([]*types.Trade, error) {
+	return s.tradeDao.GetByMakerOrderHash(h)
+}
+
+func (s *TradeService) GetByTakerOrderHash(h common.Hash) ([]*types.Trade, error) {
+	return s.tradeDao.GetByTakerOrderHash(h)
+}
+
+func (s *TradeService) GetByOrderHashes(hashes []common.Hash) ([]*types.Trade, error) {
+	return s.tradeDao.GetByOrderHashes(hashes)
 }
 
 func (s *TradeService) UpdateTradeTxHash(tr *types.Trade, txh common.Hash) error {
