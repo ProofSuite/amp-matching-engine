@@ -19,14 +19,8 @@ func GetTestTrade1() types.Trade {
 		MakerOrderHash: common.HexToHash("0x6d9ad89548c9e3ce4c97825d027291477f2c44a8caef792095f2cabc978493ff"),
 		TakerOrderHash: common.HexToHash("0x6d9ad89548c9e3ce4c97825d027291477f2c44a8caef792095f2cabc978493ff"),
 		PairName:       "ZRX/WETH",
-		Signature: &types.Signature{
-			V: 28,
-			R: common.HexToHash("0x10b30eb0072a4f0a38b6fca0b731cba15eb2e1702845d97c1230b53a839bcb85"),
-			S: common.HexToHash("0x6d9ad89548c9e3ce4c97825d027291477f2c44a8caef792095f2cabc978493ff"),
-		},
-		PricePoint: big.NewInt(10000000),
-		Side:       "BUY",
-		Amount:     big.NewInt(100),
+		PricePoint:     big.NewInt(10000000),
+		Amount:         big.NewInt(100),
 	}
 }
 
@@ -41,13 +35,7 @@ func GetTestTrade2() types.Trade {
 		MakerOrderHash: common.HexToHash("0x400558b2f5a7b20dd06241c2313c08f652b297e819926b5a51a5abbc60f451e6"),
 		TakerOrderHash: common.HexToHash("0x400558b2f5a7b20dd06241c2313c08f652b297e819926b5a51a5abbc60f451e6"),
 		PairName:       "ZRX/DAI",
-		Signature: &types.Signature{
-			V: 28,
-			R: common.HexToHash("0x10b30eb0072a4f0a38b6fca0b731cba15eb2e1702845d97c1230b53a839bcb85"),
-			S: common.HexToHash("0x6d9ad89548c9e3ce4c97825d027291477f2c44a8caef792095f2cabc978493ff"),
-		},
-		PricePoint: big.NewInt(10000000),
-		Side:       "SELL",
-		Amount:     big.NewInt(100),
+		PricePoint:     big.NewInt(10000000),
+		Amount:         big.NewInt(100),
 	}
 }

@@ -1,6 +1,7 @@
 package types
 
 import (
+	"errors"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -21,7 +22,7 @@ func NewMatches(makerOrders []*Order, takerOrder *Order, trades []*Trade) *Match
 	}
 }
 
-func (m Matches) NthMatch(i int) *Matches {
+func (m *Matches) NthMatch(i int) *Matches {
 	return NewMatches(
 		[]*Order{m.MakerOrders[i]},
 		m.TakerOrder,
@@ -29,19 +30,19 @@ func (m Matches) NthMatch(i int) *Matches {
 	)
 }
 
-func (m Matches) Taker() common.Address {
+func (m *Matches) Taker() common.Address {
 	return m.TakerOrder.UserAddress
 }
 
-func (m Matches) TakerOrderHash() common.Hash {
+func (m *Matches) TakerOrderHash() common.Hash {
 	return m.TakerOrder.Hash
 }
 
-func (m Matches) PairCode() (string, error) {
+func (m *Matches) PairCode() (string, error) {
 	return m.TakerOrder.PairCode()
 }
 
-func (m Matches) TradeAmounts() []*big.Int {
+func (m *Matches) TradeAmounts() []*big.Int {
 	amounts := []*big.Int{}
 	for _, t := range m.Trades {
 		amounts = append(amounts, t.Amount)
@@ -50,18 +51,38 @@ func (m Matches) TradeAmounts() []*big.Int {
 	return amounts
 }
 
-func (m Matches) Length() int {
+func (m *Matches) Length() int {
 	return len(m.Trades)
 }
 
-func (m Matches) AppendMatch(mo *Order, t *Trade) {
+func (m *Matches) AppendMatch(mo *Order, t *Trade) {
+	if m.MakerOrders == nil {
+		m.MakerOrders = []*Order{}
+	}
+
+	if m.Trades == nil {
+		m.Trades = []*Trade{}
+	}
+
 	m.MakerOrders = append(m.MakerOrders, mo)
 	m.Trades = append(m.Trades, t)
 }
 
-func (m Matches) Validate() error {
+func (m *Matches) Validate() error {
+	if len(m.Trades) == 0 {
+		return errors.New("Matches should contain at least one trade")
+	}
+
+	if len(m.MakerOrders) == 0 {
+		return errors.New("Matches should contain at least one makerOrder")
+	}
+
+	if m.TakerOrder == nil {
+		return errors.New("takerOrder is required")
+	}
+
 	for _, t := range m.Trades {
-		err := t.ValidateComplete()
+		err := t.Validate()
 		if err != nil {
 			logger.Error(err)
 			return err
@@ -69,14 +90,14 @@ func (m Matches) Validate() error {
 	}
 
 	for _, mo := range m.MakerOrders {
-		err := mo.ValidateComplete()
+		err := mo.Validate()
 		if err != nil {
 			logger.Error(err)
 			return err
 		}
 	}
 
-	err := m.TakerOrder.ValidateComplete()
+	err := m.TakerOrder.Validate()
 	if err != nil {
 		logger.Error(err)
 		return err
@@ -85,7 +106,7 @@ func (m Matches) Validate() error {
 	return nil
 }
 
-func (m Matches) HashID() common.Hash {
+func (m *Matches) HashID() common.Hash {
 	sha := sha3.NewKeccak256()
 	for _, t := range m.Trades {
 		sha.Write(t.Hash.Bytes())
@@ -123,7 +144,7 @@ func (r *EngineResponse) AppendMatches(mo []*Order, t []*Trade) {
 }
 
 func (r *EngineResponse) HashID() common.Hash {
-	if r.Status == "NOMATCH" {
+	if r.Status == "ORDER_ADDED" {
 		return r.Order.Hash
 	}
 

@@ -207,7 +207,7 @@ func (e *Exchange) CallBatchTrades(matches *types.Matches, call *ethereum.CallMs
 		t := trades[i]
 
 		orderValues = append(orderValues, [10]*big.Int{mo.Amount, mo.PricePoint, mo.EncodedSide(), mo.Nonce, to.Amount, to.PricePoint, to.EncodedSide(), to.Nonce, mo.MakeFee, mo.TakeFee})
-		orderAddresses = append(orderAddresses, [4]common.Address{mo.UserAddress, to.UserAddress, mo.BaseToken, to.QuoteToken})
+		orderAddresses = append(orderAddresses, [4]common.Address{mo.UserAddress, to.UserAddress, mo.BaseToken, mo.QuoteToken})
 		amounts = append(amounts, t.Amount)
 
 		if mo.Signature == nil {
@@ -264,7 +264,7 @@ func (e *Exchange) CallTrade(match *types.Matches, call *ethereum.CallMsg) (uint
 		return 0, err
 	}
 
-	data, err := exchangeABI.Pack("executeTrade", orderValues, orderAddresses, t.Amount, vValues, rsValues)
+	data, err := exchangeABI.Pack("executeSingleTrade", orderValues, orderAddresses, t.Amount, vValues, rsValues)
 	if err != nil {
 		return 0, err
 	}

@@ -251,6 +251,8 @@ func (s *OrderService) handleEngineOrderMatched(res *types.EngineResponse) {
 	o := res.Order //res.Order is the "taker" order
 	matches := *res.Matches
 
+	utils.PrintJSON(res)
+
 	taker := o.UserAddress
 	hashID := matches.HashID()
 	orders := []*types.Order{o}

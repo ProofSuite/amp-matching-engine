@@ -33,7 +33,6 @@ func NewTxQueue(
 	ex interfaces.Exchange,
 	rabbitConn *rabbitmq.Connection,
 ) (*TxQueue, error) {
-
 	txq := &TxQueue{
 		Name:             n,
 		TradeService:     tr,
@@ -59,6 +58,7 @@ func (txq *TxQueue) GetTxSendOptions() *bind.TransactOpts {
 
 func (txq *TxQueue) GetTxCallOptions() *ethereum.CallMsg {
 	address := txq.Exchange.GetAddress()
+
 	return &ethereum.CallMsg{From: txq.Wallet.Address, To: &address}
 }
 
@@ -89,6 +89,8 @@ func (txq *TxQueue) QueueTrade(m *types.Matches) error {
 			return err
 		}
 	}
+
+	logger.Info("QUEING T")
 
 	err := txq.PublishPendingTrades(m)
 	if err != nil {
@@ -138,13 +140,6 @@ func (txq *TxQueue) ExecuteTrade(m *types.Matches) (*eth.Transaction, error) {
 		return nil, err
 	}
 
-	//TODO maybe replace by putting a tx hash on the matches struct
-	// err = txq.TradeService.UpdateTradeTxHash(tr, tx.Hash())
-	// if err != nil {
-	// 	logger.Error(err)
-	// 	return nil, errors.New("Could not update trade tx attribute")
-	// }
-
 	err = txq.Broker.PublishTradeSentMessage(m)
 	if err != nil {
 		logger.Error(err)
@@ -157,9 +152,7 @@ func (txq *TxQueue) ExecuteTrade(m *types.Matches) (*eth.Transaction, error) {
 			logger.Error(err)
 		}
 
-		//TODO use a better logging
 		// logger.Info("TRADE_MINED IN EXECUTE TRADE: ", tr.Hash.Hex())
-
 		//TODO in this case, what happens in the case we have a lot of trades, i think the best solution
 		//TODO is to register the events in redis, and check if they already exist.
 		len := txq.Length()
@@ -175,7 +168,7 @@ func (txq *TxQueue) ExecuteTrade(m *types.Matches) (*eth.Transaction, error) {
 			}
 
 			// very hacky
-			if nextMatch.HashID() == m.HashID() {
+			if nextMatch.TakerOrderHash() == m.TakerOrderHash() {
 				nextMatch, err = txq.PopPendingTrades()
 				if err != nil {
 					logger.Error(err)
@@ -265,6 +258,11 @@ func (txq *TxQueue) PopPendingTrades() (*types.Matches, error) {
 	if err != nil {
 		logger.Error(err)
 		return nil, err
+	}
+
+	err = pding.Validate()
+	if err != nil {
+		return nil, nil
 	}
 
 	return pding, nil

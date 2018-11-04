@@ -53,7 +53,51 @@ type TradeRecord struct {
 	Status         string        `json:"status" bson:"status"`
 }
 
+// NewTrade returns a new unsigned trade corresponding to an Order, amount and taker address
+func NewTrade(mo *Order, to *Order, amount *big.Int, pricepoint *big.Int) *Trade {
+	t := &Trade{
+		Maker:          mo.UserAddress,
+		Taker:          to.UserAddress,
+		BaseToken:      mo.BaseToken,
+		QuoteToken:     mo.QuoteToken,
+		MakerOrderHash: mo.Hash,
+		TakerOrderHash: to.Hash,
+		PairName:       mo.PairName,
+		Amount:         amount,
+		PricePoint:     pricepoint,
+		Status:         "PENDING",
+	}
+
+	t.Hash = t.ComputeHash()
+
+	return t
+}
+
 func (t *Trade) Validate() error {
+	if (t.Taker == common.Address{}) {
+		return errors.New("Trade 'taker' parameter is required'")
+	}
+
+	if (t.Maker == common.Address{}) {
+		return errors.New("Trade 'maker' parameter is required")
+	}
+
+	if (t.TakerOrderHash == common.Hash{}) {
+		return errors.New("Trade 'takerOrderHash' parameter is required")
+	}
+
+	if (t.MakerOrderHash == common.Hash{}) {
+		return errors.New("Trade 'makerOrderHash' parameter is required")
+	}
+
+	if (t.BaseToken == common.Address{}) {
+		return errors.New("Trade 'baseToken' parameter is required")
+	}
+
+	if (t.QuoteToken == common.Address{}) {
+		return errors.New("Trade 'quoteToken' parameter is required")
+	}
+
 	if t.Amount == nil {
 		return errors.New("Trade 'amount' parameter is required")
 	}
@@ -62,40 +106,16 @@ func (t *Trade) Validate() error {
 		return errors.New("Trade 'pricepoint' paramter is required")
 	}
 
-	if math.IsSmallerThan(t.PricePoint, big.NewInt(0)) {
+	if math.IsEqualOrSmallerThan(t.PricePoint, big.NewInt(0)) {
 		return errors.New("Trade 'pricepoint' parameter should be positive")
 	}
 
-	if math.IsSmallerThan(t.Amount, big.NewInt(0)) {
+	if math.IsEqualOrSmallerThan(t.Amount, big.NewInt(0)) {
 		return errors.New("Trade 'amount' parameter should be positive")
 	}
 
 	//TODO add validations for hashes and addresses
 	return nil
-}
-
-func (t *Trade) ValidateComplete() error {
-	err := t.Validate()
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// NewTrade returns a new unsigned trade corresponding to an Order, amount and taker address
-func NewTrade(mo *Order, to *Order, amount *big.Int, pricepoint *big.Int) *Trade {
-	t := &Trade{
-		Maker:          mo.UserAddress,
-		Taker:          to.UserAddress,
-		MakerOrderHash: mo.Hash,
-		TakerOrderHash: to.Hash,
-		PairName:       mo.PairName,
-		Amount:         amount,
-		PricePoint:     pricepoint,
-	}
-
-	return t
 }
 
 // MarshalJSON returns the json encoded byte array representing the trade struct

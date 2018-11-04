@@ -37,14 +37,26 @@ type Order struct {
 	UpdatedAt       time.Time      `json:"updatedAt" bson:"updatedAt"`
 }
 
-// TODO: Include userAddress, token addresses checks
+// TODO: Verify userAddress, baseToken, quoteToken, etc. conditions are working
 func (o *Order) Validate() error {
 	if o.ExchangeAddress != common.HexToAddress(app.Config.Ethereum["exchange_address"]) {
 		return errors.New("Order 'exchangeAddress' parameter is incorrect")
 	}
 
+	if (o.UserAddress == common.Address{}) {
+		return errors.New("Order 'userAddress' parameter is required")
+	}
+
 	if o.Nonce == nil {
 		return errors.New("Order 'nonce' parameter is required")
+	}
+
+	if (o.BaseToken == common.Address{}) {
+		return errors.New("Order 'baseToken' parameter is required")
+	}
+
+	if (o.QuoteToken == common.Address{}) {
+		return errors.New("Order 'quoteToken' parameter is required")
 	}
 
 	if o.MakeFee == nil {
@@ -67,21 +79,20 @@ func (o *Order) Validate() error {
 		return errors.New("Order 'side' should be 'SELL' or 'BUY'")
 	}
 
+	if o.Signature == nil {
+		return errors.New("Order 'signature' parameter is required")
+	}
+
 	if math.IsSmallerThan(o.Nonce, big.NewInt(0)) {
 		return errors.New("Order 'nonce' parameter should be positive")
 	}
 
-	return nil
-}
-
-func (o *Order) ValidateComplete() error {
-	err := o.Validate()
-	if err != nil {
-		return err
+	if math.IsEqualOrSmallerThan(o.Amount, big.NewInt(0)) {
+		return errors.New("Order 'amount' parameter should be strictly positive")
 	}
 
-	if o.Signature == nil {
-		return errors.New("Order 'signature' parameter is required")
+	if math.IsEqualOrSmallerThan(o.PricePoint, big.NewInt(0)) {
+		return errors.New("Order 'pricepoint' parameter should be strictly positive")
 	}
 
 	valid, err := o.VerifySignature()
@@ -93,7 +104,6 @@ func (o *Order) ValidateComplete() error {
 		return errors.New("Order 'signature' parameter is invalid")
 	}
 
-	//TODO add validations for hashes and addresses
 	return nil
 }
 
@@ -211,7 +221,7 @@ func (o *Order) BuyToken() common.Address {
 // If order is a "BUY", then sellToken = quoteToken
 func (o *Order) SellAmount() *big.Int {
 	if o.Side == "BUY" {
-		return math.Mul(o.Amount, o.PricePoint)
+		return math.Div(math.Mul(o.Amount, o.PricePoint), big.NewInt(1e6))
 	} else {
 		return o.Amount
 	}
@@ -221,7 +231,7 @@ func (o *Order) BuyAmount() *big.Int {
 	if o.Side == "SELL" {
 		return o.Amount
 	} else {
-		return math.Mul(o.Amount, o.PricePoint)
+		return math.Div(math.Mul(o.Amount, o.PricePoint), big.NewInt(1e6))
 	}
 }
 

@@ -136,7 +136,7 @@ func (f *OrderFactory) NewLargeOrder(baseToken common.Address, quoteToken common
 	o.BaseToken = baseToken
 	o.QuoteToken = quoteToken
 	o.Amount = amount
-	o.Pricepoint = pricepoint
+	o.PricePoint = pricepoint
 	o.Status = "OPEN"
 	o.MakeFee = f.Params.MakeFee
 	o.TakeFee = f.Params.TakeFee
@@ -266,10 +266,8 @@ func (f *OrderFactory) NewTrade(o *types.Order, amount int64) (types.Trade, erro
 	t.Taker = f.Wallet.Address
 	t.BaseToken = o.BaseToken
 	t.QuoteToken = o.QuoteToken
-	t.Nonce = big.NewInt(int64(f.NonceGenerator.Intn(1e8)))
 	t.MakerOrderHash = o.Hash
 	t.Amount = big.NewInt(amount)
 
-	t.Sign(f.Wallet)
 	return t, nil
 }

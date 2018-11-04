@@ -79,7 +79,7 @@ func NewClient(w *types.Wallet, s Server) *Client {
 	ng := rand.New(source)
 
 	return &Client{
-		connection:     ws.NewConnection(c),
+		connection:     ws.NewClient(c),
 		Wallet:         w,
 		Requests:       reqs,
 		Responses:      resps,
@@ -180,8 +180,6 @@ func (c *Client) handleOrderChannelMessagesIn(e types.WebsocketEvent) {
 		c.handleOrderError(e)
 	case "ORDER_PENDING":
 		c.handleOrderPending(e)
-	case "REQUEST_SIGNATURE":
-		c.handleSignatureRequested(e)
 	}
 }
 

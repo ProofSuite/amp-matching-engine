@@ -12,18 +12,12 @@ import (
 
 func CompareEngineResponse(t *testing.T, a, b *types.EngineResponse) {
 	assert.Equal(t, a.Status, b.Status)
-	assert.Equal(t, a.HashID, b.HashID)
+	// assert.Equal(t, a.HashID, b.HashID)
 
 	if a.Order != nil && b.Order != nil {
 		assert.NotNil(t, a.Order)
 		assert.NotNil(t, b.Order)
 		CompareOrder(t, a.Order, b.Order)
-	}
-
-	if a.RemainingOrder != nil && b.RemainingOrder != nil {
-		assert.NotNil(t, a.RemainingOrder)
-		assert.NotNil(t, b.RemainingOrder)
-		CompareOrder(t, a.RemainingOrder, b.RemainingOrder)
 	}
 
 	if a.Matches != nil && b.Matches != nil {
@@ -38,11 +32,14 @@ func CompareMatches(t *testing.T, a, b *types.Matches) {
 		assert.NotNil(t, a)
 		assert.NotNil(t, b)
 
-		aMatches := *a
-		bMatches := *b
-		for i, _ := range *a {
-			ComparePublicOrder(t, aMatches[i].Order, bMatches[i].Order)
-			ComparePublicTrade(t, aMatches[i].Trade, bMatches[i].Trade)
+		for i, _ := range a.MakerOrders {
+			ComparePublicOrder(t, a.MakerOrders[i], b.MakerOrders[i])
+		}
+
+		ComparePublicOrder(t, a.TakerOrder, b.TakerOrder)
+
+		for i, _ := range a.Trades {
+			ComparePublicTrade(t, a.Trades[i], b.Trades[i])
 		}
 	}
 }
@@ -111,10 +108,7 @@ func CompareTrade(t *testing.T, a, b *types.Trade) {
 	assert.Equal(t, a.TakerOrderHash, b.TakerOrderHash)
 	assert.Equal(t, a.Hash, b.Hash)
 	assert.Equal(t, a.PairName, b.PairName)
-	assert.Equal(t, a.Signature, b.Signature)
 	assert.Equal(t, a.TxHash, b.TxHash)
-
-	assert.Equal(t, a.Side, b.Side)
 	assert.Equal(t, a.Amount, b.Amount)
 }
 
@@ -127,10 +121,7 @@ func ComparePublicTrade(t *testing.T, a, b *types.Trade) {
 	assert.Equal(t, a.TakerOrderHash, b.TakerOrderHash)
 	assert.Equal(t, a.Hash, b.Hash)
 	assert.Equal(t, a.PairName, b.PairName)
-	assert.Equal(t, a.Signature, b.Signature)
 	assert.Equal(t, a.TxHash, b.TxHash)
-
-	assert.Equal(t, a.Side, b.Side)
 	assert.Equal(t, a.Amount, b.Amount)
 }
 
