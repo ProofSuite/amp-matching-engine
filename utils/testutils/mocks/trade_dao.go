@@ -268,8 +268,8 @@ func (_m *TradeDao) GetNTradesByPairAddress(bt common.Address, qt common.Address
 	return r0, r1
 }
 
-// GetSortedTradesByDate provides a mock function with given fields: bt, qt, n
-func (_m *TradeDao) GetSortedTradesByDate(bt common.Address, qt common.Address, n int) ([]*types.Trade, error) {
+// GetSortedTrades provides a mock function with given fields: bt, qt, n
+func (_m *TradeDao) GetSortedTrades(bt common.Address, qt common.Address, n int) ([]*types.Trade, error) {
 	ret := _m.Called(bt, qt, n)
 
 	var r0 []*types.Trade

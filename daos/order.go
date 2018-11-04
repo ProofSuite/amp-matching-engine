@@ -374,11 +374,15 @@ func (dao *OrderDao) GetByHashes(hashes []common.Hash) ([]*types.Order, error) {
 
 // GetByUserAddress function fetches list of orders from order collection based on user address.
 // Returns array of Order type struct
-func (dao *OrderDao) GetByUserAddress(addr common.Address) ([]*types.Order, error) {
+func (dao *OrderDao) GetByUserAddress(addr common.Address, limit ...int) ([]*types.Order, error) {
+	if limit == nil {
+		limit = []int{0}
+	}
+
 	var res []*types.Order
 	q := bson.M{"userAddress": addr.Hex()}
 
-	err := db.Get(dao.dbName, dao.collectionName, q, 0, 0, &res)
+	err := db.Get(dao.dbName, dao.collectionName, q, 0, limit[0], &res)
 	if err != nil {
 		logger.Error(err)
 		return nil, err
@@ -393,7 +397,11 @@ func (dao *OrderDao) GetByUserAddress(addr common.Address) ([]*types.Order, erro
 
 // GetCurrentByUserAddress function fetches list of open/partial orders from order collection based on user address.
 // Returns array of Order type struct
-func (dao *OrderDao) GetCurrentByUserAddress(addr common.Address) ([]*types.Order, error) {
+func (dao *OrderDao) GetCurrentByUserAddress(addr common.Address, limit ...int) ([]*types.Order, error) {
+	if limit == nil {
+		limit = []int{0}
+	}
+
 	var res []*types.Order
 	q := bson.M{
 		"userAddress": addr.Hex(),
@@ -404,7 +412,7 @@ func (dao *OrderDao) GetCurrentByUserAddress(addr common.Address) ([]*types.Orde
 		},
 	}
 
-	err := db.Get(dao.dbName, dao.collectionName, q, 0, 0, &res)
+	err := db.Get(dao.dbName, dao.collectionName, q, 0, limit[0], &res)
 	if err != nil {
 		logger.Error(err)
 		return nil, err
@@ -416,7 +424,11 @@ func (dao *OrderDao) GetCurrentByUserAddress(addr common.Address) ([]*types.Orde
 // GetHistoryByUserAddress function fetches list of orders which are not in open/partial order status
 // from order collection based on user address.
 // Returns array of Order type struct
-func (dao *OrderDao) GetHistoryByUserAddress(addr common.Address) ([]*types.Order, error) {
+func (dao *OrderDao) GetHistoryByUserAddress(addr common.Address, limit ...int) ([]*types.Order, error) {
+	if limit == nil {
+		limit = []int{0}
+	}
+
 	var res []*types.Order
 	q := bson.M{
 		"userAddress": addr.Hex(),
@@ -427,7 +439,7 @@ func (dao *OrderDao) GetHistoryByUserAddress(addr common.Address) ([]*types.Orde
 		},
 	}
 
-	err := db.Get(dao.dbName, dao.collectionName, q, 0, 0, &res)
+	err := db.Get(dao.dbName, dao.collectionName, q, 0, limit[0], &res)
 	if err != nil {
 		logger.Error(err)
 		return nil, err

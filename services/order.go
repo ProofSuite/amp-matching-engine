@@ -60,8 +60,8 @@ func (s *OrderService) GetByID(id bson.ObjectId) (*types.Order, error) {
 }
 
 // GetByUserAddress fetches all the orders placed by passed user address
-func (s *OrderService) GetByUserAddress(addr common.Address) ([]*types.Order, error) {
-	return s.orderDao.GetByUserAddress(addr)
+func (s *OrderService) GetByUserAddress(addr common.Address, limit ...int) ([]*types.Order, error) {
+	return s.orderDao.GetByUserAddress(addr, limit...)
 }
 
 // GetByHash fetches all trades corresponding to a trade hash
@@ -75,15 +75,15 @@ func (s *OrderService) GetByHashes(hashes []common.Hash) ([]*types.Order, error)
 
 // GetCurrentByUserAddress function fetches list of open/partial orders from order collection based on user address.
 // Returns array of Order type struct
-func (s *OrderService) GetCurrentByUserAddress(addr common.Address) ([]*types.Order, error) {
-	return s.orderDao.GetCurrentByUserAddress(addr)
+func (s *OrderService) GetCurrentByUserAddress(addr common.Address, limit ...int) ([]*types.Order, error) {
+	return s.orderDao.GetCurrentByUserAddress(addr, limit...)
 }
 
 // GetHistoryByUserAddress function fetches list of orders which are not in open/partial order status
 // from order collection based on user address.
 // Returns array of Order type struct
-func (s *OrderService) GetHistoryByUserAddress(addr common.Address) ([]*types.Order, error) {
-	return s.orderDao.GetHistoryByUserAddress(addr)
+func (s *OrderService) GetHistoryByUserAddress(addr common.Address, limit ...int) ([]*types.Order, error) {
+	return s.orderDao.GetHistoryByUserAddress(addr, limit...)
 }
 
 // NewOrder validates if the passed order is valid or not based on user's available
