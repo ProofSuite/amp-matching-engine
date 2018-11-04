@@ -3,6 +3,7 @@ package engine
 import (
 	"io/ioutil"
 	"log"
+	"math/big"
 	"testing"
 
 	"github.com/Proofsuite/amp-matching-engine/daos"
@@ -42,6 +43,7 @@ func setupTest() (
 
 	opts := daos.OrderDaoDBOption("test")
 	orderDao := daos.NewOrderDao(opts)
+	orderDao.Drop()
 
 	pair := testutils.GetZRXWETHTestPair()
 	pairDao := new(mocks.PairDao)
@@ -81,10 +83,9 @@ func TestSellOrder(t *testing.T) {
 	exp1 := o1
 	exp1.Status = "OPEN"
 	expected := &types.EngineResponse{
-		Status:         "NOMATCH",
-		Order:          &exp1,
-		RemainingOrder: nil,
-		Matches:        nil,
+		Status:  "ORDER_ADDED",
+		Order:   &exp1,
+		Matches: nil,
 	}
 
 	res, err := ob.sellOrder(&o1)
@@ -103,10 +104,9 @@ func TestBuyOrder(t *testing.T) {
 	exp1 := o1
 	exp1.Status = "OPEN"
 	expected := &types.EngineResponse{
-		Status:         "NOMATCH",
-		Order:          &exp1,
-		RemainingOrder: nil,
-		Matches:        nil,
+		Status:  "ORDER_ADDED",
+		Order:   &exp1,
+		Matches: nil,
 	}
 
 	res, err := ob.buyOrder(&o1)
@@ -122,14 +122,11 @@ func TestFillOrder1(t *testing.T) {
 
 	o1, _ := factory1.NewSellOrder(1e3, 1e8)
 	o2, _ := factory2.NewBuyOrder(1e3, 1e8)
-	expt1, _ := types.NewUnsignedTrade1(&o1, &o2, units.Ethers(1e8))
+	expt1 := types.NewTrade(&o1, &o2, units.Ethers(1e8), big.NewInt(1e3))
 
 	expo1 := o1
 	expo1.Status = "OPEN"
-	expectedSellOrderResponse := &types.EngineResponse{
-		Status: "NOMATCH",
-		Order:  &expo1,
-	}
+	expectedSellOrderResponse := &types.EngineResponse{Status: "ORDER_ADDED", Order: &expo1}
 
 	expo2 := o2
 	expo2.Status = "FILLED"
@@ -139,10 +136,14 @@ func TestFillOrder1(t *testing.T) {
 	expo3.Status = "FILLED"
 	expo3.FilledAmount = units.Ethers(1e8)
 
-	expectedMatches := types.NewMatches([]*types.Order{&expo3}, []*types.Trade{&expt1})
+	expectedMatches := types.NewMatches(
+		[]*types.Order{&expo3},
+		&expo2,
+		[]*types.Trade{expt1},
+	)
 
 	expectedBuyOrderResponse := &types.EngineResponse{
-		Status:  "FULL",
+		Status:  "ORDER_FILLED",
 		Order:   &expo2,
 		Matches: expectedMatches,
 	}
@@ -166,12 +167,12 @@ func TestFillOrder2(t *testing.T) {
 
 	o1, _ := factory1.NewBuyOrder(1e3, 1e8)
 	o2, _ := factory2.NewSellOrder(1e3, 1e8)
-	expt1, _ := types.NewUnsignedTrade1(&o1, &o2, utils.Ethers(1e8))
+	expt1 := types.NewTrade(&o1, &o2, units.Ethers(1e8), big.NewInt(1e3))
 
 	expo1 := o1
 	expo1.Status = "OPEN"
 	expectedBuyOrderResponse := &types.EngineResponse{
-		Status: "NOMATCH",
+		Status: "ORDER_ADDED",
 		Order:  &expo1,
 	}
 
@@ -183,10 +184,14 @@ func TestFillOrder2(t *testing.T) {
 	expo3.Status = "FILLED"
 	expo3.FilledAmount = utils.Ethers(1e8)
 
-	expectedMatches := types.NewMatches([]*types.Order{&expo3}, []*types.Trade{&expt1})
+	expectedMatches := types.NewMatches(
+		[]*types.Order{&expo3},
+		&expo2,
+		[]*types.Trade{expt1},
+	)
 
 	expectedSellOrderResponse := &types.EngineResponse{
-		Status:  "FULL",
+		Status:  "ORDER_FILLED",
 		Order:   &expo2,
 		Matches: expectedMatches,
 	}
@@ -230,18 +235,20 @@ func TestMultiMatchOrder1(t *testing.T) {
 	expbo1.Status = "FILLED"
 	expbo1.FilledAmount = utils.Ethers(3e8)
 
-	expt1, _ := types.NewUnsignedTrade1(&so1, &bo1, utils.Ethers(1e8))
-	expt2, _ := types.NewUnsignedTrade1(&so2, &bo1, utils.Ethers(1e8))
-	expt3, _ := types.NewUnsignedTrade1(&so3, &bo1, utils.Ethers(1e8))
+	expt1 := types.NewTrade(&so1, &bo1, utils.Ethers(1e8), big.NewInt(1e3+4))
+	expt2 := types.NewTrade(&so2, &bo1, utils.Ethers(1e8), big.NewInt(1e3+4))
+	expt3 := types.NewTrade(&so3, &bo1, utils.Ethers(1e8), big.NewInt(1e3+4))
 
-	expectedMatches := types.NewMatches([]*types.Order{&expso1, &expso2, &expso3}, []*types.Trade{&expt1, &expt2, &expt3})
+	expectedMatches := types.NewMatches(
+		[]*types.Order{&expso1, &expso2, &expso3},
+		&bo1,
+		[]*types.Trade{expt1, expt2, expt3},
+	)
 
 	expectedResponse := &types.EngineResponse{
-		"FULL",
-		common.Hash{},
-		&expbo1,
-		nil,
-		expectedMatches,
+		Status:  "ORDER_FILLED",
+		Order:   &bo1,
+		Matches: expectedMatches,
 	}
 
 	response, err := ob.buyOrder(&bo1)
@@ -277,17 +284,20 @@ func TestMultiMatchOrder2(t *testing.T) {
 	ob.buyOrder(&bo2)
 	ob.buyOrder(&bo3)
 
-	expt1, _ := types.NewUnsignedTrade1(&bo1, &so1, units.Ethers(1e8))
-	expt2, _ := types.NewUnsignedTrade1(&bo2, &so1, units.Ethers(1e8))
-	expt3, _ := types.NewUnsignedTrade1(&bo3, &so1, units.Ethers(1e8))
-	expectedMatches := types.NewMatches([]*types.Order{&expbo3, &expbo2, &expbo1}, []*types.Trade{&expt3, &expt2, &expt1})
+	expt1 := types.NewTrade(&bo1, &so1, units.Ethers(1e8), big.NewInt(1e3))
+	expt2 := types.NewTrade(&bo2, &so1, units.Ethers(1e8), big.NewInt(1e3))
+	expt3 := types.NewTrade(&bo3, &so1, units.Ethers(1e8), big.NewInt(1e3))
+
+	expectedMatches := types.NewMatches(
+		[]*types.Order{&expbo3, &expbo2, &expbo1},
+		&so1,
+		[]*types.Trade{expt3, expt2, expt1},
+	)
 
 	expectedResponse := &types.EngineResponse{
-		"FULL",
-		common.Hash{},
-		&expso1,
-		nil,
-		expectedMatches,
+		Status:  "ORDER_FILLED",
+		Order:   &so1,
+		Matches: expectedMatches,
 	}
 
 	res, err := ob.sellOrder(&so1)
@@ -300,7 +310,6 @@ func TestMultiMatchOrder2(t *testing.T) {
 
 func TestPartialMatchOrder1(t *testing.T) {
 	_, ob, _, _, _, _, _, _, factory1, factory2 := setupTest()
-	// defer e.redisConn.FlushAll()
 
 	so1, _ := factory1.NewSellOrder(1e3+1, 1e8)
 	so2, _ := factory1.NewSellOrder(1e3+2, 1e8)
@@ -324,10 +333,10 @@ func TestPartialMatchOrder1(t *testing.T) {
 	expbo1.FilledAmount = units.Ethers(4e8)
 	expbo1.Status = "FILLED"
 
-	expt1, _ := types.NewUnsignedTrade1(&so1, &bo1, units.Ethers(1e8))
-	expt2, _ := types.NewUnsignedTrade1(&so2, &bo1, units.Ethers(1e8))
-	expt3, _ := types.NewUnsignedTrade1(&so3, &bo1, units.Ethers(1e8))
-	expt4, _ := types.NewUnsignedTrade1(&so4, &bo1, units.Ethers(1e8))
+	expt1 := types.NewTrade(&so1, &bo1, units.Ethers(1e8), big.NewInt(1e3+5))
+	expt2 := types.NewTrade(&so2, &bo1, units.Ethers(1e8), big.NewInt(1e3+5))
+	expt3 := types.NewTrade(&so3, &bo1, units.Ethers(1e8), big.NewInt(1e3+5))
+	expt4 := types.NewTrade(&so4, &bo1, units.Ethers(1e8), big.NewInt(1e3+5))
 
 	ob.sellOrder(&so1)
 	ob.sellOrder(&so2)
@@ -339,14 +348,16 @@ func TestPartialMatchOrder1(t *testing.T) {
 		t.Errorf("Error when buying order")
 	}
 
-	expectedMatches := types.NewMatches([]*types.Order{&expso1, &expso2, &expso3, &expso4}, []*types.Trade{&expt1, &expt2, &expt3, &expt4})
+	expectedMatches := types.NewMatches(
+		[]*types.Order{&expso1, &expso2, &expso3, &expso4},
+		&bo1,
+		[]*types.Trade{expt1, expt2, expt3, expt4},
+	)
 
 	expectedResponse := &types.EngineResponse{
-		"FULL",
-		common.Hash{},
-		&expbo1,
-		nil,
-		expectedMatches,
+		Status:  "ORDER_FILLED",
+		Order:   &expbo1,
+		Matches: expectedMatches,
 	}
 
 	testutils.CompareEngineResponse(t, expectedResponse, res)
@@ -354,7 +365,6 @@ func TestPartialMatchOrder1(t *testing.T) {
 
 func TestPartialMatchOrder2(t *testing.T) {
 	_, ob, _, _, _, _, _, _, factory1, factory2 := setupTest()
-	// defer e.redisConn.FlushAll()
 
 	bo1, _ := factory1.NewBuyOrder(1e3+5, 1e8)
 	bo2, _ := factory1.NewBuyOrder(1e3+4, 1e8)
@@ -379,10 +389,10 @@ func TestPartialMatchOrder2(t *testing.T) {
 	expso1.FilledAmount = utils.Ethers(4e8)
 	expso1.Status = "FILLED"
 
-	expt1, _ := types.NewUnsignedTrade1(&bo1, &so1, utils.Ethers(1e8))
-	expt2, _ := types.NewUnsignedTrade1(&bo2, &so1, utils.Ethers(1e8))
-	expt3, _ := types.NewUnsignedTrade1(&bo3, &so1, utils.Ethers(1e8))
-	expt4, _ := types.NewUnsignedTrade1(&bo4, &so1, utils.Ethers(1e8))
+	expt1 := types.NewTrade(&bo1, &so1, utils.Ethers(1e8), big.NewInt(1e3+1))
+	expt2 := types.NewTrade(&bo2, &so1, utils.Ethers(1e8), big.NewInt(1e3+1))
+	expt3 := types.NewTrade(&bo3, &so1, utils.Ethers(1e8), big.NewInt(1e3+1))
+	expt4 := types.NewTrade(&bo4, &so1, utils.Ethers(1e8), big.NewInt(1e3+1))
 
 	ob.buyOrder(&bo1)
 	ob.buyOrder(&bo2)
@@ -394,17 +404,17 @@ func TestPartialMatchOrder2(t *testing.T) {
 		t.Errorf("Error when buying order")
 	}
 
-	expectedMatches := types.NewMatches([]*types.Order{&expbo1, &expbo2, &expbo3, &expbo4}, []*types.Trade{&expt1, &expt2, &expt3, &expt4})
+	expectedMatches := types.NewMatches(
+		[]*types.Order{&expbo1, &expbo2, &expbo3, &expbo4},
+		&so1,
+		[]*types.Trade{expt1, expt2, expt3, expt4},
+	)
 
 	expectedResponse := &types.EngineResponse{
-		"FULL",
-		common.Hash{},
-		&expso1,
-		nil,
-		expectedMatches,
+		Status:  "ORDER_FILLED",
+		Order:   &expso1,
+		Matches: expectedMatches,
 	}
-
-	utils.PrintJSON(res)
 
 	testutils.CompareEngineResponse(t, expectedResponse, res)
 }

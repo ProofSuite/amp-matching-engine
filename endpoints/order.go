@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/Proofsuite/amp-matching-engine/utils/httputils"
@@ -37,6 +38,7 @@ func ServeOrderResource(
 func (e *orderEndpoint) handleGetOrders(w http.ResponseWriter, r *http.Request) {
 	v := r.URL.Query()
 	addr := v.Get("address")
+	limit := v.Get("limit")
 
 	if addr == "" {
 		httputils.WriteError(w, http.StatusBadRequest, "address Parameter Missing")
@@ -48,12 +50,25 @@ func (e *orderEndpoint) handleGetOrders(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	var err error
+	var orders []*types.Order
 	address := common.HexToAddress(addr)
-	orders, err := e.orderService.GetByUserAddress(address)
+
+	if limit == "" {
+		orders, err = e.orderService.GetByUserAddress(address)
+	} else {
+		lim, _ := strconv.Atoi(limit)
+		orders, err = e.orderService.GetByUserAddress(address, lim)
+	}
+
 	if err != nil {
 		logger.Error(err)
 		httputils.WriteError(w, http.StatusInternalServerError, "")
 		return
+	}
+
+	if orders == nil {
+		httputils.WriteJSON(w, http.StatusOK, []types.Order{})
 	}
 
 	httputils.WriteJSON(w, http.StatusOK, orders)
@@ -62,6 +77,7 @@ func (e *orderEndpoint) handleGetOrders(w http.ResponseWriter, r *http.Request) 
 func (e *orderEndpoint) handleGetPositions(w http.ResponseWriter, r *http.Request) {
 	v := r.URL.Query()
 	addr := v.Get("address")
+	limit := v.Get("limit")
 
 	if addr == "" {
 		httputils.WriteError(w, http.StatusBadRequest, "address Parameter missing")
@@ -73,11 +89,20 @@ func (e *orderEndpoint) handleGetPositions(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	var err error
+	var orders []*types.Order
 	address := common.HexToAddress(addr)
-	orders, err := e.orderService.GetCurrentByUserAddress(address)
+
+	if limit == "" {
+		orders, err = e.orderService.GetCurrentByUserAddress(address)
+	} else {
+		lim, _ := strconv.Atoi(limit)
+		orders, err = e.orderService.GetCurrentByUserAddress(address, lim)
+	}
+
 	if err != nil {
 		logger.Error(err)
-		httputils.WriteError(w, http.StatusInternalServerError, "Internal Server Error")
+		httputils.WriteError(w, http.StatusInternalServerError, "")
 		return
 	}
 
@@ -92,6 +117,7 @@ func (e *orderEndpoint) handleGetPositions(w http.ResponseWriter, r *http.Reques
 func (e *orderEndpoint) handleGetOrderHistory(w http.ResponseWriter, r *http.Request) {
 	v := r.URL.Query()
 	addr := v.Get("address")
+	limit := v.Get("limit")
 
 	if addr == "" {
 		httputils.WriteError(w, http.StatusBadRequest, "address Parameter missing")
@@ -103,9 +129,19 @@ func (e *orderEndpoint) handleGetOrderHistory(w http.ResponseWriter, r *http.Req
 		return
 	}
 
+	var err error
+	var orders []*types.Order
 	address := common.HexToAddress(addr)
-	orders, err := e.orderService.GetHistoryByUserAddress(address)
+
+	if limit == "" {
+		orders, err = e.orderService.GetHistoryByUserAddress(address)
+	} else {
+		lim, _ := strconv.Atoi(limit)
+		orders, err = e.orderService.GetHistoryByUserAddress(address, lim)
+	}
+
 	if err != nil {
+		logger.Error(err)
 		httputils.WriteError(w, http.StatusInternalServerError, "Internal Server Error")
 		return
 	}

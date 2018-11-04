@@ -79,7 +79,7 @@ func NewClient(w *types.Wallet, s Server) *Client {
 	ng := rand.New(source)
 
 	return &Client{
-		connection:     ws.NewConnection(c),
+		connection:     ws.NewClient(c),
 		Wallet:         w,
 		Requests:       reqs,
 		Responses:      resps,
@@ -180,8 +180,6 @@ func (c *Client) handleOrderChannelMessagesIn(e types.WebsocketEvent) {
 		c.handleOrderError(e)
 	case "ORDER_PENDING":
 		c.handleOrderPending(e)
-	case "REQUEST_SIGNATURE":
-		c.handleSignatureRequested(e)
 	}
 }
 
@@ -259,54 +257,6 @@ func (c *Client) handleOrderCancelled(e types.WebsocketEvent) {
 	}
 
 	c.Logs <- l
-}
-
-// handleSignatureRequested handles incoming signature requested messages.
-// It follows up by signing given data and sending back a SUBMIT_SIGNATURES messages
-func (c *Client) handleSignatureRequested(e types.WebsocketEvent) {
-	data := &types.SignaturePayload{}
-	bytes, err := json.Marshal(e.Payload)
-	if err != nil {
-		logger.Error(err)
-	}
-
-	err = json.Unmarshal(bytes, data)
-	if err != nil {
-		logger.Error(err)
-	}
-
-	order := data.Order //initial order
-	remainingOrder := data.RemainingOrder
-	matches := data.Matches
-
-	for _, m := range *matches {
-		t := m.Trade
-		c.SetTradeNonce(t)
-
-		err := c.Wallet.SignTrade(t)
-		if err != nil {
-			logger.Error(err)
-		}
-	}
-
-	//sign and return the remaining part of the previous order.
-	if remainingOrder != nil {
-		c.SetNonce(remainingOrder)
-		err = c.Wallet.SignOrder(remainingOrder)
-		if err != nil {
-			logger.Error(err)
-		}
-	}
-
-	l := &ClientLogMessage{
-		MessageType: "REQUEST_SIGNATURE",
-		Orders:      []*types.Order{data.Order},
-		Matches:     matches,
-	}
-
-	c.Logs <- l
-	req := types.NewSubmitSignatureWebsocketMessage(e.Hash, order, remainingOrder, matches)
-	c.Requests <- req
 }
 
 // handleOrderPending handles incoming pending messages (the order has been matched/partially matched
@@ -403,8 +353,4 @@ func (c *Client) handleOHLCVUpdate(e types.WebsocketEvent) {
 
 func (c *Client) SetNonce(o *types.Order) {
 	o.Nonce = big.NewInt(int64(c.NonceGenerator.Intn(1e8)))
-}
-
-func (c *Client) SetTradeNonce(t *types.Trade) {
-	t.TradeNonce = big.NewInt(int64(c.NonceGenerator.Intn(1e8)))
 }

@@ -130,8 +130,8 @@ func (_m *TradeDao) GetByHash(h common.Hash) (*types.Trade, error) {
 	return r0, r1
 }
 
-// GetByOrderHash provides a mock function with given fields: h
-func (_m *TradeDao) GetByOrderHash(h common.Hash) ([]*types.Trade, error) {
+// GetByMakerOrderHash provides a mock function with given fields: h
+func (_m *TradeDao) GetByMakerOrderHash(h common.Hash) ([]*types.Trade, error) {
 	ret := _m.Called(h)
 
 	var r0 []*types.Trade
@@ -199,6 +199,29 @@ func (_m *TradeDao) GetByPairName(name string) ([]*types.Trade, error) {
 	return r0, r1
 }
 
+// GetByTakerOrderHash provides a mock function with given fields: h
+func (_m *TradeDao) GetByTakerOrderHash(h common.Hash) ([]*types.Trade, error) {
+	ret := _m.Called(h)
+
+	var r0 []*types.Trade
+	if rf, ok := ret.Get(0).(func(common.Hash) []*types.Trade); ok {
+		r0 = rf(h)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*types.Trade)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(common.Hash) error); ok {
+		r1 = rf(h)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetByUserAddress provides a mock function with given fields: a
 func (_m *TradeDao) GetByUserAddress(a common.Address) ([]*types.Trade, error) {
 	ret := _m.Called(a)
@@ -245,8 +268,8 @@ func (_m *TradeDao) GetNTradesByPairAddress(bt common.Address, qt common.Address
 	return r0, r1
 }
 
-// GetSortedTradesByDate provides a mock function with given fields: bt, qt, n
-func (_m *TradeDao) GetSortedTradesByDate(bt common.Address, qt common.Address, n int) ([]*types.Trade, error) {
+// GetSortedTrades provides a mock function with given fields: bt, qt, n
+func (_m *TradeDao) GetSortedTrades(bt common.Address, qt common.Address, n int) ([]*types.Trade, error) {
 	ret := _m.Called(bt, qt, n)
 
 	var r0 []*types.Trade
@@ -331,6 +354,36 @@ func (_m *TradeDao) UpdateTradeStatus(h common.Hash, status string) error {
 	}
 
 	return r0
+}
+
+// UpdateTradeStatuses provides a mock function with given fields: status, hashes
+func (_m *TradeDao) UpdateTradeStatuses(status string, hashes ...common.Hash) ([]*types.Trade, error) {
+	_va := make([]interface{}, len(hashes))
+	for _i := range hashes {
+		_va[_i] = hashes[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, status)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	var r0 []*types.Trade
+	if rf, ok := ret.Get(0).(func(string, ...common.Hash) []*types.Trade); ok {
+		r0 = rf(status, hashes...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*types.Trade)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(string, ...common.Hash) error); ok {
+		r1 = rf(status, hashes...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // UpdateTradeStatusesByOrderHashes provides a mock function with given fields: status, hashes

@@ -205,7 +205,7 @@ func (e *Engine) handleInvalidateMakerOrders(bytes []byte) error {
 
 func (e *Engine) handleInvalidateTakerOrders(bytes []byte) error {
 	m := types.Matches{}
-	err := json.Unmarshal(bytes, m)
+	err := json.Unmarshal(bytes, &m)
 	if err != nil {
 		logger.Error(err)
 		return err

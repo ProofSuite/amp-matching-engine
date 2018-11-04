@@ -1,95 +1,115 @@
 package types
 
 import (
+	"errors"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto/sha3"
 )
 
-type Match struct {
-	Order *Order `json:"order"`
-	Trade *Trade `json:"trade"`
+type Matches struct {
+	MakerOrders []*Order `json:"makerOrders"`
+	TakerOrder  *Order   `json:"takerOrder"`
+	Trades      []*Trade `json:"trades"`
 }
 
-type Matches []*Match
-
-func NewMatches(orders []*Order, trades []*Trade) *Matches {
-	m := Matches{}
-	for i, _ := range orders {
-		m = append(m, &Match{orders[i], trades[i]})
+func NewMatches(makerOrders []*Order, takerOrder *Order, trades []*Trade) *Matches {
+	return &Matches{
+		MakerOrders: makerOrders,
+		TakerOrder:  takerOrder,
+		Trades:      trades,
 	}
-
-	return &m
 }
 
-func (m Matches) Maker() common.Address {
-	return m[0].Trade.Maker
+func (m *Matches) NthMatch(i int) *Matches {
+	return NewMatches(
+		[]*Order{m.MakerOrders[i]},
+		m.TakerOrder,
+		[]*Trade{m.Trades[i]},
+	)
 }
 
-func (m Matches) Taker() common.Address {
-	return m[0].Trade.Taker
+func (m *Matches) Taker() common.Address {
+	return m.TakerOrder.UserAddress
 }
 
-func (m Matches) Trades() []*Trade {
-	trades := []*Trade{}
-	for _, match := range m {
-		trades = append(trades, match.Trade)
-	}
-
-	return trades
+func (m *Matches) TakerOrderHash() common.Hash {
+	return m.TakerOrder.Hash
 }
 
-func (m Matches) PairCode() (string, error) {
-	return m[0].Order.PairCode()
+func (m *Matches) PairCode() (string, error) {
+	return m.TakerOrder.PairCode()
 }
 
-func (m Matches) Orders() []*Order {
-	orders := []*Order{}
-	for _, match := range m {
-		orders = append(orders, match.Order)
-	}
-
-	return orders
-}
-
-func (m Matches) TradeAmounts() []*big.Int {
+func (m *Matches) TradeAmounts() []*big.Int {
 	amounts := []*big.Int{}
-	for _, match := range m {
-		amounts = append(amounts, match.Trade.Amount)
+	for _, t := range m.Trades {
+		amounts = append(amounts, t.Amount)
 	}
 
 	return amounts
 }
 
-func (m Matches) Validate() error {
-	trades := m.Trades()
-	orders := m.Orders()
+func (m *Matches) Length() int {
+	return len(m.Trades)
+}
 
-	for _, t := range trades {
-		err := t.ValidateComplete()
+func (m *Matches) AppendMatch(mo *Order, t *Trade) {
+	if m.MakerOrders == nil {
+		m.MakerOrders = []*Order{}
+	}
+
+	if m.Trades == nil {
+		m.Trades = []*Trade{}
+	}
+
+	m.MakerOrders = append(m.MakerOrders, mo)
+	m.Trades = append(m.Trades, t)
+}
+
+func (m *Matches) Validate() error {
+	if len(m.Trades) == 0 {
+		return errors.New("Matches should contain at least one trade")
+	}
+
+	if len(m.MakerOrders) == 0 {
+		return errors.New("Matches should contain at least one makerOrder")
+	}
+
+	if m.TakerOrder == nil {
+		return errors.New("takerOrder is required")
+	}
+
+	for _, t := range m.Trades {
+		err := t.Validate()
 		if err != nil {
 			logger.Error(err)
 			return err
 		}
 	}
 
-	for _, o := range orders {
-		err := o.ValidateComplete()
+	for _, mo := range m.MakerOrders {
+		err := mo.Validate()
 		if err != nil {
 			logger.Error(err)
 			return err
 		}
+	}
+
+	err := m.TakerOrder.Validate()
+	if err != nil {
+		logger.Error(err)
+		return err
 	}
 
 	return nil
 }
 
-func (m Matches) HashID() common.Hash {
+func (m *Matches) HashID() common.Hash {
 	sha := sha3.NewKeccak256()
-	for _, match := range m {
-		sha.Write(match.Order.Hash.Bytes())
-		sha.Write(match.Trade.Hash.Bytes())
+	for _, t := range m.Trades {
+		sha.Write(t.Hash.Bytes())
 	}
 
 	return common.BytesToHash(sha.Sum(nil))
@@ -98,43 +118,39 @@ func (m Matches) HashID() common.Hash {
 type EngineResponse struct {
 	Status            string    `json:"fillStatus,omitempty"`
 	Order             *Order    `json:"order,omitempty"`
-	RemainingOrder    *Order    `json:"remainingOrder,omitempty"`
 	Matches           *Matches  `json:"matches,omitempty"`
 	RecoveredOrders   *[]*Order `json:"recoveredOrders,omitempty"`
 	InvalidatedOrders *[]*Order `json:"invalidatedOrders,omitempty"`
 	CancelledTrades   *[]*Trade `json:"cancelledTrades,omitempty"`
 }
 
-func (r *EngineResponse) AppendMatch(m *Match) {
+func (r *EngineResponse) AppendMatch(mo *Order, t *Trade) {
 	if r.Matches == nil {
-		r.Matches = &Matches{m}
-		return
+		r.Matches = &Matches{}
 	}
 
-	matches := append(*r.Matches, m)
-	r.Matches = &matches
+	r.Matches.MakerOrders = append(r.Matches.MakerOrders, mo)
+	r.Matches.Trades = append(r.Matches.Trades, t)
 }
 
-func (r *EngineResponse) AppendMatches(m []*Match) {
+func (r *EngineResponse) AppendMatches(mo []*Order, t []*Trade) {
 	if r.Matches == nil {
-		matches := Matches(m)
-		r.Matches = &matches
-		return
+		r.Matches = &Matches{}
 	}
 
-	matches := append(*r.Matches, m...)
-	r.Matches = &matches
+	r.Matches.MakerOrders = append(r.Matches.MakerOrders, mo...)
+	r.Matches.Trades = append(r.Matches.Trades, t...)
+
 }
 
 func (r *EngineResponse) HashID() common.Hash {
-	if r.Status == "NOMATCH" {
+	if r.Status == "ORDER_ADDED" {
 		return r.Order.Hash
 	}
 
 	sha := sha3.NewKeccak256()
-	for _, m := range *r.Matches {
-		sha.Write(m.Order.Hash.Bytes())
-		sha.Write(m.Trade.Hash.Bytes())
+	for _, t := range r.Matches.Trades {
+		sha.Write(t.Hash.Bytes())
 	}
 
 	return common.BytesToHash(sha.Sum(nil))

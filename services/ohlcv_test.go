@@ -86,18 +86,18 @@ func TestOHLCV(t *testing.T) {
 	}
 
 	sampleTrade := types.Trade{
-		Taker:      common.HexToAddress("0xefD7eB287CeeFCE8256Dd46e25F398acEA7C4b63"),
-		Maker:      common.HexToAddress("0xefD7eB287CeeFCE8256Dd46e25F398acEA7C4b58"),
-		BaseToken:  pair.BaseToken,
-		QuoteToken: pair.QuoteToken,
-		OrderHash:  common.HexToHash("0x4ac68946450e5a6273b92d81aa58f288d7b5515942456b89fb5c7e982efead7c"),
-		Hash:       common.HexToHash("0x4ac68946450e5a6273b92d81aa58f288d7b5515942456b89fb5c7e982efeas3f"),
-		PairName:   pair.Name,
-		TradeNonce: big.NewInt(0),
-		Signature:  &types.Signature{},
-		Side:       "BUY",
-		PricePoint: big.NewInt(9987),
-		Amount:     big.NewInt(125772),
+		Taker:          common.HexToAddress("0xefD7eB287CeeFCE8256Dd46e25F398acEA7C4b63"),
+		Maker:          common.HexToAddress("0xefD7eB287CeeFCE8256Dd46e25F398acEA7C4b58"),
+		BaseToken:      pair.BaseToken,
+		QuoteToken:     pair.QuoteToken,
+		MakerOrderHash: common.HexToHash("0x4ac68946450e5a6273b92d81aa58f288d7b5515942456b89fb5c7e982efead7c"),
+		TakerOrderHash: common.HexToHash("0x4ac68946450e5a6273b92d81aa58f288d7b5515942456b89fb5c7e982efead7c"),
+		Hash:           common.HexToHash("0x4ac68946450e5a6273b92d81aa58f288d7b5515942456b89fb5c7e982efeas3f"),
+		PairName:       pair.Name,
+		Signature:      &types.Signature{},
+		Side:           "BUY",
+		PricePoint:     big.NewInt(9987),
+		Amount:         big.NewInt(125772),
 	}
 	app.Config.DBName = "proofdex"
 	tradeDao := daos.NewTradeDao()

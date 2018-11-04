@@ -73,29 +73,6 @@ func (_m *PairDao) GetAll() ([]types.Pair, error) {
 	return r0, r1
 }
 
-// GetByBuySellTokenAddress provides a mock function with given fields: buyToken, sellToken
-func (_m *PairDao) GetByBuySellTokenAddress(buyToken common.Address, sellToken common.Address) (*types.Pair, error) {
-	ret := _m.Called(buyToken, sellToken)
-
-	var r0 *types.Pair
-	if rf, ok := ret.Get(0).(func(common.Address, common.Address) *types.Pair); ok {
-		r0 = rf(buyToken, sellToken)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*types.Pair)
-		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(common.Address, common.Address) error); ok {
-		r1 = rf(buyToken, sellToken)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
 // GetByID provides a mock function with given fields: id
 func (_m *PairDao) GetByID(id bson.ObjectId) (*types.Pair, error) {
 	ret := _m.Called(id)

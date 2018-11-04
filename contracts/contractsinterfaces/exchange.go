@@ -706,10 +706,10 @@ func (_ERC20 *ERC20Filterer) WatchTransfer(opts *bind.WatchOpts, sink chan<- *ER
 }
 
 // ExchangeABI is the input ABI used to generate the binding from.
-const ExchangeABI = "[{\"constant\":false,\"inputs\":[{\"name\":\"orderValues\",\"type\":\"uint256[8][]\"},{\"name\":\"orderAddresses\",\"type\":\"address[4][]\"},{\"name\":\"v\",\"type\":\"uint8[2][]\"},{\"name\":\"rs\",\"type\":\"bytes32[4][]\"}],\"name\":\"executeBatchTrades\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"setOwner\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"address\"}],\"name\":\"operators\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"numerator\",\"type\":\"uint256\"},{\"name\":\"denominator\",\"type\":\"uint256\"},{\"name\":\"target\",\"type\":\"uint256\"}],\"name\":\"isRoundingError\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"pure\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"orderHash\",\"type\":\"bytes32[]\"},{\"name\":\"amount\",\"type\":\"uint256[]\"},{\"name\":\"tradeNonce\",\"type\":\"uint256[]\"},{\"name\":\"taker\",\"type\":\"address[]\"},{\"name\":\"v\",\"type\":\"uint8[]\"},{\"name\":\"r\",\"type\":\"bytes32[]\"},{\"name\":\"s\",\"type\":\"bytes32[]\"}],\"name\":\"batchCancelTrades\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"orderValues\",\"type\":\"uint256[8]\"},{\"name\":\"orderAddresses\",\"type\":\"address[4]\"},{\"name\":\"v\",\"type\":\"uint8[2]\"},{\"name\":\"rs\",\"type\":\"bytes32[4]\"}],\"name\":\"executeTrade\",\"outputs\":[{\"name\":\"\",\"type\":\"bytes32\"},{\"name\":\"\",\"type\":\"bytes32\"},{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"bytes32\"}],\"name\":\"filled\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"orderHash\",\"type\":\"bytes32\"},{\"name\":\"amount\",\"type\":\"uint256\"},{\"name\":\"tradeNonce\",\"type\":\"uint256\"},{\"name\":\"taker\",\"type\":\"address\"},{\"name\":\"v\",\"type\":\"uint8\"},{\"name\":\"r\",\"type\":\"bytes32\"},{\"name\":\"s\",\"type\":\"bytes32\"}],\"name\":\"cancelTrade\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_feeAccount\",\"type\":\"address\"}],\"name\":\"setFeeAccount\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"wethToken\",\"outputs\":[{\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_operator\",\"type\":\"address\"},{\"name\":\"_isOperator\",\"type\":\"bool\"}],\"name\":\"setOperator\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"feeAccount\",\"outputs\":[{\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"signer\",\"type\":\"address\"},{\"name\":\"hash\",\"type\":\"bytes32\"},{\"name\":\"v\",\"type\":\"uint8\"},{\"name\":\"r\",\"type\":\"bytes32\"},{\"name\":\"s\",\"type\":\"bytes32\"}],\"name\":\"isValidSignature\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"pure\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_wethToken\",\"type\":\"address\"}],\"name\":\"setWethToken\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"owner\",\"outputs\":[{\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"numerator\",\"type\":\"uint256\"},{\"name\":\"denominator\",\"type\":\"uint256\"},{\"name\":\"target\",\"type\":\"uint256\"}],\"name\":\"getPartialAmount\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"pure\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"bytes32\"}],\"name\":\"traded\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"orderValues\",\"type\":\"uint256[6]\"},{\"name\":\"orderAddresses\",\"type\":\"address[3]\"},{\"name\":\"v\",\"type\":\"uint8\"},{\"name\":\"r\",\"type\":\"bytes32\"},{\"name\":\"s\",\"type\":\"bytes32\"}],\"name\":\"cancelOrder\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"orderValues\",\"type\":\"uint256[6][]\"},{\"name\":\"orderAddresses\",\"type\":\"address[3][]\"},{\"name\":\"v\",\"type\":\"uint8[]\"},{\"name\":\"r\",\"type\":\"bytes32[]\"},{\"name\":\"s\",\"type\":\"bytes32[]\"}],\"name\":\"batchCancelOrders\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"VERSION\",\"outputs\":[{\"name\":\"\",\"type\":\"string\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"name\":\"_wethToken\",\"type\":\"address\"},{\"name\":\"_feeAccount\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"name\":\"oldWethToken\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"newWethToken\",\"type\":\"address\"}],\"name\":\"LogWethTokenUpdate\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"name\":\"oldFeeAccount\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"newFeeAccount\",\"type\":\"address\"}],\"name\":\"LogFeeAccountUpdate\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"name\":\"operator\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"isOperator\",\"type\":\"bool\"}],\"name\":\"LogOperatorUpdate\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"taker\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"tokenSell\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"tokenBuy\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"orderHashes\",\"type\":\"bytes32[]\"},{\"indexed\":false,\"name\":\"tradeHashes\",\"type\":\"bytes32[]\"},{\"indexed\":false,\"name\":\"filledAmounts\",\"type\":\"uint256[]\"},{\"indexed\":true,\"name\":\"tokenPairHash\",\"type\":\"bytes32\"}],\"name\":\"LogBatchTrades\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"maker\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"taker\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"tokenSell\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"tokenBuy\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"filledAmountSell\",\"type\":\"uint256\"},{\"indexed\":false,\"name\":\"filledAmountBuy\",\"type\":\"uint256\"},{\"indexed\":false,\"name\":\"paidFeeMake\",\"type\":\"uint256\"},{\"indexed\":false,\"name\":\"paidFeeTake\",\"type\":\"uint256\"},{\"indexed\":false,\"name\":\"orderHash\",\"type\":\"bytes32\"},{\"indexed\":false,\"name\":\"tradeHash\",\"type\":\"bytes32\"},{\"indexed\":true,\"name\":\"tokenPairHash\",\"type\":\"bytes32\"}],\"name\":\"LogTrade\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"name\":\"errorId\",\"type\":\"uint8\"},{\"indexed\":false,\"name\":\"orderHash\",\"type\":\"bytes32\"},{\"indexed\":false,\"name\":\"tradeHash\",\"type\":\"bytes32\"}],\"name\":\"LogError\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"name\":\"orderHash\",\"type\":\"bytes32\"},{\"indexed\":false,\"name\":\"tokenBuy\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"amountBuy\",\"type\":\"uint256\"},{\"indexed\":false,\"name\":\"tokenSell\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"amountSell\",\"type\":\"uint256\"},{\"indexed\":false,\"name\":\"expires\",\"type\":\"uint256\"},{\"indexed\":false,\"name\":\"nonce\",\"type\":\"uint256\"},{\"indexed\":true,\"name\":\"maker\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"tokenPairHash\",\"type\":\"bytes32\"}],\"name\":\"LogCancelOrder\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"name\":\"orderHash\",\"type\":\"bytes32\"},{\"indexed\":false,\"name\":\"amount\",\"type\":\"uint256\"},{\"indexed\":false,\"name\":\"tradeNonce\",\"type\":\"uint256\"},{\"indexed\":true,\"name\":\"taker\",\"type\":\"address\"}],\"name\":\"LogCancelTrade\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"previousOwner\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"SetOwner\",\"type\":\"event\"}]"
+const ExchangeABI = "[{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"address\"}],\"name\":\"baseTokens\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"orderValues\",\"type\":\"uint256[10]\"},{\"name\":\"orderAddresses\",\"type\":\"address[4]\"},{\"name\":\"amount\",\"type\":\"uint256\"},{\"name\":\"v\",\"type\":\"uint8[2]\"},{\"name\":\"rs\",\"type\":\"bytes32[4]\"}],\"name\":\"executeSingleTrade\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"setOwner\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"address\"}],\"name\":\"operators\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"numerator\",\"type\":\"uint256\"},{\"name\":\"denominator\",\"type\":\"uint256\"},{\"name\":\"target\",\"type\":\"uint256\"}],\"name\":\"isRoundingError\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"pure\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"orderValues\",\"type\":\"uint256[10]\"},{\"name\":\"orderAddresses\",\"type\":\"address[4]\"},{\"name\":\"v\",\"type\":\"uint8[2]\"},{\"name\":\"rs\",\"type\":\"bytes32[4]\"}],\"name\":\"validateSignatures\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"bytes32\"}],\"name\":\"filled\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_baseToken\",\"type\":\"address\"},{\"name\":\"_quoteToken\",\"type\":\"address\"},{\"name\":\"_pricepointMultiplier\",\"type\":\"uint256\"}],\"name\":\"registerPair\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"address\"}],\"name\":\"quoteTokens\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_feeAccount\",\"type\":\"address\"}],\"name\":\"setFeeAccount\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"wethToken\",\"outputs\":[{\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"orderValues\",\"type\":\"uint256[10][]\"},{\"name\":\"orderAddresses\",\"type\":\"address[4][]\"},{\"name\":\"amounts\",\"type\":\"uint256[]\"},{\"name\":\"v\",\"type\":\"uint8[2][]\"},{\"name\":\"rs\",\"type\":\"bytes32[4][]\"}],\"name\":\"executeBatchTrades\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_operator\",\"type\":\"address\"},{\"name\":\"_isOperator\",\"type\":\"bool\"}],\"name\":\"setOperator\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"feeAccount\",\"outputs\":[{\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"bytes32\"}],\"name\":\"pairs\",\"outputs\":[{\"name\":\"pairID\",\"type\":\"bytes32\"},{\"name\":\"baseToken\",\"type\":\"address\"},{\"name\":\"quoteToken\",\"type\":\"address\"},{\"name\":\"pricepointMultiplier\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_token\",\"type\":\"address\"}],\"name\":\"registerBaseToken\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"signer\",\"type\":\"address\"},{\"name\":\"hash\",\"type\":\"bytes32\"},{\"name\":\"v\",\"type\":\"uint8\"},{\"name\":\"r\",\"type\":\"bytes32\"},{\"name\":\"s\",\"type\":\"bytes32\"}],\"name\":\"isValidSignature\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"pure\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_token\",\"type\":\"address\"}],\"name\":\"deleteQuoteToken\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_wethToken\",\"type\":\"address\"}],\"name\":\"setWethToken\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"owner\",\"outputs\":[{\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"orderAddresses\",\"type\":\"address[4]\"},{\"name\":\"makerOrderHashes\",\"type\":\"bytes32[]\"},{\"name\":\"takerOrderHashes\",\"type\":\"bytes32[]\"}],\"name\":\"emitLog\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"numerator\",\"type\":\"uint256\"},{\"name\":\"denominator\",\"type\":\"uint256\"},{\"name\":\"target\",\"type\":\"uint256\"}],\"name\":\"getPartialAmount\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"pure\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"orderValues\",\"type\":\"uint256[10]\"},{\"name\":\"orderAddresses\",\"type\":\"address[4]\"},{\"name\":\"amount\",\"type\":\"uint256\"},{\"name\":\"pricepointMultiplier\",\"type\":\"uint256\"}],\"name\":\"executeTrade\",\"outputs\":[{\"name\":\"\",\"type\":\"bytes32\"},{\"name\":\"\",\"type\":\"bytes32\"},{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_token\",\"type\":\"address\"}],\"name\":\"registerQuoteToken\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"bytes32\"}],\"name\":\"traded\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_token\",\"type\":\"address\"}],\"name\":\"deleteBaseToken\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"orderAddresses\",\"type\":\"address[4]\"}],\"name\":\"validatePair\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"VERSION\",\"outputs\":[{\"name\":\"\",\"type\":\"string\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"name\":\"_wethToken\",\"type\":\"address\"},{\"name\":\"_feeAccount\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"name\":\"oldWethToken\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"newWethToken\",\"type\":\"address\"}],\"name\":\"LogWethTokenUpdate\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"name\":\"oldFeeAccount\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"newFeeAccount\",\"type\":\"address\"}],\"name\":\"LogFeeAccountUpdate\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"name\":\"operator\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"isOperator\",\"type\":\"bool\"}],\"name\":\"LogOperatorUpdate\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"name\":\"makerOrderHashes\",\"type\":\"bytes32[]\"},{\"indexed\":false,\"name\":\"takerOrderHashes\",\"type\":\"bytes32[]\"},{\"indexed\":true,\"name\":\"tokenPairHash\",\"type\":\"bytes32\"}],\"name\":\"LogBatchTrades\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"maker\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"taker\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"tokenSell\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"tokenBuy\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"filledAmountSell\",\"type\":\"uint256\"},{\"indexed\":false,\"name\":\"filledAmountBuy\",\"type\":\"uint256\"},{\"indexed\":false,\"name\":\"paidFeeMake\",\"type\":\"uint256\"},{\"indexed\":false,\"name\":\"paidFeeTake\",\"type\":\"uint256\"},{\"indexed\":false,\"name\":\"orderHash\",\"type\":\"bytes32\"},{\"indexed\":false,\"name\":\"tradeHash\",\"type\":\"bytes32\"},{\"indexed\":true,\"name\":\"tokenPairHash\",\"type\":\"bytes32\"}],\"name\":\"LogTrade\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"name\":\"errorId\",\"type\":\"uint8\"},{\"indexed\":false,\"name\":\"orderHash\",\"type\":\"bytes32\"},{\"indexed\":false,\"name\":\"tradeHash\",\"type\":\"bytes32\"}],\"name\":\"LogError\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"name\":\"orderHash\",\"type\":\"bytes32\"},{\"indexed\":false,\"name\":\"tokenBuy\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"amountBuy\",\"type\":\"uint256\"},{\"indexed\":false,\"name\":\"tokenSell\",\"type\":\"address\"},{\"indexed\":false,\"name\":\"amountSell\",\"type\":\"uint256\"},{\"indexed\":false,\"name\":\"expires\",\"type\":\"uint256\"},{\"indexed\":false,\"name\":\"nonce\",\"type\":\"uint256\"},{\"indexed\":true,\"name\":\"maker\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"tokenPairHash\",\"type\":\"bytes32\"}],\"name\":\"LogCancelOrder\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"name\":\"orderHash\",\"type\":\"bytes32\"},{\"indexed\":false,\"name\":\"amount\",\"type\":\"uint256\"},{\"indexed\":false,\"name\":\"tradeNonce\",\"type\":\"uint256\"},{\"indexed\":true,\"name\":\"taker\",\"type\":\"address\"}],\"name\":\"LogCancelTrade\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"previousOwner\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"SetOwner\",\"type\":\"event\"}]"
 
 // ExchangeBin is the compiled bytecode used for deploying new contracts.
-const ExchangeBin = `0x608060405234801561001057600080fd5b5060405160408061218183398101604052805160209091015160008054600160a060020a0319908116331790915560018054600160a060020a039485169083161790556002805493909216921691909117905561210f806100726000396000f3006080604052600436106101115763ffffffff7c01000000000000000000000000000000000000000000000000000000006000350416630877f6c1811461011657806313af40351461030057806313e7c9d81461032357806314df96ee14610344578063154e775a146103625780632207148d1461050d578063288cdc91146105df578063468ddf2e146106095780634b023cf81461063f5780634b57b0be14610660578063558a72971461069157806365e17c9d146106b75780638163681e146106cc57806386e09c08146106fc5780638da5cb5b1461071d57806398024a8b14610732578063d581332314610750578063d9a72b5214610768578063e51ad32d146107df578063ffa1ad741461098b575b600080fd5b34801561012257600080fd5b506040805160048035808201356020818102850181019095528084526102ec943694602493909290840191819060009085015b8282101561019257604080516101008181019092529080840287019060089083908390808284375050509183525050600190910190602001610155565b50506040805186358801803560208181028401810190945280835296999897830196919550820193509150819060009085015b828210156102015760408051608081810190925290808402870190600490839083908082843750505091835250506001909101906020016101c5565b50506040805186358801803560208181028401810190945280835296999897830196919550820193509150819060009085015b8282101561026d576040805180820182529080840287019060029083908390808284375050509183525050600190910190602001610234565b50506040805186358801803560208181028401810190945280835296999897830196919550820193509150819060009085015b828210156102dc5760408051608081810190925290808402870190600490839083908082843750505091835250506001909101906020016102a0565b50939650610a1595505050505050565b604080519115158252519081900360200190f35b34801561030c57600080fd5b50610321600160a060020a0360043516610e7c565b005b34801561032f57600080fd5b506102ec600160a060020a0360043516610efb565b34801561035057600080fd5b506102ec600435602435604435610f10565b34801561036e57600080fd5b506040805160206004803580820135838102808601850190965280855261032195369593946024949385019291829185019084908082843750506040805187358901803560208181028481018201909552818452989b9a998901989297509082019550935083925085019084908082843750506040805187358901803560208181028481018201909552818452989b9a998901989297509082019550935083925085019084908082843750506040805187358901803560208181028481018201909552818452989b9a998901989297509082019550935083925085019084908082843750506040805187358901803560208181028481018201909552818452989b9a998901989297509082019550935083925085019084908082843750506040805187358901803560208181028481018201909552818452989b9a998901989297509082019550935083925085019084908082843750506040805187358901803560208181028481018201909552818452989b9a998901989297509082019550935083925085019084908082843750949750610f799650505050505050565b34801561051957600080fd5b50604080516101008181019092526105c19136916004916101049190839060089083908390808284375050604080516080818101909252949796958181019594509250600491508390839080828437505060408051808201825294979695818101959450925060029150839083908082843750506040805160808181019092529497969581810195945092506004915083908390808284375093965061104895505050505050565b60408051938452602084019290925282820152519081900360600190f35b3480156105eb57600080fd5b506105f7600435611680565b60408051918252519081900360200190f35b34801561061557600080fd5b506102ec600435602435604435600160a060020a036064351660ff6084351660a43560c435611692565b34801561064b57600080fd5b506102ec600160a060020a036004351661178f565b34801561066c57600080fd5b50610675611836565b60408051600160a060020a039092168252519081900360200190f35b34801561069d57600080fd5b506102ec600160a060020a03600435166024351515611845565b3480156106c357600080fd5b506106756118e6565b3480156106d857600080fd5b506102ec600160a060020a036004351660243560ff604435166064356084356118f5565b34801561070857600080fd5b506102ec600160a060020a0360043516611a1d565b34801561072957600080fd5b50610675611aad565b34801561073e57600080fd5b506105f7600435602435604435611abc565b34801561075c57600080fd5b506102ec600435611ada565b34801561077457600080fd5b506040805160c08181019092526102ec91369160049160c49190839060069083908390808284375050604080516060818101909252949796958181019594509250600391508390839080828437509396505050823560ff169350505060208101359060400135611aef565b3480156107eb57600080fd5b50604080516004803580820135602081810285018101909552808452610321943694602493909290840191819060009085015b8282101561085a576040805160c0818101909252908084028701906006908390839080828437505050918352505060019091019060200161081e565b50506040805186358801803560208181028401810190945280835296999897830196919550820193509150819060009085015b828210156108c957604080516060818101909252908084028701906003908390839080828437505050918352505060019091019060200161088d565b50505050509192919290803590602001908201803590602001908080602002602001604051908101604052809392919081815260200183836020028082843750506040805187358901803560208181028481018201909552818452989b9a998901989297509082019550935083925085019084908082843750506040805187358901803560208181028481018201909552818452989b9a998901989297509082019550935083925085019084908082843750949750611d3f9650505050505050565b34801561099757600080fd5b506109a0611ddc565b6040805160208082528351818301528351919283929083019185019080838360005b838110156109da5781810151838201526020016109c2565b50505050905090810190601f168015610a075780820380516001836020036101000a031916815260200191505b509250505060405180910390f35b60008054606090819081908490819081908190600160a060020a0316331480610a4d57503360009081526003602052604090205460ff165b1515610a5857600080fd5b60018b5103604051908082528060200260200182016040528015610a86578160200160208202803883390190505b50965060018b5103604051908082528060200260200182016040528015610ab7578160200160208202803883390190505b50955060018b5103604051908082528060200260200182016040528015610ae8578160200160208202803883390190505b509450600093505b8a51841015610bd157610b618c85815181101515610b0a57fe5b906020019060200201518c86815181101515610b2257fe5b906020019060200201518c87815181101515610b3a57fe5b906020019060200201518c88815181101515610b5257fe5b90602001906020020151611048565b9250925092508060001415610b795760009750610e6d565b828785815181101515610b8857fe5b6020908102909101015285518290879086908110610ba257fe5b6020908102909101015284518190869086908110610bbc57fe5b60209081029091010152600190930192610af0565b8a6000815181101515610be057fe5b60209081029190910181015101518b518c906000908110610bfd57fe5b60209081029091010151600260200201516040516020018083600160a060020a0316600160a060020a03166c0100000000000000000000000002815260140182600160a060020a0316600160a060020a03166c01000000000000000000000000028152601401925050506040516020818303038152906040526040518082805190602001908083835b60208310610ca55780518252601f199092019160209182019101610c86565b5181516020939093036101000a600019018019909116921691909117905260405192018290039091208e519093508e9250600091508110610ce257fe5b6020908102909101015160026020020151600160a060020a03167f94bbd7e15e68655b645dc3781ae12285dee432ad5c825161d78d6f69c20c19358d6000815181101515610d2c57fe5b60209081029190910181015101518e518f906000908110610d4957fe5b60209081029091010151600060200201518b8b8b6040518086600160a060020a0316600160a060020a0316815260200185600160a060020a0316600160a060020a03168152602001806020018060200180602001848103845287818151815260200191508051906020019060200280838360005b83811015610dd5578181015183820152602001610dbd565b50505050905001848103835286818151815260200191508051906020019060200280838360005b83811015610e14578181015183820152602001610dfc565b50505050905001848103825285818151815260200191508051906020019060200280838360005b83811015610e53578181015183820152602001610e3b565b505050509050019850505050505050505060405180910390a35b50505050505050949350505050565b600054600160a060020a03163314610e9357600080fd5b60008054604051600160a060020a03808516939216917fcbf985117192c8f614a58aaf97226bb80a754772f5f6edf06f87c675f2e6c66391a36000805473ffffffffffffffffffffffffffffffffffffffff1916600160a060020a0392909216919091179055565b60036020526000908152604090205460ff1681565b600080600084801515610f1f57fe5b8685099150811515610f345760009250610f70565b610f66610f47878663ffffffff611e1316565b610f5a84620f424063ffffffff611e1316565b9063ffffffff611e3e16565b90506103e8811192505b50509392505050565b60005b875181101561103e576110358882815181101515610f9657fe5b906020019060200201518883815181101515610fae57fe5b906020019060200201518884815181101515610fc657fe5b906020019060200201518885815181101515610fde57fe5b906020019060200201518886815181101515610ff657fe5b90602001906020020151888781518110151561100e57fe5b90602001906020020151888881518110151561102657fe5b90602001906020020151611692565b50600101610f7c565b5050505050505050565b6000806000611055612014565b600061105f61207c565b60008054819081908190600160a060020a031633148061108e57503360009081526003602052604090205460ff165b151561109957600080fd5b604080516101208101909152808f6000602090810291909101518252018f6001602090810291909101518252018f6002602090810291909101518252018f6003602090810291909101518252018f6004602090810291909101518252018f6005602090810291909101518252018e600060209081029190910151600160a060020a03168252018e600160209081029190910151600160a060020a03168252018e60026020020151600160a060020a03169052965061115687611e55565b6040805160808101909152818152909650602081018f6006602090810291909101518252018f6007602090810291909101518252018e60036020020151600160a060020a0316905294506111a985611f64565b6101008801518d518d519296506111cb928991908f60015b60200201516118f5565b1515611217576000805160206120a483398151915260015b6040805160ff909216825260208201899052818101879052519081900360600190a18584600080905099509950995061166f565b606085015160208d015160408d0151611235929187918f60036111c1565b1515611251576000805160206120a483398151915260026111e3565b4387604001511015611273576000805160206120a483398151915260036111e3565b60008481526005602052604090205460ff16156112a0576000805160206120a483398151915260046111e3565b8651602080870151600089815260049092526040909120546112c79163ffffffff61200516565b11156112e3576000805160206120a483398151915260056111e3565b6112fa856020015188600001518960200151610f10565b15611315576000805160206120a483398151915260066111e3565b6000848152600560209081526040909120805460ff19166001179055858101518851918901516113459290611abc565b6020808701516000898152600490925260409091205491945061136e919063ffffffff61200516565b60008781526004602081815260408084209490945560e08b01516101008c015160608b015186516000805160206120c48339815191528152600160a060020a0392831695810195909552811660248501526044840189905294519416936323b872dd936064808501948390030190829087803b1580156113ed57600080fd5b505af1158015611401573d6000803e3d6000fd5b505050506040513d602081101561141757600080fd5b5051151561142457600080fd5b60c08701516060860151610100890151602080890151604080516000805160206120c48339815191528152600160a060020a039586166004820152938516602485015260448401919091525192909316926323b872dd926064808401938290030181600087803b15801561149757600080fd5b505af11580156114ab573d6000803e3d6000fd5b505050506040513d60208110156114c157600080fd5b505115156114ce57600080fd5b600087608001511115611598576114f2856020015188600001518960800151611abc565b600154610100890151600254604080516000805160206120c48339815191528152600160a060020a039384166004820152918316602483015260448201859052519395509116916323b872dd916064808201926020929091908290030181600087803b15801561156157600080fd5b505af1158015611575573d6000803e3d6000fd5b505050506040513d602081101561158b57600080fd5b5051151561159857600080fd5b60008760a001511115611661576115bc856020015188600001518960a00151611abc565b6001546060870151600254604080516000805160206120c48339815191528152600160a060020a039384166004820152918316602483015260448201859052519394509116916323b872dd916064808201926020929091908290030181600087803b15801561162a57600080fd5b505af115801561163e573d6000803e3d6000fd5b505050506040513d602081101561165457600080fd5b5051151561166157600080fd5b858486602001519950995099505b505050505050509450945094915050565b60046020526000908152604090205481565b600061169c61207c565b506040805160808101825289815260208101899052908101879052600160a060020a038616606082015260006116d182611f64565b90506116e033828888886118f5565b151561171757604080516000815280820183905290516000805160206120a48339815191529181900360600190a160009250611782565b600081815260056020908152604091829020805460ff1916600117905581518c81529081018b90528082018a90529051600160a060020a038916917f1debd637af55cac936fd656ab3fb0391eb4eb29cb178bf44577ef6cecc10ae25919081900360600190a2600192505b5050979650505050505050565b60008054600160a060020a031633146117a757600080fd5b600160a060020a03821615156117bc57600080fd5b60025460408051600160a060020a039283168152918416602083015280517ff822f5a19627202340985855aeffadb385833332f2f700b3e6287d28547778a99281900390910190a15060028054600160a060020a03831673ffffffffffffffffffffffffffffffffffffffff199091161790556001919050565b600154600160a060020a031681565b60008054600160a060020a0316331461185d57600080fd5b600160a060020a038316151561187257600080fd5b60408051600160a060020a0385168152831515602082015281517f4af650e9ee9ac50b37ec2cd3ddac7e1c69955ffc871bc3e812563775f3bc0e7d929181900390910190a150600160a060020a0382166000908152600360205260409020805482151560ff19909116179055600192915050565b600254600160a060020a031681565b600060018560405160200180807f19457468657265756d205369676e6564204d6573736167653a0a333200000000815250601c0182600019166000191681526020019150506040516020818303038152906040526040518082805190602001908083835b602083106119785780518252601f199092019160209182019101611959565b51815160209384036101000a60001901801990921691161790526040805192909401829003822060008084528383018087529190915260ff8c1683860152606083018b9052608083018a9052935160a08084019750919550601f1981019492819003909101925090865af11580156119f4573d6000803e3d6000fd5b50505060206040510351600160a060020a031686600160a060020a031614905095945050505050565b60008054600160a060020a03163314611a3557600080fd5b60015460408051600160a060020a039283168152918416602083015280517fb8be72b4c168c2f7d3ea469d9f48ccbc62416784a4f6a69ca93ff13f4f36545b9281900390910190a15060018054600160a060020a03831673ffffffffffffffffffffffffffffffffffffffff19909116178155919050565b600054600160a060020a031681565b6000611ad283610f5a868563ffffffff611e1316565b949350505050565b60056020526000908152604090205460ff1681565b6000611af9612014565b506040805161012081018252875181526020808901518183015288830151828401526060808a0151908301526080808a01519083015260a0808a0151908301528751600160a060020a0390811660c084015290880151811660e0830152918701519091166101008201526000611b6e82611e55565b9050611b7d33828888886118f5565b1515611bb55760408051600081526020810183905290516000805160206120a48339815191529181900360600190a160009250611d34565b81516000828152600460209081526040918290209290925560e084015160c085015182516c01000000000000000000000000600160a060020a0393841681028287015292909116909102603482015281516028818303018152604890910191829052805190928291908401908083835b60208310611c445780518252601f199092019160209182019101611c25565b6001836020036101000a038019825116818451168082178552505050505050905001915050604051809103902060001916826101000151600160a060020a03167fbfa78175e8dfd3bfda20dd3ae584843e6ec42822f51f553fc12f5d9f908fdb16838560c0015186600001518760e00151886020015189604001518a6060015160405180886000191660001916815260200187600160a060020a0316600160a060020a0316815260200186815260200185600160a060020a0316600160a060020a0316815260200184815260200183815260200182815260200197505050505050505060405180910390a3600192505b505095945050505050565b60005b8451811015611dd457611dcb8682815181101515611d5c57fe5b906020019060200201518683815181101515611d7457fe5b906020019060200201518684815181101515611d8c57fe5b906020019060200201518685815181101515611da457fe5b906020019060200201518686815181101515611dbc57fe5b90602001906020020151611aef565b50600101611d42565b505050505050565b60408051808201909152600581527f312e302e30000000000000000000000000000000000000000000000000000000602082015281565b6000828202831580611e2f5750828482811515611e2c57fe5b04145b1515611e3757fe5b9392505050565b6000808284811515611e4c57fe5b04949350505050565b61010081015160e082015160c08301516020808501518551608087015160a08801516040808a015160608b015182516c01000000000000000000000000308102828b0152600160a060020a039c8d16810260348301529a8c168b0260488201529a909816909802605c8a01526070890194909452609088019290925260b087015260d086015260f085019390935261011080850192909252825180850390920182526101309093019182905280516000939192918291908401908083835b60208310611f325780518252601f199092019160209182019101611f13565b5181516020939093036101000a6000190180199091169216919091179052604051920182900390912095945050505050565b6000816000015182606001518360200151846040015160405160200180856000191660001916815260200184600160a060020a0316600160a060020a03166c0100000000000000000000000002815260140183815260200182815260200194505050505060405160208183030381529060405260405180828051906020019080838360208310611f325780518252601f199092019160209182019101611f13565b600082820183811015611e3757fe5b610120604051908101604052806000815260200160008152602001600081526020016000815260200160008152602001600081526020016000600160a060020a031681526020016000600160a060020a031681526020016000600160a060020a031681525090565b60408051608081018252600080825260208201819052918101829052606081019190915290560014301341d034ec3c62a1eabc804a79abf3b8c16e6245e82ec572346aa452fabb23b872dd00000000000000000000000000000000000000000000000000000000a165627a7a7230582040880eaa9300426385e3550a08a90a72e72d369db877ac773603a66201c5ba7d0029`
+const ExchangeBin = `0x608060405234801561001057600080fd5b5060405160408061235083398101604052805160209091015160008054600160a060020a0319908116331790915560018054600160a060020a03948516908316179055600280549390921692169190911790556122de806100726000396000f3006080604052600436106101695763ffffffff7c010000000000000000000000000000000000000000000000000000000060003504166302eba094811461016e57806310ac00d8146101a357806313af40351461026057806313e7c9d81461028357806314df96ee146102a45780631778baf4146102c2578063288cdc91146103765780633c918341146103a057806345aab48a146103ca5780634b023cf8146103eb5780634b57b0be1461040c5780635171267f1461043d578063558a72971461065357806365e17c9d14610679578063673e04811461068e5780636ba01df8146106d85780638163681e146106f957806381b88c771461072957806386e09c081461074a5780638da5cb5b1461076b57806393c1ae091461078057806398024a8b14610835578063b4cb255314610853578063c00fdd5b146108e6578063d581332314610907578063f0a43e9c1461091f578063f71223a214610940578063ffa1ad7414610982575b600080fd5b34801561017a57600080fd5b5061018f600160a060020a0360043516610a0c565b604080519115158252519081900360200190f35b3480156101af57600080fd5b506040805161014081810190925261018f91369160049161014491908390600a90839083908082843750506040805160808181019092529497969581810195945092506004915083908390808284375050604080518082018252949786359790969095606082019550935060200191506002908390839080828437505060408051608081810190925294979695818101959450925060049150839083908082843750939650610a2195505050505050565b34801561026c57600080fd5b50610281600160a060020a0360043516610b16565b005b34801561028f57600080fd5b5061018f600160a060020a0360043516610b95565b3480156102b057600080fd5b5061018f600435602435604435610baa565b3480156102ce57600080fd5b506040805161014081810190925261018f91369160049161014491908390600a90839083908082843750506040805160808181019092529497969581810195945092506004915083908390808284375050604080518082018252949796958181019594509250600291508390839080828437505060408051608081810190925294979695818101959450925060049150839083908082843750939650610c1395505050505050565b34801561038257600080fd5b5061038e600435610e4f565b60408051918252519081900360200190f35b3480156103ac57600080fd5b5061018f600160a060020a0360043581169060243516604435610e61565b3480156103d657600080fd5b5061018f600160a060020a0360043516610f12565b3480156103f757600080fd5b5061018f600160a060020a0360043516610f27565b34801561041857600080fd5b50610421610fce565b60408051600160a060020a039092168252519081900360200190f35b34801561044957600080fd5b5060408051600480358082013560208181028501810190955280845261018f943694602493909290840191819060009085015b828210156104b9576040805161014081810190925290808402870190600a908390839080828437505050918352505060019091019060200161047c565b50506040805186358801803560208181028401810190945280835296999897830196919550820193509150819060009085015b828210156105285760408051608081810190925290808402870190600490839083908082843750505091835250506001909101906020016104ec565b505050505091929192908035906020019082018035906020019080806020026020016040519081016040528093929190818152602001838360200280828437505060408051873589018035602081810284018101909452808352979a999883019791965082019450925082915060009085015b828210156105d457604080518082018252908084028701906002908390839080828437505050918352505060019091019060200161059b565b50506040805186358801803560208181028401810190945280835296999897830196919550820193509150819060009085015b82821015610643576040805160808181019092529080840287019060049083908390808284375050509183525050600190910190602001610607565b50939650610fdd95505050505050565b34801561065f57600080fd5b5061018f600160a060020a03600435166024351515611240565b34801561068557600080fd5b506104216112e1565b34801561069a57600080fd5b506106a66004356112f0565b60408051948552600160a060020a03938416602086015291909216838201526060830191909152519081900360800190f35b3480156106e457600080fd5b5061018f600160a060020a0360043516611324565b34801561070557600080fd5b5061018f600160a060020a036004351660243560ff60443516606435608435611365565b34801561073557600080fd5b5061018f600160a060020a036004351661148d565b34801561075657600080fd5b5061018f600160a060020a03600435166114c9565b34801561077757600080fd5b50610421611559565b34801561078c57600080fd5b506040805160808181019092526102819136916004916084919083908190839082908082843750506040805186358801803560208181028481018201909552818452979a99988801979296509082019450925082919085019084908082843750506040805187358901803560208181028481018201909552818452989b9a9989019892975090820195509350839250850190849080828437509497506115689650505050505050565b34801561084157600080fd5b5061038e6004356024356044356116c9565b34801561085f57600080fd5b50604080516101408181019092526108c691369160049161014491908390600a9083908390808284375050604080516080818101909252949796958181019594509250600491508390839080828437509396505083359450505060209091013590506116e7565b604080519384526020840192909252151582820152519081900360600190f35b3480156108f257600080fd5b5061018f600160a060020a0360043516611e74565b34801561091357600080fd5b5061018f600435611eb5565b34801561092b57600080fd5b5061018f600160a060020a0360043516611eca565b34801561094c57600080fd5b5060408051608081810190925261038e9136916004916084919083908190839082908082843750939650611f0695505050505050565b34801561098e57600080fd5b50610997611f7f565b6040805160208082528351818301528351919283929083019185019080838360005b838110156109d15781810151838201526020016109b9565b50505050905090810190601f1680156109fe5780820380516001836020036101000a031916815260200191505b509250505060405180910390f35b60076020526000908152604090205460ff1681565b600080546060908190819084908190819081908190600160a060020a0316331480610a5b57503360009081526003602052604090205460ff165b1515610a6657600080fd5b60408051600480825260a082019092529060208201608080388339505060408051600480825260a08201909252929a50905060208201608080388339505060408051600480825260a08201909252929950905060208201608080388339019050509550610ad58e8e8d8d610c13565b9450841515610ae75760009850610b05565b610af08d611f06565b9350610afe8e8e8e876116e7565b9250925092505b505050505050505095945050505050565b600054600160a060020a03163314610b2d57600080fd5b60008054604051600160a060020a03808516939216917fcbf985117192c8f614a58aaf97226bb80a754772f5f6edf06f87c675f2e6c66391a36000805473ffffffffffffffffffffffffffffffffffffffff1916600160a060020a0392909216919091179055565b60036020526000908152604090205460ff1681565b600080600084801515610bb957fe5b8685099150811515610bce5760009250610c0a565b610c00610be1878663ffffffff611fb616565b610bf484620f424063ffffffff611fb616565b9063ffffffff611fe116565b90506103e8811192505b50509392505050565b6000610c1d6121e3565b610c256121e3565b604080516101208101909152600090819080898360209081029190910151600160a060020a031682520189600260209081029190910151600160a060020a031682520189600360209081029190910151600160a060020a03168252018a6000602090810291909101518252018a6001602090810291909101518252018a6002602090810291909101518252018a6003602090810291909101518252018a6008602090810291909101518252018a6009602002015190526040805161012081019091529094508089600160209081029190910151600160a060020a031682520189600260209081029190910151600160a060020a031682520189600360209081029190910151600160a060020a03168252018a6004602090810291909101518252018a6005602090810291909101518252018a6006602090810291909101518252018a6007602090810291909101518252018a6009602090810291909101518252018a6008602002015190529250610d9b84611ff8565b9150610da683611ff8565b845188518851929350610dc4928591908a60015b6020020151611365565b1515610e075760008051602061227383398151915260015b6040805160ff909216825260208201859052818101849052519081900360600190a160009450610e43565b825160208801516040880151610e22929184918a6003610dba565b1515610e3e576000805160206122738339815191526002610ddc565b600194505b50505050949350505050565b60046020526000908152604090205481565b600080548190600160a060020a03163314610e7b57600080fd5b610e858585612106565b60408051608081018252828152600160a060020a039788166020808301918252978916828401908152606083019788526000948552600890985291909220915182555160018201805491881673ffffffffffffffffffffffffffffffffffffffff199283161790559451600282018054919097169516949094179094559051600390920191909155919050565b60066020526000908152604090205460ff1681565b60008054600160a060020a03163314610f3f57600080fd5b600160a060020a0382161515610f5457600080fd5b60025460408051600160a060020a039283168152918416602083015280517ff822f5a19627202340985855aeffadb385833332f2f700b3e6287d28547778a99281900390910190a15060028054600160a060020a03831673ffffffffffffffffffffffffffffffffffffffff199091161790556001919050565b600154600160a060020a031681565b600060608060606000806000806000806000809054906101000a9004600160a060020a0316600160a060020a031633600160a060020a0316148061103057503360009081526003602052604090205460ff165b151561103b57600080fd5b8d51604051908082528060200260200182016040528015611066578160200160208202803883390190505b5098508d51604051908082528060200260200182016040528015611094578160200160208202803883390190505b5097508d516040519080825280602002602001820160405280156110c2578160200160208202803883390190505b509650600095505b8d5186101561120b5761113b8f878151811015156110e457fe5b906020019060200201518f888151811015156110fc57fe5b906020019060200201518e8981518110151561111457fe5b906020019060200201518e8a81518110151561112c57fe5b90602001906020020151610c13565b945084151561114d576000995061122e565b61116d8e8781518110151561115e57fe5b90602001906020020151611f06565b93506111c08f8781518110151561118057fe5b906020019060200201518f8881518110151561119857fe5b906020019060200201518f898151811015156111b057fe5b90602001906020020151876116e7565b9250925092508015611200578289878151811015156111db57fe5b60209081029091010152875182908990889081106111f557fe5b602090810290910101525b6001909501946110ca565b61122e8e600081518110151561121d57fe5b906020019060200201518a8a611568565b50505050505050505095945050505050565b60008054600160a060020a0316331461125857600080fd5b600160a060020a038316151561126d57600080fd5b60408051600160a060020a0385168152831515602082015281517f4af650e9ee9ac50b37ec2cd3ddac7e1c69955ffc871bc3e812563775f3bc0e7d929181900390910190a150600160a060020a0382166000908152600360205260409020805482151560ff19909116179055600192915050565b600254600160a060020a031681565b60086020526000908152604090208054600182015460028301546003909301549192600160a060020a039182169291169084565b60008054600160a060020a0316331461133c57600080fd5b50600160a060020a03166000908152600760205260409020805460ff1916600190811790915590565b600060018560405160200180807f19457468657265756d205369676e6564204d6573736167653a0a333200000000815250601c0182600019166000191681526020019150506040516020818303038152906040526040518082805190602001908083835b602083106113e85780518252601f1990920191602091820191016113c9565b51815160209384036101000a60001901801990921691161790526040805192909401829003822060008084528383018087529190915260ff8c1683860152606083018b9052608083018a9052935160a08084019750919550601f1981019492819003909101925090865af1158015611464573d6000803e3d6000fd5b50505060206040510351600160a060020a031686600160a060020a031614905095945050505050565b60008054600160a060020a031633146114a557600080fd5b600160a060020a039091166000908152600660205260409020805460ff1916905590565b60008054600160a060020a031633146114e157600080fd5b60015460408051600160a060020a039283168152918416602083015280517fb8be72b4c168c2f7d3ea469d9f48ccbc62416784a4f6a69ca93ff13f4f36545b9281900390910190a15060018054600160a060020a03831673ffffffffffffffffffffffffffffffffffffffff19909116178155919050565b600054600160a060020a031681565b60208084015160408086015181516c01000000000000000000000000600160a060020a039485168102828701529390911690920260348301528051602881840301815260489092019081905281519192909182918401908083835b602083106115e25780518252601f1990920191602091820191016115c3565b51815160209384036101000a60001901801990921691161790526040805192909401829003822084835288519483019490945287519395507fde8acabe30c9bd25d65bb9db28bf46f51dc7500a07b1671f121f1144fbf446fc945087938793508291828101916060840191878101910280838360005b83811015611670578181015183820152602001611658565b50505050905001838103825284818151815260200191508051906020019060200280838360005b838110156116af578181015183820152602001611697565b5050505090500194505050505060405180910390a2505050565b60006116df83610bf4868563ffffffff611fb616565b949350505050565b60008060006116f46121e3565b6116fc6121e3565b60008054819081908190600160a060020a031633148061172b57503360009081526003602052604090205460ff165b151561173657600080fd5b604080516101208101909152808d600060209081029190910151600160a060020a03168252018d600260209081029190910151600160a060020a03168252018d600360209081029190910151600160a060020a03168252018e6000602090810291909101518252018e6001602090810291909101518252018e6002602090810291909101518252018e6003602090810291909101518252018e6008602090810291909101518252018e600960200201519052604080516101208101909152909650808d600160209081029190910151600160a060020a03168252018d600260209081029190910151600160a060020a03168252018d600360209081029190910151600160a060020a03168252018e6004602090810291909101518252018e6005602090810291909101518252018e6006602090810291909101518252018e6007602090810291909101518252018e6009602090810291909101518252018e60086020020151905294506118a886611ff8565b93506118b385611ff8565b6060870151600086815260046020526040902054919450906118db908d63ffffffff6121d416565b11156119245760008051602061227383398151915260075b6040805160ff909216825260208201879052818101869052519081900360600190a183836000985098509850611e64565b6060850151600084815260046020526040902054611948908d63ffffffff6121d416565b11156119645760008051602061227383398151915260076118f3565b8560a001518560a00151141561198a5760008051602061227383398151915260036118f3565b60a086015115156119bb578460800151866080015110156119bb5760008051602061227383398151915260046118f3565b8560a00151600114156119ee578560800151856080015110156119ee5760008051602061227383398151915260046118f3565b600083815260046020526040902054611a0d908c63ffffffff6121d416565b600084815260046020526040808220929092558581522054611a35908c63ffffffff6121d416565b60008581526004602052604090205560808601518b9250611a63908b90610bf490859063ffffffff611fb616565b90508560a0015160001415611bb4576040808701518751875183516000805160206122938339815191528152600160a060020a03928316600482015290821660248201526044810185905292519116916323b872dd9160648083019260209291908290030181600087803b158015611ada57600080fd5b505af1158015611aee573d6000803e3d6000fd5b505050506040513d6020811015611b0457600080fd5b50511515611b1157600080fd5b60208086015186518851604080516000805160206122938339815191528152600160a060020a0393841660048201529183166024830152604482018790525191909216926323b872dd92606480820193918290030181600087803b158015611b7857600080fd5b505af1158015611b8c573d6000803e3d6000fd5b505050506040513d6020811015611ba257600080fd5b50511515611baf57600080fd5b611cf1565b60208087015187518751604080516000805160206122938339815191528152600160a060020a0393841660048201529183166024830152604482018790525191909216926323b872dd92606480820193918290030181600087803b158015611c1b57600080fd5b505af1158015611c2f573d6000803e3d6000fd5b505050506040513d6020811015611c4557600080fd5b50511515611c5257600080fd5b6040808601518651885183516000805160206122938339815191528152600160a060020a03928316600482015290821660248201526044810185905292519116916323b872dd9160648083019260209291908290030181600087803b158015611cba57600080fd5b505af1158015611cce573d6000803e3d6000fd5b505050506040513d6020811015611ce457600080fd5b50511515611cf157600080fd5b60008660e001511115611da457600154865160025460e0890151604080516000805160206122938339815191528152600160a060020a039485166004820152928416602484015260448301919091525191909216916323b872dd9160648083019260209291908290030181600087803b158015611d6d57600080fd5b505af1158015611d81573d6000803e3d6000fd5b505050506040513d6020811015611d9757600080fd5b50511515611da457600080fd5b60008661010001511115611e59576001548551600254610100890151604080516000805160206122938339815191528152600160a060020a039485166004820152928416602484015260448301919091525191909216916323b872dd9160648083019260209291908290030181600087803b158015611e2257600080fd5b505af1158015611e36573d6000803e3d6000fd5b505050506040513d6020811015611e4c57600080fd5b50511515611e5957600080fd5b838360019850985098505b5050505050509450945094915050565b60008054600160a060020a03163314611e8c57600080fd5b50600160a060020a03166000908152600660205260409020805460ff1916600190811790915590565b60056020526000908152604090205460ff1681565b60008054600160a060020a03163314611ee257600080fd5b600160a060020a039091166000908152600760205260409020805460ff1916905590565b600080611f1161224b565b60408401516060850151611f259190612106565b6000908152600860209081526040918290208251608081018452815481526001820154600160a060020a03908116938201939093526002820154909216928201929092526003909101546060909101819052949350505050565b60408051808201909152600581527f312e302e30000000000000000000000000000000000000000000000000000000602082015281565b6000828202831580611fd25750828482811515611fcf57fe5b04145b1515611fda57fe5b9392505050565b6000808284811515611fef57fe5b04949350505050565b80516020808301516040808501516060860151608087015160a088015160c089015160e08a01516101008b015187516c01000000000000000000000000308102828d0152600160a060020a039c8d1681026034830152998c168a0260488201529a909616909702605c8a01526070890193909352609088019190915260b087015260d086015260f0850192909252610110808501929092528051808503909201825261013090930192839052805160009391928291908401908083835b602083106120d45780518252601f1990920191602091820191016120b5565b5181516020939093036101000a6000190180199091169216919091179052604051920182900390912095945050505050565b600082826040516020018083600160a060020a0316600160a060020a03166c0100000000000000000000000002815260140182600160a060020a0316600160a060020a03166c01000000000000000000000000028152601401925050506040516020818303038152906040526040518082805190602001908083835b602083106121a15780518252601f199092019160209182019101612182565b5181516020939093036101000a600019018019909116921691909117905260405192018290039091209695505050505050565b600082820183811015611fda57fe5b610120604051908101604052806000600160a060020a031681526020016000600160a060020a031681526020016000600160a060020a031681526020016000815260200160008152602001600081526020016000815260200160008152602001600081525090565b60408051608081018252600080825260208201819052918101829052606081019190915290560014301341d034ec3c62a1eabc804a79abf3b8c16e6245e82ec572346aa452fabb23b872dd00000000000000000000000000000000000000000000000000000000a165627a7a723058205ed459f292526f9663d2a6f15ed77af416f2676c00a1c8393a025eb12371fbc60029`
 
 // DeployExchange deploys a new Ethereum contract, binding an instance of Exchange to it.
 func DeployExchange(auth *bind.TransactOpts, backend bind.ContractBackend, _wethToken common.Address, _feeAccount common.Address) (common.Address, *types.Transaction, *Exchange, error) {
@@ -890,6 +890,32 @@ func (_Exchange *ExchangeSession) VERSION() (string, error) {
 // Solidity: function VERSION() constant returns(string)
 func (_Exchange *ExchangeCallerSession) VERSION() (string, error) {
 	return _Exchange.Contract.VERSION(&_Exchange.CallOpts)
+}
+
+// BaseTokens is a free data retrieval call binding the contract method 0x02eba094.
+//
+// Solidity: function baseTokens( address) constant returns(bool)
+func (_Exchange *ExchangeCaller) BaseTokens(opts *bind.CallOpts, arg0 common.Address) (bool, error) {
+	var (
+		ret0 = new(bool)
+	)
+	out := ret0
+	err := _Exchange.contract.Call(opts, out, "baseTokens", arg0)
+	return *ret0, err
+}
+
+// BaseTokens is a free data retrieval call binding the contract method 0x02eba094.
+//
+// Solidity: function baseTokens( address) constant returns(bool)
+func (_Exchange *ExchangeSession) BaseTokens(arg0 common.Address) (bool, error) {
+	return _Exchange.Contract.BaseTokens(&_Exchange.CallOpts, arg0)
+}
+
+// BaseTokens is a free data retrieval call binding the contract method 0x02eba094.
+//
+// Solidity: function baseTokens( address) constant returns(bool)
+func (_Exchange *ExchangeCallerSession) BaseTokens(arg0 common.Address) (bool, error) {
+	return _Exchange.Contract.BaseTokens(&_Exchange.CallOpts, arg0)
 }
 
 // FeeAccount is a free data retrieval call binding the contract method 0x65e17c9d.
@@ -1074,6 +1100,76 @@ func (_Exchange *ExchangeCallerSession) Owner() (common.Address, error) {
 	return _Exchange.Contract.Owner(&_Exchange.CallOpts)
 }
 
+// Pairs is a free data retrieval call binding the contract method 0x673e0481.
+//
+// Solidity: function pairs( bytes32) constant returns(pairID bytes32, baseToken address, quoteToken address, pricepointMultiplier uint256)
+func (_Exchange *ExchangeCaller) Pairs(opts *bind.CallOpts, arg0 [32]byte) (struct {
+	PairID               [32]byte
+	BaseToken            common.Address
+	QuoteToken           common.Address
+	PricepointMultiplier *big.Int
+}, error) {
+	ret := new(struct {
+		PairID               [32]byte
+		BaseToken            common.Address
+		QuoteToken           common.Address
+		PricepointMultiplier *big.Int
+	})
+	out := ret
+	err := _Exchange.contract.Call(opts, out, "pairs", arg0)
+	return *ret, err
+}
+
+// Pairs is a free data retrieval call binding the contract method 0x673e0481.
+//
+// Solidity: function pairs( bytes32) constant returns(pairID bytes32, baseToken address, quoteToken address, pricepointMultiplier uint256)
+func (_Exchange *ExchangeSession) Pairs(arg0 [32]byte) (struct {
+	PairID               [32]byte
+	BaseToken            common.Address
+	QuoteToken           common.Address
+	PricepointMultiplier *big.Int
+}, error) {
+	return _Exchange.Contract.Pairs(&_Exchange.CallOpts, arg0)
+}
+
+// Pairs is a free data retrieval call binding the contract method 0x673e0481.
+//
+// Solidity: function pairs( bytes32) constant returns(pairID bytes32, baseToken address, quoteToken address, pricepointMultiplier uint256)
+func (_Exchange *ExchangeCallerSession) Pairs(arg0 [32]byte) (struct {
+	PairID               [32]byte
+	BaseToken            common.Address
+	QuoteToken           common.Address
+	PricepointMultiplier *big.Int
+}, error) {
+	return _Exchange.Contract.Pairs(&_Exchange.CallOpts, arg0)
+}
+
+// QuoteTokens is a free data retrieval call binding the contract method 0x45aab48a.
+//
+// Solidity: function quoteTokens( address) constant returns(bool)
+func (_Exchange *ExchangeCaller) QuoteTokens(opts *bind.CallOpts, arg0 common.Address) (bool, error) {
+	var (
+		ret0 = new(bool)
+	)
+	out := ret0
+	err := _Exchange.contract.Call(opts, out, "quoteTokens", arg0)
+	return *ret0, err
+}
+
+// QuoteTokens is a free data retrieval call binding the contract method 0x45aab48a.
+//
+// Solidity: function quoteTokens( address) constant returns(bool)
+func (_Exchange *ExchangeSession) QuoteTokens(arg0 common.Address) (bool, error) {
+	return _Exchange.Contract.QuoteTokens(&_Exchange.CallOpts, arg0)
+}
+
+// QuoteTokens is a free data retrieval call binding the contract method 0x45aab48a.
+//
+// Solidity: function quoteTokens( address) constant returns(bool)
+func (_Exchange *ExchangeCallerSession) QuoteTokens(arg0 common.Address) (bool, error) {
+	return _Exchange.Contract.QuoteTokens(&_Exchange.CallOpts, arg0)
+}
+
 // Traded is a free data retrieval call binding the contract method 0xd5813323.
 //
 // Solidity: function traded( bytes32) constant returns(bool)
@@ -1126,130 +1222,193 @@ func (_Exchange *ExchangeCallerSession) WethToken() (common.Address, error) {
 	return _Exchange.Contract.WethToken(&_Exchange.CallOpts)
 }
 
-// BatchCancelOrders is a paid mutator transaction binding the contract method 0xe51ad32d.
+// DeleteBaseToken is a paid mutator transaction binding the contract method 0xf0a43e9c.
 //
-// Solidity: function batchCancelOrders(orderValues uint256[6][], orderAddresses address[3][], v uint8[], r bytes32[], s bytes32[]) returns()
-func (_Exchange *ExchangeTransactor) BatchCancelOrders(opts *bind.TransactOpts, orderValues [][6]*big.Int, orderAddresses [][3]common.Address, v []uint8, r [][32]byte, s [][32]byte) (*types.Transaction, error) {
-	return _Exchange.contract.Transact(opts, "batchCancelOrders", orderValues, orderAddresses, v, r, s)
+// Solidity: function deleteBaseToken(_token address) returns(bool)
+func (_Exchange *ExchangeTransactor) DeleteBaseToken(opts *bind.TransactOpts, _token common.Address) (*types.Transaction, error) {
+	return _Exchange.contract.Transact(opts, "deleteBaseToken", _token)
 }
 
-// BatchCancelOrders is a paid mutator transaction binding the contract method 0xe51ad32d.
+// DeleteBaseToken is a paid mutator transaction binding the contract method 0xf0a43e9c.
 //
-// Solidity: function batchCancelOrders(orderValues uint256[6][], orderAddresses address[3][], v uint8[], r bytes32[], s bytes32[]) returns()
-func (_Exchange *ExchangeSession) BatchCancelOrders(orderValues [][6]*big.Int, orderAddresses [][3]common.Address, v []uint8, r [][32]byte, s [][32]byte) (*types.Transaction, error) {
-	return _Exchange.Contract.BatchCancelOrders(&_Exchange.TransactOpts, orderValues, orderAddresses, v, r, s)
+// Solidity: function deleteBaseToken(_token address) returns(bool)
+func (_Exchange *ExchangeSession) DeleteBaseToken(_token common.Address) (*types.Transaction, error) {
+	return _Exchange.Contract.DeleteBaseToken(&_Exchange.TransactOpts, _token)
 }
 
-// BatchCancelOrders is a paid mutator transaction binding the contract method 0xe51ad32d.
+// DeleteBaseToken is a paid mutator transaction binding the contract method 0xf0a43e9c.
 //
-// Solidity: function batchCancelOrders(orderValues uint256[6][], orderAddresses address[3][], v uint8[], r bytes32[], s bytes32[]) returns()
-func (_Exchange *ExchangeTransactorSession) BatchCancelOrders(orderValues [][6]*big.Int, orderAddresses [][3]common.Address, v []uint8, r [][32]byte, s [][32]byte) (*types.Transaction, error) {
-	return _Exchange.Contract.BatchCancelOrders(&_Exchange.TransactOpts, orderValues, orderAddresses, v, r, s)
+// Solidity: function deleteBaseToken(_token address) returns(bool)
+func (_Exchange *ExchangeTransactorSession) DeleteBaseToken(_token common.Address) (*types.Transaction, error) {
+	return _Exchange.Contract.DeleteBaseToken(&_Exchange.TransactOpts, _token)
 }
 
-// BatchCancelTrades is a paid mutator transaction binding the contract method 0x154e775a.
+// DeleteQuoteToken is a paid mutator transaction binding the contract method 0x81b88c77.
 //
-// Solidity: function batchCancelTrades(orderHash bytes32[], amount uint256[], tradeNonce uint256[], taker address[], v uint8[], r bytes32[], s bytes32[]) returns()
-func (_Exchange *ExchangeTransactor) BatchCancelTrades(opts *bind.TransactOpts, orderHash [][32]byte, amount []*big.Int, tradeNonce []*big.Int, taker []common.Address, v []uint8, r [][32]byte, s [][32]byte) (*types.Transaction, error) {
-	return _Exchange.contract.Transact(opts, "batchCancelTrades", orderHash, amount, tradeNonce, taker, v, r, s)
+// Solidity: function deleteQuoteToken(_token address) returns(bool)
+func (_Exchange *ExchangeTransactor) DeleteQuoteToken(opts *bind.TransactOpts, _token common.Address) (*types.Transaction, error) {
+	return _Exchange.contract.Transact(opts, "deleteQuoteToken", _token)
 }
 
-// BatchCancelTrades is a paid mutator transaction binding the contract method 0x154e775a.
+// DeleteQuoteToken is a paid mutator transaction binding the contract method 0x81b88c77.
 //
-// Solidity: function batchCancelTrades(orderHash bytes32[], amount uint256[], tradeNonce uint256[], taker address[], v uint8[], r bytes32[], s bytes32[]) returns()
-func (_Exchange *ExchangeSession) BatchCancelTrades(orderHash [][32]byte, amount []*big.Int, tradeNonce []*big.Int, taker []common.Address, v []uint8, r [][32]byte, s [][32]byte) (*types.Transaction, error) {
-	return _Exchange.Contract.BatchCancelTrades(&_Exchange.TransactOpts, orderHash, amount, tradeNonce, taker, v, r, s)
+// Solidity: function deleteQuoteToken(_token address) returns(bool)
+func (_Exchange *ExchangeSession) DeleteQuoteToken(_token common.Address) (*types.Transaction, error) {
+	return _Exchange.Contract.DeleteQuoteToken(&_Exchange.TransactOpts, _token)
 }
 
-// BatchCancelTrades is a paid mutator transaction binding the contract method 0x154e775a.
+// DeleteQuoteToken is a paid mutator transaction binding the contract method 0x81b88c77.
 //
-// Solidity: function batchCancelTrades(orderHash bytes32[], amount uint256[], tradeNonce uint256[], taker address[], v uint8[], r bytes32[], s bytes32[]) returns()
-func (_Exchange *ExchangeTransactorSession) BatchCancelTrades(orderHash [][32]byte, amount []*big.Int, tradeNonce []*big.Int, taker []common.Address, v []uint8, r [][32]byte, s [][32]byte) (*types.Transaction, error) {
-	return _Exchange.Contract.BatchCancelTrades(&_Exchange.TransactOpts, orderHash, amount, tradeNonce, taker, v, r, s)
+// Solidity: function deleteQuoteToken(_token address) returns(bool)
+func (_Exchange *ExchangeTransactorSession) DeleteQuoteToken(_token common.Address) (*types.Transaction, error) {
+	return _Exchange.Contract.DeleteQuoteToken(&_Exchange.TransactOpts, _token)
 }
 
-// CancelOrder is a paid mutator transaction binding the contract method 0xd9a72b52.
+// EmitLog is a paid mutator transaction binding the contract method 0x93c1ae09.
 //
-// Solidity: function cancelOrder(orderValues uint256[6], orderAddresses address[3], v uint8, r bytes32, s bytes32) returns(bool)
-func (_Exchange *ExchangeTransactor) CancelOrder(opts *bind.TransactOpts, orderValues [6]*big.Int, orderAddresses [3]common.Address, v uint8, r [32]byte, s [32]byte) (*types.Transaction, error) {
-	return _Exchange.contract.Transact(opts, "cancelOrder", orderValues, orderAddresses, v, r, s)
+// Solidity: function emitLog(orderAddresses address[4], makerOrderHashes bytes32[], takerOrderHashes bytes32[]) returns()
+func (_Exchange *ExchangeTransactor) EmitLog(opts *bind.TransactOpts, orderAddresses [4]common.Address, makerOrderHashes [][32]byte, takerOrderHashes [][32]byte) (*types.Transaction, error) {
+	return _Exchange.contract.Transact(opts, "emitLog", orderAddresses, makerOrderHashes, takerOrderHashes)
 }
 
-// CancelOrder is a paid mutator transaction binding the contract method 0xd9a72b52.
+// EmitLog is a paid mutator transaction binding the contract method 0x93c1ae09.
 //
-// Solidity: function cancelOrder(orderValues uint256[6], orderAddresses address[3], v uint8, r bytes32, s bytes32) returns(bool)
-func (_Exchange *ExchangeSession) CancelOrder(orderValues [6]*big.Int, orderAddresses [3]common.Address, v uint8, r [32]byte, s [32]byte) (*types.Transaction, error) {
-	return _Exchange.Contract.CancelOrder(&_Exchange.TransactOpts, orderValues, orderAddresses, v, r, s)
+// Solidity: function emitLog(orderAddresses address[4], makerOrderHashes bytes32[], takerOrderHashes bytes32[]) returns()
+func (_Exchange *ExchangeSession) EmitLog(orderAddresses [4]common.Address, makerOrderHashes [][32]byte, takerOrderHashes [][32]byte) (*types.Transaction, error) {
+	return _Exchange.Contract.EmitLog(&_Exchange.TransactOpts, orderAddresses, makerOrderHashes, takerOrderHashes)
 }
 
-// CancelOrder is a paid mutator transaction binding the contract method 0xd9a72b52.
+// EmitLog is a paid mutator transaction binding the contract method 0x93c1ae09.
 //
-// Solidity: function cancelOrder(orderValues uint256[6], orderAddresses address[3], v uint8, r bytes32, s bytes32) returns(bool)
-func (_Exchange *ExchangeTransactorSession) CancelOrder(orderValues [6]*big.Int, orderAddresses [3]common.Address, v uint8, r [32]byte, s [32]byte) (*types.Transaction, error) {
-	return _Exchange.Contract.CancelOrder(&_Exchange.TransactOpts, orderValues, orderAddresses, v, r, s)
+// Solidity: function emitLog(orderAddresses address[4], makerOrderHashes bytes32[], takerOrderHashes bytes32[]) returns()
+func (_Exchange *ExchangeTransactorSession) EmitLog(orderAddresses [4]common.Address, makerOrderHashes [][32]byte, takerOrderHashes [][32]byte) (*types.Transaction, error) {
+	return _Exchange.Contract.EmitLog(&_Exchange.TransactOpts, orderAddresses, makerOrderHashes, takerOrderHashes)
 }
 
-// CancelTrade is a paid mutator transaction binding the contract method 0x468ddf2e.
+// ExecuteBatchTrades is a paid mutator transaction binding the contract method 0x5171267f.
 //
-// Solidity: function cancelTrade(orderHash bytes32, amount uint256, tradeNonce uint256, taker address, v uint8, r bytes32, s bytes32) returns(bool)
-func (_Exchange *ExchangeTransactor) CancelTrade(opts *bind.TransactOpts, orderHash [32]byte, amount *big.Int, tradeNonce *big.Int, taker common.Address, v uint8, r [32]byte, s [32]byte) (*types.Transaction, error) {
-	return _Exchange.contract.Transact(opts, "cancelTrade", orderHash, amount, tradeNonce, taker, v, r, s)
+// Solidity: function executeBatchTrades(orderValues uint256[10][], orderAddresses address[4][], amounts uint256[], v uint8[2][], rs bytes32[4][]) returns(bool)
+func (_Exchange *ExchangeTransactor) ExecuteBatchTrades(opts *bind.TransactOpts, orderValues [][10]*big.Int, orderAddresses [][4]common.Address, amounts []*big.Int, v [][2]uint8, rs [][4][32]byte) (*types.Transaction, error) {
+	return _Exchange.contract.Transact(opts, "executeBatchTrades", orderValues, orderAddresses, amounts, v, rs)
 }
 
-// CancelTrade is a paid mutator transaction binding the contract method 0x468ddf2e.
+// ExecuteBatchTrades is a paid mutator transaction binding the contract method 0x5171267f.
 //
-// Solidity: function cancelTrade(orderHash bytes32, amount uint256, tradeNonce uint256, taker address, v uint8, r bytes32, s bytes32) returns(bool)
-func (_Exchange *ExchangeSession) CancelTrade(orderHash [32]byte, amount *big.Int, tradeNonce *big.Int, taker common.Address, v uint8, r [32]byte, s [32]byte) (*types.Transaction, error) {
-	return _Exchange.Contract.CancelTrade(&_Exchange.TransactOpts, orderHash, amount, tradeNonce, taker, v, r, s)
+// Solidity: function executeBatchTrades(orderValues uint256[10][], orderAddresses address[4][], amounts uint256[], v uint8[2][], rs bytes32[4][]) returns(bool)
+func (_Exchange *ExchangeSession) ExecuteBatchTrades(orderValues [][10]*big.Int, orderAddresses [][4]common.Address, amounts []*big.Int, v [][2]uint8, rs [][4][32]byte) (*types.Transaction, error) {
+	return _Exchange.Contract.ExecuteBatchTrades(&_Exchange.TransactOpts, orderValues, orderAddresses, amounts, v, rs)
 }
 
-// CancelTrade is a paid mutator transaction binding the contract method 0x468ddf2e.
+// ExecuteBatchTrades is a paid mutator transaction binding the contract method 0x5171267f.
 //
-// Solidity: function cancelTrade(orderHash bytes32, amount uint256, tradeNonce uint256, taker address, v uint8, r bytes32, s bytes32) returns(bool)
-func (_Exchange *ExchangeTransactorSession) CancelTrade(orderHash [32]byte, amount *big.Int, tradeNonce *big.Int, taker common.Address, v uint8, r [32]byte, s [32]byte) (*types.Transaction, error) {
-	return _Exchange.Contract.CancelTrade(&_Exchange.TransactOpts, orderHash, amount, tradeNonce, taker, v, r, s)
+// Solidity: function executeBatchTrades(orderValues uint256[10][], orderAddresses address[4][], amounts uint256[], v uint8[2][], rs bytes32[4][]) returns(bool)
+func (_Exchange *ExchangeTransactorSession) ExecuteBatchTrades(orderValues [][10]*big.Int, orderAddresses [][4]common.Address, amounts []*big.Int, v [][2]uint8, rs [][4][32]byte) (*types.Transaction, error) {
+	return _Exchange.Contract.ExecuteBatchTrades(&_Exchange.TransactOpts, orderValues, orderAddresses, amounts, v, rs)
 }
 
-// ExecuteBatchTrades is a paid mutator transaction binding the contract method 0x0877f6c1.
+// ExecuteSingleTrade is a paid mutator transaction binding the contract method 0x10ac00d8.
 //
-// Solidity: function executeBatchTrades(orderValues uint256[8][], orderAddresses address[4][], v uint8[2][], rs bytes32[4][]) returns(bool)
-func (_Exchange *ExchangeTransactor) ExecuteBatchTrades(opts *bind.TransactOpts, orderValues [][8]*big.Int, orderAddresses [][4]common.Address, v [][2]uint8, rs [][4][32]byte) (*types.Transaction, error) {
-	return _Exchange.contract.Transact(opts, "executeBatchTrades", orderValues, orderAddresses, v, rs)
+// Solidity: function executeSingleTrade(orderValues uint256[10], orderAddresses address[4], amount uint256, v uint8[2], rs bytes32[4]) returns(bool)
+func (_Exchange *ExchangeTransactor) ExecuteSingleTrade(opts *bind.TransactOpts, orderValues [10]*big.Int, orderAddresses [4]common.Address, amount *big.Int, v [2]uint8, rs [4][32]byte) (*types.Transaction, error) {
+	return _Exchange.contract.Transact(opts, "executeSingleTrade", orderValues, orderAddresses, amount, v, rs)
 }
 
-// ExecuteBatchTrades is a paid mutator transaction binding the contract method 0x0877f6c1.
+// ExecuteSingleTrade is a paid mutator transaction binding the contract method 0x10ac00d8.
 //
-// Solidity: function executeBatchTrades(orderValues uint256[8][], orderAddresses address[4][], v uint8[2][], rs bytes32[4][]) returns(bool)
-func (_Exchange *ExchangeSession) ExecuteBatchTrades(orderValues [][8]*big.Int, orderAddresses [][4]common.Address, v [][2]uint8, rs [][4][32]byte) (*types.Transaction, error) {
-	return _Exchange.Contract.ExecuteBatchTrades(&_Exchange.TransactOpts, orderValues, orderAddresses, v, rs)
+// Solidity: function executeSingleTrade(orderValues uint256[10], orderAddresses address[4], amount uint256, v uint8[2], rs bytes32[4]) returns(bool)
+func (_Exchange *ExchangeSession) ExecuteSingleTrade(orderValues [10]*big.Int, orderAddresses [4]common.Address, amount *big.Int, v [2]uint8, rs [4][32]byte) (*types.Transaction, error) {
+	return _Exchange.Contract.ExecuteSingleTrade(&_Exchange.TransactOpts, orderValues, orderAddresses, amount, v, rs)
 }
 
-// ExecuteBatchTrades is a paid mutator transaction binding the contract method 0x0877f6c1.
+// ExecuteSingleTrade is a paid mutator transaction binding the contract method 0x10ac00d8.
 //
-// Solidity: function executeBatchTrades(orderValues uint256[8][], orderAddresses address[4][], v uint8[2][], rs bytes32[4][]) returns(bool)
-func (_Exchange *ExchangeTransactorSession) ExecuteBatchTrades(orderValues [][8]*big.Int, orderAddresses [][4]common.Address, v [][2]uint8, rs [][4][32]byte) (*types.Transaction, error) {
-	return _Exchange.Contract.ExecuteBatchTrades(&_Exchange.TransactOpts, orderValues, orderAddresses, v, rs)
+// Solidity: function executeSingleTrade(orderValues uint256[10], orderAddresses address[4], amount uint256, v uint8[2], rs bytes32[4]) returns(bool)
+func (_Exchange *ExchangeTransactorSession) ExecuteSingleTrade(orderValues [10]*big.Int, orderAddresses [4]common.Address, amount *big.Int, v [2]uint8, rs [4][32]byte) (*types.Transaction, error) {
+	return _Exchange.Contract.ExecuteSingleTrade(&_Exchange.TransactOpts, orderValues, orderAddresses, amount, v, rs)
 }
 
-// ExecuteTrade is a paid mutator transaction binding the contract method 0x2207148d.
+// ExecuteTrade is a paid mutator transaction binding the contract method 0xb4cb2553.
 //
-// Solidity: function executeTrade(orderValues uint256[8], orderAddresses address[4], v uint8[2], rs bytes32[4]) returns(bytes32, bytes32, uint256)
-func (_Exchange *ExchangeTransactor) ExecuteTrade(opts *bind.TransactOpts, orderValues [8]*big.Int, orderAddresses [4]common.Address, v [2]uint8, rs [4][32]byte) (*types.Transaction, error) {
-	return _Exchange.contract.Transact(opts, "executeTrade", orderValues, orderAddresses, v, rs)
+// Solidity: function executeTrade(orderValues uint256[10], orderAddresses address[4], amount uint256, pricepointMultiplier uint256) returns(bytes32, bytes32, bool)
+func (_Exchange *ExchangeTransactor) ExecuteTrade(opts *bind.TransactOpts, orderValues [10]*big.Int, orderAddresses [4]common.Address, amount *big.Int, pricepointMultiplier *big.Int) (*types.Transaction, error) {
+	return _Exchange.contract.Transact(opts, "executeTrade", orderValues, orderAddresses, amount, pricepointMultiplier)
 }
 
-// ExecuteTrade is a paid mutator transaction binding the contract method 0x2207148d.
+// ExecuteTrade is a paid mutator transaction binding the contract method 0xb4cb2553.
 //
-// Solidity: function executeTrade(orderValues uint256[8], orderAddresses address[4], v uint8[2], rs bytes32[4]) returns(bytes32, bytes32, uint256)
-func (_Exchange *ExchangeSession) ExecuteTrade(orderValues [8]*big.Int, orderAddresses [4]common.Address, v [2]uint8, rs [4][32]byte) (*types.Transaction, error) {
-	return _Exchange.Contract.ExecuteTrade(&_Exchange.TransactOpts, orderValues, orderAddresses, v, rs)
+// Solidity: function executeTrade(orderValues uint256[10], orderAddresses address[4], amount uint256, pricepointMultiplier uint256) returns(bytes32, bytes32, bool)
+func (_Exchange *ExchangeSession) ExecuteTrade(orderValues [10]*big.Int, orderAddresses [4]common.Address, amount *big.Int, pricepointMultiplier *big.Int) (*types.Transaction, error) {
+	return _Exchange.Contract.ExecuteTrade(&_Exchange.TransactOpts, orderValues, orderAddresses, amount, pricepointMultiplier)
 }
 
-// ExecuteTrade is a paid mutator transaction binding the contract method 0x2207148d.
+// ExecuteTrade is a paid mutator transaction binding the contract method 0xb4cb2553.
 //
-// Solidity: function executeTrade(orderValues uint256[8], orderAddresses address[4], v uint8[2], rs bytes32[4]) returns(bytes32, bytes32, uint256)
-func (_Exchange *ExchangeTransactorSession) ExecuteTrade(orderValues [8]*big.Int, orderAddresses [4]common.Address, v [2]uint8, rs [4][32]byte) (*types.Transaction, error) {
-	return _Exchange.Contract.ExecuteTrade(&_Exchange.TransactOpts, orderValues, orderAddresses, v, rs)
+// Solidity: function executeTrade(orderValues uint256[10], orderAddresses address[4], amount uint256, pricepointMultiplier uint256) returns(bytes32, bytes32, bool)
+func (_Exchange *ExchangeTransactorSession) ExecuteTrade(orderValues [10]*big.Int, orderAddresses [4]common.Address, amount *big.Int, pricepointMultiplier *big.Int) (*types.Transaction, error) {
+	return _Exchange.Contract.ExecuteTrade(&_Exchange.TransactOpts, orderValues, orderAddresses, amount, pricepointMultiplier)
+}
+
+// RegisterBaseToken is a paid mutator transaction binding the contract method 0x6ba01df8.
+//
+// Solidity: function registerBaseToken(_token address) returns(bool)
+func (_Exchange *ExchangeTransactor) RegisterBaseToken(opts *bind.TransactOpts, _token common.Address) (*types.Transaction, error) {
+	return _Exchange.contract.Transact(opts, "registerBaseToken", _token)
+}
+
+// RegisterBaseToken is a paid mutator transaction binding the contract method 0x6ba01df8.
+//
+// Solidity: function registerBaseToken(_token address) returns(bool)
+func (_Exchange *ExchangeSession) RegisterBaseToken(_token common.Address) (*types.Transaction, error) {
+	return _Exchange.Contract.RegisterBaseToken(&_Exchange.TransactOpts, _token)
+}
+
+// RegisterBaseToken is a paid mutator transaction binding the contract method 0x6ba01df8.
+//
+// Solidity: function registerBaseToken(_token address) returns(bool)
+func (_Exchange *ExchangeTransactorSession) RegisterBaseToken(_token common.Address) (*types.Transaction, error) {
+	return _Exchange.Contract.RegisterBaseToken(&_Exchange.TransactOpts, _token)
+}
+
+// RegisterPair is a paid mutator transaction binding the contract method 0x3c918341.
+//
+// Solidity: function registerPair(_baseToken address, _quoteToken address, _pricepointMultiplier uint256) returns(bool)
+func (_Exchange *ExchangeTransactor) RegisterPair(opts *bind.TransactOpts, _baseToken common.Address, _quoteToken common.Address, _pricepointMultiplier *big.Int) (*types.Transaction, error) {
+	return _Exchange.contract.Transact(opts, "registerPair", _baseToken, _quoteToken, _pricepointMultiplier)
+}
+
+// RegisterPair is a paid mutator transaction binding the contract method 0x3c918341.
+//
+// Solidity: function registerPair(_baseToken address, _quoteToken address, _pricepointMultiplier uint256) returns(bool)
+func (_Exchange *ExchangeSession) RegisterPair(_baseToken common.Address, _quoteToken common.Address, _pricepointMultiplier *big.Int) (*types.Transaction, error) {
+	return _Exchange.Contract.RegisterPair(&_Exchange.TransactOpts, _baseToken, _quoteToken, _pricepointMultiplier)
+}
+
+// RegisterPair is a paid mutator transaction binding the contract method 0x3c918341.
+//
+// Solidity: function registerPair(_baseToken address, _quoteToken address, _pricepointMultiplier uint256) returns(bool)
+func (_Exchange *ExchangeTransactorSession) RegisterPair(_baseToken common.Address, _quoteToken common.Address, _pricepointMultiplier *big.Int) (*types.Transaction, error) {
+	return _Exchange.Contract.RegisterPair(&_Exchange.TransactOpts, _baseToken, _quoteToken, _pricepointMultiplier)
+}
+
+// RegisterQuoteToken is a paid mutator transaction binding the contract method 0xc00fdd5b.
+//
+// Solidity: function registerQuoteToken(_token address) returns(bool)
+func (_Exchange *ExchangeTransactor) RegisterQuoteToken(opts *bind.TransactOpts, _token common.Address) (*types.Transaction, error) {
+	return _Exchange.contract.Transact(opts, "registerQuoteToken", _token)
+}
+
+// RegisterQuoteToken is a paid mutator transaction binding the contract method 0xc00fdd5b.
+//
+// Solidity: function registerQuoteToken(_token address) returns(bool)
+func (_Exchange *ExchangeSession) RegisterQuoteToken(_token common.Address) (*types.Transaction, error) {
+	return _Exchange.Contract.RegisterQuoteToken(&_Exchange.TransactOpts, _token)
+}
+
+// RegisterQuoteToken is a paid mutator transaction binding the contract method 0xc00fdd5b.
+//
+// Solidity: function registerQuoteToken(_token address) returns(bool)
+func (_Exchange *ExchangeTransactorSession) RegisterQuoteToken(_token common.Address) (*types.Transaction, error) {
+	return _Exchange.Contract.RegisterQuoteToken(&_Exchange.TransactOpts, _token)
 }
 
 // SetFeeAccount is a paid mutator transaction binding the contract method 0x4b023cf8.
@@ -1336,6 +1495,48 @@ func (_Exchange *ExchangeTransactorSession) SetWethToken(_wethToken common.Addre
 	return _Exchange.Contract.SetWethToken(&_Exchange.TransactOpts, _wethToken)
 }
 
+// ValidatePair is a paid mutator transaction binding the contract method 0xf71223a2.
+//
+// Solidity: function validatePair(orderAddresses address[4]) returns(uint256)
+func (_Exchange *ExchangeTransactor) ValidatePair(opts *bind.TransactOpts, orderAddresses [4]common.Address) (*types.Transaction, error) {
+	return _Exchange.contract.Transact(opts, "validatePair", orderAddresses)
+}
+
+// ValidatePair is a paid mutator transaction binding the contract method 0xf71223a2.
+//
+// Solidity: function validatePair(orderAddresses address[4]) returns(uint256)
+func (_Exchange *ExchangeSession) ValidatePair(orderAddresses [4]common.Address) (*types.Transaction, error) {
+	return _Exchange.Contract.ValidatePair(&_Exchange.TransactOpts, orderAddresses)
+}
+
+// ValidatePair is a paid mutator transaction binding the contract method 0xf71223a2.
+//
+// Solidity: function validatePair(orderAddresses address[4]) returns(uint256)
+func (_Exchange *ExchangeTransactorSession) ValidatePair(orderAddresses [4]common.Address) (*types.Transaction, error) {
+	return _Exchange.Contract.ValidatePair(&_Exchange.TransactOpts, orderAddresses)
+}
+
+// ValidateSignatures is a paid mutator transaction binding the contract method 0x1778baf4.
+//
+// Solidity: function validateSignatures(orderValues uint256[10], orderAddresses address[4], v uint8[2], rs bytes32[4]) returns(bool)
+func (_Exchange *ExchangeTransactor) ValidateSignatures(opts *bind.TransactOpts, orderValues [10]*big.Int, orderAddresses [4]common.Address, v [2]uint8, rs [4][32]byte) (*types.Transaction, error) {
+	return _Exchange.contract.Transact(opts, "validateSignatures", orderValues, orderAddresses, v, rs)
+}
+
+// ValidateSignatures is a paid mutator transaction binding the contract method 0x1778baf4.
+//
+// Solidity: function validateSignatures(orderValues uint256[10], orderAddresses address[4], v uint8[2], rs bytes32[4]) returns(bool)
+func (_Exchange *ExchangeSession) ValidateSignatures(orderValues [10]*big.Int, orderAddresses [4]common.Address, v [2]uint8, rs [4][32]byte) (*types.Transaction, error) {
+	return _Exchange.Contract.ValidateSignatures(&_Exchange.TransactOpts, orderValues, orderAddresses, v, rs)
+}
+
+// ValidateSignatures is a paid mutator transaction binding the contract method 0x1778baf4.
+//
+// Solidity: function validateSignatures(orderValues uint256[10], orderAddresses address[4], v uint8[2], rs bytes32[4]) returns(bool)
+func (_Exchange *ExchangeTransactorSession) ValidateSignatures(orderValues [10]*big.Int, orderAddresses [4]common.Address, v [2]uint8, rs [4][32]byte) (*types.Transaction, error) {
+	return _Exchange.Contract.ValidateSignatures(&_Exchange.TransactOpts, orderValues, orderAddresses, v, rs)
+}
+
 // ExchangeLogBatchTradesIterator is returned from FilterLogBatchTrades and is used to iterate over the raw logs and unpacked data for LogBatchTrades events raised by the Exchange contract.
 type ExchangeLogBatchTradesIterator struct {
 	Event *ExchangeLogBatchTrades // Event containing the contract specifics and raw log
@@ -1405,54 +1606,40 @@ func (it *ExchangeLogBatchTradesIterator) Close() error {
 
 // ExchangeLogBatchTrades represents a LogBatchTrades event raised by the Exchange contract.
 type ExchangeLogBatchTrades struct {
-	Taker         common.Address
-	TokenSell     common.Address
-	TokenBuy      common.Address
-	OrderHashes   [][32]byte
-	TradeHashes   [][32]byte
-	FilledAmounts []*big.Int
-	TokenPairHash [32]byte
-	Raw           types.Log // Blockchain specific contextual infos
+	MakerOrderHashes [][32]byte
+	TakerOrderHashes [][32]byte
+	TokenPairHash    [32]byte
+	Raw              types.Log // Blockchain specific contextual infos
 }
 
-// FilterLogBatchTrades is a free log retrieval operation binding the contract event 0x94bbd7e15e68655b645dc3781ae12285dee432ad5c825161d78d6f69c20c1935.
+// FilterLogBatchTrades is a free log retrieval operation binding the contract event 0xde8acabe30c9bd25d65bb9db28bf46f51dc7500a07b1671f121f1144fbf446fc.
 //
-// Solidity: e LogBatchTrades(taker indexed address, tokenSell address, tokenBuy address, orderHashes bytes32[], tradeHashes bytes32[], filledAmounts uint256[], tokenPairHash indexed bytes32)
-func (_Exchange *ExchangeFilterer) FilterLogBatchTrades(opts *bind.FilterOpts, taker []common.Address, tokenPairHash [][32]byte) (*ExchangeLogBatchTradesIterator, error) {
-
-	var takerRule []interface{}
-	for _, takerItem := range taker {
-		takerRule = append(takerRule, takerItem)
-	}
+// Solidity: e LogBatchTrades(makerOrderHashes bytes32[], takerOrderHashes bytes32[], tokenPairHash indexed bytes32)
+func (_Exchange *ExchangeFilterer) FilterLogBatchTrades(opts *bind.FilterOpts, tokenPairHash [][32]byte) (*ExchangeLogBatchTradesIterator, error) {
 
 	var tokenPairHashRule []interface{}
 	for _, tokenPairHashItem := range tokenPairHash {
 		tokenPairHashRule = append(tokenPairHashRule, tokenPairHashItem)
 	}
 
-	logs, sub, err := _Exchange.contract.FilterLogs(opts, "LogBatchTrades", takerRule, tokenPairHashRule)
+	logs, sub, err := _Exchange.contract.FilterLogs(opts, "LogBatchTrades", tokenPairHashRule)
 	if err != nil {
 		return nil, err
 	}
 	return &ExchangeLogBatchTradesIterator{contract: _Exchange.contract, event: "LogBatchTrades", logs: logs, sub: sub}, nil
 }
 
-// WatchLogBatchTrades is a free log subscription operation binding the contract event 0x94bbd7e15e68655b645dc3781ae12285dee432ad5c825161d78d6f69c20c1935.
+// WatchLogBatchTrades is a free log subscription operation binding the contract event 0xde8acabe30c9bd25d65bb9db28bf46f51dc7500a07b1671f121f1144fbf446fc.
 //
-// Solidity: e LogBatchTrades(taker indexed address, tokenSell address, tokenBuy address, orderHashes bytes32[], tradeHashes bytes32[], filledAmounts uint256[], tokenPairHash indexed bytes32)
-func (_Exchange *ExchangeFilterer) WatchLogBatchTrades(opts *bind.WatchOpts, sink chan<- *ExchangeLogBatchTrades, taker []common.Address, tokenPairHash [][32]byte) (event.Subscription, error) {
-
-	var takerRule []interface{}
-	for _, takerItem := range taker {
-		takerRule = append(takerRule, takerItem)
-	}
+// Solidity: e LogBatchTrades(makerOrderHashes bytes32[], takerOrderHashes bytes32[], tokenPairHash indexed bytes32)
+func (_Exchange *ExchangeFilterer) WatchLogBatchTrades(opts *bind.WatchOpts, sink chan<- *ExchangeLogBatchTrades, tokenPairHash [][32]byte) (event.Subscription, error) {
 
 	var tokenPairHashRule []interface{}
 	for _, tokenPairHashItem := range tokenPairHash {
 		tokenPairHashRule = append(tokenPairHashRule, tokenPairHashItem)
 	}
 
-	logs, sub, err := _Exchange.contract.WatchLogs(opts, "LogBatchTrades", takerRule, tokenPairHashRule)
+	logs, sub, err := _Exchange.contract.WatchLogs(opts, "LogBatchTrades", tokenPairHashRule)
 	if err != nil {
 		return nil, err
 	}
