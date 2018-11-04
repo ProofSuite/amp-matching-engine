@@ -122,7 +122,7 @@ func TestFillOrder1(t *testing.T) {
 
 	o1, _ := factory1.NewSellOrder(1e3, 1e8)
 	o2, _ := factory2.NewBuyOrder(1e3, 1e8)
-	expt1 := types.NewTrade(&o1, &o2, units.Ethers(1e8), big.NewInt(1e8))
+	expt1 := types.NewTrade(&o1, &o2, units.Ethers(1e8), big.NewInt(1e3))
 
 	expo1 := o1
 	expo1.Status = "OPEN"
@@ -167,7 +167,7 @@ func TestFillOrder2(t *testing.T) {
 
 	o1, _ := factory1.NewBuyOrder(1e3, 1e8)
 	o2, _ := factory2.NewSellOrder(1e3, 1e8)
-	expt1 := types.NewTrade(&o1, &o2, units.Ethers(1e8), big.NewInt(1e8))
+	expt1 := types.NewTrade(&o1, &o2, units.Ethers(1e8), big.NewInt(1e3))
 
 	expo1 := o1
 	expo1.Status = "OPEN"
@@ -235,9 +235,9 @@ func TestMultiMatchOrder1(t *testing.T) {
 	expbo1.Status = "FILLED"
 	expbo1.FilledAmount = utils.Ethers(3e8)
 
-	expt1 := types.NewTrade(&so1, &bo1, utils.Ethers(1e8), big.NewInt(1e8))
-	expt2 := types.NewTrade(&so2, &bo1, utils.Ethers(1e8), big.NewInt(1e8))
-	expt3 := types.NewTrade(&so3, &bo1, utils.Ethers(1e8), big.NewInt(1e8))
+	expt1 := types.NewTrade(&so1, &bo1, utils.Ethers(1e8), big.NewInt(1e3+4))
+	expt2 := types.NewTrade(&so2, &bo1, utils.Ethers(1e8), big.NewInt(1e3+4))
+	expt3 := types.NewTrade(&so3, &bo1, utils.Ethers(1e8), big.NewInt(1e3+4))
 
 	expectedMatches := types.NewMatches(
 		[]*types.Order{&expso1, &expso2, &expso3},
@@ -284,9 +284,9 @@ func TestMultiMatchOrder2(t *testing.T) {
 	ob.buyOrder(&bo2)
 	ob.buyOrder(&bo3)
 
-	expt1 := types.NewTrade(&bo1, &so1, units.Ethers(1e8), big.NewInt(1e8))
-	expt2 := types.NewTrade(&bo2, &so1, units.Ethers(1e8), big.NewInt(1e8))
-	expt3 := types.NewTrade(&bo3, &so1, units.Ethers(1e8), big.NewInt(1e8))
+	expt1 := types.NewTrade(&bo1, &so1, units.Ethers(1e8), big.NewInt(1e3))
+	expt2 := types.NewTrade(&bo2, &so1, units.Ethers(1e8), big.NewInt(1e3))
+	expt3 := types.NewTrade(&bo3, &so1, units.Ethers(1e8), big.NewInt(1e3))
 
 	expectedMatches := types.NewMatches(
 		[]*types.Order{&expbo3, &expbo2, &expbo1},
@@ -333,10 +333,10 @@ func TestPartialMatchOrder1(t *testing.T) {
 	expbo1.FilledAmount = units.Ethers(4e8)
 	expbo1.Status = "FILLED"
 
-	expt1 := types.NewTrade(&so1, &bo1, units.Ethers(1e8), big.NewInt(1e8))
-	expt2 := types.NewTrade(&so2, &bo1, units.Ethers(1e8), big.NewInt(1e8))
-	expt3 := types.NewTrade(&so3, &bo1, units.Ethers(1e8), big.NewInt(1e8))
-	expt4 := types.NewTrade(&so4, &bo1, units.Ethers(1e8), big.NewInt(1e8))
+	expt1 := types.NewTrade(&so1, &bo1, units.Ethers(1e8), big.NewInt(1e3+5))
+	expt2 := types.NewTrade(&so2, &bo1, units.Ethers(1e8), big.NewInt(1e3+5))
+	expt3 := types.NewTrade(&so3, &bo1, units.Ethers(1e8), big.NewInt(1e3+5))
+	expt4 := types.NewTrade(&so4, &bo1, units.Ethers(1e8), big.NewInt(1e3+5))
 
 	ob.sellOrder(&so1)
 	ob.sellOrder(&so2)
@@ -389,10 +389,10 @@ func TestPartialMatchOrder2(t *testing.T) {
 	expso1.FilledAmount = utils.Ethers(4e8)
 	expso1.Status = "FILLED"
 
-	expt1 := types.NewTrade(&bo1, &so1, utils.Ethers(1e8), big.NewInt(1e8))
-	expt2 := types.NewTrade(&bo2, &so1, utils.Ethers(1e8), big.NewInt(1e8))
-	expt3 := types.NewTrade(&bo3, &so1, utils.Ethers(1e8), big.NewInt(1e8))
-	expt4 := types.NewTrade(&bo4, &so1, utils.Ethers(1e8), big.NewInt(1e8))
+	expt1 := types.NewTrade(&bo1, &so1, utils.Ethers(1e8), big.NewInt(1e3+1))
+	expt2 := types.NewTrade(&bo2, &so1, utils.Ethers(1e8), big.NewInt(1e3+1))
+	expt3 := types.NewTrade(&bo3, &so1, utils.Ethers(1e8), big.NewInt(1e3+1))
+	expt4 := types.NewTrade(&bo4, &so1, utils.Ethers(1e8), big.NewInt(1e3+1))
 
 	ob.buyOrder(&bo1)
 	ob.buyOrder(&bo2)

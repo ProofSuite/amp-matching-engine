@@ -1,2 +1,0 @@
-# github.com/Proofsuite/amp-matching-engine/operator
-operator/txqueue.go:11:2: imported and not used: "github.com/Proofsuite/amp-matching-engine/utils"

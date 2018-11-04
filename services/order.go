@@ -445,7 +445,8 @@ func (s *OrderService) broadcastOrderBookUpdate(orders []*types.Order) {
 	}
 
 	id := utils.GetOrderBookChannelID(p.BaseTokenAddress, p.QuoteTokenAddress)
-	ws.GetOrderBookSocket().BroadcastMessage(id, map[string][]map[string]string{
+	ws.GetOrderBookSocket().BroadcastMessage(id, map[string]interface{}{
+		"pair": orders[0].PairName,
 		"bids": bids,
 		"asks": asks,
 	})
