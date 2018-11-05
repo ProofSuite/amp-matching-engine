@@ -25,7 +25,7 @@ func (s *TradeService) Subscribe(c *ws.Client, bt, qt common.Address) {
 	socket := ws.GetTradeSocket()
 
 	numTrades := 40
-	trades, err := s.GetSortedTradesByDate(bt, qt, numTrades)
+	trades, err := s.GetSortedTrades(bt, qt, numTrades)
 	if err != nil {
 		logger.Error(err)
 		socket.SendErrorMessage(c, err.Error())
@@ -68,8 +68,12 @@ func (s *TradeService) GetAllTradesByPairAddress(bt, qt common.Address) ([]*type
 	return s.tradeDao.GetAllTradesByPairAddress(bt, qt)
 }
 
-func (s *TradeService) GetSortedTradesByDate(bt, qt common.Address, n int) ([]*types.Trade, error) {
-	return s.tradeDao.GetSortedTradesByDate(bt, qt, n)
+func (s *TradeService) GetSortedTradesByUserAddress(a common.Address, limit ...int) ([]*types.Trade, error) {
+	return s.tradeDao.GetSortedTradesByUserAddress(a, limit...)
+}
+
+func (s *TradeService) GetSortedTrades(bt, qt common.Address, n int) ([]*types.Trade, error) {
+	return s.tradeDao.GetSortedTrades(bt, qt, n)
 }
 
 // GetByUserAddress fetches all the trades corresponding to a user address
@@ -82,9 +86,16 @@ func (s *TradeService) GetByHash(h common.Hash) (*types.Trade, error) {
 	return s.tradeDao.GetByHash(h)
 }
 
-// GetByOrderHash fetches all trades corresponding to an order hash
-func (s *TradeService) GetByOrderHash(h common.Hash) ([]*types.Trade, error) {
-	return s.tradeDao.GetByOrderHash(h)
+func (s *TradeService) GetByMakerOrderHash(h common.Hash) ([]*types.Trade, error) {
+	return s.tradeDao.GetByMakerOrderHash(h)
+}
+
+func (s *TradeService) GetByTakerOrderHash(h common.Hash) ([]*types.Trade, error) {
+	return s.tradeDao.GetByTakerOrderHash(h)
+}
+
+func (s *TradeService) GetByOrderHashes(hashes []common.Hash) ([]*types.Trade, error) {
+	return s.tradeDao.GetByOrderHashes(hashes)
 }
 
 func (s *TradeService) UpdateTradeTxHash(tr *types.Trade, txh common.Hash) error {

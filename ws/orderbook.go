@@ -3,6 +3,8 @@ package ws
 import (
 	"errors"
 	"log"
+
+	"github.com/Proofsuite/amp-matching-engine/utils"
 )
 
 var orderbook *OrderBookSocket
@@ -83,6 +85,9 @@ func (s *OrderBookSocket) Unsubscribe(c *Client) {
 
 // BroadcastMessage streams message to all the subscribtions subscribed to the pair
 func (s *OrderBookSocket) BroadcastMessage(channelID string, p interface{}) error {
+
+	utils.PrintJSON(p)
+
 	for c, status := range s.subscriptions[channelID] {
 		if status {
 			log.Print("Broadcasting message")

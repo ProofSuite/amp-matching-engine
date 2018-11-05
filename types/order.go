@@ -20,12 +20,8 @@ type Order struct {
 	ID              bson.ObjectId  `json:"id" bson:"_id"`
 	UserAddress     common.Address `json:"userAddress" bson:"userAddress"`
 	ExchangeAddress common.Address `json:"exchangeAddress" bson:"exchangeAddress"`
-	BuyToken        common.Address `json:"buyToken" bson:"buyToken"`
-	SellToken       common.Address `json:"sellToken" bson:"sellToken"`
 	BaseToken       common.Address `json:"baseToken" bson:"baseToken"`
 	QuoteToken      common.Address `json:"quoteToken" bson:"quoteToken"`
-	BuyAmount       *big.Int       `json:"buyAmount" bson:"buyAmount"`
-	SellAmount      *big.Int       `json:"sellAmount" bson:"sellAmount"`
 	Status          string         `json:"status" bson:"status"`
 	Side            string         `json:"side" bson:"side"`
 	Hash            common.Hash    `json:"hash" bson:"hash"`
@@ -34,35 +30,33 @@ type Order struct {
 	Amount          *big.Int       `json:"amount" bson:"amount"`
 	FilledAmount    *big.Int       `json:"filledAmount" bson:"filledAmount"`
 	Nonce           *big.Int       `json:"nonce" bson:"nonce"`
-	Expires         *big.Int       `json:"expires" bson:"expires"`
 	MakeFee         *big.Int       `json:"makeFee" bson:"makeFee"`
 	TakeFee         *big.Int       `json:"takeFee" bson:"takeFee"`
 	PairName        string         `json:"pairName" bson:"pairName"`
-
-	CreatedAt time.Time `json:"createdAt" bson:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt" bson:"updatedAt"`
+	CreatedAt       time.Time      `json:"createdAt" bson:"createdAt"`
+	UpdatedAt       time.Time      `json:"updatedAt" bson:"updatedAt"`
 }
 
-// TODO: Include userAddress, token addresses checks
+// TODO: Verify userAddress, baseToken, quoteToken, etc. conditions are working
 func (o *Order) Validate() error {
 	if o.ExchangeAddress != common.HexToAddress(app.Config.Ethereum["exchange_address"]) {
 		return errors.New("Order 'exchangeAddress' parameter is incorrect")
 	}
 
-	if o.BuyAmount == nil {
-		return errors.New("Order 'buyAmount' parameter is required")
+	if (o.UserAddress == common.Address{}) {
+		return errors.New("Order 'userAddress' parameter is required")
 	}
 
 	if o.Nonce == nil {
 		return errors.New("Order 'nonce' parameter is required")
 	}
 
-	if o.SellAmount == nil {
-		return errors.New("Order 'sellAmount' parameter is required")
+	if (o.BaseToken == common.Address{}) {
+		return errors.New("Order 'baseToken' parameter is required")
 	}
 
-	if o.Expires == nil {
-		return errors.New("Order 'expires' parameter is required")
+	if (o.QuoteToken == common.Address{}) {
+		return errors.New("Order 'quoteToken' parameter is required")
 	}
 
 	if o.MakeFee == nil {
@@ -73,29 +67,32 @@ func (o *Order) Validate() error {
 		return errors.New("Order 'takeFee' parameter is required")
 	}
 
-	if math.IsSmallerThan(o.BuyAmount, big.NewInt(0)) {
-		return errors.New("Order 'buyAmount' parameter should be positive")
+	if o.Amount == nil {
+		return errors.New("Order 'amount' parameter is required")
 	}
 
-	if math.IsSmallerThan(o.SellAmount, big.NewInt(0)) {
-		return errors.New("Order 'sellAmount' parameter should be positive")
+	if o.PricePoint == nil {
+		return errors.New("Order 'pricepoint' parameter is required")
+	}
+
+	if o.Side != "BUY" && o.Side != "SELL" {
+		return errors.New("Order 'side' should be 'SELL' or 'BUY'")
+	}
+
+	if o.Signature == nil {
+		return errors.New("Order 'signature' parameter is required")
 	}
 
 	if math.IsSmallerThan(o.Nonce, big.NewInt(0)) {
 		return errors.New("Order 'nonce' parameter should be positive")
 	}
 
-	return nil
-}
-
-func (o *Order) ValidateComplete() error {
-	err := o.Validate()
-	if err != nil {
-		return err
+	if math.IsEqualOrSmallerThan(o.Amount, big.NewInt(0)) {
+		return errors.New("Order 'amount' parameter should be strictly positive")
 	}
 
-	if o.Signature == nil {
-		return errors.New("Order 'signature' parameter is required")
+	if math.IsEqualOrSmallerThan(o.PricePoint, big.NewInt(0)) {
+		return errors.New("Order 'pricepoint' parameter should be strictly positive")
 	}
 
 	valid, err := o.VerifySignature()
@@ -107,7 +104,6 @@ func (o *Order) ValidateComplete() error {
 		return errors.New("Order 'signature' parameter is invalid")
 	}
 
-	//TODO add validations for hashes and addresses
 	return nil
 }
 
@@ -116,20 +112,19 @@ func (o *Order) ComputeHash() common.Hash {
 	sha := sha3.NewKeccak256()
 	sha.Write(o.ExchangeAddress.Bytes())
 	sha.Write(o.UserAddress.Bytes())
-	sha.Write(o.SellToken.Bytes())
-	sha.Write(o.BuyToken.Bytes())
-	sha.Write(common.BigToHash(o.SellAmount).Bytes())
-	sha.Write(common.BigToHash(o.BuyAmount).Bytes())
-	sha.Write(common.BigToHash(o.MakeFee).Bytes())
-	sha.Write(common.BigToHash(o.TakeFee).Bytes())
-	sha.Write(common.BigToHash(o.Expires).Bytes())
+	sha.Write(o.BaseToken.Bytes())
+	sha.Write(o.QuoteToken.Bytes())
+	sha.Write(common.BigToHash(o.Amount).Bytes())
+	sha.Write(common.BigToHash(o.PricePoint).Bytes())
+	sha.Write(common.BigToHash(o.EncodedSide()).Bytes())
 	sha.Write(common.BigToHash(o.Nonce).Bytes())
+	sha.Write(common.BigToHash(o.TakeFee).Bytes())
+	sha.Write(common.BigToHash(o.MakeFee).Bytes())
 	return common.BytesToHash(sha.Sum(nil))
 }
 
 // VerifySignature checks that the orderRequest signature corresponds to the address in the userAddress field
 func (o *Order) VerifySignature() (bool, error) {
-
 	o.Hash = o.ComputeHash()
 
 	message := crypto.Keccak256(
@@ -168,20 +163,6 @@ func (o *Order) Process(p *Pair) error {
 		o.FilledAmount = big.NewInt(0)
 	}
 
-	if o.BuyToken == p.BaseTokenAddress {
-		o.Side = "BUY"
-		o.Amount = o.BuyAmount
-		o.PricePoint = math.Div(math.Mul(o.SellAmount, p.PriceMultiplier), o.BuyAmount)
-	} else if o.BuyToken == p.QuoteTokenAddress {
-		o.Side = "SELL"
-		o.Amount = o.SellAmount
-		o.PricePoint = math.Div(math.Mul(o.BuyAmount, p.PriceMultiplier), o.SellAmount)
-	} else {
-		return errors.New("Could not determine order side")
-	}
-
-	o.BaseToken = p.BaseTokenAddress
-	o.QuoteToken = p.QuoteTokenAddress
 	o.PairName = p.Name()
 	o.CreatedAt = time.Now()
 	o.UpdatedAt = time.Now()
@@ -217,6 +198,50 @@ func (o *Order) SellTokenSymbol() string {
 	}
 
 	return ""
+}
+
+//TODO handle error case
+func (o *Order) SellToken() common.Address {
+	if o.Side == "BUY" {
+		return o.QuoteToken
+	} else {
+		return o.BaseToken
+	}
+}
+
+func (o *Order) BuyToken() common.Address {
+	if o.Side == "BUY" {
+		return o.BaseToken
+	} else {
+		return o.QuoteToken
+	}
+}
+
+// SellAmount
+// If order is a "BUY", then sellToken = quoteToken
+func (o *Order) SellAmount() *big.Int {
+	if o.Side == "BUY" {
+		return math.Div(math.Mul(o.Amount, o.PricePoint), big.NewInt(1e6))
+	} else {
+		return o.Amount
+	}
+}
+
+func (o *Order) BuyAmount() *big.Int {
+	if o.Side == "SELL" {
+		return o.Amount
+	} else {
+		return math.Div(math.Mul(o.Amount, o.PricePoint), big.NewInt(1e6))
+	}
+}
+
+//TODO handle error case ?
+func (o *Order) EncodedSide() *big.Int {
+	if o.Side == "BUY" {
+		return big.NewInt(0)
+	} else {
+		return big.NewInt(1)
+	}
 }
 
 func (o *Order) BuyTokenSymbol() string {
@@ -262,40 +287,23 @@ func (o *Order) MarshalJSON() ([]byte, error) {
 	order := map[string]interface{}{
 		"exchangeAddress": o.ExchangeAddress,
 		"userAddress":     o.UserAddress,
-		"buyToken":        o.BuyToken,
-		"sellToken":       o.SellToken,
 		"baseToken":       o.BaseToken,
 		"quoteToken":      o.QuoteToken,
 		"side":            o.Side,
 		"status":          o.Status,
 		"pairName":        o.PairName,
-		"buyAmount":       o.BuyAmount.String(),
-		"sellAmount":      o.SellAmount.String(),
+		"amount":          o.Amount.String(),
+		"pricepoint":      o.PricePoint.String(),
 		"makeFee":         o.MakeFee.String(),
 		"takeFee":         o.TakeFee.String(),
-		"expires":         o.Expires.String(),
 		// NOTE: Currently removing this to simplify public API, might reinclude
 		// later. An alternative would be to create additional simplified type
 		"createdAt": o.CreatedAt.Format(time.RFC3339Nano),
 		// "updatedAt": o.UpdatedAt.Format(time.RFC3339Nano),
 	}
 
-	// NOTE: Currently removing this to simplify public API, will reinclude
-	// if needed. An alternative would be to create additional simplified type
-	// if o.ID != bson.ObjectId("") {
-	// 	order["id"] = o.ID
-	// }
-
-	if o.Amount != nil {
-		order["amount"] = o.Amount.String()
-	}
-
 	if o.FilledAmount != nil {
 		order["filledAmount"] = o.FilledAmount.String()
-	}
-
-	if o.PricePoint != nil {
-		order["pricepoint"] = o.PricePoint.String()
 	}
 
 	if o.Hash.Hex() != "" {
@@ -341,14 +349,6 @@ func (o *Order) UnmarshalJSON(b []byte) error {
 		o.UserAddress = common.HexToAddress(order["userAddress"].(string))
 	}
 
-	if order["buyToken"] != nil {
-		o.BuyToken = common.HexToAddress(order["buyToken"].(string))
-	}
-
-	if order["sellToken"] != nil {
-		o.SellToken = common.HexToAddress(order["sellToken"].(string))
-	}
-
 	if order["baseToken"] != nil {
 		o.BaseToken = common.HexToAddress(order["baseToken"].(string))
 	}
@@ -367,18 +367,6 @@ func (o *Order) UnmarshalJSON(b []byte) error {
 
 	if order["filledAmount"] != nil {
 		o.FilledAmount = math.ToBigInt(order["filledAmount"].(string))
-	}
-
-	if order["buyAmount"] != nil {
-		o.BuyAmount = math.ToBigInt(order["buyAmount"].(string))
-	}
-
-	if order["sellAmount"] != nil {
-		o.SellAmount = math.ToBigInt(order["sellAmount"].(string))
-	}
-
-	if order["expires"] != nil {
-		o.Expires = math.ToBigInt(order["expires"].(string))
 	}
 
 	if order["nonce"] != nil {
@@ -432,12 +420,8 @@ type OrderRecord struct {
 	ID              bson.ObjectId    `json:"id" bson:"_id"`
 	UserAddress     string           `json:"userAddress" bson:"userAddress"`
 	ExchangeAddress string           `json:"exchangeAddress" bson:"exchangeAddress"`
-	BuyToken        string           `json:"buyToken" bson:"buyToken"`
-	SellToken       string           `json:"sellToken" bson:"sellToken"`
 	BaseToken       string           `json:"baseToken" bson:"baseToken"`
 	QuoteToken      string           `json:"quoteToken" bson:"quoteToken"`
-	BuyAmount       string           `json:"buyAmount" bson:"buyAmount"`
-	SellAmount      string           `json:"sellAmount" bson:"sellAmount"`
 	Status          string           `json:"status" bson:"status"`
 	Side            string           `json:"side" bson:"side"`
 	Hash            string           `json:"hash" bson:"hash"`
@@ -445,7 +429,6 @@ type OrderRecord struct {
 	Amount          string           `json:"amount" bson:"amount"`
 	FilledAmount    string           `json:"filledAmount" bson:"filledAmount"`
 	Nonce           string           `json:"nonce" bson:"nonce"`
-	Expires         string           `json:"expires" bson:"expires"`
 	MakeFee         string           `json:"makeFee" bson:"makeFee"`
 	TakeFee         string           `json:"takeFee" bson:"takeFee"`
 	Signature       *SignatureRecord `json:"signature,omitempty" bson:"signature"`
@@ -460,17 +443,14 @@ func (o *Order) GetBSON() (interface{}, error) {
 		PairName:        o.PairName,
 		ExchangeAddress: o.ExchangeAddress.Hex(),
 		UserAddress:     o.UserAddress.Hex(),
-		BuyToken:        o.BuyToken.Hex(),
-		SellToken:       o.SellToken.Hex(),
 		BaseToken:       o.BaseToken.Hex(),
 		QuoteToken:      o.QuoteToken.Hex(),
-		BuyAmount:       o.BuyAmount.String(),
-		SellAmount:      o.SellAmount.String(),
 		Status:          o.Status,
 		Side:            o.Side,
 		Hash:            o.Hash.Hex(),
+		Amount:          o.Amount.String(),
+		PricePoint:      o.PricePoint.Int64(),
 		Nonce:           o.Nonce.String(),
-		Expires:         o.Expires.String(),
 		MakeFee:         o.MakeFee.String(),
 		TakeFee:         o.TakeFee.String(),
 		CreatedAt:       o.CreatedAt,
@@ -481,14 +461,6 @@ func (o *Order) GetBSON() (interface{}, error) {
 		or.ID = bson.NewObjectId()
 	} else {
 		or.ID = o.ID
-	}
-
-	if o.PricePoint != nil {
-		or.PricePoint = o.PricePoint.Int64()
-	}
-
-	if o.Amount != nil {
-		or.Amount = o.Amount.String()
 	}
 
 	if o.FilledAmount != nil {
@@ -512,12 +484,8 @@ func (o *Order) SetBSON(raw bson.Raw) error {
 		PairName        string           `json:"pairName" bson:"pairName"`
 		ExchangeAddress string           `json:"exchangeAddress" bson:"exchangeAddress"`
 		UserAddress     string           `json:"userAddress" bson:"userAddress"`
-		BuyToken        string           `json:"buyToken" bson:"buyToken"`
-		SellToken       string           `json:"sellToken" bson:"sellToken"`
 		BaseToken       string           `json:"baseToken" bson:"baseToken"`
 		QuoteToken      string           `json:"quoteToken" bson:"quoteToken"`
-		BuyAmount       string           `json:"buyAmount" bson:"buyAmount"`
-		SellAmount      string           `json:"sellAmount" bson:"sellAmount"`
 		Status          string           `json:"status" bson:"status"`
 		Side            string           `json:"side" bson:"side"`
 		Hash            string           `json:"hash" bson:"hash"`
@@ -525,7 +493,6 @@ func (o *Order) SetBSON(raw bson.Raw) error {
 		Amount          string           `json:"amount" bson:"amount"`
 		FilledAmount    string           `json:"filledAmount" bson:"filledAmount"`
 		Nonce           string           `json:"nonce" bson:"nonce"`
-		Expires         string           `json:"expires" bson:"expires"`
 		MakeFee         string           `json:"makeFee" bson:"makeFee"`
 		TakeFee         string           `json:"takeFee" bson:"takeFee"`
 		Signature       *SignatureRecord `json:"signature" bson:"signature"`
@@ -543,17 +510,10 @@ func (o *Order) SetBSON(raw bson.Raw) error {
 	o.PairName = decoded.PairName
 	o.ExchangeAddress = common.HexToAddress(decoded.ExchangeAddress)
 	o.UserAddress = common.HexToAddress(decoded.UserAddress)
-	o.BuyToken = common.HexToAddress(decoded.BuyToken)
-	o.SellToken = common.HexToAddress(decoded.SellToken)
 	o.BaseToken = common.HexToAddress(decoded.BaseToken)
 	o.QuoteToken = common.HexToAddress(decoded.QuoteToken)
-
-	o.BuyAmount = math.ToBigInt(decoded.BuyAmount)
-	o.SellAmount = math.ToBigInt(decoded.SellAmount)
 	o.FilledAmount = math.ToBigInt(decoded.FilledAmount)
-
 	o.Nonce = math.ToBigInt(decoded.Nonce)
-	o.Expires = math.ToBigInt(decoded.Expires)
 	o.MakeFee = math.ToBigInt(decoded.MakeFee)
 	o.TakeFee = math.ToBigInt(decoded.TakeFee)
 	o.Status = decoded.Status
@@ -597,27 +557,16 @@ func (o OrderBSONUpdate) GetBSON() (interface{}, error) {
 		"pairName":        o.PairName,
 		"exchangeAddress": o.ExchangeAddress.Hex(),
 		"userAddress":     o.UserAddress.Hex(),
-		"buyToken":        o.BuyToken.Hex(),
-		"sellToken":       o.SellToken.Hex(),
 		"baseToken":       o.BaseToken.Hex(),
 		"quoteToken":      o.QuoteToken.Hex(),
-		"buyAmount":       o.BuyAmount.String(),
-		"sellAmount":      o.SellAmount.String(),
 		"status":          o.Status,
 		"side":            o.Side,
+		"pricepoint":      o.PricePoint.Int64(),
+		"amount":          o.Amount.String(),
 		"nonce":           o.Nonce.String(),
-		"expires":         o.Expires.String(),
 		"makeFee":         o.MakeFee.String(),
 		"takeFee":         o.TakeFee.String(),
 		"updatedAt":       now,
-	}
-
-	if o.PricePoint != nil {
-		set["pricepoint"] = o.PricePoint.Int64()
-	}
-
-	if o.Amount != nil {
-		set["amount"] = o.Amount.String()
 	}
 
 	if o.FilledAmount != nil {
@@ -645,91 +594,3 @@ func (o OrderBSONUpdate) GetBSON() (interface{}, error) {
 
 	return update, nil
 }
-
-// func (o *UpdatedOrder) GetBSON() (interface{}, error) {
-
-// 	return bson.M{
-// 		"pairName":        o.PairName,
-// 		"ExchangeAddress": o.ExchangeAddress.Hex(),
-// 		"UserAddress":     o.UserAddress.Hex(),
-// 		"BuyToken":        o.BuyToken.Hex(),
-// 		"SellToken":       o.SellToken.Hex(),
-// 		"BaseToken":       o.BaseToken.Hex(),
-// 		"QuoteToken":      o.QuoteToken.Hex(),
-// 		"BuyAmount":       o.BuyAmount.String(),
-// 		"SellAmount":      o.SellAmount.String(),
-// 		"Status":          o.Status,
-// 		"Side":            o.Side,
-// 		"Hash":            o.Hash.Hex(),
-// 		"Nonce":           o.Nonce.String(),
-// 		"Expires":         o.Expires.String(),
-// 		"MakeFee":         o.MakeFee.String(),
-// 		"TakeFee":         o.TakeFee.String(),
-// 		"CreatedAt":       o.CreatedAt,
-// 		"UpdatedAt":       o.UpdatedAt,
-// 	}
-// 	or := OrderRecord{
-// 		ID:              o.ID,
-// 		PairName:        o.PairName,
-// 		ExchangeAddress: o.ExchangeAddress.Hex(),
-// 		UserAddress:     o.UserAddress.Hex(),
-// 		BuyToken:        o.BuyToken.Hex(),
-// 		SellToken:       o.SellToken.Hex(),
-// 		BaseToken:       o.BaseToken.Hex(),
-// 		QuoteToken:      o.QuoteToken.Hex(),
-// 		BuyAmount:       o.BuyAmount.String(),
-// 		SellAmount:      o.SellAmount.String(),
-// 		Status:          o.Status,
-// 		Side:            o.Side,
-// 		Hash:            o.Hash.Hex(),
-// 		Nonce:           o.Nonce.String(),
-// 		Expires:         o.Expires.String(),
-// 		MakeFee:         o.MakeFee.String(),
-// 		TakeFee:         o.TakeFee.String(),
-// 		CreatedAt:       o.CreatedAt,
-// 		UpdatedAt:       o.UpdatedAt,
-// 	}
-
-// 	if o.PricePoint != nil {
-// 		or.PricePoint = o.PricePoint.String()
-// 	}
-
-// 	if o.Amount != nil {
-// 		or.Amount = o.Amount.String()
-// 	}
-
-// 	if o.FilledAmount != nil {
-// 		or.FilledAmount = o.FilledAmount.String()
-// 	}
-
-// 	if o.Signature != nil {
-// 		or.Signature = &SignatureRecord{
-// 			V: o.Signature.V,
-// 			R: o.Signature.R.Hex(),
-// 			S: o.Signature.S.Hex(),
-// 		}
-// 	}
-
-// // 	return or, nil
-// // }
-// // GetKVPrefix returns the key value store(redis) prefix to be used
-// // by matching engine correspondind to a particular order.
-// func (o *Order) GetKVPrefix() string {
-// 	return o.BaseToken.Hex() + "::" + o.QuoteToken.Hex()
-// }
-
-// // GetOBKeys returns the keys corresponding to an order
-// // orderbook price point key
-// // orderbook list key corresponding to order price.
-// func (o *Order) GetOBKeys() (ss, list string) {
-// 	var k string
-// 	if o.Side == "BUY" {
-// 		k = "BUY"
-// 	} else if o.Side == "SELL" {
-// 		k = "SELL"
-// 	}
-
-// 	ss = o.GetKVPrefix() + "::" + k
-// 	list = o.GetKVPrefix() + "::" + k + "::" + utils.UintToPaddedString(o.PricePoint.Int64())
-// 	return
-// }

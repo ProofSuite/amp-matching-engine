@@ -1,12 +1,10 @@
 package services
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"math/big"
-	"time"
 
 	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/Proofsuite/amp-matching-engine/utils"
@@ -62,8 +60,8 @@ func (s *OrderService) GetByID(id bson.ObjectId) (*types.Order, error) {
 }
 
 // GetByUserAddress fetches all the orders placed by passed user address
-func (s *OrderService) GetByUserAddress(addr common.Address) ([]*types.Order, error) {
-	return s.orderDao.GetByUserAddress(addr)
+func (s *OrderService) GetByUserAddress(addr common.Address, limit ...int) ([]*types.Order, error) {
+	return s.orderDao.GetByUserAddress(addr, limit...)
 }
 
 // GetByHash fetches all trades corresponding to a trade hash
@@ -71,17 +69,21 @@ func (s *OrderService) GetByHash(hash common.Hash) (*types.Order, error) {
 	return s.orderDao.GetByHash(hash)
 }
 
+func (s *OrderService) GetByHashes(hashes []common.Hash) ([]*types.Order, error) {
+	return s.orderDao.GetByHashes(hashes)
+}
+
 // GetCurrentByUserAddress function fetches list of open/partial orders from order collection based on user address.
 // Returns array of Order type struct
-func (s *OrderService) GetCurrentByUserAddress(addr common.Address) ([]*types.Order, error) {
-	return s.orderDao.GetCurrentByUserAddress(addr)
+func (s *OrderService) GetCurrentByUserAddress(addr common.Address, limit ...int) ([]*types.Order, error) {
+	return s.orderDao.GetCurrentByUserAddress(addr, limit...)
 }
 
 // GetHistoryByUserAddress function fetches list of orders which are not in open/partial order status
 // from order collection based on user address.
 // Returns array of Order type struct
-func (s *OrderService) GetHistoryByUserAddress(addr common.Address) ([]*types.Order, error) {
-	return s.orderDao.GetHistoryByUserAddress(addr)
+func (s *OrderService) GetHistoryByUserAddress(addr common.Address, limit ...int) ([]*types.Order, error) {
+	return s.orderDao.GetHistoryByUserAddress(addr, limit...)
 }
 
 // NewOrder validates if the passed order is valid or not based on user's available
@@ -104,7 +106,7 @@ func (s *OrderService) NewOrder(o *types.Order) error {
 		return errors.New("Invalid signature")
 	}
 
-	p, err := s.pairDao.GetByBuySellTokenAddress(o.BuyToken, o.SellToken)
+	p, err := s.pairDao.GetByTokenAddress(o.BaseToken, o.QuoteToken)
 	if err != nil {
 		logger.Error(err)
 		return err
@@ -246,137 +248,59 @@ func (s *OrderService) handleEngineOrderAdded(res *types.EngineResponse) {
 // handleEngineOrderMatched returns a websocket message informing the client that his order has been added.
 // The request signature message also signals the client to sign trades.
 func (s *OrderService) handleEngineOrderMatched(res *types.EngineResponse) {
-	//res.Order is the "taker" order
-	o := res.Order
+	o := res.Order //res.Order is the "taker" order
+	matches := *res.Matches
 
+	utils.PrintJSON(res)
+
+	taker := o.UserAddress
+	hashID := matches.HashID()
 	orders := []*types.Order{o}
-	trades := []*types.Trade{}
-	matches := types.Matches{}
-	invalidMatches := types.Matches{}
+	validMatches := types.Matches{TakerOrder: o}
+	invalidMatches := types.Matches{TakerOrder: o}
 
 	//res.Matches is an array of (order, trade) pairs where each order is an "maker" order that is being matched
-	for _, m := range *res.Matches {
-		err := s.validator.ValidateBalance(m.Order)
+	for i, _ := range matches.Trades {
+		err := s.validator.ValidateBalance(matches.MakerOrders[i])
 		if err != nil {
 			logger.Error(err)
-			invalidMatches = append(invalidMatches, m)
+			invalidMatches.AppendMatch(matches.MakerOrders[i], matches.Trades[i])
 
 		} else {
-			orders = append(orders, m.Order)
-			trades = append(trades, m.Trade)
-			matches = append(matches, m)
+			validMatches.AppendMatch(matches.MakerOrders[i], matches.Trades[i])
+			orders = append(orders, matches.MakerOrders[i])
 		}
-	}
-
-	go s.handleSubmitSignatures(res)
-
-	if len(matches) > 0 {
-		ws.SendOrderMessage("REQUEST_SIGNATURE",
-			o.UserAddress,
-			o.Hash,
-			types.SignaturePayload{res.Order, res.RemainingOrder, &matches},
-		)
 	}
 
 	// if there are any invalid matches, the maker orders are at cause (since maker orders have been validated in the
 	// newOrder() function. We remove the maker orders from the orderbook)
-	if len(invalidMatches) > 0 {
-		utils.PrintJSON("one more invalid match")
+	if invalidMatches.Length() > 0 {
 		err := s.broker.PublishInvalidateMakerOrdersMessage(invalidMatches)
 		if err != nil {
 			logger.Error(err)
 		}
 	}
 
+	err := s.tradeDao.Create(validMatches.Trades...)
+	if err != nil {
+		logger.Error(err)
+		ws.SendOrderMessage("ERROR", taker, hashID, err)
+		return
+	}
+
+	logger.Info("PUBLISHING TRADES")
+	err = s.broker.PublishTrades(&validMatches)
+	if err != nil {
+		logger.Error(err)
+		ws.SendOrderMessage("ERROR", taker, hashID, err)
+		return
+	}
+
 	// we only update the orderbook with the current set of orders if there are no invalid matches.
 	// If there are invalid matches, the corresponding maker orders will be removed and the taker order
 	// amount filled will be updated as a result, and therefore does not represent the current state of the orderbook
-	if len(invalidMatches) == 0 {
+	if invalidMatches.Length() == 0 {
 		s.broadcastOrderBookUpdate(orders)
-	}
-
-}
-
-// handleSubmitSignatures wait for a submit signature message that provides the matching engine with orders
-// that can be broadcast to the exchange smart contrct
-func (s *OrderService) handleSubmitSignatures(res *types.EngineResponse) {
-	addr := res.Order.UserAddress
-	hashID := res.Order.Hash
-
-	ch := s.CreateOrderChannel(hashID)
-	defer s.DeleteOrderChannel(hashID)
-
-	t := time.NewTimer(30 * time.Second)
-
-	select {
-	case msg := <-ch:
-		if msg != nil && msg.Type == "SUBMIT_SIGNATURE" {
-			bytes, err := json.Marshal(msg.Payload)
-			if err != nil {
-				logger.Error(err)
-				ws.SendOrderMessage("ERROR", addr, hashID, err.Error())
-			}
-
-			p := &types.SignaturePayload{}
-			err = json.Unmarshal(bytes, p)
-			if err != nil {
-				logger.Error(err)
-				ws.SendOrderMessage("ERROR", addr, hashID, err.Error())
-			}
-
-			// handle remaining order ()
-			ro := p.RemainingOrder
-			if ro != nil {
-				err := ro.ValidateComplete()
-				if err != nil {
-					ws.SendOrderMessage("ERROR", addr, hashID, err.Error())
-					return
-				}
-
-				b, err := json.Marshal(ro)
-				if err != nil {
-					logger.Error(err)
-					ws.SendOrderMessage("ERROR", addr, hashID, err.Error())
-					return
-				}
-
-				//TODO do we need the Hash ID ?
-				s.broker.PublishOrder(&rabbitmq.Message{Type: "NEW_ORDER", Data: b})
-			}
-
-			// trades
-			if p.Matches != nil {
-				matches := p.Matches
-				trades := matches.Trades()
-				taker := matches.Taker()
-
-				err := matches.Validate()
-				if err != nil {
-					logger.Error(err)
-					ws.SendOrderMessage("ERROR", taker, hashID, err)
-					return
-				}
-
-				//TODO include this in the handleOrderMatched step
-				err = s.tradeDao.Create(trades...)
-				if err != nil {
-					logger.Error(err)
-					ws.SendOrderMessage("ERROR", taker, hashID, err)
-					return
-				}
-
-				logger.Info("PUBLISHING TRADES")
-				err = s.broker.PublishTrades(matches)
-				if err != nil {
-					logger.Error(err)
-					ws.SendOrderMessage("ERROR", taker, hashID, err)
-					return
-				}
-			}
-		}
-	case <-t.C:
-		t.Stop()
-		break
 	}
 }
 
@@ -393,8 +317,8 @@ func (s *OrderService) handleOperatorUnknownMessage(msg *types.OperatorMessage) 
 
 func (s *OrderService) handleOperatorTradePending(msg *types.OperatorMessage) {
 	matches := msg.Matches
-	trades := matches.Trades()
-	orders := matches.Orders()
+	trades := matches.Trades
+	orders := matches.MakerOrders
 
 	for _, t := range trades {
 		err := s.tradeDao.UpdateTradeStatus(t.Hash, "PENDING")
@@ -415,7 +339,6 @@ func (s *OrderService) handleOperatorTradePending(msg *types.OperatorMessage) {
 		ws.SendOrderMessage("ORDER_PENDING", maker, orderHash, types.OrderPendingPayload{matches})
 	}
 
-	//TODO separate in different function or find more idiomatic code
 	s.broadcastTradeUpdate(trades)
 }
 
@@ -424,7 +347,7 @@ func (s *OrderService) handleOperatorTradePending(msg *types.OperatorMessage) {
 func (s *OrderService) handleOperatorTradeSuccess(msg *types.OperatorMessage) {
 	matches := msg.Matches
 	hashes := []common.Hash{}
-	trades := matches.Trades()
+	trades := matches.Trades
 
 	for _, t := range trades {
 		hashes = append(hashes, t.Hash)
@@ -439,17 +362,17 @@ func (s *OrderService) handleOperatorTradeSuccess(msg *types.OperatorMessage) {
 		logger.Error(err)
 	}
 
-	//TODO VERIFY that the status of the trades in the matches are modified to "SUCCESS"
+	// Send ORDER_SUCCESS message to order takers
 	taker := trades[0].Taker
 	takerHash := trades[0].TakerOrderHash
 	ws.SendOrderMessage("ORDER_SUCCESS", taker, takerHash, types.OrderSuccessPayload{matches})
 
-	for _, m := range *matches {
-		maker := m.Order.UserAddress
-		orderHash := m.Order.Hash
-		//TODO Only send the corresponding order in the payload
-		payload := types.Matches{m}
-		ws.SendOrderMessage("ORDER_SUCCESS", maker, orderHash, types.OrderSuccessPayload{&payload})
+	// Send ORDER_SUCCESS message to order makers
+	for i, _ := range trades {
+		match := matches.NthMatch(i)
+		maker := match.MakerOrders[0].UserAddress
+		orderHash := match.MakerOrders[0].Hash
+		ws.SendOrderMessage("ORDER_SUCCESS", maker, orderHash, types.OrderSuccessPayload{match})
 	}
 
 	s.broadcastTradeUpdate(trades)
@@ -460,8 +383,8 @@ func (s *OrderService) handleOperatorTradeSuccess(msg *types.OperatorMessage) {
 // orderbook.
 func (s *OrderService) handleOperatorTradeError(msg *types.OperatorMessage) {
 	matches := msg.Matches
-	trades := matches.Trades()
-	orders := matches.Orders()
+	trades := matches.Trades
+	orders := matches.MakerOrders
 
 	for _, t := range trades {
 		err := s.tradeDao.UpdateTradeStatus(t.Hash, "ERROR")
@@ -522,7 +445,8 @@ func (s *OrderService) broadcastOrderBookUpdate(orders []*types.Order) {
 	}
 
 	id := utils.GetOrderBookChannelID(p.BaseTokenAddress, p.QuoteTokenAddress)
-	ws.GetOrderBookSocket().BroadcastMessage(id, map[string][]map[string]string{
+	ws.GetOrderBookSocket().BroadcastMessage(id, map[string]interface{}{
+		"pair": orders[0].PairName,
 		"bids": bids,
 		"asks": asks,
 	})

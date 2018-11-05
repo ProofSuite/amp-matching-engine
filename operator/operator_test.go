@@ -79,7 +79,6 @@ func SetupTest(t *testing.T) (
 	provider := ethereum.NewEthereumProvider(client)
 	// provider := ethereum.NewEthereumProvider(simulator)
 
-	//Initially Maker owns 1e18 units of sellToken and Taker owns 1e18 units buyToken
 	wethToken, weth, _, err := deployer.DeployToken(maker.Address, big.NewInt(1e18))
 	if err != nil {
 		t.Errorf("Error deploying token 1: %v", err)

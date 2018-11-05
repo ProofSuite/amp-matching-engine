@@ -172,8 +172,6 @@ func (dao *OrderDao) UpdateByHash(h common.Hash, o *types.Order) error {
 	o.UpdatedAt = time.Now()
 	query := bson.M{"hash": h.Hex()}
 	update := bson.M{"$set": bson.M{
-		"buyAmount":    o.BuyAmount.String(),
-		"sellAmount":   o.SellAmount.String(),
 		"pricepoint":   o.PricePoint.Int64(),
 		"amount":       o.Amount.String(),
 		"status":       o.Status,
@@ -376,11 +374,15 @@ func (dao *OrderDao) GetByHashes(hashes []common.Hash) ([]*types.Order, error) {
 
 // GetByUserAddress function fetches list of orders from order collection based on user address.
 // Returns array of Order type struct
-func (dao *OrderDao) GetByUserAddress(addr common.Address) ([]*types.Order, error) {
+func (dao *OrderDao) GetByUserAddress(addr common.Address, limit ...int) ([]*types.Order, error) {
+	if limit == nil {
+		limit = []int{0}
+	}
+
 	var res []*types.Order
 	q := bson.M{"userAddress": addr.Hex()}
 
-	err := db.Get(dao.dbName, dao.collectionName, q, 0, 0, &res)
+	err := db.Get(dao.dbName, dao.collectionName, q, 0, limit[0], &res)
 	if err != nil {
 		logger.Error(err)
 		return nil, err
@@ -395,7 +397,11 @@ func (dao *OrderDao) GetByUserAddress(addr common.Address) ([]*types.Order, erro
 
 // GetCurrentByUserAddress function fetches list of open/partial orders from order collection based on user address.
 // Returns array of Order type struct
-func (dao *OrderDao) GetCurrentByUserAddress(addr common.Address) ([]*types.Order, error) {
+func (dao *OrderDao) GetCurrentByUserAddress(addr common.Address, limit ...int) ([]*types.Order, error) {
+	if limit == nil {
+		limit = []int{0}
+	}
+
 	var res []*types.Order
 	q := bson.M{
 		"userAddress": addr.Hex(),
@@ -406,7 +412,7 @@ func (dao *OrderDao) GetCurrentByUserAddress(addr common.Address) ([]*types.Orde
 		},
 	}
 
-	err := db.Get(dao.dbName, dao.collectionName, q, 0, 0, &res)
+	err := db.Get(dao.dbName, dao.collectionName, q, 0, limit[0], &res)
 	if err != nil {
 		logger.Error(err)
 		return nil, err
@@ -418,7 +424,11 @@ func (dao *OrderDao) GetCurrentByUserAddress(addr common.Address) ([]*types.Orde
 // GetHistoryByUserAddress function fetches list of orders which are not in open/partial order status
 // from order collection based on user address.
 // Returns array of Order type struct
-func (dao *OrderDao) GetHistoryByUserAddress(addr common.Address) ([]*types.Order, error) {
+func (dao *OrderDao) GetHistoryByUserAddress(addr common.Address, limit ...int) ([]*types.Order, error) {
+	if limit == nil {
+		limit = []int{0}
+	}
+
 	var res []*types.Order
 	q := bson.M{
 		"userAddress": addr.Hex(),
@@ -429,7 +439,7 @@ func (dao *OrderDao) GetHistoryByUserAddress(addr common.Address) ([]*types.Orde
 		},
 	}
 
-	err := db.Get(dao.dbName, dao.collectionName, q, 0, 0, &res)
+	err := db.Get(dao.dbName, dao.collectionName, q, 0, limit[0], &res)
 	if err != nil {
 		logger.Error(err)
 		return nil, err
@@ -456,10 +466,16 @@ func (dao *OrderDao) GetUserLockedBalance(account common.Address, token common.A
 		return nil, err
 	}
 
+	//TODO verify and refactor
 	totalLockedBalance := big.NewInt(0)
 	for _, o := range orders {
-		filledSellAmount := math.Div(math.Mul(o.FilledAmount, o.SellAmount), o.BuyAmount)
-		lockedBalance := math.Sub(o.SellAmount, filledSellAmount)
+		lockedBalance := big.NewInt(0)
+		if o.Side == "BUY" {
+			lockedBalance = math.Sub(o.Amount, o.FilledAmount)
+		} else if o.Side == "SELL" {
+			lockedBalance = math.Mul(math.Sub(o.Amount, o.FilledAmount), o.PricePoint)
+		}
+
 		totalLockedBalance = math.Add(totalLockedBalance, lockedBalance)
 	}
 

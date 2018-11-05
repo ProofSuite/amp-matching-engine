@@ -7,7 +7,6 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/app"
 	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/Proofsuite/amp-matching-engine/types"
-	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/Proofsuite/amp-matching-engine/utils/math"
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -53,19 +52,19 @@ func (s *ValidatorService) ValidateBalance(o *types.Order) error {
 		return err
 	}
 
-	sellTokenBalance, err := s.ethereumProvider.BalanceOf(o.UserAddress, o.SellToken)
+	sellTokenBalance, err := s.ethereumProvider.BalanceOf(o.UserAddress, o.SellToken())
 	if err != nil {
 		logger.Error(err)
 		return err
 	}
 
-	sellTokenAllowance, err := s.ethereumProvider.Allowance(o.UserAddress, exchangeAddress, o.SellToken)
+	sellTokenAllowance, err := s.ethereumProvider.Allowance(o.UserAddress, exchangeAddress, o.SellToken())
 	if err != nil {
 		logger.Error(err)
 		return err
 	}
 
-	sellTokenLockedBalance, err := s.orderDao.GetUserLockedBalance(o.UserAddress, o.SellToken)
+	sellTokenLockedBalance, err := s.orderDao.GetUserLockedBalance(o.UserAddress, o.SellToken())
 	if err != nil {
 		logger.Error(err)
 		return err
@@ -91,21 +90,19 @@ func (s *ValidatorService) ValidateBalance(o *types.Order) error {
 	}
 
 	//Sell Token Balance
-	if sellTokenBalance.Cmp(o.SellAmount) == -1 {
+	if sellTokenBalance.Cmp(o.SellAmount()) == -1 {
 		return fmt.Errorf("Insufficient %v Balance", o.SellTokenSymbol())
 	}
 
-	if availableSellTokenBalance.Cmp(o.SellAmount) == -1 {
+	if availableSellTokenBalance.Cmp(o.SellAmount()) == -1 {
 		return fmt.Errorf("Insufficient %v Balance", o.SellTokenSymbol())
 	}
 
-	if sellTokenAllowance.Cmp(o.SellAmount) == -1 {
+	if sellTokenAllowance.Cmp(o.SellAmount()) == -1 {
 		return fmt.Errorf("Insufficient %v Allowance", o.SellTokenSymbol())
 	}
 
-	utils.PrintJSON(sellTokenAllowance)
-
-	sellTokenBalanceRecord := balanceRecord[o.SellToken]
+	sellTokenBalanceRecord := balanceRecord[o.SellToken()]
 	if sellTokenBalanceRecord == nil {
 		return errors.New("Account error: Balance record not found")
 	}
@@ -126,7 +123,7 @@ func (s *ValidatorService) ValidateBalance(o *types.Order) error {
 		return err
 	}
 
-	err = s.accountDao.UpdateTokenBalance(o.UserAddress, o.SellToken, sellTokenBalanceRecord)
+	err = s.accountDao.UpdateTokenBalance(o.UserAddress, o.SellToken(), sellTokenBalanceRecord)
 	if err != nil {
 		logger.Error(err)
 		return err

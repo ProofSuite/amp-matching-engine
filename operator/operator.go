@@ -173,28 +173,35 @@ func (op *Operator) HandleEvents() error {
 		select {
 		case event := <-errorEvents:
 			fmt.Println("TRADE_ERROR_EVENT")
-			tradeHash := event.TradeHash
+			makerOrderHash := event.OrderHash
+			takerOrderHash := event.TradeHash
 			errID := int(event.ErrorId)
 
 			logger.Info("The error ID is: ", errID)
-			tr, err := op.TradeService.GetByHash(tradeHash)
+
+			trades, err := op.TradeService.GetByTakerOrderHash(takerOrderHash)
 			if err != nil {
 				logger.Error(err)
 			}
 
-			or, err := op.OrderService.GetByHash(tr.OrderHash)
+			to, err := op.OrderService.GetByHash(takerOrderHash)
 			if err != nil {
 				logger.Error(err)
 			}
 
-			//TODO Currently the only possible solution i found is to return only
-			//TODO the order/trade that caused the error in the first place.
-			//TODO Ideally we want to send back all orders and trades that have been
-			//TODO cancelled
-			m := types.NewMatches([]*types.Order{or}, []*types.Trade{tr})
+			makerOrders, err := op.OrderService.GetByHash(makerOrderHash)
+			if err != nil {
+				logger.Error(err)
+			}
+
+			matches := &types.Matches{
+				MakerOrders: []*types.Order{makerOrders},
+				TakerOrder:  to,
+				Trades:      trades,
+			}
 
 			go func() {
-				err := op.Broker.PublishTxErrorMessage(m, errID)
+				err := op.Broker.PublishTxErrorMessage(matches, errID)
 				if err != nil {
 					logger.Error(err)
 				}
@@ -211,22 +218,32 @@ func (op *Operator) HandleEvents() error {
 					logger.Error(err)
 				}
 
-				matches := types.Matches{}
-				orderHashes := event.OrderHashes
-				tradeHashes := event.TradeHashes
+				takerOrderHash := event.TakerOrderHashes[0]
+				makerOrderHashes := []common.Hash{}
 
-				for i, _ := range event.TradeHashes {
-					tr, err := op.TradeService.GetByHash(tradeHashes[i])
-					if err != nil {
-						logger.Error(err)
-					}
+				for _, h := range event.MakerOrderHashes {
+					makerOrderHashes = append(makerOrderHashes, common.BytesToHash(h[:]))
+				}
 
-					or, err := op.OrderService.GetByHash(orderHashes[i])
-					if err != nil {
-						logger.Error(err)
-					}
+				trades, err := op.TradeService.GetByTakerOrderHash(takerOrderHash)
+				if err != nil {
+					logger.Error(err)
+				}
 
-					matches = append(matches, &types.Match{or, tr})
+				to, err := op.OrderService.GetByHash(takerOrderHash)
+				if err != nil {
+					logger.Error(err)
+				}
+
+				makerOrders, err := op.OrderService.GetByHashes(makerOrderHashes)
+				if err != nil {
+					logger.Error(err)
+				}
+
+				matches := types.Matches{
+					MakerOrders: makerOrders,
+					TakerOrder:  to,
+					Trades:      trades,
 				}
 
 				err = op.Broker.PublishTradeSuccessMessage(&matches)
@@ -396,109 +413,3 @@ func (op *Operator) GetTxSendOptions() (*bind.TransactOpts, error) {
 
 	return bind.NewKeyedTransactor(wallet.PrivateKey), nil
 }
-
-// func (op *Operator) ValidateTrade(o *types.Order, t *types.Trade) error {
-// 	// fee balance validation
-// 	wethAddress := common.HexToAddress(app.Config.Ethereum["weth_address"])
-// 	exchangeAddress := common.HexToAddress(app.Config.Ethereum["exchange_address"])
-
-// 	makerBalanceRecord, err := op.AccountService.GetTokenBalances(o.UserAddress)
-// 	if err != nil {
-// 		logger.Error("Error retrieving maker token balances", err)
-// 		return err
-// 	}
-
-// 	takerBalanceRecord, err := op.AccountService.GetTokenBalances(t.Taker)
-// 	if err != nil {
-// 		logger.Error("Error retrieving taker token balances", err)
-// 		return err
-// 	}
-
-// 	makerWethBalance, err := op.EthereumProvider.BalanceOf(o.UserAddress, wethAddress)
-// 	if err != nil {
-// 		logger.Error("Error", err)
-// 		return err
-// 	}
-
-// 	makerWethAllowance, err := op.EthereumProvider.Allowance(o.UserAddress, exchangeAddress, wethAddress)
-// 	if err != nil {
-// 		logger.Error("Error", err)
-// 		return err
-// 	}
-
-// 	makerTokenBalance, err := op.EthereumProvider.BalanceOf(o.UserAddress, o.SellToken)
-// 	if err != nil {
-// 		logger.Error("Error", err)
-// 		return err
-// 	}
-
-// 	makerTokenAllowance, err := op.EthereumProvider.Allowance(o.UserAddress, exchangeAddress, o.SellToken)
-// 	if err != nil {
-// 		logger.Error("Error", err)
-// 		return err
-// 	}
-
-// 	takerWethBalance, err := op.EthereumProvider.BalanceOf(t.Taker, wethAddress)
-// 	if err != nil {
-// 		logger.Error("Error", err)
-// 		return err
-// 	}
-
-// 	takerWethAllowance, err := op.EthereumProvider.Allowance(t.Taker, exchangeAddress, wethAddress)
-// 	if err != nil {
-// 		logger.Error("Error", err)
-// 		return err
-// 	}
-
-// 	takerTokenBalance, err := op.EthereumProvider.BalanceOf(t.Taker, o.BuyToken)
-// 	if err != nil {
-// 		logger.Error("Error", err)
-// 		return err
-// 	}
-
-// 	takerTokenAllowance, err := op.EthereumProvider.Allowance(t.Taker, exchangeAddress, o.BuyToken)
-// 	if err != nil {
-// 		logger.Error("Error", err)
-// 		return err
-// 	}
-
-// 	fee := math.Max(o.MakeFee, o.TakeFee)
-// 	makerAvailableWethBalance := math.Sub(makerWethBalance, makerBalanceRecord[wethAddress].LockedBalance)
-// 	makerAvailableTokenBalance := math.Sub(makerTokenBalance, makerBalanceRecord[o.SellToken].LockedBalance)
-// 	takerAvailableWethBalance := math.Sub(takerWethBalance, takerBalanceRecord[wethAddress].LockedBalance)
-// 	takerAvailableTokenBalance := math.Sub(takerTokenBalance, takerBalanceRecord[o.BuyToken].LockedBalance)
-
-// 	if makerAvailableWethBalance.Cmp(fee) == -1 {
-// 		return errors.New("Insufficient WETH Balance")
-// 	}
-
-// 	if makerWethAllowance.Cmp(fee) == -1 {
-// 		return errors.New("Insufficient WETH Balance")
-// 	}
-
-// 	if makerAvailableSellTokenBalance.Cmp(o.SellAmount) != 1 {
-// 		return errors.New("Insufficient Balance")
-// 	}
-
-// 	if makerTokenAllowance.Cmp(o.SellAmount) != 1 {
-// 		return errors.New("Insufficient Allowance")
-// 	}
-
-// 	if takerAvailableWethBalance.Cmp(fee) == -1 {
-// 		return errors.New("Insufficient WETH Balance")
-// 	}
-
-// 	if takerWethAllowance.Cmp(fee) == -1 {
-// 		return errors.New("Insufficient WETH Balance")
-// 	}
-
-// 	if takerAvailableTokenBalance.Cmp(t.Amount) != 1 {
-// 		return errors.New("Insufficient Balance")
-// 	}
-
-// 	if takerTokenAllowance.Cmp(t.Amount) != 1 {
-// 		return errors.New("Insufficient Allowance")
-// 	}
-
-// 	return nil
-// }

@@ -117,20 +117,6 @@ func (w *Wallet) SignHash(h common.Hash) (*Signature, error) {
 	return sig, nil
 }
 
-// SignTrade signs and sets the signature of a trade with a wallet private key
-func (w *Wallet) SignTrade(t *Trade) error {
-	hash := t.ComputeHash()
-
-	sig, err := w.SignHash(hash)
-	if err != nil {
-		return err
-	}
-
-	t.Hash = hash
-	t.Signature = sig
-	return nil
-}
-
 func (w *Wallet) SignOrder(o *Order) error {
 	hash := o.ComputeHash()
 	sig, err := w.SignHash(hash)

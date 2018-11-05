@@ -32,7 +32,7 @@ func NewPairService(
 // Create function is responsible for inserting new pair in DB.
 // It checks for existence of tokens in DB first
 func (s *PairService) Create(pair *types.Pair) error {
-	p, err := s.pairDao.GetByBuySellTokenAddress(pair.BaseTokenAddress, pair.QuoteTokenAddress)
+	p, err := s.pairDao.GetByTokenAddress(pair.BaseTokenAddress, pair.QuoteTokenAddress)
 	if err != nil {
 		return err
 	}
