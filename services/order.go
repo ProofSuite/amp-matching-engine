@@ -223,6 +223,10 @@ func (s *OrderService) handleOrdersInvalidated(res *types.EngineResponse) error 
 		s.broadcastOrderBookUpdate(*orders)
 	}
 
+	if orders != nil && len(*orders) != 0 {
+		s.broadcastRawOrderBookUpdate(*orders)
+	}
+
 	if trades != nil && len(*trades) != 0 {
 		s.broadcastTradeUpdate(*trades)
 	}
@@ -242,7 +246,9 @@ func (s *OrderService) handleEngineError(res *types.EngineResponse) {
 func (s *OrderService) handleEngineOrderAdded(res *types.EngineResponse) {
 	o := res.Order
 	ws.SendOrderMessage("ORDER_ADDED", o.UserAddress, o.Hash, o)
+
 	s.broadcastOrderBookUpdate([]*types.Order{o})
+	s.broadcastRawOrderBookUpdate([]*types.Order{o})
 }
 
 // handleEngineOrderMatched returns a websocket message informing the client that his order has been added.
@@ -301,6 +307,7 @@ func (s *OrderService) handleEngineOrderMatched(res *types.EngineResponse) {
 	// amount filled will be updated as a result, and therefore does not represent the current state of the orderbook
 	if invalidMatches.Length() == 0 {
 		s.broadcastOrderBookUpdate(orders)
+		s.broadcastRawOrderBookUpdate(orders)
 	}
 }
 
@@ -450,6 +457,17 @@ func (s *OrderService) broadcastOrderBookUpdate(orders []*types.Order) {
 		"bids": bids,
 		"asks": asks,
 	})
+}
+
+func (s *OrderService) broadcastRawOrderBookUpdate(orders []*types.Order) {
+	p, err := orders[0].Pair()
+	if err != nil {
+		logger.Error(err)
+		return
+	}
+
+	id := utils.GetOrderBookChannelID(p.BaseTokenAddress, p.QuoteTokenAddress)
+	ws.GetRawOrderBookSocket().BroadcastMessage(id, orders)
 }
 
 func (s *OrderService) broadcastTradeUpdate(trades []*types.Trade) {
