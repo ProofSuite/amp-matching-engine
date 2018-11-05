@@ -47,7 +47,34 @@ func NewOrderDao(opts ...OrderDaoOption) *OrderDao {
 		Unique: true,
 	}
 
+	i2 := mgo.Index{
+		Key: []string{"status"},
+	}
+
+	i3 := mgo.Index{
+		Key: []string{"baseToken"},
+	}
+
+	i4 := mgo.Index{
+		Key: []string{"quoteToken"},
+	}
+
 	err := db.Session.DB(dao.dbName).C(dao.collectionName).EnsureIndex(index)
+	if err != nil {
+		panic(err)
+	}
+
+	err = db.Session.DB(dao.dbName).C(dao.collectionName).EnsureIndex(i2)
+	if err != nil {
+		panic(err)
+	}
+
+	err = db.Session.DB(dao.dbName).C(dao.collectionName).EnsureIndex(i3)
+	if err != nil {
+		panic(err)
+	}
+
+	err = db.Session.DB(dao.dbName).C(dao.collectionName).EnsureIndex(i4)
 	if err != nil {
 		panic(err)
 	}

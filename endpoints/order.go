@@ -69,6 +69,7 @@ func (e *orderEndpoint) handleGetOrders(w http.ResponseWriter, r *http.Request) 
 
 	if orders == nil {
 		httputils.WriteJSON(w, http.StatusOK, []types.Order{})
+		return
 	}
 
 	httputils.WriteJSON(w, http.StatusOK, orders)

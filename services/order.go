@@ -328,15 +328,6 @@ func (s *OrderService) handleOperatorTradePending(msg *types.OperatorMessage) {
 	trades := matches.Trades
 	orders := matches.MakerOrders
 
-	for _, t := range trades {
-		err := s.tradeDao.UpdateTradeStatus(t.Hash, "PENDING")
-		if err != nil {
-			logger.Error(err)
-		}
-
-		t.Status = "PENDING"
-	}
-
 	taker := trades[0].Taker
 	takerOrderHash := trades[0].TakerOrderHash
 	ws.SendOrderMessage("ORDER_PENDING", taker, takerOrderHash, types.OrderPendingPayload{matches})

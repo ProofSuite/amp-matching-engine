@@ -8,6 +8,7 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/Proofsuite/amp-matching-engine/rabbitmq"
 	"github.com/Proofsuite/amp-matching-engine/types"
+	"github.com/Proofsuite/amp-matching-engine/utils"
 	ethereum "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	eth "github.com/ethereum/go-ethereum/core/types"
@@ -90,8 +91,6 @@ func (txq *TxQueue) QueueTrade(m *types.Matches) error {
 		}
 	}
 
-	logger.Info("QUEING T")
-
 	err := txq.PublishPendingTrades(m)
 	if err != nil {
 		logger.Error(err)
@@ -139,6 +138,20 @@ func (txq *TxQueue) ExecuteTrade(m *types.Matches) (*eth.Transaction, error) {
 		logger.Error(err)
 		return nil, err
 	}
+
+	updatedTrades := []*types.Trade{}
+	for _, t := range m.Trades {
+		updated, err := txq.TradeService.UpdatePendingTrade(t, tx.Hash())
+		if err != nil {
+			logger.Error(err)
+		}
+
+		updatedTrades = append(updatedTrades, updated)
+	}
+
+	m.Trades = updatedTrades
+
+	utils.PrintJSON(m.Trades)
 
 	err = txq.Broker.PublishTradeSentMessage(m)
 	if err != nil {
