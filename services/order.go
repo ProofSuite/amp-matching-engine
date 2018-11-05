@@ -168,6 +168,7 @@ func (s *OrderService) CancelOrder(oc *types.OrderCancel) error {
 func (s *OrderService) handleOrderCancelled(res *types.EngineResponse) {
 	ws.SendOrderMessage("ORDER_CANCELLED", res.Order.UserAddress, res.Order.Hash, res.Order)
 	s.broadcastOrderBookUpdate([]*types.Order{res.Order})
+	s.broadcastRawOrderBookUpdate([]*types.Order{res.Order})
 	return
 }
 
