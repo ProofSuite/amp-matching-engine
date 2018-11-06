@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/Proofsuite/amp-matching-engine/types"
-	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/gorilla/websocket"
 )
 
@@ -16,7 +15,7 @@ const (
 	pingPeriod = (pongWait * 9) / 10
 )
 
-var logger = utils.Logger
+var logger = NewWebsocketLogger()
 
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
@@ -51,7 +50,6 @@ func readHandler(c *Client) {
 
 	c.SetReadDeadline(time.Now().Add(pongWait))
 	c.SetPongHandler(func(string) error {
-		logger.Info("Receiving pong message")
 		c.SetReadDeadline(time.Now().Add(pongWait))
 		return nil
 	})
@@ -77,7 +75,8 @@ func readHandler(c *Client) {
 			return
 		}
 
-		utils.PrintJSON(msg)
+		logger.LogMessageIn(&msg)
+		logger.Infof("%v", msg.String())
 
 		if socketChannels[msg.Channel] == nil {
 			c.SendMessage(msg.Channel, "ERROR", "INVALID_CHANNEL")
@@ -99,7 +98,6 @@ func writeHandler(c *Client) {
 	for {
 		select {
 		case <-ticker.C:
-			logger.Info("Writing ping message")
 			c.SetWriteDeadline(time.Now().Add(writeWait))
 			if err := c.WriteMessage(websocket.PingMessage, nil); err != nil {
 				logger.Error(err)
@@ -111,6 +109,9 @@ func writeHandler(c *Client) {
 			if !ok {
 				c.WriteMessage(websocket.CloseMessage, []byte{})
 			}
+
+			logger.LogMessageOut(&m)
+			logger.Infof("%v", m.String())
 
 			err := c.WriteJSON(m)
 			if err != nil {

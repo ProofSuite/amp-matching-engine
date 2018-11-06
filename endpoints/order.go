@@ -69,6 +69,7 @@ func (e *orderEndpoint) handleGetOrders(w http.ResponseWriter, r *http.Request) 
 
 	if orders == nil {
 		httputils.WriteJSON(w, http.StatusOK, []types.Order{})
+		return
 	}
 
 	httputils.WriteJSON(w, http.StatusOK, orders)
@@ -169,20 +170,8 @@ func (e *orderEndpoint) ws(input interface{}, c *ws.Client) {
 		e.handleNewOrder(msg, c)
 	case "CANCEL_ORDER":
 		e.handleCancelOrder(msg, c)
-	case "SUBMIT_SIGNATURE":
-		e.handleSubmitSignatures(msg, c)
 	default:
 		log.Print("Response with error")
-	}
-}
-
-// handleSubmitSignatures handles NewTrade messages. New trade messages are transmitted to the corresponding order channel
-// and received in the handleClientResponse.
-func (e *orderEndpoint) handleSubmitSignatures(p *types.WebsocketEvent, c *ws.Client) {
-	hash := common.HexToHash(p.Hash)
-	ch := e.orderService.GetOrderChannel(hash)
-	if ch != nil {
-		ch <- p
 	}
 }
 

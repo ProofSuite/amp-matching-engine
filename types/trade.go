@@ -23,7 +23,7 @@ type Trade struct {
 	Maker          common.Address `json:"maker" bson:"maker"`
 	BaseToken      common.Address `json:"baseToken" bson:"baseToken"`
 	QuoteToken     common.Address `json:"quoteToken" bson:"quoteToken"`
-	MakerOrderHash common.Hash    `json:"orderHash" bson:"orderHash"`
+	MakerOrderHash common.Hash    `json:"makerOrderHash" bson:"makerOrderHash"`
 	TakerOrderHash common.Hash    `json:"takerOrderHash" bson:"takerOrderHash"`
 	Hash           common.Hash    `json:"hash" bson:"hash"`
 	TxHash         common.Hash    `json:"txHash" bson:"txHash"`
@@ -41,7 +41,7 @@ type TradeRecord struct {
 	Maker          string        `json:"maker" bson:"maker"`
 	BaseToken      string        `json:"baseToken" bson:"baseToken"`
 	QuoteToken     string        `json:"quoteToken" bson:"quoteToken"`
-	MakerOrderHash string        `json:"orderHash" bson:"orderHash"`
+	MakerOrderHash string        `json:"makerOrderHash" bson:"makerOrderHash"`
 	TakerOrderHash string        `json:"takerOrderHash" bson:"takerOrderHash"`
 	Hash           string        `json:"hash" bson:"hash"`
 	TxHash         string        `json:"txHash" bson:"txHash"`
@@ -121,17 +121,14 @@ func (t *Trade) Validate() error {
 // MarshalJSON returns the json encoded byte array representing the trade struct
 func (t *Trade) MarshalJSON() ([]byte, error) {
 	trade := map[string]interface{}{
-		"taker":          t.Taker,
-		"maker":          t.Maker,
-		"makerOrderHash": t.MakerOrderHash,
-		"takerOrderHash": t.TakerOrderHash,
-		"status":         t.Status,
-		"hash":           t.Hash,
-		"txHash":         t.TxHash,
-		"pairName":       t.PairName,
-		"pricepoint":     t.PricePoint.String(),
-		"amount":         t.Amount.String(),
-		"createdAt":      t.CreatedAt.Format(time.RFC3339Nano),
+		"taker":      t.Taker,
+		"maker":      t.Maker,
+		"status":     t.Status,
+		"hash":       t.Hash,
+		"pairName":   t.PairName,
+		"pricepoint": t.PricePoint.String(),
+		"amount":     t.Amount.String(),
+		"createdAt":  t.CreatedAt.Format(time.RFC3339Nano),
 	}
 
 	if (t.BaseToken != common.Address{}) {
@@ -343,7 +340,6 @@ func (t TradeBSONUpdate) GetBSON() (interface{}, error) {
 		"quoteToken":     t.QuoteToken.Hex(),
 		"makerOrderHash": t.MakerOrderHash.Hex(),
 		"takerOrderHash": t.TakerOrderHash.Hex(),
-		"hash":           t.Hash.Hex(),
 		"txHash":         t.TxHash.Hex(),
 		"pairName":       t.PairName,
 		"status":         t.Status,

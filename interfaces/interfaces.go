@@ -93,6 +93,7 @@ type TradeDao interface {
 	GetNTradesByPairAddress(bt, qt common.Address, n int) ([]*types.Trade, error)
 	GetTradesByPairAddress(bt, qt common.Address, n int) ([]*types.Trade, error)
 	GetAllTradesByPairAddress(bt, qt common.Address) ([]*types.Trade, error)
+	FindAndModify(h common.Hash, t *types.Trade) (*types.Trade, error)
 	GetByUserAddress(a common.Address) ([]*types.Trade, error)
 	UpdateTradeStatus(h common.Hash, status string) error
 	UpdateTradeStatuses(status string, hashes ...common.Hash) ([]*types.Trade, error)
@@ -141,6 +142,7 @@ type WalletService interface {
 	CreateAdminWallet(a common.Address) (*types.Wallet, error)
 	GetDefaultAdminWallet() (*types.Wallet, error)
 	GetOperatorWallets() ([]*types.Wallet, error)
+	GetOperatorAddresses() ([]common.Address, error)
 	GetAll() ([]types.Wallet, error)
 	GetByAddress(addr common.Address) (*types.Wallet, error)
 }
@@ -212,6 +214,8 @@ type TradeService interface {
 	GetByMakerOrderHash(h common.Hash) ([]*types.Trade, error)
 	GetByTakerOrderHash(h common.Hash) ([]*types.Trade, error)
 	UpdateTradeTxHash(tr *types.Trade, txh common.Hash) error
+	UpdateSuccessfulTrade(t *types.Trade) (*types.Trade, error)
+	UpdatePendingTrade(t *types.Trade, txh common.Hash) (*types.Trade, error)
 	Subscribe(c *ws.Client, bt, qt common.Address)
 	UnsubscribeChannel(c *ws.Client, bt, qt common.Address)
 	Unsubscribe(c *ws.Client)

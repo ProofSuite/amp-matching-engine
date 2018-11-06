@@ -12,7 +12,6 @@ import (
 
 func CompareEngineResponse(t *testing.T, a, b *types.EngineResponse) {
 	assert.Equal(t, a.Status, b.Status)
-	// assert.Equal(t, a.HashID, b.HashID)
 
 	if a.Order != nil && b.Order != nil {
 		assert.NotNil(t, a.Order)

@@ -3,6 +3,7 @@ package types
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math/big"
 	"strings"
 	"time"
@@ -35,6 +36,10 @@ type Order struct {
 	PairName        string         `json:"pairName" bson:"pairName"`
 	CreatedAt       time.Time      `json:"createdAt" bson:"createdAt"`
 	UpdatedAt       time.Time      `json:"updatedAt" bson:"updatedAt"`
+}
+
+func (o *Order) String() string {
+	return fmt.Sprintf("Pair: %v, Pricepoint: %v, Hash: %v", o.PairName, o.PricePoint.String(), o.Hash.Hex())
 }
 
 // TODO: Verify userAddress, baseToken, quoteToken, etc. conditions are working

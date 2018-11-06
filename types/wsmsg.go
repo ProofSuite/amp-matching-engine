@@ -1,6 +1,7 @@
 package types
 
 import (
+	"fmt"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -26,10 +27,18 @@ type WebsocketMessage struct {
 	Event   WebsocketEvent `json:"event"`
 }
 
+func (ev *WebsocketMessage) String() string {
+	return fmt.Sprintf("%v/%v", ev.Channel, ev.Event.String())
+}
+
 type WebsocketEvent struct {
 	Type    string      `json:"type"`
 	Hash    string      `json:"hash,omitempty"`
 	Payload interface{} `json:"payload"`
+}
+
+func (ev *WebsocketEvent) String() string {
+	return fmt.Sprintf("%v", ev.Type)
 }
 
 // Params is a sub document used to pass parameters in Subscription messages
@@ -40,11 +49,6 @@ type Params struct {
 	Units    string `json:"units"`
 	PairID   string `json:"pair"`
 }
-
-// type OrderPendingPayload struct {
-// 	Order *Order `json:"order"`
-// 	Trade *Trade `json:"trade"`
-// }
 
 type OrderPendingPayload struct {
 	Matches *Matches `json:"matches"`

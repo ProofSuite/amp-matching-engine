@@ -34,6 +34,24 @@ func (s *WalletService) GetDefaultAdminWallet() (*types.Wallet, error) {
 	return s.WalletDao.GetDefaultAdminWallet()
 }
 
+func (s *WalletService) GetOperatorAddresses() ([]common.Address, error) {
+	wallets, err := s.WalletDao.GetOperatorWallets()
+	if err != nil {
+		return nil, err
+	}
+
+	if wallets == nil {
+		return []common.Address{}, nil
+	}
+
+	addresses := []common.Address{}
+	for _, w := range wallets {
+		addresses = append(addresses, w.Address)
+	}
+
+	return addresses, nil
+}
+
 func (s *WalletService) GetOperatorWallets() ([]*types.Wallet, error) {
 	return s.WalletDao.GetOperatorWallets()
 }

@@ -2,10 +2,10 @@ package types
 
 import (
 	"errors"
+	"fmt"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto/sha3"
 )
 
 type Matches struct {
@@ -36,6 +36,10 @@ func (m *Matches) Taker() common.Address {
 
 func (m *Matches) TakerOrderHash() common.Hash {
 	return m.TakerOrder.Hash
+}
+
+func (m *Matches) String() string {
+	return fmt.Sprintf("%v: %v", m.TakerOrder.PairName, m.TakerOrder.Hash.Hex())
 }
 
 func (m *Matches) PairCode() (string, error) {
@@ -106,15 +110,6 @@ func (m *Matches) Validate() error {
 	return nil
 }
 
-func (m *Matches) HashID() common.Hash {
-	sha := sha3.NewKeccak256()
-	for _, t := range m.Trades {
-		sha.Write(t.Hash.Bytes())
-	}
-
-	return common.BytesToHash(sha.Sum(nil))
-}
-
 type EngineResponse struct {
 	Status            string    `json:"fillStatus,omitempty"`
 	Order             *Order    `json:"order,omitempty"`
@@ -141,17 +136,4 @@ func (r *EngineResponse) AppendMatches(mo []*Order, t []*Trade) {
 	r.Matches.MakerOrders = append(r.Matches.MakerOrders, mo...)
 	r.Matches.Trades = append(r.Matches.Trades, t...)
 
-}
-
-func (r *EngineResponse) HashID() common.Hash {
-	if r.Status == "ORDER_ADDED" {
-		return r.Order.Hash
-	}
-
-	sha := sha3.NewKeccak256()
-	for _, t := range r.Matches.Trades {
-		sha.Write(t.Hash.Bytes())
-	}
-
-	return common.BytesToHash(sha.Sum(nil))
 }

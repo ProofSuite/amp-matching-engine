@@ -166,8 +166,9 @@ func (s *OrderService) CancelOrder(oc *types.OrderCancel) error {
 }
 
 func (s *OrderService) handleOrderCancelled(res *types.EngineResponse) {
-	ws.SendOrderMessage("ORDER_CANCELLED", res.Order.UserAddress, res.Order.Hash, res.Order)
+	ws.SendOrderMessage("ORDER_CANCELLED", res.Order.UserAddress, res.Order)
 	s.broadcastOrderBookUpdate([]*types.Order{res.Order})
+	s.broadcastRawOrderBookUpdate([]*types.Order{res.Order})
 	return
 }
 
@@ -216,11 +217,15 @@ func (s *OrderService) handleOrdersInvalidated(res *types.EngineResponse) error 
 	trades := res.CancelledTrades
 
 	for _, o := range *orders {
-		ws.SendOrderMessage("ORDER_INVALIDATED", o.UserAddress, o.Hash, o)
+		ws.SendOrderMessage("ORDER_INVALIDATED", o.UserAddress, o)
 	}
 
 	if orders != nil && len(*orders) != 0 {
 		s.broadcastOrderBookUpdate(*orders)
+	}
+
+	if orders != nil && len(*orders) != 0 {
+		s.broadcastRawOrderBookUpdate(*orders)
 	}
 
 	if trades != nil && len(*trades) != 0 {
@@ -234,15 +239,17 @@ func (s *OrderService) handleOrdersInvalidated(res *types.EngineResponse) error 
 // redis key/value store
 func (s *OrderService) handleEngineError(res *types.EngineResponse) {
 	o := res.Order
-	ws.SendOrderMessage("ERROR", o.UserAddress, o.Hash, nil)
+	ws.SendOrderMessage("ERROR", o.UserAddress, nil)
 }
 
 // handleEngineOrderAdded returns a websocket message informing the client that his order has been added
 // to the orderbook (but currently not matched)
 func (s *OrderService) handleEngineOrderAdded(res *types.EngineResponse) {
 	o := res.Order
-	ws.SendOrderMessage("ORDER_ADDED", o.UserAddress, o.Hash, o)
+	ws.SendOrderMessage("ORDER_ADDED", o.UserAddress, o)
+
 	s.broadcastOrderBookUpdate([]*types.Order{o})
+	s.broadcastRawOrderBookUpdate([]*types.Order{o})
 }
 
 // handleEngineOrderMatched returns a websocket message informing the client that his order has been added.
@@ -251,10 +258,7 @@ func (s *OrderService) handleEngineOrderMatched(res *types.EngineResponse) {
 	o := res.Order //res.Order is the "taker" order
 	matches := *res.Matches
 
-	utils.PrintJSON(res)
-
 	taker := o.UserAddress
-	hashID := matches.HashID()
 	orders := []*types.Order{o}
 	validMatches := types.Matches{TakerOrder: o}
 	invalidMatches := types.Matches{TakerOrder: o}
@@ -284,15 +288,14 @@ func (s *OrderService) handleEngineOrderMatched(res *types.EngineResponse) {
 	err := s.tradeDao.Create(validMatches.Trades...)
 	if err != nil {
 		logger.Error(err)
-		ws.SendOrderMessage("ERROR", taker, hashID, err)
+		ws.SendOrderMessage("ERROR", taker, err)
 		return
 	}
 
-	logger.Info("PUBLISHING TRADES")
 	err = s.broker.PublishTrades(&validMatches)
 	if err != nil {
 		logger.Error(err)
-		ws.SendOrderMessage("ERROR", taker, hashID, err)
+		ws.SendOrderMessage("ERROR", taker, err)
 		return
 	}
 
@@ -301,6 +304,7 @@ func (s *OrderService) handleEngineOrderMatched(res *types.EngineResponse) {
 	// amount filled will be updated as a result, and therefore does not represent the current state of the orderbook
 	if invalidMatches.Length() == 0 {
 		s.broadcastOrderBookUpdate(orders)
+		s.broadcastRawOrderBookUpdate(orders)
 	}
 }
 
@@ -320,23 +324,12 @@ func (s *OrderService) handleOperatorTradePending(msg *types.OperatorMessage) {
 	trades := matches.Trades
 	orders := matches.MakerOrders
 
-	for _, t := range trades {
-		err := s.tradeDao.UpdateTradeStatus(t.Hash, "PENDING")
-		if err != nil {
-			logger.Error(err)
-		}
-
-		t.Status = "PENDING"
-	}
-
 	taker := trades[0].Taker
-	takerOrderHash := trades[0].TakerOrderHash
-	ws.SendOrderMessage("ORDER_PENDING", taker, takerOrderHash, types.OrderPendingPayload{matches})
+	ws.SendOrderMessage("ORDER_PENDING", taker, types.OrderPendingPayload{matches})
 
 	for _, o := range orders {
 		maker := o.UserAddress
-		orderHash := o.Hash
-		ws.SendOrderMessage("ORDER_PENDING", maker, orderHash, types.OrderPendingPayload{matches})
+		ws.SendOrderMessage("ORDER_PENDING", maker, types.OrderPendingPayload{matches})
 	}
 
 	s.broadcastTradeUpdate(trades)
@@ -364,15 +357,13 @@ func (s *OrderService) handleOperatorTradeSuccess(msg *types.OperatorMessage) {
 
 	// Send ORDER_SUCCESS message to order takers
 	taker := trades[0].Taker
-	takerHash := trades[0].TakerOrderHash
-	ws.SendOrderMessage("ORDER_SUCCESS", taker, takerHash, types.OrderSuccessPayload{matches})
+	ws.SendOrderMessage("ORDER_SUCCESS", taker, types.OrderSuccessPayload{matches})
 
 	// Send ORDER_SUCCESS message to order makers
 	for i, _ := range trades {
 		match := matches.NthMatch(i)
 		maker := match.MakerOrders[0].UserAddress
-		orderHash := match.MakerOrders[0].Hash
-		ws.SendOrderMessage("ORDER_SUCCESS", maker, orderHash, types.OrderSuccessPayload{match})
+		ws.SendOrderMessage("ORDER_SUCCESS", maker, types.OrderSuccessPayload{match})
 	}
 
 	s.broadcastTradeUpdate(trades)
@@ -386,6 +377,11 @@ func (s *OrderService) handleOperatorTradeError(msg *types.OperatorMessage) {
 	trades := matches.Trades
 	orders := matches.MakerOrders
 
+	errType := msg.ErrorType
+	if errType != "" {
+		logger.Error("")
+	}
+
 	for _, t := range trades {
 		err := s.tradeDao.UpdateTradeStatus(t.Hash, "ERROR")
 		if err != nil {
@@ -396,13 +392,11 @@ func (s *OrderService) handleOperatorTradeError(msg *types.OperatorMessage) {
 	}
 
 	taker := trades[0].Taker
-	takerHash := trades[0].TakerOrderHash
-	ws.SendOrderMessage("ORDER_ERROR", taker, takerHash, matches)
+	ws.SendOrderMessage("ORDER_ERROR", taker, matches)
 
 	for _, o := range orders {
 		maker := o.UserAddress
-		orderHash := o.Hash
-		ws.SendOrderMessage("ORDER_ERROR", maker, orderHash, o)
+		ws.SendOrderMessage("ORDER_ERROR", maker, o)
 	}
 
 	s.broadcastTradeUpdate(trades)
@@ -450,6 +444,17 @@ func (s *OrderService) broadcastOrderBookUpdate(orders []*types.Order) {
 		"bids": bids,
 		"asks": asks,
 	})
+}
+
+func (s *OrderService) broadcastRawOrderBookUpdate(orders []*types.Order) {
+	p, err := orders[0].Pair()
+	if err != nil {
+		logger.Error(err)
+		return
+	}
+
+	id := utils.GetOrderBookChannelID(p.BaseTokenAddress, p.QuoteTokenAddress)
+	ws.GetRawOrderBookSocket().BroadcastMessage(id, orders)
 }
 
 func (s *OrderService) broadcastTradeUpdate(trades []*types.Trade) {
