@@ -6,6 +6,9 @@ RUN go get github.com/golang/dep/cmd/dep
 # # RUN go get github.com/codegangsta/gin
 # WORKDIR /go/src/app
 
+RUN apt-get update
+RUN apt-get install multitail
+
 RUN mkdir -p /go/src/github.com/Proofsuite/amp-matching-engine
 WORKDIR /go/src/github.com/Proofsuite/amp-matching-engine
 

@@ -8,7 +8,6 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/Proofsuite/amp-matching-engine/rabbitmq"
 	"github.com/Proofsuite/amp-matching-engine/types"
-	"github.com/Proofsuite/amp-matching-engine/utils"
 	ethereum "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	eth "github.com/ethereum/go-ethereum/core/types"
@@ -81,7 +80,7 @@ func (txq *TxQueue) Length() int {
 // func (op *Operator) QueueTrade(o *types.Order, t *types.Trade) error {
 // TODO: Currently doesn't seem thread safe and fails unless called with a sleep time between each call.
 func (txq *TxQueue) QueueTrade(m *types.Matches) error {
-	logger.Info("QUEUE LENGTH", txq.Length())
+	logger.Infof("Queueing Trade: %v", m)
 	if txq.Length() == 0 {
 		_, err := txq.ExecuteTrade(m)
 		if err != nil {
@@ -104,7 +103,7 @@ func (txq *TxQueue) QueueTrade(m *types.Matches) error {
 // trade message, the trade is updated on the database and is published to the operator subscribers
 // (order service)
 func (txq *TxQueue) ExecuteTrade(m *types.Matches) (*eth.Transaction, error) {
-	logger.Info("EXECUTING TRADE", m)
+	logger.Infof("Executing trades: %v", m)
 
 	callOpts := txq.GetTxCallOptions()
 	gasLimit, err := txq.Exchange.CallBatchTrades(m, callOpts)
@@ -151,8 +150,6 @@ func (txq *TxQueue) ExecuteTrade(m *types.Matches) (*eth.Transaction, error) {
 
 	m.Trades = updatedTrades
 
-	utils.PrintJSON(m.Trades)
-
 	err = txq.Broker.PublishTradeSentMessage(m)
 	if err != nil {
 		logger.Error(err)
@@ -160,9 +157,15 @@ func (txq *TxQueue) ExecuteTrade(m *types.Matches) (*eth.Transaction, error) {
 	}
 
 	go func() {
-		_, err := txq.EthereumProvider.WaitMined(tx.Hash())
+		receipt, err := txq.EthereumProvider.WaitMined(tx.Hash())
 		if err != nil {
 			logger.Error(err)
+		}
+
+		if receipt.Status == 1 {
+			go txq.HandleTxSuccess(m, receipt)
+		} else {
+			go txq.HandleTxError(m)
 		}
 
 		// logger.Info("TRADE_MINED IN EXECUTE TRADE: ", tr.Hash.Hex())
@@ -202,7 +205,6 @@ func (txq *TxQueue) ExecuteTrade(m *types.Matches) (*eth.Transaction, error) {
 
 func (txq *TxQueue) ExecuteNextTrade() error {
 	len := txq.Length()
-	logger.Info("LENGTH of the queue is ", len)
 	if len > 0 {
 		match, err := txq.PopPendingTrades()
 		if err != nil {
@@ -210,12 +212,30 @@ func (txq *TxQueue) ExecuteNextTrade() error {
 			return err
 		}
 
-		// logger.Info("NEXT_TRADE: ", msg.Trade.Hash.Hex())
 		go txq.ExecuteTrade(match)
 		return nil
 	}
 
 	return nil
+}
+
+func (txq *TxQueue) HandleTxError(m *types.Matches) {
+	logger.Infof("Transaction failed: %v", m)
+
+	errType := "Transaction failed"
+	err := txq.Broker.PublishTxErrorMessage(m, errType)
+	if err != nil {
+		logger.Error(err)
+	}
+}
+
+func (txq *TxQueue) HandleTxSuccess(m *types.Matches, receipt *eth.Receipt) {
+	logger.Infof("Transaction success: %v", m)
+
+	err := txq.Broker.PublishTradeSuccessMessage(m)
+	if err != nil {
+		logger.Error(err)
+	}
 }
 
 func (txq *TxQueue) PublishPendingTrades(m *types.Matches) error {

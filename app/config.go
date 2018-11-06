@@ -88,7 +88,14 @@ func LoadConfig(configPath string, env string) error {
 	Config.Ethereum["weth_address"] = v.Get("WETH_CONTRACT_ADDRESS").(string)
 	Config.Ethereum["fee_account"] = v.Get("FEE_ACCOUNT_ADDRESS").(string)
 
-	logger.Info("Configuration: ", utils.JSON(Config))
+	logger.Infof("Server port: %v", Config.ServerPort)
+	logger.Infof("Ethereum node HTTP url: %v", Config.Ethereum["http_url"])
+	logger.Infof("Ethereum node WS url: %v", Config.Ethereum["ws_url"])
+	logger.Infof("MongoDB url: %v:", Config.DSN)
+	logger.Infof("Redis url: %v", Config.Redis)
+	logger.Infof("RabbitMQ url: %v", Config.Rabbitmq)
+	logger.Infof("Exchange contract address: %v", Config.Ethereum["exchange_address"])
+	logger.Infof("Fee Account: %v", Config.Ethereum["fee_account"])
 
 	return Config.Validate()
 }

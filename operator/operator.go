@@ -3,7 +3,6 @@ package operator
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"strconv"
 	"sync"
 
@@ -16,7 +15,7 @@ import (
 	eth "github.com/ethereum/go-ethereum/core/types"
 )
 
-var logger = utils.OperatorLogger
+var logger = utils.Logger
 
 // Operator manages the transaction queue that will eventually be
 // sent to the exchange contract. The Operator Wallet must be equal to the
@@ -131,11 +130,15 @@ func (op *Operator) SubscribeOperatorMessages(fn func(*types.OperatorMessage) er
 		go func() {
 			for m := range msgs {
 				om := &types.OperatorMessage{}
+
 				err := json.Unmarshal(m.Body, &om)
 				if err != nil {
 					logger.Error(err)
 					continue
 				}
+
+				logger.Info(om)
+
 				go fn(om)
 			}
 		}()
@@ -145,24 +148,27 @@ func (op *Operator) SubscribeOperatorMessages(fn func(*types.OperatorMessage) er
 	return nil
 }
 
+func (op *Operator) HandleTxError(m *types.Matches, id int) {
+	errType := getErrorType(id)
+	err := op.Broker.PublishTxErrorMessage(m, errType)
+	if err != nil {
+		logger.Error(err)
+	}
+}
+
+func (op *Operator) HandleTxSuccess(m *types.Matches, receipt *eth.Receipt) {
+	err := op.Broker.PublishTradeSuccessMessage(m)
+	if err != nil {
+		logger.Error(err)
+	}
+}
+
 // Bug: In certain cases, the trade channel seems to be receiving additional unexpected trades.
 // In the case TestSocketExecuteOrder (in file socket_test.go) is run on its own, everything is working correctly.
 // However, in the case TestSocketExecuteOrder is run among other tests, some tradeLogs do not correspond to an
 // order hash in the ordertrade mapping. I suspect this is because the event listener catches events from previous
 // tests. It might be helpful to see how to listen to events from up to a certain block.
 func (op *Operator) HandleEvents() error {
-	// tradeEvents, err := op.Exchange.ListenToTrades()
-	// if err != nil {
-	// 	logger.Error(err)
-	// 	return err
-	// }
-
-	tradeEvents, err := op.Exchange.ListenToBatchTrades()
-	if err != nil {
-		logger.Error(err)
-		return err
-	}
-
 	errorEvents, err := op.Exchange.ListenToErrors()
 	if err != nil {
 		logger.Error(err)
@@ -172,12 +178,10 @@ func (op *Operator) HandleEvents() error {
 	for {
 		select {
 		case event := <-errorEvents:
-			fmt.Println("TRADE_ERROR_EVENT")
+			logger.Error("Receiving error event", utils.JSON(event))
 			makerOrderHash := event.OrderHash
 			takerOrderHash := event.TradeHash
 			errID := int(event.ErrorId)
-
-			logger.Info("The error ID is: ", errID)
 
 			trades, err := op.TradeService.GetByTakerOrderHash(takerOrderHash)
 			if err != nil {
@@ -200,82 +204,12 @@ func (op *Operator) HandleEvents() error {
 				Trades:      trades,
 			}
 
-			go func() {
-				err := op.Broker.PublishTxErrorMessage(matches, errID)
-				if err != nil {
-					logger.Error(err)
-				}
-			}()
-
-		//TODO what do we do if we don't pick up the event
-		case event := <-tradeEvents:
-			fmt.Println("TRADE_SUCCESS_EVENT")
-			txh := event.Raw.TxHash
-
-			go func() {
-				_, err := op.EthereumProvider.WaitMined(txh)
-				if err != nil {
-					logger.Error(err)
-				}
-
-				takerOrderHash := event.TakerOrderHashes[0]
-				makerOrderHashes := []common.Hash{}
-
-				for _, h := range event.MakerOrderHashes {
-					makerOrderHashes = append(makerOrderHashes, common.BytesToHash(h[:]))
-				}
-
-				trades, err := op.TradeService.GetByTakerOrderHash(takerOrderHash)
-				if err != nil {
-					logger.Error(err)
-				}
-
-				to, err := op.OrderService.GetByHash(takerOrderHash)
-				if err != nil {
-					logger.Error(err)
-				}
-
-				makerOrders, err := op.OrderService.GetByHashes(makerOrderHashes)
-				if err != nil {
-					logger.Error(err)
-				}
-
-				matches := types.Matches{
-					MakerOrders: makerOrders,
-					TakerOrder:  to,
-					Trades:      trades,
-				}
-
-				err = op.Broker.PublishTradeSuccessMessage(&matches)
-				if err != nil {
-					logger.Error(err)
-				}
-			}()
+			go op.HandleTxError(matches, errID)
 		}
 	}
 }
 
 func (op *Operator) HandleTrades(msg *types.OperatorMessage) error {
-	// o := msg.Order
-	// t := msg.Trade
-
-	// //TODO move this to the order service
-	// err := o.Validate()
-	// if err != nil {
-	// 	logger.Error(err)
-	// 	return err
-	// }
-
-	// //TODO move this to the order service
-	// ok, err := o.VerifySignature()
-	// if err != nil {
-	// 	return err
-	// }
-
-	// if !ok {
-	// 	return errors.New("Invalid signature")
-	// }
-
 	err := op.QueueTrade(msg.Matches)
 	if err != nil {
 		logger.Error(err)
@@ -290,8 +224,6 @@ func (op *Operator) QueueTrade(m *types.Matches) error {
 	op.mutex.Lock()
 	defer op.mutex.Unlock()
 
-	logger.Info("QUEUING TRADE")
-
 	txq, len, err := op.GetShortestQueue()
 	if err != nil {
 		logger.Error(err)
@@ -299,14 +231,15 @@ func (op *Operator) QueueTrade(m *types.Matches) error {
 	}
 
 	if len > 10 {
-		logger.Info("Transaction queue is full")
+		logger.Warning("Transaction queue is full")
 		return errors.New("Transaction queue is full")
 	}
 
-	logger.Info("QUEING TRADE", len)
+	logger.Infof("Queuing Trade on queue: %v (previous queue length = %v)", txq.Name, len)
+
 	err = txq.QueueTrade(m)
 	if err != nil {
-		logger.Warning("INVALID TRADE")
+		logger.Error(err)
 		return err
 	}
 

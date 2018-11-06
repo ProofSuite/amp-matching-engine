@@ -130,18 +130,17 @@ func (c *Connection) PublishTradeSuccessMessage(matches *types.Matches) error {
 		return err
 	}
 
-	logger.Info("PUBLISH TRADE SUCCESS MESSAGE")
 	return nil
 }
 
 // PublishTxErrorMessage publishes a messages when a trade execution fails
-func (c *Connection) PublishTxErrorMessage(matches *types.Matches, errID int) error {
+func (c *Connection) PublishTxErrorMessage(matches *types.Matches, errType string) error {
 	ch := c.GetChannel("OPERATOR_PUB")
 	q := c.GetQueue(ch, "TX_MESSAGES")
 	msg := &types.OperatorMessage{
 		MessageType: "TRADE_ERROR",
 		Matches:     matches,
-		ErrID:       errID,
+		ErrorType:   errType,
 	}
 
 	bytes, err := json.Marshal(msg)
@@ -155,7 +154,7 @@ func (c *Connection) PublishTxErrorMessage(matches *types.Matches, errID int) er
 		return err
 	}
 
-	logger.Info("PUBLISHED TRADE ERROR MESSAGE. Error ID: %v", errID)
+	logger.Info("PUBLISHED TRADE ERROR MESSAGE. Error Type: %v", errType)
 	return nil
 }
 
