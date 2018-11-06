@@ -1,25 +1,20 @@
 package types
 
-import "github.com/ethereum/go-ethereum/common"
+import "fmt"
 
 type OperatorMessage struct {
 	MessageType string
 	Matches     *Matches
-	ErrID       int
+	ErrorType   string
 }
 
-type OperatorTxSuccessMessage struct {
-	MessageType string
-	OrderHashes []common.Hash
-	TradeHashes []common.Hash
-}
+func (m *OperatorMessage) String() string {
+	if m.ErrorType != "" {
+		return fmt.Sprintf("%v: %v (%v)", m.MessageType, m.Matches.String(), m.ErrorType)
+	}
 
-// type OperatorMessage struct {
-// 	MessageType string
-// 	Order       *Order
-// 	Trade       *Trade
-// 	ErrID       int
-// }
+	return fmt.Sprintf("%v: %v", m.MessageType, m.Matches.String())
+}
 
 type PendingTradeBatch struct {
 	Matches *Matches

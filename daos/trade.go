@@ -41,7 +41,7 @@ func NewTradeDao() *TradeDao {
 	}
 
 	i5 := mgo.Index{
-		Key:    []string{"orderHash"},
+		Key:    []string{"makerOrderHash"},
 		Sparse: true,
 	}
 
@@ -306,7 +306,7 @@ func (dao *TradeDao) GetByOrderHashes(hashes []common.Hash) ([]*types.Trade, err
 		hexes = append(hexes, h.Hex())
 	}
 
-	q := bson.M{"orderHash": bson.M{"$in": hexes}}
+	q := bson.M{"makerOrderHash": bson.M{"$in": hexes}}
 	res := []*types.Trade{}
 
 	err := db.Get(dao.dbName, dao.collectionName, q, 0, 0, &res)
@@ -447,7 +447,7 @@ func (dao *TradeDao) UpdateTradeStatusesByOrderHashes(status string, hashes ...c
 		hexes = append(hexes, h.Hex())
 	}
 
-	query := bson.M{"orderHash": bson.M{"$in": hexes}}
+	query := bson.M{"makerOrderHash": bson.M{"$in": hexes}}
 	update := bson.M{
 		"$set": bson.M{
 			"updatedAt": time.Now(),

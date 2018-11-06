@@ -46,8 +46,6 @@ func (c *Client) SendMessage(channel string, msgType string, payload interface{}
 		Event:   e,
 	}
 
-	logger.Info("Channel", channel, "Event", e.Type)
-
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.send <- m

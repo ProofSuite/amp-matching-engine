@@ -4,7 +4,6 @@ import (
 	"log"
 
 	"github.com/Proofsuite/amp-matching-engine/utils"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/streadway/amqp"
 )
 
@@ -19,9 +18,8 @@ type Connection struct {
 	Conn *amqp.Connection
 }
 type Message struct {
-	Type   string      `json:"type"`
-	Data   []byte      `json:"data"`
-	HashID common.Hash `json:"hashID"`
+	Type string `json:"type"`
+	Data []byte `json:"data"`
 }
 
 // InitConnection Initializes single rabbitmq connection for whole system

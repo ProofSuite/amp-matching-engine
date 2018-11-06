@@ -60,11 +60,11 @@ func RegisterOrderConnection(a common.Address, c *OrderConnection) {
 	}
 }
 
-func SendOrderMessage(msgType string, a common.Address, h common.Hash, payload interface{}) {
+func SendOrderMessage(msgType string, a common.Address, payload interface{}) {
 	c := GetOrderConnection(a)
 	if c == nil {
 		return
 	}
 
-	c.SendMessage(OrderChannel, msgType, payload, h)
+	c.SendMessage(OrderChannel, msgType, payload)
 }

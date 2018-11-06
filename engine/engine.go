@@ -72,7 +72,6 @@ func (e *Engine) HandleOrders(msg *rabbitmq.Message) error {
 			return err
 		}
 	case "INVALIDATE_MAKER_ORDERS":
-		utils.PrintJSON("receiving invalidate maker orders")
 		err := e.handleInvalidateMakerOrders(msg.Data)
 		if err != nil {
 			logger.Error(err)
@@ -231,26 +230,3 @@ func (e *Engine) handleInvalidateTakerOrders(bytes []byte) error {
 
 	return nil
 }
-
-// func (e *Engine) deleteOrders(bytes []byte) error {
-// 	//we assume all the orders correspond to the same pair
-// 	orders := []*types.Order{}
-// 	code, err := orders[0].PairCode()
-// 	if err != nil {
-// 		logger.Error(err)
-// 		return err
-// 	}
-
-// 	ob := e.orderbooks[code]
-// 	if ob == nil {
-// 		return errors.New("Orderbook error")
-// 	}
-
-// 	err = ob.deleteOrders(orders...)
-// 	if err != nil {
-// 		logger.Error(err)
-// 		return err
-// 	}
-
-// 	return nil
-// }

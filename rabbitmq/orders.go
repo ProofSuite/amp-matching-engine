@@ -103,7 +103,7 @@ func (c *Connection) PublishTrades(matches *types.Matches) error {
 		Matches:     matches,
 	}
 
-	utils.PrintJSON("Publishing trades")
+	logger.Info("operator/", msg.String())
 
 	b, err := json.Marshal(msg)
 	if err != nil {
@@ -128,9 +128,8 @@ func (c *Connection) PublishNewOrderMessage(o *types.Order) error {
 	}
 
 	err = c.PublishOrder(&Message{
-		Type:   "NEW_ORDER",
-		HashID: o.Hash,
-		Data:   b,
+		Type: "NEW_ORDER",
+		Data: b,
 	})
 
 	if err != nil {
@@ -149,9 +148,8 @@ func (c *Connection) PublishCancelOrderMessage(o *types.Order) error {
 	}
 
 	err = c.PublishOrder(&Message{
-		Type:   "CANCEL_ORDER",
-		HashID: o.Hash,
-		Data:   b,
+		Type: "CANCEL_ORDER",
+		Data: b,
 	})
 
 	if err != nil {
