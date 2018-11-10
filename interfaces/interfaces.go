@@ -161,8 +161,6 @@ type EthereumService interface {
 }
 
 type OrderService interface {
-	CreateOrderChannel(h common.Hash) chan *types.WebsocketEvent
-	GetOrderChannel(h common.Hash) chan *types.WebsocketEvent
 	GetByID(id bson.ObjectId) (*types.Order, error)
 	GetByHash(h common.Hash) (*types.Order, error)
 	GetByHashes(hashes []common.Hash) ([]*types.Order, error)
@@ -176,7 +174,7 @@ type OrderService interface {
 
 type OrderBookService interface {
 	GetOrderBook(bt, qt common.Address) (map[string]interface{}, error)
-	GetRawOrderBook(bt, qt common.Address) ([]*types.Order, error)
+	GetRawOrderBook(bt, qt common.Address) (*types.RawOrderBook, error)
 	SubscribeOrderBook(c *ws.Client, bt, qt common.Address)
 	UnsubscribeOrderBook(c *ws.Client)
 	UnsubscribeOrderBookChannel(c *ws.Client, bt, qt common.Address)

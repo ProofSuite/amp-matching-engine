@@ -467,32 +467,3 @@ func (s *OrderService) broadcastTradeUpdate(trades []*types.Trade) {
 	id := utils.GetTradeChannelID(p.BaseTokenAddress, p.QuoteTokenAddress)
 	ws.GetTradeSocket().BroadcastMessage(id, trades)
 }
-
-func (s *OrderService) CreateOrderChannel(h common.Hash) chan *types.WebsocketEvent {
-	if s.orderChannels == nil {
-		s.orderChannels = make(map[string]chan *types.WebsocketEvent)
-	}
-
-	ch := make(chan *types.WebsocketEvent)
-	if s.orderChannels[h.Hex()] == nil {
-		s.orderChannels[h.Hex()] = ch
-	}
-
-	return ch
-}
-
-func (s *OrderService) GetOrderChannel(h common.Hash) chan *types.WebsocketEvent {
-	if s.orderChannels[h.Hex()] == nil {
-		return nil
-	}
-
-	if s.orderChannels[h.Hex()] == nil {
-		return nil
-	}
-
-	return s.orderChannels[h.Hex()]
-}
-
-func (s *OrderService) DeleteOrderChannel(h common.Hash) {
-	delete(s.orderChannels, h.Hex())
-}
