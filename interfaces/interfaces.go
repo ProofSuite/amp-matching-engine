@@ -161,8 +161,6 @@ type EthereumService interface {
 }
 
 type OrderService interface {
-	CreateOrderChannel(h common.Hash) chan *types.WebsocketEvent
-	GetOrderChannel(h common.Hash) chan *types.WebsocketEvent
 	GetByID(id bson.ObjectId) (*types.Order, error)
 	GetByHash(h common.Hash) (*types.Order, error)
 	GetByHashes(hashes []common.Hash) ([]*types.Order, error)

@@ -177,7 +177,6 @@ func (e *orderEndpoint) ws(input interface{}, c *ws.Client) {
 
 // handleNewOrder handles NewOrder message. New order messages are transmitted to the order service after being unmarshalled
 func (e *orderEndpoint) handleNewOrder(ev *types.WebsocketEvent, c *ws.Client) {
-	ch := make(chan *types.WebsocketEvent)
 	o := &types.Order{}
 
 	bytes, err := json.Marshal(ev.Payload)
@@ -195,7 +194,7 @@ func (e *orderEndpoint) handleNewOrder(ev *types.WebsocketEvent, c *ws.Client) {
 	}
 
 	o.Hash = o.ComputeHash()
-	ws.RegisterOrderConnection(o.UserAddress, &ws.OrderConnection{Client: c, ReadChannel: ch})
+	ws.RegisterOrderConnection(o.UserAddress, c)
 
 	acc, err := e.accountService.FindOrCreate(o.UserAddress)
 	if err != nil {
@@ -231,7 +230,7 @@ func (e *orderEndpoint) handleCancelOrder(ev *types.WebsocketEvent, c *ws.Client
 		c.SendMessage(ws.OrderChannel, "ERROR", err.Error())
 	}
 
-	ws.RegisterOrderConnection(addr, &ws.OrderConnection{Client: c})
+	ws.RegisterOrderConnection(addr, c)
 
 	err = e.orderService.CancelOrder(oc)
 	if err != nil {

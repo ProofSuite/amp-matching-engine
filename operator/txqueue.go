@@ -149,7 +149,6 @@ func (txq *TxQueue) ExecuteTrade(m *types.Matches) (*eth.Transaction, error) {
 	}
 
 	m.Trades = updatedTrades
-
 	err = txq.Broker.PublishTradeSentMessage(m)
 	if err != nil {
 		logger.Error(err)
