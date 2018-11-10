@@ -93,20 +93,23 @@ func (s *OrderBookService) UnsubscribeOrderBookChannel(c *ws.Client, bt, qt comm
 }
 
 // GetRawOrderBook fetches complete orderbook from engine/redis
-func (s *OrderBookService) GetRawOrderBook(bt, qt common.Address) ([]*types.Order, error) {
+func (s *OrderBookService) GetRawOrderBook(bt, qt common.Address) (*types.RawOrderBook, error) {
 	pair, err := s.pairDao.GetByTokenAddress(bt, qt)
 	if err != nil {
 		logger.Error(err)
 		return nil, err
 	}
 
-	ob, err := s.orderDao.GetRawOrderBook(pair)
+	orders, err := s.orderDao.GetRawOrderBook(pair)
 	if err != nil {
 		logger.Error(err)
 		return nil, err
 	}
 
-	return ob, nil
+	return &types.RawOrderBook{
+		PairName: pair.Name(),
+		Orders:   orders,
+	}, nil
 }
 
 // SubscribeRawOrderBook is responsible for handling incoming orderbook subscription messages
