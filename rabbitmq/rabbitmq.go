@@ -70,6 +70,22 @@ func (c *Connection) DeclareQueue(ch *amqp.Channel, name string) error {
 	return nil
 }
 
+func (c *Connection) DeclareThrottledQueue(ch *amqp.Channel, name string) error {
+	ch.Qos(1, 0, true)
+
+	if queues[name] == nil {
+		q, err := ch.QueueDeclare(name, false, false, false, false, nil)
+		if err != nil {
+			logger.Error(err)
+			return err
+		}
+
+		queues[name] = &q
+	}
+
+	return nil
+}
+
 func (c *Connection) GetChannel(id string) *amqp.Channel {
 	if channels[id] == nil {
 		ch, err := c.Conn.Channel()
@@ -114,6 +130,25 @@ func (c *Connection) Consume(ch *amqp.Channel, q *amqp.Queue) (<-chan amqp.Deliv
 		false,  // no-local
 		false,  // no-wait
 		nil,    // args
+	)
+
+	if err != nil {
+		logger.Error(err)
+		return nil, err
+	}
+
+	return msgs, nil
+}
+
+func (c *Connection) ConsumeAfterAck(ch *amqp.Channel, q *amqp.Queue) (<-chan amqp.Delivery, error) {
+	msgs, err := ch.Consume(
+		q.Name,
+		"",
+		false,
+		false,
+		false,
+		false,
+		nil,
 	)
 
 	if err != nil {
