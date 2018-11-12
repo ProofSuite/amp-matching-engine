@@ -68,7 +68,8 @@ func NewOperator(
 	for i, w := range wallets {
 		name := strconv.Itoa(i) + w.Address.Hex()
 		ch := conn.GetChannel("TX_QUEUES:" + name)
-		err := conn.DeclareQueue(ch, "TX_QUEUES:"+name)
+
+		err := conn.DeclareThrottledQueue(ch, "TX_QUEUES:"+name)
 		if err != nil {
 			panic(err)
 		}
@@ -237,7 +238,7 @@ func (op *Operator) QueueTrade(m *types.Matches) error {
 
 	logger.Infof("Queuing Trade on queue: %v (previous queue length = %v)", txq.Name, len)
 
-	err = txq.QueueTrade(m)
+	err = txq.PublishPendingTrades(m)
 	if err != nil {
 		logger.Error(err)
 		return err
