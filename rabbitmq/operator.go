@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"github.com/Proofsuite/amp-matching-engine/types"
+	"github.com/streadway/amqp"
 )
 
 func (c *Connection) SubscribeOperator(fn func(*types.OperatorMessage) error) error {
@@ -202,5 +203,45 @@ func (c *Connection) PublishTradeSentMessage(matches *types.Matches) error {
 	}
 
 	logger.Info("PUBLISHED TRADE SENT MESSAGE")
+	return nil
+}
+
+func (c *Connection) ConsumeQueuedTrades(ch *amqp.Channel, q *amqp.Queue, fn func(*types.Matches, uint64) error) error {
+	go func() {
+		msgs, err := ch.Consume(
+			q.Name, // queue
+			"",     // consumer
+			false,  // auto-ack
+			false,  // exclusive
+			false,  // no-local
+			false,  // no-wait
+			nil,    // args
+		)
+
+		if err != nil {
+			logger.Fatal("Failed to register a consumer:", err)
+		}
+
+		forever := make(chan bool)
+
+		go func() {
+			for d := range msgs {
+				m := &types.Matches{}
+				err := json.Unmarshal(d.Body, &m)
+				if err != nil {
+					logger.Error(err)
+					continue
+				}
+
+				err = fn(m, d.DeliveryTag)
+				if err != nil {
+					logger.Error(err)
+					d.Nack(false, false)
+				}
+			}
+		}()
+
+		<-forever
+	}()
 	return nil
 }

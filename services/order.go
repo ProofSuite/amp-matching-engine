@@ -149,10 +149,10 @@ func (s *OrderService) CancelOrder(oc *types.OrderCancel) error {
 	}
 
 	if o == nil {
-		return fmt.Errorf("No order with this hash present")
+		return fmt.Errorf("No order with this hash present: %v", oc.OrderHash.Hex())
 	}
 
-	if o.Status == "FILLED" || o.Status == "ERROR" {
+	if o.Status == "FILLED" || o.Status == "ERROR" || o.Status == "CANCEL" {
 		return fmt.Errorf("Cannot cancel order (Order status is %v)", o.Status)
 	}
 
