@@ -226,7 +226,7 @@ func (o *Order) BuyToken() common.Address {
 // If order is a "BUY", then sellToken = quoteToken
 func (o *Order) SellAmount() *big.Int {
 	if o.Side == "BUY" {
-		return math.Div(math.Mul(o.Amount, o.PricePoint), big.NewInt(1e6))
+		return math.Div(math.Mul(o.Amount, o.PricePoint), big.NewInt(1e9))
 	} else {
 		return o.Amount
 	}
@@ -236,7 +236,7 @@ func (o *Order) BuyAmount() *big.Int {
 	if o.Side == "SELL" {
 		return o.Amount
 	} else {
-		return math.Div(math.Mul(o.Amount, o.PricePoint), big.NewInt(1e6))
+		return math.Div(math.Mul(o.Amount, o.PricePoint), big.NewInt(1e9))
 	}
 }
 
