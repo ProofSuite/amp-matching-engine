@@ -233,6 +233,8 @@ func (c *Connection) ConsumeQueuedTrades(ch *amqp.Channel, q *amqp.Queue, fn fun
 					continue
 				}
 
+				logger.Info("Receiving pending trade")
+
 				err = m.Validate()
 				if err != nil {
 					logger.Error(err)
@@ -244,6 +246,8 @@ func (c *Connection) ConsumeQueuedTrades(ch *amqp.Channel, q *amqp.Queue, fn fun
 					logger.Error(err)
 					d.Nack(false, false)
 				}
+
+				d.Ack(false)
 			}
 		}()
 
