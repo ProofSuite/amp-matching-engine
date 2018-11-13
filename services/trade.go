@@ -108,8 +108,6 @@ func (s *TradeService) UpdatePendingTrade(t *types.Trade, txh common.Hash) (*typ
 		return nil, err
 	}
 
-	logger.Info("Updated pending trade", utils.JSON(updated))
-
 	return updated, nil
 }
 

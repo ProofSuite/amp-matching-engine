@@ -7,7 +7,6 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/Proofsuite/amp-matching-engine/utils/math"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto/sha3"
@@ -334,8 +333,6 @@ type TradeBSONUpdate struct {
 func (t TradeBSONUpdate) GetBSON() (interface{}, error) {
 	now := time.Now()
 
-	logger.Info("In GET BSON", utils.JSON(t))
-
 	set := bson.M{
 		"taker":          t.Taker.Hex(),
 		"maker":          t.Maker.Hex(),
@@ -347,8 +344,6 @@ func (t TradeBSONUpdate) GetBSON() (interface{}, error) {
 		"pairName":       t.PairName,
 		"status":         t.Status,
 	}
-
-	logger.Info("In GET BSON, trade pricepoint", utils.JSON(t.PricePoint), utils.JSON(t.PricePoint.String()))
 
 	if t.PricePoint != nil {
 		set["pricepoint"] = t.PricePoint.String()
