@@ -99,7 +99,8 @@ func writeHandler(c *Client) {
 		select {
 		case <-ticker.C:
 			c.SetWriteDeadline(time.Now().Add(writeWait))
-			if err := c.WriteMessage(websocket.PingMessage, nil); err != nil {
+			err := c.WriteMessage(websocket.PingMessage, nil)
+			if err != nil {
 				logger.Error(err)
 				return
 			}
