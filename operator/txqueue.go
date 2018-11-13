@@ -8,6 +8,7 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/Proofsuite/amp-matching-engine/rabbitmq"
 	"github.com/Proofsuite/amp-matching-engine/types"
+	"github.com/Proofsuite/amp-matching-engine/utils"
 	ethereum "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	eth "github.com/ethereum/go-ethereum/core/types"
@@ -97,7 +98,7 @@ func (txq *TxQueue) Length() int {
 // trade message, the trade is updated on the database and is published to the operator subscribers
 // (order service)
 func (txq *TxQueue) ExecuteTrade(m *types.Matches, tag uint64) error {
-	logger.Infof("Executing trades: %v", m)
+	logger.Infof("Executing trades: %v", utils.JSON(m))
 
 	callOpts := txq.GetTxCallOptions()
 	gasLimit, err := txq.Exchange.CallBatchTrades(m, callOpts)
@@ -205,8 +206,7 @@ func (txq *TxQueue) PublishPendingTrades(m *types.Matches) error {
 	ch := txq.Broker.GetChannel(name)
 	q := txq.Broker.GetQueue(ch, name)
 
-	msg := &types.PendingTradeBatch{m}
-	b, err := json.Marshal(msg)
+	b, err := json.Marshal(m)
 	if err != nil {
 		return errors.New("Failed to marshal trade object")
 	}

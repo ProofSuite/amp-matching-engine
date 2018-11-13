@@ -180,8 +180,8 @@ func (op *Operator) HandleEvents() error {
 		select {
 		case event := <-errorEvents:
 			logger.Error("Receiving error event", utils.JSON(event))
-			makerOrderHash := event.OrderHash
-			takerOrderHash := event.TradeHash
+			makerOrderHash := event.MakerOrderHash
+			takerOrderHash := event.TakerOrderHash
 			errID := int(event.ErrorId)
 
 			trades, err := op.TradeService.GetByTakerOrderHash(takerOrderHash)

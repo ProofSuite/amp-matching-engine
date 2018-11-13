@@ -388,7 +388,7 @@ func (e *Exchange) PrintErrors() error {
 	go func() {
 		for {
 			event := <-events
-			logger.Warningf("New Error Event. Id: %v, Hash: %v\n\n", event.ErrorId, hex.EncodeToString(event.TradeHash[:]))
+			logger.Warningf("New Error Event. Id: %v, Hash: %v\n\n", event.ErrorId, hex.EncodeToString(event.TakerOrderHash[:]))
 		}
 	}()
 
@@ -396,7 +396,7 @@ func (e *Exchange) PrintErrors() error {
 }
 
 func PrintErrorLog(log *contractsinterfaces.ExchangeLogError) string {
-	return fmt.Sprintf("Error:\nErrorID: %v\nOrderHash: %v\n\n", log.ErrorId, log.OrderHash)
+	return fmt.Sprintf("Error:\nErrorID: %v\nOrderHash: %v\n\n", log.ErrorId, log.TakerOrderHash)
 }
 
 func PrintTradeLog(log *contractsinterfaces.ExchangeLogTrade) string {
@@ -405,9 +405,5 @@ func PrintTradeLog(log *contractsinterfaces.ExchangeLogTrade) string {
 }
 
 func PrintCancelOrderLog(log *contractsinterfaces.ExchangeLogCancelOrder) string {
-	return fmt.Sprintf("Error:\nSender: %v\nOrderHash: %v\n\n", log.Maker, log.OrderHash)
-}
-
-func PrintCancelTradeLog(log *contractsinterfaces.ExchangeLogCancelTrade) string {
-	return fmt.Sprintf("Error:\nSender: %v\nTradeHash: %v\n\n", log.Taker, log.OrderHash)
+	return fmt.Sprintf("Error:\nSender: %v\nOrderHash: %v\n\n", log.UserAddress, log.OrderHash)
 }
