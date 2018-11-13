@@ -12,14 +12,16 @@ import (
 
 type infoEndpoint struct {
 	walletService interfaces.WalletService
+	tokenService  interfaces.TokenService
 }
 
 func ServeInfoResource(
 	r *mux.Router,
 	walletService interfaces.WalletService,
+	tokenService interfaces.TokenService,
 ) {
 
-	e := &infoEndpoint{walletService}
+	e := &infoEndpoint{walletService, tokenService}
 	r.HandleFunc("/info", e.handleGetInfo)
 	r.HandleFunc("/info/exchange", e.handleGetExchangeInfo)
 	r.HandleFunc("/info/operators", e.handleGetOperatorsInfo)
@@ -36,10 +38,23 @@ func (e *infoEndpoint) handleGetInfo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	quotes, err := e.tokenService.GetQuoteTokens()
+	if err != nil {
+		logger.Error(err)
+	}
+
+	fees := []map[string]string{}
+	for _, q := range quotes {
+		fees = append(fees, map[string]string{
+			"quote":   q.Symbol,
+			"makeFee": q.MakeFee,
+			"takeFee": q.TakeFee,
+		})
+	}
+
 	res := map[string]interface{}{
 		"exchangeAddress": ex.Hex(),
-		"makeFee":         "0",
-		"takeFee":         "0",
+		"fees":            fees,
 		"operators":       operators,
 	}
 
@@ -63,14 +78,22 @@ func (e *infoEndpoint) handleGetOperatorsInfo(w http.ResponseWriter, r *http.Req
 	}
 
 	res := map[string][]common.Address{"operators": addresses}
-
 	httputils.WriteJSON(w, http.StatusOK, res)
 }
 
 func (e *infoEndpoint) handleGetFeeInfo(w http.ResponseWriter, r *http.Request) {
-	fees := map[string]string{
-		"makeFee": "0",
-		"takeFee": "0",
+	quotes, err := e.tokenService.GetQuoteTokens()
+	if err != nil {
+		logger.Error(err)
+	}
+
+	fees := []map[string]string{}
+	for _, q := range quotes {
+		fees = append(fees, map[string]string{
+			"quote":   q.Symbol,
+			"makeFee": q.MakeFee,
+			"takeFee": q.TakeFee,
+		})
 	}
 
 	httputils.WriteJSON(w, http.StatusOK, fees)
