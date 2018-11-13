@@ -346,7 +346,7 @@ func (t TradeBSONUpdate) GetBSON() (interface{}, error) {
 	}
 
 	if t.PricePoint != nil {
-		set["pricepoint"] = t.PricePoint.Int64()
+		set["pricepoint"] = t.PricePoint.String()
 	}
 
 	if t.Amount != nil {
