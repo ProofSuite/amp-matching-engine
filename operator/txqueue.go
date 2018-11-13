@@ -97,7 +97,7 @@ func (txq *TxQueue) Length() int {
 // trade message, the trade is updated on the database and is published to the operator subscribers
 // (order service)
 func (txq *TxQueue) ExecuteTrade(m *types.Matches, tag uint64) error {
-	logger.Infof("Executing trades: %v", m)
+	logger.Infof("Executing trades")
 
 	callOpts := txq.GetTxCallOptions()
 	gasLimit, err := txq.Exchange.CallBatchTrades(m, callOpts)
@@ -171,8 +171,6 @@ func (txq *TxQueue) ExecuteTrade(m *types.Matches, tag uint64) error {
 		return err
 	}
 
-	ch := txq.GetChannel()
-	ch.Ack(tag, false)
 	return nil
 }
 

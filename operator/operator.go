@@ -231,6 +231,8 @@ func (op *Operator) QueueTrade(m *types.Matches) error {
 		return err
 	}
 
+	logger.Infof("Queuing matches on queue: %v", txq.Name)
+
 	if len > 10 {
 		logger.Warning("Transaction queue is full")
 		return errors.New("Transaction queue is full")

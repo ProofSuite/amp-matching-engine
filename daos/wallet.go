@@ -102,7 +102,7 @@ func (dao *WalletDao) GetOperatorWallets() ([]*types.Wallet, error) {
 	q := bson.M{"operator": true}
 	res := []*types.Wallet{}
 
-	err := db.Get(dao.dbName, dao.collectionName, q, 0, 1, &res)
+	err := db.Get(dao.dbName, dao.collectionName, q, 0, 0, &res)
 	if err != nil || len(res) == 0 {
 		logger.Error(err)
 		return nil, err
