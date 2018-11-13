@@ -233,6 +233,12 @@ func (c *Connection) ConsumeQueuedTrades(ch *amqp.Channel, q *amqp.Queue, fn fun
 					continue
 				}
 
+				err = m.Validate()
+				if err != nil {
+					logger.Error(err)
+					d.Nack(false, false)
+				}
+
 				err = fn(m, d.DeliveryTag)
 				if err != nil {
 					logger.Error(err)

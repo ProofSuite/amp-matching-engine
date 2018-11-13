@@ -205,8 +205,7 @@ func (txq *TxQueue) PublishPendingTrades(m *types.Matches) error {
 	ch := txq.Broker.GetChannel(name)
 	q := txq.Broker.GetQueue(ch, name)
 
-	msg := &types.PendingTradeBatch{m}
-	b, err := json.Marshal(msg)
+	b, err := json.Marshal(m)
 	if err != nil {
 		return errors.New("Failed to marshal trade object")
 	}
