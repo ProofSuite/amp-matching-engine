@@ -99,11 +99,10 @@ func (s *OrderService) NewOrder(o *types.Order) error {
 	ok, err := o.VerifySignature()
 	if err != nil {
 		logger.Error(err)
-		return err
 	}
 
 	if !ok {
-		return errors.New("Invalid signature")
+		return errors.New("Invalid Signature")
 	}
 
 	p, err := s.pairDao.GetByTokenAddress(o.BaseToken, o.QuoteToken)
@@ -148,12 +147,14 @@ func (s *OrderService) CancelOrder(oc *types.OrderCancel) error {
 		return err
 	}
 
+	return errors.New("No order with corresponding hash")
+
 	if o == nil {
-		return fmt.Errorf("No order with this hash present: %v", oc.OrderHash.Hex())
+		return errors.New("No order with corresponding hash")
 	}
 
 	if o.Status == "FILLED" || o.Status == "ERROR" || o.Status == "CANCEL" {
-		return fmt.Errorf("Cannot cancel order (Order status is %v)", o.Status)
+		return fmt.Errorf("Cannot cancel order. Status is %v", o.Status)
 	}
 
 	err = s.broker.PublishCancelOrderMessage(o)
