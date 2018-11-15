@@ -58,3 +58,24 @@ func (c *Client) closeConnection() {
 
 	c.Close()
 }
+
+func (c *Client) SendOrderErrorMessage(err error, h common.Hash) {
+	p := map[string]interface{}{
+		"message": err.Error(),
+		"hash":    h.Hex(),
+	}
+
+	e := types.WebsocketEvent{
+		Type:    "ERROR",
+		Payload: p,
+	}
+
+	m := types.WebsocketMessage{
+		Channel: OrderChannel,
+		Event:   e,
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.send <- m
+}

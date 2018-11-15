@@ -18,6 +18,8 @@ type Token struct {
 	Decimal         int            `json:"decimal" bson:"decimal"`
 	Active          bool           `json:"active" bson:"active"`
 	Quote           bool           `json:"quote" bson:"quote"`
+	MakeFee         string         `json:"makeFee,omitempty" bson:"makeFee,omitempty"`
+	TakeFee         string         `json:"takeFee,omitempty" bson:"makeFee,omitempty"`
 
 	CreatedAt time.Time `json:"createdAt" bson:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt" bson:"updatedAt"`
@@ -33,6 +35,8 @@ type TokenRecord struct {
 	Decimal         int           `json:"decimal" bson:"decimal"`
 	Active          bool          `json:"active" bson:"active"`
 	Quote           bool          `json:"quote" bson:"quote"`
+	MakeFee         string        `json:"makeFee,omitempty" bson:"makeFee,omitempty"`
+	TakeFee         string        `json:"takeFee,omitempty" bson:"takeFee,omitempty"`
 
 	CreatedAt time.Time `json:"createdAt" bson:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt" bson:"updatedAt"`
@@ -68,6 +72,8 @@ func (t *Token) GetBSON() (interface{}, error) {
 		Quote:           t.Quote,
 		CreatedAt:       t.CreatedAt,
 		UpdatedAt:       t.UpdatedAt,
+		MakeFee:         t.MakeFee,
+		TakeFee:         t.TakeFee,
 	}, nil
 }
 
@@ -91,5 +97,7 @@ func (t *Token) SetBSON(raw bson.Raw) error {
 	t.Quote = decoded.Quote
 	t.CreatedAt = decoded.CreatedAt
 	t.UpdatedAt = decoded.UpdatedAt
+	t.MakeFee = decoded.MakeFee
+	t.TakeFee = decoded.TakeFee
 	return nil
 }

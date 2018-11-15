@@ -118,7 +118,7 @@ func NewRouter(
 	}
 
 	// deploy http and ws endpoints
-	endpoints.ServeInfoResource(r, walletService)
+	endpoints.ServeInfoResource(r, walletService, tokenService)
 	endpoints.ServeAccountResource(r, accountService)
 	endpoints.ServeTokenResource(r, tokenService)
 	endpoints.ServePairResource(r, pairService)
