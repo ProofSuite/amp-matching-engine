@@ -102,8 +102,7 @@ func (s *OrderService) NewOrder(o *types.Order) error {
 	}
 
 	if !ok {
-		utils.PrintJSON("Invalid signature")
-		return types.NewInvalidOrderSignature(o)
+		return errors.New("Invalid Signature")
 	}
 
 	p, err := s.pairDao.GetByTokenAddress(o.BaseToken, o.QuoteToken)
@@ -113,8 +112,7 @@ func (s *OrderService) NewOrder(o *types.Order) error {
 	}
 
 	if p == nil {
-		utils.PrintJSON("Pair not found")
-		return types.NewPairNotFoundError(o)
+		return errors.New("Pair not found")
 	}
 
 	// Fill token and pair data

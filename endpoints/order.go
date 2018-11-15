@@ -204,8 +204,7 @@ func (e *orderEndpoint) handleNewOrder(ev *types.WebsocketEvent, c *ws.Client) {
 	}
 
 	if acc.IsBlocked {
-		orderErr := types.NewOrderError(o, errors.New("Account Blocked"))
-		c.SendMessage(ws.OrderChannel, "ERROR", orderErr.JSON())
+		c.SendMessage(ws.OrderChannel, "ERROR", errors.New("Account is blocked"))
 	}
 
 	err = e.orderService.NewOrder(o)

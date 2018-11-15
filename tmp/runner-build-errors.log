@@ -1,3 +1,0 @@
-# github.com/Proofsuite/amp-matching-engine/services
-services/order.go:106:10: undefined: "github.com/Proofsuite/amp-matching-engine/types".NewInvalidOrderSignature
-services/order.go:117:10: undefined: "github.com/Proofsuite/amp-matching-engine/types".NewPairNotFoundError
