@@ -2,6 +2,7 @@ package endpoints
 
 import (
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"strconv"
@@ -189,7 +190,7 @@ func (e *orderEndpoint) handleNewOrder(ev *types.WebsocketEvent, c *ws.Client) {
 	err = json.Unmarshal(bytes, &o)
 	if err != nil {
 		logger.Error(err)
-		c.SendMessage(ws.OrderChannel, "ERROR", err.Error())
+		c.SendOrderErrorMessage(err, o.Hash)
 		return
 	}
 
@@ -199,16 +200,18 @@ func (e *orderEndpoint) handleNewOrder(ev *types.WebsocketEvent, c *ws.Client) {
 	acc, err := e.accountService.FindOrCreate(o.UserAddress)
 	if err != nil {
 		logger.Error(err)
+		c.SendOrderErrorMessage(err, o.Hash)
 	}
 
 	if acc.IsBlocked {
-		c.SendMessage(ws.OrderChannel, "ERROR", "Account blocked")
+		orderErr := types.NewOrderError(o, errors.New("Account Blocked"))
+		c.SendMessage(ws.OrderChannel, "ERROR", orderErr.JSON())
 	}
 
 	err = e.orderService.NewOrder(o)
 	if err != nil {
 		logger.Error(err)
-		c.SendMessage(ws.OrderChannel, "ERROR", err.Error())
+		c.SendOrderErrorMessage(err, o.Hash)
 		return
 	}
 }
@@ -221,21 +224,21 @@ func (e *orderEndpoint) handleCancelOrder(ev *types.WebsocketEvent, c *ws.Client
 	err = oc.UnmarshalJSON(bytes)
 	if err != nil {
 		logger.Error(err)
-		c.SendMessage(ws.OrderChannel, "ERROR", err.Error())
+		c.SendOrderErrorMessage(err, oc.Hash)
 	}
 
 	addr, err := oc.GetSenderAddress()
 	if err != nil {
 		logger.Error(err)
-		c.SendMessage(ws.OrderChannel, "ERROR", err.Error())
+		c.SendOrderErrorMessage(err, oc.Hash)
 	}
 
 	ws.RegisterOrderConnection(addr, c)
 
-	err = e.orderService.CancelOrder(oc)
-	if err != nil {
+	orderErr := e.orderService.CancelOrder(oc)
+	if orderErr != nil {
 		logger.Error(err)
-		c.SendMessage(ws.OrderChannel, "ERROR", err.Error())
+		c.SendOrderErrorMessage(orderErr, oc.Hash)
 		return
 	}
 }
