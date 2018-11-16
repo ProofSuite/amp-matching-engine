@@ -147,7 +147,7 @@ func (s *OrderService) CancelOrder(oc *types.OrderCancel) error {
 		return err
 	}
 
-	return errors.New("No order with corresponding hash")
+
 
 	if o == nil {
 		return errors.New("No order with corresponding hash")
