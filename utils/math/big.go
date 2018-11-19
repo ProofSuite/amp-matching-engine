@@ -30,6 +30,10 @@ func ToBigInt(s string) *big.Int {
 	return res
 }
 
+func Exp(x, y *big.Int) *big.Int {
+	return big.NewInt(0).Exp(x, y, nil)
+}
+
 func BigIntToBigFloat(a *big.Int) *big.Float {
 	b := new(big.Float).SetInt(a)
 	return b

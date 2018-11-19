@@ -65,10 +65,10 @@ func (s *PairService) Create(pair *types.Pair) error {
 
 	pair.QuoteTokenSymbol = st.Symbol
 	pair.QuoteTokenAddress = st.ContractAddress
-	pair.QuoteTokenDecimal = st.Decimal
+	pair.QuoteTokenDecimals = st.Decimals
 	pair.BaseTokenSymbol = bt.Symbol
 	pair.BaseTokenAddress = bt.ContractAddress
-	pair.BaseTokenDecimal = bt.Decimal
+	pair.BaseTokenDecimals = bt.Decimals
 	err = s.pairDao.Create(pair)
 	if err != nil {
 		return err

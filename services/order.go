@@ -147,8 +147,6 @@ func (s *OrderService) CancelOrder(oc *types.OrderCancel) error {
 		return err
 	}
 
-
-
 	if o == nil {
 		return errors.New("No order with corresponding hash")
 	}
@@ -441,9 +439,9 @@ func (s *OrderService) broadcastOrderBookUpdate(orders []*types.Order) {
 
 	id := utils.GetOrderBookChannelID(p.BaseTokenAddress, p.QuoteTokenAddress)
 	ws.GetOrderBookSocket().BroadcastMessage(id, map[string]interface{}{
-		"pair": orders[0].PairName,
-		"bids": bids,
-		"asks": asks,
+		"pairName": orders[0].PairName,
+		"bids":     bids,
+		"asks":     asks,
 	})
 }
 
