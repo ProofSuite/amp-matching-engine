@@ -28,8 +28,8 @@ type Trade struct {
 	Hash           common.Hash    `json:"hash" bson:"hash"`
 	TxHash         common.Hash    `json:"txHash" bson:"txHash"`
 	PairName       string         `json:"pairName" bson:"pairName"`
-	CreatedAt      time.Time      `json:"createdAt" bson:"createdAt" redis:"createdAt"`
-	UpdatedAt      time.Time      `json:"updatedAt" bson:"updatedAt" redis:"updatedAt"`
+	CreatedAt      time.Time      `json:"createdAt" bson:"createdAt"`
+	UpdatedAt      time.Time      `json:"updatedAt" bson:"updatedAt"`
 	PricePoint     *big.Int       `json:"pricepoint" bson:"pricepoint"`
 	Status         string         `json:"status" bson:"status"`
 	Amount         *big.Int       `json:"amount" bson:"amount"`
@@ -270,8 +270,8 @@ func (t *Trade) SetBSON(raw bson.Raw) error {
 		TakerOrderHash string        `json:"takerOrderHash" bson:"takerOrderHash"`
 		Hash           string        `json:"hash" bson:"hash"`
 		TxHash         string        `json:"txHash" bson:"txHash"`
-		CreatedAt      time.Time     `json:"createdAt" bson:"createdAt" redis:"createdAt"`
-		UpdatedAt      time.Time     `json:"updatedAt" bson:"updatedAt" redis:"updatedAt"`
+		CreatedAt      time.Time     `json:"createdAt" bson:"createdAt"`
+		UpdatedAt      time.Time     `json:"updatedAt" bson:"updatedAt"`
 		PricePoint     string        `json:"pricepoint" bson:"pricepoint"`
 		Status         string        `json:"status" bson:"status"`
 		Amount         string        `json:"amount" bson:"amount"`

@@ -54,12 +54,11 @@ type OrderPendingPayload struct {
 	Matches *Matches `json:"matches"`
 }
 
-// type OrderSuccessPayload struct {
-// 	Order *Order `json:"order"`
-// 	Trade *Trade `json:"trade"`
-// }
-
 type OrderSuccessPayload struct {
+	Matches *Matches `json:"matches"`
+}
+
+type OrderMatchedPayload struct {
 	Matches *Matches `json:"matches"`
 }
 

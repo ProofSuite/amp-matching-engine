@@ -27,8 +27,6 @@ type appConfig struct {
 	TakeFee float64 `mapstructure:"take_fee"`
 	// the Rabbitmq is the URI of rabbitmq to use
 	Rabbitmq string `mapstructure:"rabbitmq"`
-	// the redis is the URI of redis to use
-	Redis string `mapstructure:"redis"`
 	// the signing method for JWT. Defaults to "HS256"
 	JWTSigningMethod string `mapstructure:"jwt_signing_method"`
 	// JWT signing key. required.
@@ -81,7 +79,6 @@ func LoadConfig(configPath string, env string) error {
 	Config.Ethereum["http_url"] = v.Get("ETHEREUM_NODE_HTTP_URL").(string)
 	Config.Ethereum["ws_url"] = v.Get("ETHEREUM_NODE_WS_URL").(string)
 	Config.DSN = v.Get("MONGODB_URL").(string)
-	Config.Redis = v.Get("REDIS_URL").(string)
 	Config.Rabbitmq = v.Get("RABBITMQ_URL").(string)
 	Config.DBName = v.Get("MONGODB_DBNAME").(string)
 	Config.Ethereum["exchange_address"] = v.Get("EXCHANGE_CONTRACT_ADDRESS").(string)
@@ -92,7 +89,6 @@ func LoadConfig(configPath string, env string) error {
 	logger.Infof("Ethereum node HTTP url: %v", Config.Ethereum["http_url"])
 	logger.Infof("Ethereum node WS url: %v", Config.Ethereum["ws_url"])
 	logger.Infof("MongoDB url: %v:", Config.DSN)
-	logger.Infof("Redis url: %v", Config.Redis)
 	logger.Infof("RabbitMQ url: %v", Config.Rabbitmq)
 	logger.Infof("Exchange contract address: %v", Config.Ethereum["exchange_address"])
 	logger.Infof("Fee Account: %v", Config.Ethereum["fee_account"])
