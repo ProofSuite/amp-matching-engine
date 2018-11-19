@@ -168,6 +168,14 @@ func (o *Order) Process(p *Pair) error {
 		o.FilledAmount = big.NewInt(0)
 	}
 
+	if !math.IsEqual(o.MakeFee, p.MakeFee) {
+		return errors.New("Invalid MakeFee")
+	}
+
+	if !math.IsEqual(o.TakeFee, p.TakeFee) {
+		return errors.New("Invalid TakeFee")
+	}
+
 	o.PairName = p.Name()
 	o.CreatedAt = time.Now()
 	o.UpdatedAt = time.Now()
@@ -224,9 +232,9 @@ func (o *Order) BuyToken() common.Address {
 
 // SellAmount
 // If order is a "BUY", then sellToken = quoteToken
-func (o *Order) SellAmount() *big.Int {
+func (o *Order) SellAmount(pricepointMultiplier *big.Int) *big.Int {
 	if o.Side == "BUY" {
-		return math.Div(math.Mul(o.Amount, o.PricePoint), big.NewInt(1e9))
+		return math.Div(math.Mul(o.Amount, o.PricePoint), pricepointMultiplier)
 	} else {
 		return o.Amount
 	}

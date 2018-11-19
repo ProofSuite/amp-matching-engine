@@ -49,7 +49,7 @@ func (s *OrderBookService) GetOrderBook(bt, qt common.Address) (map[string]inter
 	}
 
 	ob := map[string]interface{}{
-		"pair": pair.Name(),
+		"pairName": pair.Name(),
 		"asks": asks,
 		"bids": bids,
 	}

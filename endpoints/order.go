@@ -223,13 +223,13 @@ func (e *orderEndpoint) handleCancelOrder(ev *types.WebsocketEvent, c *ws.Client
 	err = oc.UnmarshalJSON(bytes)
 	if err != nil {
 		logger.Error(err)
-		c.SendOrderErrorMessage(err, oc.Hash)
+		c.SendOrderErrorMessage(err, oc.OrderHash)
 	}
 
 	addr, err := oc.GetSenderAddress()
 	if err != nil {
 		logger.Error(err)
-		c.SendOrderErrorMessage(err, oc.Hash)
+		c.SendOrderErrorMessage(err, oc.OrderHash)
 	}
 
 	ws.RegisterOrderConnection(addr, c)
@@ -237,7 +237,7 @@ func (e *orderEndpoint) handleCancelOrder(ev *types.WebsocketEvent, c *ws.Client
 	orderErr := e.orderService.CancelOrder(oc)
 	if orderErr != nil {
 		logger.Error(err)
-		c.SendOrderErrorMessage(orderErr, oc.Hash)
+		c.SendOrderErrorMessage(orderErr, oc.OrderHash)
 		return
 	}
 }
