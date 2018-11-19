@@ -114,7 +114,7 @@ func (e *Exchange) SetOperator(a common.Address, isOperator bool, txOpts *bind.T
 func (e *Exchange) FeeAccount() (common.Address, error) {
 	callOptions := e.GetTxCallOptions()
 
-	account, err := e.Interface.FeeAccount(callOptions)
+	account, err := e.Interface.RewardAccount(callOptions)
 	if err != nil {
 		logger.Error(err)
 		return common.Address{}, err

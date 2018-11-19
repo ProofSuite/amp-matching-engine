@@ -47,8 +47,8 @@ func (e *infoEndpoint) handleGetInfo(w http.ResponseWriter, r *http.Request) {
 	for _, q := range quotes {
 		fees = append(fees, map[string]string{
 			"quote":   q.Symbol,
-			"makeFee": q.MakeFee,
-			"takeFee": q.TakeFee,
+			"makeFee": q.MakeFee.String(),
+			"takeFee": q.TakeFee.String(),
 		})
 	}
 
@@ -91,8 +91,8 @@ func (e *infoEndpoint) handleGetFeeInfo(w http.ResponseWriter, r *http.Request) 
 	for _, q := range quotes {
 		fees = append(fees, map[string]string{
 			"quote":   q.Symbol,
-			"makeFee": q.MakeFee,
-			"takeFee": q.TakeFee,
+			"makeFee": q.MakeFee.String(),
+			"takeFee": q.TakeFee.String(),
 		})
 	}
 
