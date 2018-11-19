@@ -14,7 +14,6 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/ethereum"
 	"github.com/Proofsuite/amp-matching-engine/operator"
 	"github.com/Proofsuite/amp-matching-engine/rabbitmq"
-	"github.com/Proofsuite/amp-matching-engine/redis"
 	"github.com/Proofsuite/amp-matching-engine/services"
 	"github.com/Proofsuite/amp-matching-engine/ws"
 	"github.com/ethereum/go-ethereum/common"
@@ -42,10 +41,9 @@ func Start() {
 	}
 
 	rabbitConn := rabbitmq.InitConnection(app.Config.Rabbitmq)
-	redisConn := redis.NewRedisConnection(app.Config.Redis)
 	provider := ethereum.NewWebsocketProvider()
 
-	router := NewRouter(provider, redisConn, rabbitConn)
+	router := NewRouter(provider, rabbitConn)
 	router.HandleFunc("/socket", ws.ConnectionEndpoint)
 
 	// start the server
@@ -61,7 +59,6 @@ func Start() {
 
 func NewRouter(
 	provider *ethereum.EthereumProvider,
-	redisConn *redis.RedisConnection,
 	rabbitConn *rabbitmq.Connection,
 ) *mux.Router {
 

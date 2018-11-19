@@ -4,7 +4,6 @@
 # db_name: proofdex
 
 # rabbitmq: amqp://guest:guest@rabbitmq:5672/
-# redis: redis://redis:6379
 
 # ethereum:
 #   http_url: http://localhost:8545

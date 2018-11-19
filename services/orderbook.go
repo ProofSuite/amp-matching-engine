@@ -30,7 +30,7 @@ func NewOrderBookService(
 	return &OrderBookService{pairDao, tokenDao, orderDao, eng}
 }
 
-// GetOrderBook fetches orderbook from engine/redis and returns it as an map[string]interface
+// GetOrderBook
 func (s *OrderBookService) GetOrderBook(bt, qt common.Address) (map[string]interface{}, error) {
 	pair, err := s.pairDao.GetByTokenAddress(bt, qt)
 	if err != nil {
@@ -50,8 +50,8 @@ func (s *OrderBookService) GetOrderBook(bt, qt common.Address) (map[string]inter
 
 	ob := map[string]interface{}{
 		"pairName": pair.Name(),
-		"asks": asks,
-		"bids": bids,
+		"asks":     asks,
+		"bids":     bids,
 	}
 
 	return ob, nil
@@ -92,7 +92,7 @@ func (s *OrderBookService) UnsubscribeOrderBookChannel(c *ws.Client, bt, qt comm
 	socket.UnsubscribeChannel(id, c)
 }
 
-// GetRawOrderBook fetches complete orderbook from engine/redis
+// GetRawOrderBook fetches complete orderbook from engine
 func (s *OrderBookService) GetRawOrderBook(bt, qt common.Address) (*types.RawOrderBook, error) {
 	pair, err := s.pairDao.GetByTokenAddress(bt, qt)
 	if err != nil {

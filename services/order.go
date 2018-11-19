@@ -234,8 +234,7 @@ func (s *OrderService) handleOrdersInvalidated(res *types.EngineResponse) error 
 	return nil
 }
 
-// handleEngineError returns an websocket error message to the client and recovers orders on the
-// redis key/value store
+// handleEngineError returns an websocket error message to the client
 func (s *OrderService) handleEngineError(res *types.EngineResponse) {
 	o := res.Order
 	ws.SendOrderMessage("ERROR", o.UserAddress, nil)
@@ -255,9 +254,10 @@ func (s *OrderService) handleEngineOrderAdded(res *types.EngineResponse) {
 // The request signature message also signals the client to sign trades.
 func (s *OrderService) handleEngineOrderMatched(res *types.EngineResponse) {
 	o := res.Order //res.Order is the "taker" order
-	matches := *res.Matches
-
 	taker := o.UserAddress
+	matches := *res.Matches
+	ws.SendOrderMessage("ORDER_MATCHED", taker, types.OrderMatchedPayload{&matches})
+
 	orders := []*types.Order{o}
 	validMatches := types.Matches{TakerOrder: o}
 	invalidMatches := types.Matches{TakerOrder: o}
@@ -369,7 +369,7 @@ func (s *OrderService) handleOperatorTradeSuccess(msg *types.OperatorMessage) {
 }
 
 // handleOperatorTradeError handles error messages from the operator (case where the blockchain tx was made
-// but ended up failing. It updates the trade status in the db. None of the orders are reincluded in the redis
+// but ended up failing. It updates the trade status in the db. None of the orders are reincluded in the engine
 // orderbook.
 func (s *OrderService) handleOperatorTradeError(msg *types.OperatorMessage) {
 	matches := msg.Matches

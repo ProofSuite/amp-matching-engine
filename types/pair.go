@@ -149,8 +149,7 @@ func (p Pair) Validate() error {
 	)
 }
 
-// GetOrderBookKeys returns the orderbook price point keys for corresponding pair
-// It is used to fetch the orderbook from redis of a pair
+// GetOrderBookKeys
 func (p *Pair) GetOrderBookKeys() (sell, buy string) {
 	return p.GetKVPrefix() + "::SELL", p.GetKVPrefix() + "::BUY"
 }

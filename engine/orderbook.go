@@ -75,7 +75,6 @@ func (ob *OrderBook) newOrder(o *types.Order) (err error) {
 	return nil
 }
 
-// addOrder adds an order to redis
 func (ob *OrderBook) addOrder(o *types.Order) error {
 	if o.FilledAmount == nil || math.IsZero(o.FilledAmount) {
 		o.Status = "OPEN"
