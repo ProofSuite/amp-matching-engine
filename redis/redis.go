@@ -122,6 +122,10 @@ func (c *RedisConnection) ZCount(key string) (int64, error) {
 	return count, nil
 }
 
+func (c *RedisConnection) ZIncrBy(key string, increment int64, member string) (int64, error) {
+	return redis.Int64(c.Do("ZINCRBY", key, increment, member))
+}
+
 // IncrBy increment value of a key by passed amount. Returns: currentValue of key
 func (c *RedisConnection) IncrBy(key string, value int64) (int64, error) {
 	return redis.Int64(c.Do("INCRBY", key, value))

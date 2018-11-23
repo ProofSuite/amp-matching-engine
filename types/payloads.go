@@ -19,14 +19,14 @@ type NewOrderPayload struct {
 	PairName        string         `json:"pairName"`
 	ExchangeAddress common.Address `json:"exchangeAddress"`
 	UserAddress     common.Address `json:"userAddress"`
-	BuyToken        common.Address `json:"buyToken"`
-	SellToken       common.Address `json:"sellToken"`
-	BuyAmount       *big.Int       `json:"buyAmount"`
-	SellAmount      *big.Int       `json:"sellAmount"`
+	BaseToken       common.Address `json:"baseToken"`
+	QuoteToken      common.Address `json:"quoteToken"`
+	Side            string         `json:"side"`
+	Amount          *big.Int       `json:"amount"`
+	PricePoint      *big.Int       `json:"pricepoint"`
 	TakeFee         *big.Int       `json:"takeFee"`
 	MakeFee         *big.Int       `json:"makeFee"`
 	Nonce           *big.Int       `json:"nonce" bson:"nonce"`
-	Expires         *big.Int       `json:"expires" bson:"expires"`
 	Signature       *Signature     `json:"signature"`
 	Hash            common.Hash    `json:"hash"`
 }
@@ -36,13 +36,11 @@ func (p NewOrderPayload) MarshalJSON() ([]byte, error) {
 		"pairName":        p.PairName,
 		"exchangeAddress": p.ExchangeAddress,
 		"userAddress":     p.UserAddress,
-		"buyToken":        p.BuyToken,
-		"sellToken":       p.SellToken,
-		"buyAmount":       p.BuyAmount.String(),
-		"sellAmount":      p.SellAmount.String(),
+		"amount":          p.Amount.String(),
+		"pricepoint":      p.PricePoint.String(),
+		"side":            p.Side,
 		"takeFee":         p.TakeFee.String(),
 		"makeFee":         p.MakeFee.String(),
-		"expires":         p.Expires.String(),
 		"nonce":           p.Nonce.String(),
 		"signature": map[string]interface{}{
 			"V": p.Signature.V,
@@ -75,36 +73,28 @@ func (p *NewOrderPayload) UnmarshalJSON(b []byte) error {
 		p.ExchangeAddress = common.HexToAddress(decoded["exchangeAddress"].(string))
 	}
 
-	if decoded["buyToken"] != nil {
-		p.BuyToken = common.HexToAddress(decoded["buyToken"].(string))
+	if decoded["amount"] != nil {
+		p.Amount = math.ToBigInt(decoded["amount"].(string))
 	}
 
-	if decoded["sellToken"] != nil {
-		p.SellToken = common.HexToAddress(decoded["sellToken"].(string))
-	}
-
-	if decoded["buyAmount"] != nil {
-		p.BuyAmount = math.ToBigInt(decoded["buyAmount"].(string))
-	}
-
-	if decoded["sellAmount"] != nil {
-		p.BuyAmount = math.ToBigInt(decoded["sellAmount"].(string))
-	}
-
-	if decoded["expires"] != nil {
-		p.BuyAmount = math.ToBigInt(decoded["expires"].(string))
+	if decoded["pricepoint"] != nil {
+		p.PricePoint = math.ToBigInt(decoded["pricepoint"].(string))
 	}
 
 	if decoded["nonce"] != nil {
-		p.BuyAmount = math.ToBigInt(decoded["nonce"].(string))
+		p.Nonce = math.ToBigInt(decoded["nonce"].(string))
 	}
 
 	if decoded["makeFee"] != nil {
-		p.BuyAmount = math.ToBigInt(decoded["makeFee"].(string))
+		p.MakeFee = math.ToBigInt(decoded["makeFee"].(string))
 	}
 
 	if decoded["takeFee"] != nil {
-		p.BuyAmount = math.ToBigInt(decoded["takeFee"].(string))
+		p.TakeFee = math.ToBigInt(decoded["takeFee"].(string))
+	}
+
+	if decoded["side"] != nil {
+		p.Side = decoded["side"].(string)
 	}
 
 	if decoded["signature"] != nil {
@@ -125,11 +115,12 @@ func (p *NewOrderPayload) UnmarshalJSON(b []byte) error {
 // Validate validates the NewOrderPayload fields.
 func (p NewOrderPayload) Validate() error {
 	return validation.ValidateStruct(&p,
-		validation.Field(&p.BuyAmount, validation.Required),
-		validation.Field(&p.SellAmount, validation.Required),
+		validation.Field(&p.Amount, validation.Required),
+		validation.Field(&p.PricePoint, validation.Required),
 		validation.Field(&p.UserAddress, validation.Required),
-		validation.Field(&p.BuyToken, validation.Required),
-		validation.Field(&p.SellToken, validation.Required),
+		validation.Field(&p.BaseToken, validation.Required),
+		validation.Field(&p.QuoteToken, validation.Required),
+		validation.Field(&p.Side, validation.Required),
 		// validation.Field(&m.Signature, validation.Required),
 	)
 }
@@ -144,30 +135,40 @@ func (p *NewOrderPayload) ToOrder() (o *Order, err error) {
 		MakeFee:     p.MakeFee,
 		TakeFee:     p.TakeFee,
 		UserAddress: p.UserAddress,
-		BuyToken:    p.BuyToken,
-		SellToken:   p.SellToken,
-		BuyAmount:   p.BuyAmount,
-		SellAmount:  p.SellAmount,
+		BaseToken:   p.BaseToken,
+		QuoteToken:  p.QuoteToken,
+		Amount:      p.Amount,
+		Side:        p.Side,
+		PricePoint:  p.PricePoint,
 		Hash:        p.ComputeHash(),
 		Nonce:       p.Nonce,
-		Expires:     p.Expires,
 		Signature:   p.Signature,
 	}
 
 	return o, nil
 }
 
+func (p *NewOrderPayload) EncodedSide() *big.Int {
+	if p.Side == "BUY" {
+		return big.NewInt(0)
+	} else {
+		return big.NewInt(1)
+	}
+}
+
 // ComputeHash calculates the orderRequest hash
 func (p *NewOrderPayload) ComputeHash() common.Hash {
 	sha := sha3.NewKeccak256()
-	sha.Write(p.UserAddress.Bytes())
 	sha.Write(p.ExchangeAddress.Bytes())
-	sha.Write(p.BuyToken.Bytes())
-	sha.Write(common.BigToHash(p.BuyAmount).Bytes())
-	sha.Write(p.SellToken.Bytes())
-	sha.Write(common.BigToHash(p.SellAmount).Bytes())
-	sha.Write(common.BigToHash(p.Expires).Bytes())
+	sha.Write(p.UserAddress.Bytes())
+	sha.Write(p.BaseToken.Bytes())
+	sha.Write(p.QuoteToken.Bytes())
+	sha.Write(common.BigToHash(p.Amount).Bytes())
+	sha.Write(common.BigToHash(p.PricePoint).Bytes())
+	sha.Write(common.BigToHash(p.EncodedSide()).Bytes())
 	sha.Write(common.BigToHash(p.Nonce).Bytes())
+	sha.Write(common.BigToHash(p.TakeFee).Bytes())
+	sha.Write(common.BigToHash(p.MakeFee).Bytes())
 	return common.BytesToHash(sha.Sum(nil))
 }
 

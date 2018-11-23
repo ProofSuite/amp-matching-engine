@@ -34,7 +34,7 @@ func (e *tradeEndpoint) HandleGetTradeHistory(w http.ResponseWriter, r *http.Req
 	v := r.URL.Query()
 	bt := v.Get("baseToken")
 	qt := v.Get("quoteToken")
-	l := v.Get("length")
+	l := v.Get("limit")
 
 	if bt == "" {
 		httputils.WriteError(w, http.StatusBadRequest, "baseToken Parameter missing")
@@ -56,14 +56,14 @@ func (e *tradeEndpoint) HandleGetTradeHistory(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	length := 20
+	limit := 20
 	if l != "" {
-		length, _ = strconv.Atoi(l)
+		limit, _ = strconv.Atoi(l)
 	}
 
 	baseToken := common.HexToAddress(bt)
 	quoteToken := common.HexToAddress(qt)
-	res, err := e.tradeService.GetSortedTradesByDate(baseToken, quoteToken, length)
+	res, err := e.tradeService.GetSortedTrades(baseToken, quoteToken, limit)
 	if err != nil {
 		logger.Error(err)
 		httputils.WriteError(w, http.StatusInternalServerError, "")
@@ -82,6 +82,7 @@ func (e *tradeEndpoint) HandleGetTradeHistory(w http.ResponseWriter, r *http.Req
 func (e *tradeEndpoint) HandleGetTrades(w http.ResponseWriter, r *http.Request) {
 	v := r.URL.Query()
 	addr := v.Get("address")
+	limit := v.Get("limit")
 
 	if addr == "" {
 		httputils.WriteError(w, http.StatusBadRequest, "address Parameter missing")
@@ -93,8 +94,13 @@ func (e *tradeEndpoint) HandleGetTrades(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	lim := 100
+	if limit != "" {
+		lim, _ = strconv.Atoi(limit)
+	}
+
 	address := common.HexToAddress(addr)
-	res, err := e.tradeService.GetByUserAddress(address)
+	res, err := e.tradeService.GetSortedTradesByUserAddress(address, lim)
 	if err != nil {
 		logger.Error(err)
 		httputils.WriteError(w, http.StatusInternalServerError, "")
@@ -109,7 +115,7 @@ func (e *tradeEndpoint) HandleGetTrades(w http.ResponseWriter, r *http.Request) 
 	httputils.WriteJSON(w, http.StatusOK, res)
 }
 
-func (e *tradeEndpoint) tradeWebsocket(input interface{}, c *ws.Conn) {
+func (e *tradeEndpoint) tradeWebsocket(input interface{}, c *ws.Client) {
 	b, _ := json.Marshal(input)
 	var ev *types.WebsocketEvent
 	if err := json.Unmarshal(b, &ev); err != nil {

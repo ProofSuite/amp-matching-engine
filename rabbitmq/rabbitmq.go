@@ -1,11 +1,12 @@
 package rabbitmq
 
 import (
-	"fmt"
+	"crypto/tls"
+	"crypto/x509"
 	"log"
 
+	"github.com/Proofsuite/amp-matching-engine/app"
 	"github.com/Proofsuite/amp-matching-engine/utils"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/streadway/amqp"
 )
 
@@ -20,27 +21,74 @@ type Connection struct {
 	Conn *amqp.Connection
 }
 type Message struct {
-	Type   string      `json:"type"`
-	Data   []byte      `json:"data"`
-	HashID common.Hash `json:"hashID"`
+	Type string `json:"type"`
+	Data []byte `json:"data"`
 }
 
-// InitConnection Initializes single rabbitmq connection for whole system
 func InitConnection(address string) *Connection {
-	fmt.Println("rabbitmq", address)
-
 	if conn == nil {
-		newConn, err := amqp.Dial(address)
-		if err != nil {
-			panic(err)
+		tlsEnabled := app.Config.EnableTLS
+		if tlsEnabled {
+			newConn := NewTLSConnection(address)
+			conn = &Connection{newConn}
+		} else {
+			newConn := NewConnection(address)
+			conn = &Connection{newConn}
 		}
-		conn = &Connection{newConn}
+
 	}
+
 	return conn
 }
 
-func (c *Connection) NewConnection(address string) *amqp.Connection {
+func NewConnection(address string) *amqp.Connection {
 	conn, err := amqp.Dial(address)
+	if err != nil {
+		panic(err)
+	}
+
+	return conn
+}
+
+func NewTLSConnection(address string) *amqp.Connection {
+	cfg := &tls.Config{InsecureSkipVerify: true}
+	cfg.RootCAs = x509.NewCertPool()
+
+	logger.Info("Connecting RabbitMQ with TLS")
+
+	uri := amqp.URI{
+		Scheme:   "amqps",
+		Host:     app.Config.RabbitMQURL,
+		Port:     5671,
+		Username: app.Config.RabbitMQUsername,
+		Password: app.Config.RabbitMQPassword,
+	}
+
+	// ca, err := ioutil.ReadFile(app.Config.TLSCACertFile)
+	// if err != nil {
+	// 	panic(err)
+	// }
+
+	// logger.Info(ui)
+
+	address = uri.String()
+
+	// address = "amqp://hey:cool@127.0.0.1:5672"
+
+	// cfg.RootCAs.AppendCertsFromPEM(ca)
+
+	cert, err := tls.LoadX509KeyPair(app.Config.RabbitMQCert, app.Config.RabbitMQKey)
+	if err != nil {
+		panic(err)
+	}
+
+	// address = uri.String()
+	logger.Info("Connecting RabbitMQ with TLS")
+	logger.Info(address)
+
+	cfg.Certificates = append(cfg.Certificates, cert)
+
+	conn, err := amqp.DialTLS(address, cfg)
 	if err != nil {
 		panic(err)
 	}
@@ -62,6 +110,22 @@ func (c *Connection) GetQueue(ch *amqp.Channel, queue string) *amqp.Queue {
 }
 
 func (c *Connection) DeclareQueue(ch *amqp.Channel, name string) error {
+	if queues[name] == nil {
+		q, err := ch.QueueDeclare(name, false, false, false, false, nil)
+		if err != nil {
+			logger.Error(err)
+			return err
+		}
+
+		queues[name] = &q
+	}
+
+	return nil
+}
+
+func (c *Connection) DeclareThrottledQueue(ch *amqp.Channel, name string) error {
+	ch.Qos(1, 0, true)
+
 	if queues[name] == nil {
 		q, err := ch.QueueDeclare(name, false, false, false, false, nil)
 		if err != nil {
@@ -119,6 +183,25 @@ func (c *Connection) Consume(ch *amqp.Channel, q *amqp.Queue) (<-chan amqp.Deliv
 		false,  // no-local
 		false,  // no-wait
 		nil,    // args
+	)
+
+	if err != nil {
+		logger.Error(err)
+		return nil, err
+	}
+
+	return msgs, nil
+}
+
+func (c *Connection) ConsumeAfterAck(ch *amqp.Channel, q *amqp.Queue) (<-chan amqp.Delivery, error) {
+	msgs, err := ch.Consume(
+		q.Name,
+		"",
+		false,
+		false,
+		false,
+		false,
+		nil,
 	)
 
 	if err != nil {

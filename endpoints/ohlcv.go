@@ -109,7 +109,7 @@ func (e *OHLCVEndpoint) handleGetOHLCV(w http.ResponseWriter, r *http.Request) {
 	httputils.WriteJSON(w, http.StatusOK, res)
 }
 
-func (e *OHLCVEndpoint) ohlcvWebSocket(input interface{}, c *ws.Conn) {
+func (e *OHLCVEndpoint) ohlcvWebSocket(input interface{}, c *ws.Client) {
 	b, _ := json.Marshal(input)
 	var ev *types.WebsocketEvent
 

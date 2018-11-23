@@ -40,7 +40,6 @@ func SetupTest() (*testutils.Deployer, *types.Wallet, common.Address, common.Add
 	}
 
 	feeAccount := common.HexToAddress(app.Config.Ethereum["fee_account"])
-	wethToken := common.HexToAddress(app.Config.Ethereum["weth_address"])
 
 	return deployer, wallet, feeAccount, wethToken, maker, taker
 }
@@ -111,8 +110,8 @@ func TestTrade(t *testing.T) {
 
 	maker := testutils.GetTestWallet1()
 	taker := testutils.GetTestWallet2()
-	buyAmount := big.NewInt(1e18)
-	sellAmount := big.NewInt(1e18)
+
+	pricepoint := big.NewInt(1e8)
 	amount := big.NewInt(5e17)
 	expires := big.NewInt(1e7)
 
@@ -160,9 +159,8 @@ func TestTrade(t *testing.T) {
 	//Maker creates an order that exchanges 'sellAmount' of sellToken for 'buyAmount' of buyToken
 	order := &types.Order{
 		ExchangeAddress: exchangeAddr,
-		BuyAmount:       buyAmount,
-		SellAmount:      sellAmount,
-		Expires:         expires,
+		Amount:          amount,
+		PricePoint:      pricepoint,
 		Nonce:           big.NewInt(0),
 		MakeFee:         big.NewInt(0),
 		TakeFee:         big.NewInt(0),
@@ -174,10 +172,9 @@ func TestTrade(t *testing.T) {
 	order.Sign(maker)
 
 	trade := &types.Trade{
-		OrderHash:  order.Hash,
-		Amount:     amount,
-		Taker:      taker.Address,
-		TradeNonce: big.NewInt(0),
+		OrderHash: order.Hash,
+		Amount:    amount,
+		Taker:     taker.Address,
 	}
 
 	trade.Sign(taker)

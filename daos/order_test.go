@@ -7,6 +7,7 @@ import (
 
 	"github.com/Proofsuite/amp-matching-engine/app"
 	"github.com/Proofsuite/amp-matching-engine/types"
+	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/Proofsuite/amp-matching-engine/utils/math"
 	"github.com/Proofsuite/amp-matching-engine/utils/testutils"
 	"github.com/Proofsuite/amp-matching-engine/utils/units"
@@ -29,19 +30,14 @@ func TestUpdateOrderByHash(t *testing.T) {
 		ID:              bson.ObjectIdHex("537f700b537461b70c5f0001"),
 		UserAddress:     common.HexToAddress("0x7a9f3cd060ab180f36c17fe6bdf9974f577d77aa"),
 		ExchangeAddress: common.HexToAddress("0xae55690d4b079460e6ac28aaa58c9ec7b73a7485"),
-		BuyToken:        common.HexToAddress("0xe41d2489571d322189246dafa5ebde1f4699f498"),
-		SellToken:       common.HexToAddress("0x12459c951127e0c374ff9105dda097662a027093"),
 		BaseToken:       common.HexToAddress("0xe41d2489571d322189246dafa5ebde1f4699f498"),
 		QuoteToken:      common.HexToAddress("0x12459c951127e0c374ff9105dda097662a027093"),
-		BuyAmount:       big.NewInt(1000),
-		SellAmount:      big.NewInt(100),
 		PricePoint:      big.NewInt(1000),
 		Amount:          big.NewInt(1000),
 		FilledAmount:    big.NewInt(100),
 		Status:          "OPEN",
 		Side:            "BUY",
 		PairName:        "ZRX/WETH",
-		Expires:         big.NewInt(10000),
 		MakeFee:         big.NewInt(50),
 		Nonce:           big.NewInt(1000),
 		TakeFee:         big.NewInt(50),
@@ -63,29 +59,23 @@ func TestUpdateOrderByHash(t *testing.T) {
 	}
 
 	updated := &types.Order{
-		ID:              o.ID,
-		UserAddress:     o.UserAddress,
-		ExchangeAddress: o.ExchangeAddress,
-		BuyToken:        o.BuyToken,
-		SellToken:       o.SellToken,
-		BaseToken:       o.BaseToken,
-		QuoteToken:      o.QuoteToken,
-		BuyAmount:       big.NewInt(1000),
-		SellAmount:      big.NewInt(100),
-		PricePoint:      big.NewInt(4000),
-		Amount:          big.NewInt(4000),
-		FilledAmount:    big.NewInt(200),
-		Status:          "FILLED",
-		Side:            "BUY",
-		PairName:        "ZRX/WETH",
-		Expires:         big.NewInt(10000),
-		MakeFee:         big.NewInt(50),
-		Nonce:           big.NewInt(1000),
-		TakeFee:         big.NewInt(50),
-		Signature:       o.Signature,
-		Hash:            o.Hash,
-		CreatedAt:       o.CreatedAt,
-		UpdatedAt:       o.UpdatedAt,
+		ID:           o.ID,
+		UserAddress:  o.UserAddress,
+		BaseToken:    o.BaseToken,
+		QuoteToken:   o.QuoteToken,
+		PricePoint:   big.NewInt(4000),
+		Amount:       big.NewInt(4000),
+		FilledAmount: big.NewInt(200),
+		Status:       "FILLED",
+		Side:         "BUY",
+		PairName:     "ZRX/WETH",
+		MakeFee:      big.NewInt(50),
+		Nonce:        big.NewInt(1000),
+		TakeFee:      big.NewInt(50),
+		Signature:    o.Signature,
+		Hash:         o.Hash,
+		CreatedAt:    o.CreatedAt,
+		UpdatedAt:    o.UpdatedAt,
 	}
 
 	err = dao.UpdateByHash(
@@ -113,25 +103,19 @@ func TestOrderUpdate(t *testing.T) {
 	}
 
 	o := &types.Order{
-		ID:              bson.ObjectIdHex("537f700b537461b70c5f0000"),
-		UserAddress:     common.HexToAddress("0x7a9f3cd060ab180f36c17fe6bdf9974f577d77aa"),
-		ExchangeAddress: common.HexToAddress("0xae55690d4b079460e6ac28aaa58c9ec7b73a7485"),
-		BuyToken:        common.HexToAddress("0xe41d2489571d322189246dafa5ebde1f4699f498"),
-		SellToken:       common.HexToAddress("0x12459c951127e0c374ff9105dda097662a027093"),
-		BaseToken:       common.HexToAddress("0xe41d2489571d322189246dafa5ebde1f4699f498"),
-		QuoteToken:      common.HexToAddress("0x12459c951127e0c374ff9105dda097662a027093"),
-		BuyAmount:       big.NewInt(1000),
-		SellAmount:      big.NewInt(100),
-		PricePoint:      big.NewInt(1000),
-		Amount:          big.NewInt(1000),
-		FilledAmount:    big.NewInt(100),
-		Status:          "OPEN",
-		Side:            "BUY",
-		PairName:        "ZRX/WETH",
-		Expires:         big.NewInt(10000),
-		MakeFee:         big.NewInt(50),
-		Nonce:           big.NewInt(1000),
-		TakeFee:         big.NewInt(50),
+		ID:           bson.ObjectIdHex("537f700b537461b70c5f0000"),
+		UserAddress:  common.HexToAddress("0x7a9f3cd060ab180f36c17fe6bdf9974f577d77aa"),
+		BaseToken:    common.HexToAddress("0xe41d2489571d322189246dafa5ebde1f4699f498"),
+		QuoteToken:   common.HexToAddress("0x12459c951127e0c374ff9105dda097662a027093"),
+		PricePoint:   big.NewInt(1000),
+		Amount:       big.NewInt(1000),
+		FilledAmount: big.NewInt(100),
+		Status:       "OPEN",
+		Side:         "BUY",
+		PairName:     "ZRX/WETH",
+		MakeFee:      big.NewInt(50),
+		Nonce:        big.NewInt(1000),
+		TakeFee:      big.NewInt(50),
 		Signature: &types.Signature{
 			V: 28,
 			R: common.HexToHash("0x10b30eb0072a4f0a38b6fca0b731cba15eb2e1702845d97c1230b53a839bcb85"),
@@ -148,29 +132,23 @@ func TestOrderUpdate(t *testing.T) {
 	}
 
 	updated := &types.Order{
-		ID:              o.ID,
-		UserAddress:     o.UserAddress,
-		ExchangeAddress: o.ExchangeAddress,
-		BuyToken:        o.BuyToken,
-		SellToken:       o.SellToken,
-		BaseToken:       o.BaseToken,
-		QuoteToken:      o.QuoteToken,
-		BuyAmount:       big.NewInt(1000),
-		SellAmount:      big.NewInt(100),
-		PricePoint:      big.NewInt(4000),
-		Amount:          big.NewInt(4000),
-		FilledAmount:    big.NewInt(200),
-		Status:          "FILLED",
-		Side:            "BUY",
-		PairName:        "ZRX/WETH",
-		Expires:         big.NewInt(10000),
-		MakeFee:         big.NewInt(50),
-		Nonce:           big.NewInt(1000),
-		TakeFee:         big.NewInt(50),
-		Signature:       o.Signature,
-		Hash:            o.Hash,
-		CreatedAt:       o.CreatedAt,
-		UpdatedAt:       o.UpdatedAt,
+		ID:           o.ID,
+		UserAddress:  o.UserAddress,
+		BaseToken:    o.BaseToken,
+		QuoteToken:   o.QuoteToken,
+		PricePoint:   big.NewInt(4000),
+		Amount:       big.NewInt(4000),
+		FilledAmount: big.NewInt(200),
+		Status:       "FILLED",
+		Side:         "BUY",
+		PairName:     "ZRX/WETH",
+		MakeFee:      big.NewInt(50),
+		Nonce:        big.NewInt(1000),
+		TakeFee:      big.NewInt(50),
+		Signature:    o.Signature,
+		Hash:         o.Hash,
+		CreatedAt:    o.CreatedAt,
+		UpdatedAt:    o.UpdatedAt,
 	}
 
 	err = dao.Update(
@@ -198,24 +176,18 @@ func TestOrderDao1(t *testing.T) {
 	}
 
 	o := &types.Order{
-		ID:              bson.ObjectIdHex("537f700b537461b70c5f0000"),
-		UserAddress:     common.HexToAddress("0x7a9f3cd060ab180f36c17fe6bdf9974f577d77aa"),
-		ExchangeAddress: common.HexToAddress("0xae55690d4b079460e6ac28aaa58c9ec7b73a7485"),
-		BuyToken:        common.HexToAddress("0xe41d2489571d322189246dafa5ebde1f4699f498"),
-		SellToken:       common.HexToAddress("0x12459c951127e0c374ff9105dda097662a027093"),
-		BaseToken:       common.HexToAddress("0xe41d2489571d322189246dafa5ebde1f4699f498"),
-		QuoteToken:      common.HexToAddress("0x12459c951127e0c374ff9105dda097662a027093"),
-		BuyAmount:       big.NewInt(1000),
-		SellAmount:      big.NewInt(100),
-		Amount:          big.NewInt(1000),
-		FilledAmount:    big.NewInt(100),
-		Status:          "OPEN",
-		Side:            "BUY",
-		PairName:        "ZRX/WETH",
-		Expires:         big.NewInt(10000),
-		MakeFee:         big.NewInt(50),
-		Nonce:           big.NewInt(1000),
-		TakeFee:         big.NewInt(50),
+		ID:           bson.ObjectIdHex("537f700b537461b70c5f0000"),
+		UserAddress:  common.HexToAddress("0x7a9f3cd060ab180f36c17fe6bdf9974f577d77aa"),
+		BaseToken:    common.HexToAddress("0xe41d2489571d322189246dafa5ebde1f4699f498"),
+		QuoteToken:   common.HexToAddress("0x12459c951127e0c374ff9105dda097662a027093"),
+		Amount:       big.NewInt(1000),
+		FilledAmount: big.NewInt(100),
+		Status:       "OPEN",
+		Side:         "BUY",
+		PairName:     "ZRX/WETH",
+		MakeFee:      big.NewInt(50),
+		Nonce:        big.NewInt(1000),
+		TakeFee:      big.NewInt(50),
 		Signature: &types.Signature{
 			V: 28,
 			R: common.HexToHash("0x10b30eb0072a4f0a38b6fca0b731cba15eb2e1702845d97c1230b53a839bcb85"),
@@ -280,84 +252,68 @@ func TestGetHistoryByUserAddress(t *testing.T) {
 
 	user := common.HexToAddress("0x1")
 	exchange := common.HexToAddress("0x2")
-	buyToken := common.HexToAddress("0x3")
-	sellToken := common.HexToAddress("0x4")
+	baseToken := common.HexToAddress("0x3")
+	quoteToken := common.HexToAddress("0x4")
 
 	o1 := &types.Order{
-		ID:              bson.ObjectIdHex("537f700b537461b70c5f0001"),
-		UserAddress:     user,
-		ExchangeAddress: exchange,
-		BuyToken:        buyToken,
-		SellToken:       sellToken,
-		BuyAmount:       units.Ethers(10),
-		SellAmount:      units.Ethers(10),
-		FilledAmount:    big.NewInt(0),
-		Status:          "OPEN",
-		Side:            "BUY",
-		PairName:        "ZRX/WETH",
-		Expires:         big.NewInt(10000),
-		MakeFee:         big.NewInt(50),
-		Nonce:           big.NewInt(1000),
-		TakeFee:         big.NewInt(50),
-		Hash:            common.HexToHash("0x12"),
+		ID:           bson.ObjectIdHex("537f700b537461b70c5f0001"),
+		UserAddress:  user,
+		FilledAmount: big.NewInt(0),
+		BaseToken:    baseToken,
+		QuoteToken:   quoteToken,
+		Status:       "OPEN",
+		Side:         "BUY",
+		PairName:     "ZRX/WETH",
+		MakeFee:      big.NewInt(50),
+		Nonce:        big.NewInt(1000),
+		TakeFee:      big.NewInt(50),
+		Hash:         common.HexToHash("0x12"),
 	}
 
 	o2 := &types.Order{
-		ID:              bson.ObjectIdHex("537f700b537461b70c5f0002"),
-		UserAddress:     user,
-		ExchangeAddress: exchange,
-		BuyToken:        buyToken,
-		SellToken:       sellToken,
-		BuyAmount:       units.Ethers(10),
-		SellAmount:      units.Ethers(10),
-		FilledAmount:    big.NewInt(0),
-		Status:          "OPEN",
-		Side:            "BUY",
-		PairName:        "ZRX/WETH",
-		Expires:         big.NewInt(10000),
-		MakeFee:         big.NewInt(50),
-		Nonce:           big.NewInt(1000),
-		TakeFee:         big.NewInt(50),
-		Hash:            common.HexToHash("0x12"),
+		ID:           bson.ObjectIdHex("537f700b537461b70c5f0002"),
+		UserAddress:  user,
+		FilledAmount: big.NewInt(0),
+		BaseToken:    baseToken,
+		QuoteToken:   quoteToken,
+		Status:       "OPEN",
+		Side:         "BUY",
+		PairName:     "ZRX/WETH",
+		MakeFee:      big.NewInt(50),
+		Nonce:        big.NewInt(1000),
+		TakeFee:      big.NewInt(50),
+		Hash:         common.HexToHash("0x12"),
 	}
 
 	o3 := &types.Order{
-		ID:              bson.ObjectIdHex("537f700b537461b70c5f0003"),
-		UserAddress:     user,
-		ExchangeAddress: exchange,
-		BuyToken:        buyToken,
-		SellToken:       sellToken,
-		BuyAmount:       units.Ethers(10),
-		SellAmount:      units.Ethers(10),
-		FilledAmount:    units.Ethers(5),
-		Status:          "PARTIAL_FILLED",
-		Side:            "BUY",
-		PairName:        "ZRX/WETH",
-		Expires:         big.NewInt(10000),
-		MakeFee:         big.NewInt(50),
-		Nonce:           big.NewInt(1000),
-		TakeFee:         big.NewInt(50),
-		Hash:            common.HexToHash("0x12"),
+		ID:           bson.ObjectIdHex("537f700b537461b70c5f0003"),
+		UserAddress:  user,
+		FilledAmount: units.Ethers(5),
+		BaseToken:    baseToken,
+		QuoteToken:   quoteToken,
+		Status:       "PARTIAL_FILLED",
+		Side:         "BUY",
+		PairName:     "ZRX/WETH",
+		MakeFee:      big.NewInt(50),
+		Nonce:        big.NewInt(1000),
+		TakeFee:      big.NewInt(50),
+		Hash:         common.HexToHash("0x12"),
 	}
 
 	o4 := &types.Order{
-		ID:              bson.ObjectIdHex("537f700b537461b70c5f0004"),
-		UserAddress:     user,
-		ExchangeAddress: exchange,
-		BuyToken:        buyToken,
-		SellToken:       sellToken,
-		BuyAmount:       units.Ethers(10),
-		SellAmount:      units.Ethers(10),
-		FilledAmount:    units.Ethers(10),
-		PricePoint:      big.NewInt(1e18),
-		Status:          "FILLED",
-		Side:            "BUY",
-		PairName:        "ZRX/WETH",
-		Expires:         big.NewInt(10000),
-		MakeFee:         big.NewInt(50),
-		Nonce:           big.NewInt(1000),
-		TakeFee:         big.NewInt(50),
-		Hash:            common.HexToHash("0x12"),
+		ID:           bson.ObjectIdHex("537f700b537461b70c5f0004"),
+		UserAddress:  user,
+		FilledAmount: units.Ethers(10),
+		BaseToken:    baseToken,
+		QuoteToken:   quoteToken,
+		PricePoint:   big.NewInt(1e18),
+		Status:       "FILLED",
+		Side:         "BUY",
+		PairName:     "ZRX/WETH",
+		MakeFee:      big.NewInt(50),
+		Nonce:        big.NewInt(1000),
+		TakeFee:      big.NewInt(50),
+		Hash:         common.HexToHash("0x12"),
 	}
 
 	dao.Create(o1)
@@ -382,84 +338,68 @@ func TestGetUserOrderHistory(t *testing.T) {
 
 	user := common.HexToAddress("0x1")
 	exchange := common.HexToAddress("0x2")
-	buyToken := common.HexToAddress("0x3")
-	sellToken := common.HexToAddress("0x4")
+	baseToken := common.HexToAddress("0x3")
+	quoteToken := common.HexToAddress("0x4")
 
 	o1 := &types.Order{
-		ID:              bson.ObjectIdHex("537f700b537461b70c5f0001"),
-		UserAddress:     user,
-		ExchangeAddress: exchange,
-		BuyToken:        buyToken,
-		SellToken:       sellToken,
-		BuyAmount:       units.Ethers(10),
-		SellAmount:      units.Ethers(10),
-		FilledAmount:    big.NewInt(0),
-		Status:          "FILLED",
-		Side:            "BUY",
-		PairName:        "ZRX/WETH",
-		Expires:         big.NewInt(10000),
-		MakeFee:         big.NewInt(50),
-		Nonce:           big.NewInt(1000),
-		TakeFee:         big.NewInt(50),
-		Hash:            common.HexToHash("0x12"),
+		ID:           bson.ObjectIdHex("537f700b537461b70c5f0001"),
+		UserAddress:  user,
+		FilledAmount: big.NewInt(0),
+		BaseToken:    baseToken,
+		QuoteToken:   quoteToken,
+		Status:       "FILLED",
+		Side:         "BUY",
+		PairName:     "ZRX/WETH",
+		MakeFee:      big.NewInt(50),
+		Nonce:        big.NewInt(1000),
+		TakeFee:      big.NewInt(50),
+		Hash:         common.HexToHash("0x12"),
 	}
 
 	o2 := &types.Order{
-		ID:              bson.ObjectIdHex("537f700b537461b70c5f0002"),
-		UserAddress:     user,
-		ExchangeAddress: exchange,
-		BuyToken:        buyToken,
-		SellToken:       sellToken,
-		BuyAmount:       units.Ethers(10),
-		SellAmount:      units.Ethers(10),
-		FilledAmount:    big.NewInt(0),
-		Status:          "OPEN",
-		Side:            "BUY",
-		PairName:        "ZRX/WETH",
-		Expires:         big.NewInt(10000),
-		MakeFee:         big.NewInt(50),
-		Nonce:           big.NewInt(1000),
-		TakeFee:         big.NewInt(50),
-		Hash:            common.HexToHash("0x12"),
+		ID:           bson.ObjectIdHex("537f700b537461b70c5f0002"),
+		UserAddress:  user,
+		FilledAmount: big.NewInt(0),
+		BaseToken:    baseToken,
+		QuoteToken:   quoteToken,
+		Status:       "OPEN",
+		Side:         "BUY",
+		PairName:     "ZRX/WETH",
+		MakeFee:      big.NewInt(50),
+		Nonce:        big.NewInt(1000),
+		TakeFee:      big.NewInt(50),
+		Hash:         common.HexToHash("0x12"),
 	}
 
 	o3 := &types.Order{
-		ID:              bson.ObjectIdHex("537f700b537461b70c5f0003"),
-		UserAddress:     user,
-		ExchangeAddress: exchange,
-		BuyToken:        buyToken,
-		SellToken:       sellToken,
-		BuyAmount:       units.Ethers(10),
-		SellAmount:      units.Ethers(10),
-		FilledAmount:    units.Ethers(5),
-		Status:          "INVALID",
-		Side:            "BUY",
-		PairName:        "ZRX/WETH",
-		Expires:         big.NewInt(10000),
-		MakeFee:         big.NewInt(50),
-		Nonce:           big.NewInt(1000),
-		TakeFee:         big.NewInt(50),
-		Hash:            common.HexToHash("0x12"),
+		ID:           bson.ObjectIdHex("537f700b537461b70c5f0003"),
+		UserAddress:  user,
+		BaseToken:    baseToken,
+		QuoteToken:   quoteToken,
+		FilledAmount: units.Ethers(5),
+		Status:       "INVALID",
+		Side:         "BUY",
+		PairName:     "ZRX/WETH",
+		MakeFee:      big.NewInt(50),
+		Nonce:        big.NewInt(1000),
+		TakeFee:      big.NewInt(50),
+		Hash:         common.HexToHash("0x12"),
 	}
 
 	o4 := &types.Order{
-		ID:              bson.ObjectIdHex("537f700b537461b70c5f0004"),
-		UserAddress:     user,
-		ExchangeAddress: exchange,
-		BuyToken:        buyToken,
-		SellToken:       sellToken,
-		BuyAmount:       units.Ethers(10),
-		SellAmount:      units.Ethers(10),
-		FilledAmount:    units.Ethers(10),
-		PricePoint:      big.NewInt(1e18),
-		Status:          "PARTIAL_FILLED",
-		Side:            "BUY",
-		PairName:        "ZRX/WETH",
-		Expires:         big.NewInt(10000),
-		MakeFee:         big.NewInt(50),
-		Nonce:           big.NewInt(1000),
-		TakeFee:         big.NewInt(50),
-		Hash:            common.HexToHash("0x12"),
+		ID:           bson.ObjectIdHex("537f700b537461b70c5f0004"),
+		UserAddress:  user,
+		BaseToken:    baseToken,
+		QuoteToken:   quoteToken,
+		FilledAmount: units.Ethers(10),
+		PricePoint:   big.NewInt(1e18),
+		Status:       "PARTIAL_FILLED",
+		Side:         "BUY",
+		PairName:     "ZRX/WETH",
+		MakeFee:      big.NewInt(50),
+		Nonce:        big.NewInt(1000),
+		TakeFee:      big.NewInt(50),
+		Hash:         common.HexToHash("0x12"),
 	}
 
 	dao.Create(o1)
@@ -488,28 +428,24 @@ func TestUpdateOrderFilledAmount1(t *testing.T) {
 
 	user := common.HexToAddress("0x1")
 	exchange := common.HexToAddress("0x2")
-	buyToken := common.HexToAddress("0x3")
-	sellToken := common.HexToAddress("0x4")
+	baseToken := common.HexToAddress("0x3")
+	quoteToken := common.HexToAddress("0x4")
 	hash := common.HexToHash("0x5")
 
 	o1 := &types.Order{
-		ID:              bson.ObjectIdHex("537f700b537461b70c5f0001"),
-		UserAddress:     user,
-		ExchangeAddress: exchange,
-		BuyToken:        buyToken,
-		SellToken:       sellToken,
-		BuyAmount:       units.Ethers(10),
-		SellAmount:      units.Ethers(10),
-		Amount:          units.Ethers(10),
-		FilledAmount:    big.NewInt(0),
-		Status:          "OPEN",
-		Side:            "BUY",
-		PairName:        "ZRX/WETH",
-		Expires:         big.NewInt(10000),
-		MakeFee:         big.NewInt(50),
-		Nonce:           big.NewInt(1000),
-		TakeFee:         big.NewInt(50),
-		Hash:            hash,
+		ID:           bson.ObjectIdHex("537f700b537461b70c5f0001"),
+		UserAddress:  user,
+		BaseToken:    baseToken,
+		QuoteToken:   quoteToken,
+		Amount:       units.Ethers(10),
+		FilledAmount: big.NewInt(0),
+		Status:       "OPEN",
+		Side:         "BUY",
+		PairName:     "ZRX/WETH",
+		MakeFee:      big.NewInt(50),
+		Nonce:        big.NewInt(1000),
+		TakeFee:      big.NewInt(50),
+		Hash:         hash,
 	}
 
 	err = dao.Create(o1)
@@ -540,28 +476,24 @@ func TestUpdateOrderFilledAmount2(t *testing.T) {
 
 	user := common.HexToAddress("0x1")
 	exchange := common.HexToAddress("0x2")
-	buyToken := common.HexToAddress("0x3")
-	sellToken := common.HexToAddress("0x4")
+	baseToken := common.HexToAddress("0x3")
+	quoteToken := common.HexToAddress("0x4")
 	hash := common.HexToHash("0x5")
 
 	o1 := &types.Order{
-		ID:              bson.ObjectIdHex("537f700b537461b70c5f0001"),
-		UserAddress:     user,
-		ExchangeAddress: exchange,
-		BuyToken:        buyToken,
-		SellToken:       sellToken,
-		BuyAmount:       units.Ethers(10),
-		SellAmount:      units.Ethers(10),
-		Amount:          units.Ethers(10),
-		FilledAmount:    units.Ethers(5),
-		Status:          "OPEN",
-		Side:            "BUY",
-		PairName:        "ZRX/WETH",
-		Expires:         big.NewInt(10000),
-		MakeFee:         big.NewInt(50),
-		Nonce:           big.NewInt(1000),
-		TakeFee:         big.NewInt(50),
-		Hash:            hash,
+		ID:           bson.ObjectIdHex("537f700b537461b70c5f0001"),
+		UserAddress:  user,
+		Amount:       units.Ethers(10),
+		FilledAmount: units.Ethers(5),
+		BaseToken:    baseToken,
+		QuoteToken:   quoteToken,
+		Status:       "OPEN",
+		Side:         "BUY",
+		PairName:     "ZRX/WETH",
+		MakeFee:      big.NewInt(50),
+		Nonce:        big.NewInt(1000),
+		TakeFee:      big.NewInt(50),
+		Hash:         hash,
 	}
 
 	err = dao.Create(o1)
@@ -592,28 +524,24 @@ func TestUpdateOrderFilledAmount3(t *testing.T) {
 
 	user := common.HexToAddress("0x1")
 	exchange := common.HexToAddress("0x2")
-	buyToken := common.HexToAddress("0x3")
-	sellToken := common.HexToAddress("0x4")
+	baseToken := common.HexToAddress("0x3")
+	quoteToken := common.HexToAddress("0x4")
 	hash := common.HexToHash("0x5")
 
 	o1 := &types.Order{
-		ID:              bson.ObjectIdHex("537f700b537461b70c5f0001"),
-		UserAddress:     user,
-		ExchangeAddress: exchange,
-		BuyToken:        buyToken,
-		SellToken:       sellToken,
-		BuyAmount:       units.Ethers(10),
-		SellAmount:      units.Ethers(10),
-		Amount:          units.Ethers(10),
-		FilledAmount:    units.Ethers(5),
-		Status:          "OPEN",
-		Side:            "BUY",
-		PairName:        "ZRX/WETH",
-		Expires:         big.NewInt(10000),
-		MakeFee:         big.NewInt(50),
-		Nonce:           big.NewInt(1000),
-		TakeFee:         big.NewInt(50),
-		Hash:            hash,
+		ID:           bson.ObjectIdHex("537f700b537461b70c5f0001"),
+		UserAddress:  user,
+		Amount:       units.Ethers(10),
+		FilledAmount: units.Ethers(5),
+		Basetoken:    baseToken,
+		QuoteToken:   quoteToken,
+		Status:       "OPEN",
+		Side:         "BUY",
+		PairName:     "ZRX/WETH",
+		MakeFee:      big.NewInt(50),
+		Nonce:        big.NewInt(1000),
+		TakeFee:      big.NewInt(50),
+		Hash:         hash,
 	}
 
 	err = dao.Create(o1)
@@ -635,8 +563,140 @@ func TestUpdateOrderFilledAmount3(t *testing.T) {
 	assert.Equal(t, big.NewInt(0), stored.FilledAmount)
 }
 
+func TestUpdateOrderFilledAmounts(t *testing.T) {
+	dao := NewOrderDao()
+	err := dao.Drop()
+	if err != nil {
+		t.Error("Could not drop previous order collection")
+	}
+
+	user := common.HexToAddress("0x1")
+	exchange := common.HexToAddress("0x2")
+	baseToken := common.HexToAddress("0x3")
+	quoteToken := common.HexToAddress("0x4")
+	hash1 := common.HexToHash("0x5")
+	hash2 := common.HexToHash("0x6")
+
+	o1 := &types.Order{
+		ID:           bson.ObjectIdHex("537f700b537461b70c5f0001"),
+		UserAddress:  user,
+		Amount:       units.Ethers(2),
+		FilledAmount: units.Ethers(0),
+		Status:       "FILLED",
+		Side:         "BUY",
+		BaseToken:    baseToken,
+		QuoteToken:   quoteToken,
+		PairName:     "ZRX/WETH",
+		MakeFee:      big.NewInt(0),
+		Nonce:        big.NewInt(1000),
+		TakeFee:      big.NewInt(0),
+		Hash:         hash1,
+	}
+
+	o2 := &types.Order{
+		ID:           bson.ObjectIdHex("537f700b537461b70c5f0001"),
+		UserAddress:  user,
+		Amount:       units.Ethers(1),
+		FilledAmount: units.Ethers(0),
+		Status:       "FILLED",
+		Side:         "BUY",
+		PairName:     "ZRX/WETH",
+		MakeFee:      big.NewInt(0),
+		Nonce:        big.NewInt(1000),
+		TakeFee:      big.NewInt(0),
+		Hash:         hash2,
+	}
+
+	err = dao.Create(o1)
+	if err != nil {
+		t.Error("Could not create order")
+	}
+
+	err = dao.Create(o2)
+	if err != nil {
+		t.Error("Could not create order")
+	}
+
+	hashes := []common.Hash{hash1, hash2}
+	amounts := []*big.Int{big.NewInt(-1), big.NewInt(-2)}
+	orders, err := dao.UpdateOrderFilledAmounts(hashes, amounts)
+	if err != nil {
+		t.Error(err)
+	}
+
+	assert.Equal(t, 2, len(orders))
+	assert.Equal(t, big.NewInt(1), orders[0].FilledAmount)
+	assert.Equal(t, big.NewInt(2), orders[1].FilledAmount)
+}
+
+func TestOrderStatusesByHashes(t *testing.T) {
+	dao := NewOrderDao()
+	err := dao.Drop()
+	if err != nil {
+		t.Error("Could not drop previous order collection")
+	}
+
+	user := common.HexToAddress("0x1")
+	exchange := common.HexToAddress("0x2")
+	baseToken := common.HexToAddress("0x3")
+	quoteToken := common.HexToAddress("0x4")
+	hash1 := common.HexToHash("0x5")
+	hash2 := common.HexToHash("0x6")
+
+	o1 := &types.Order{
+		ID:           bson.ObjectIdHex("537f700b537461b70c5f0001"),
+		UserAddress:  user,
+		BaseToken:    baseToken,
+		QuoteToken:   quoteToken,
+		Amount:       units.Ethers(1),
+		FilledAmount: units.Ethers(1),
+		Status:       "FILLED",
+		Side:         "BUY",
+		PairName:     "ZRX/WETH",
+		MakeFee:      big.NewInt(0),
+		Nonce:        big.NewInt(1000),
+		TakeFee:      big.NewInt(0),
+		Hash:         hash1,
+	}
+
+	o2 := &types.Order{
+		ID:           bson.ObjectIdHex("537f700b537461b70c5f0002"),
+		UserAddress:  user,
+		BaseToken:    baseToken,
+		QuoteToken:   quoteToken,
+		Amount:       units.Ethers(1),
+		FilledAmount: units.Ethers(1),
+		Status:       "FILLED",
+		Side:         "BUY",
+		PairName:     "ZRX/WETH",
+		MakeFee:      big.NewInt(0),
+		Nonce:        big.NewInt(1000),
+		TakeFee:      big.NewInt(0),
+		Hash:         hash2,
+	}
+
+	err = dao.Create(o1)
+	if err != nil {
+		t.Error("Could not create order")
+	}
+
+	err = dao.Create(o2)
+	if err != nil {
+		t.Error("Could not create order")
+	}
+
+	orders, err := dao.UpdateOrderStatusesByHashes("INVALIDATED", hash1, hash2)
+	if err != nil {
+		t.Error("Error in updateOrderStatusHashes", err)
+	}
+
+	assert.Equal(t, 2, len(orders))
+	assert.Equal(t, "INVALIDATED", orders[0].Status)
+	assert.Equal(t, "INVALIDATED", orders[1].Status)
+}
+
 func ExampleGetOrderBook() {
-	session, err := mgo.Dial(app.Config.DSN)
+	session, err := mgo.Dial(app.Config.MongoURL)
 	if err != nil {
 		panic(err)
 	}
@@ -654,10 +714,12 @@ func ExampleGetOrderBook() {
 		panic(err)
 	}
 
+	utils.PrintJSON(bids)
+	utils.PrintJSON(asks)
 }
 
 func ExampleGetOrderBookPricePoint() {
-	session, err := mgo.Dial(app.Config.DSN)
+	session, err := mgo.Dial(app.Config.MongoURL)
 	if err != nil {
 		panic(err)
 	}
@@ -671,14 +733,16 @@ func ExampleGetOrderBookPricePoint() {
 		panic(err)
 	}
 
-	orderPricePoint, err := orderDao.GetOrderBookPricePoint(pair, big.NewInt(59303))
+	orderPricePoint, err := orderDao.GetOrderBookPricePoint(pair, big.NewInt(59303), "BUY")
 	if err != nil {
 		panic(err)
 	}
+
+	utils.PrintJSON(orderPricePoint)
 }
 
 func ExampleGetRawOrderBook() {
-	session, err := mgo.Dial(app.Config.DSN)
+	session, err := mgo.Dial(app.Config.MongoURL)
 	if err != nil {
 		panic(err)
 	}
@@ -696,4 +760,6 @@ func ExampleGetRawOrderBook() {
 	if err != nil {
 		panic(err)
 	}
+
+	utils.PrintJSON(orders)
 }

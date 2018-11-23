@@ -30,7 +30,7 @@ var logger = utils.TerminalLogger
 // mutex is used to prevent concurrent writes on the websocket connection
 type Client struct {
 	// ethereumClient *ethclient.Client
-	connection     *ws.Conn
+	connection     *ws.Client
 	Requests       chan *types.WebsocketMessage
 	Responses      chan *types.WebsocketMessage
 	Logs           chan *ClientLogMessage
@@ -46,12 +46,12 @@ type Client struct {
 // allow the client log message to take in a lot of different types of messages
 // An error id of -1 means that there was no error.
 type ClientLogMessage struct {
-	MessageType string                  `json:"messageType"`
-	Orders      []*types.Order          `json:"order"`
-	Trades      []*types.Trade          `json:"trade"`
-	Matches     []*types.OrderTradePair `json:"matches"`
-	Tx          *common.Hash            `json:"tx"`
-	ErrorID     int8                    `json:"errorID"`
+	MessageType string         `json:"messageType"`
+	Orders      []*types.Order `json:"order"`
+	Trades      []*types.Trade `json:"trade"`
+	Matches     *types.Matches `json:"matches"`
+	Tx          *common.Hash   `json:"tx"`
+	ErrorID     int8           `json:"errorID"`
 }
 
 type Server interface {
@@ -79,7 +79,7 @@ func NewClient(w *types.Wallet, s Server) *Client {
 	ng := rand.New(source)
 
 	return &Client{
-		connection:     ws.NewConnection(c),
+		connection:     ws.NewClient(c),
 		Wallet:         w,
 		Requests:       reqs,
 		Responses:      resps,
@@ -180,8 +180,6 @@ func (c *Client) handleOrderChannelMessagesIn(e types.WebsocketEvent) {
 		c.handleOrderError(e)
 	case "ORDER_PENDING":
 		c.handleOrderPending(e)
-	case "REQUEST_SIGNATURE":
-		c.handleSignatureRequested(e)
 	}
 }
 
@@ -259,50 +257,6 @@ func (c *Client) handleOrderCancelled(e types.WebsocketEvent) {
 	}
 
 	c.Logs <- l
-}
-
-// handleSignatureRequested handles incoming signature requested messages.
-// It follows up by signing given data and sending back a SUBMIT_SIGNATURES messages
-func (c *Client) handleSignatureRequested(e types.WebsocketEvent) {
-	data := &types.SignaturePayload{}
-	bytes, err := json.Marshal(e.Payload)
-	if err != nil {
-		logger.Error(err)
-	}
-
-	err = json.Unmarshal(bytes, data)
-	if err != nil {
-		logger.Error(err)
-	}
-
-	for _, m := range data.Matches {
-		t := m.Trade
-		c.SetTradeNonce(t)
-
-		err := c.Wallet.SignTrade(t)
-		if err != nil {
-			logger.Error(err)
-		}
-	}
-
-	//sign and return the remaining part of the previous order.
-	if data.Order != nil {
-		c.SetNonce(data.Order)
-		err = c.Wallet.SignOrder(data.Order)
-		if err != nil {
-			logger.Error(err)
-		}
-	}
-
-	l := &ClientLogMessage{
-		MessageType: "REQUEST_SIGNATURE",
-		Orders:      []*types.Order{data.Order},
-		Matches:     data.Matches,
-	}
-
-	c.Logs <- l
-	req := types.NewSubmitSignatureWebsocketMessage(e.Hash, data.Matches, data.Order)
-	c.Requests <- req
 }
 
 // handleOrderPending handles incoming pending messages (the order has been matched/partially matched
@@ -399,8 +353,4 @@ func (c *Client) handleOHLCVUpdate(e types.WebsocketEvent) {
 
 func (c *Client) SetNonce(o *types.Order) {
 	o.Nonce = big.NewInt(int64(c.NonceGenerator.Intn(1e8)))
-}
-
-func (c *Client) SetTradeNonce(t *types.Trade) {
-	t.TradeNonce = big.NewInt(int64(c.NonceGenerator.Intn(1e8)))
 }

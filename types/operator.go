@@ -1,13 +1,21 @@
 package types
 
+import "fmt"
+
 type OperatorMessage struct {
 	MessageType string
-	Order       *Order
-	Trade       *Trade
-	ErrID       int
+	Matches     *Matches
+	ErrorType   string
 }
 
-type PendingTradeMessage struct {
-	Order *Order
-	Trade *Trade
+func (m *OperatorMessage) String() string {
+	if m.ErrorType != "" {
+		return fmt.Sprintf("%v: %v (%v)", m.MessageType, m.Matches.String(), m.ErrorType)
+	}
+
+	return fmt.Sprintf("%v: %v", m.MessageType, m.Matches.String())
+}
+
+type PendingTradeBatch struct {
+	Matches *Matches
 }

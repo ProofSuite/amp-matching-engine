@@ -3,7 +3,6 @@ package operator
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"strconv"
 	"sync"
 
@@ -16,7 +15,7 @@ import (
 	eth "github.com/ethereum/go-ethereum/core/types"
 )
 
-var logger = utils.OperatorLogger
+var logger = utils.Logger
 
 // Operator manages the transaction queue that will eventually be
 // sent to the exchange contract. The Operator Wallet must be equal to the
@@ -24,15 +23,15 @@ var logger = utils.OperatorLogger
 // on the contract
 type Operator struct {
 	// AccountService     interfaces.AccountService
-	WalletService      interfaces.WalletService
-	TradeService       interfaces.TradeService
-	OrderService       interfaces.OrderService
-	EthereumProvider   interfaces.EthereumProvider
-	Exchange           interfaces.Exchange
-	TxQueues           []*TxQueue
-	QueueAddressIndex  map[common.Address]*TxQueue
-	RabbitMQConnection *rabbitmq.Connection
-	mutex              *sync.Mutex
+	WalletService     interfaces.WalletService
+	TradeService      interfaces.TradeService
+	OrderService      interfaces.OrderService
+	EthereumProvider  interfaces.EthereumProvider
+	Exchange          interfaces.Exchange
+	TxQueues          []*TxQueue
+	QueueAddressIndex map[common.Address]*TxQueue
+	Broker            *rabbitmq.Connection
+	mutex             *sync.Mutex
 }
 
 type OperatorInterface interface {
@@ -69,7 +68,8 @@ func NewOperator(
 	for i, w := range wallets {
 		name := strconv.Itoa(i) + w.Address.Hex()
 		ch := conn.GetChannel("TX_QUEUES:" + name)
-		err := conn.DeclareQueue(ch, "TX_QUEUES:"+name)
+
+		err := conn.DeclareThrottledQueue(ch, "TX_QUEUES:"+name)
 		if err != nil {
 			panic(err)
 		}
@@ -108,8 +108,8 @@ func NewOperator(
 
 // SubscribeOperatorMessages
 func (op *Operator) SubscribeOperatorMessages(fn func(*types.OperatorMessage) error) error {
-	ch := op.RabbitMQConnection.GetChannel("OPERATOR_SUB")
-	q := op.RabbitMQConnection.GetQueue(ch, "TX_MESSAGES")
+	ch := op.Broker.GetChannel("OPERATOR_SUB")
+	q := op.Broker.GetQueue(ch, "TX_MESSAGES")
 
 	go func() {
 		msgs, err := ch.Consume(
@@ -131,11 +131,15 @@ func (op *Operator) SubscribeOperatorMessages(fn func(*types.OperatorMessage) er
 		go func() {
 			for m := range msgs {
 				om := &types.OperatorMessage{}
+
 				err := json.Unmarshal(m.Body, &om)
 				if err != nil {
 					logger.Error(err)
 					continue
 				}
+
+				logger.Info(om)
+
 				go fn(om)
 			}
 		}()
@@ -145,18 +149,27 @@ func (op *Operator) SubscribeOperatorMessages(fn func(*types.OperatorMessage) er
 	return nil
 }
 
+func (op *Operator) HandleTxError(m *types.Matches, id int) {
+	errType := getErrorType(id)
+	err := op.Broker.PublishTxErrorMessage(m, errType)
+	if err != nil {
+		logger.Error(err)
+	}
+}
+
+func (op *Operator) HandleTxSuccess(m *types.Matches, receipt *eth.Receipt) {
+	err := op.Broker.PublishTradeSuccessMessage(m)
+	if err != nil {
+		logger.Error(err)
+	}
+}
+
 // Bug: In certain cases, the trade channel seems to be receiving additional unexpected trades.
 // In the case TestSocketExecuteOrder (in file socket_test.go) is run on its own, everything is working correctly.
 // However, in the case TestSocketExecuteOrder is run among other tests, some tradeLogs do not correspond to an
 // order hash in the ordertrade mapping. I suspect this is because the event listener catches events from previous
 // tests. It might be helpful to see how to listen to events from up to a certain block.
 func (op *Operator) HandleEvents() error {
-	tradeEvents, err := op.Exchange.ListenToTrades()
-	if err != nil {
-		logger.Error(err)
-		return err
-	}
-
 	errorEvents, err := op.Exchange.ListenToErrors()
 	if err != nil {
 		logger.Error(err)
@@ -166,78 +179,39 @@ func (op *Operator) HandleEvents() error {
 	for {
 		select {
 		case event := <-errorEvents:
-			fmt.Println("TRADE_ERROR_EVENT")
-			tradeHash := event.TradeHash
+			logger.Error("Receiving error event", utils.JSON(event))
+			makerOrderHash := event.MakerOrderHash
+			takerOrderHash := event.TakerOrderHash
 			errID := int(event.ErrorId)
 
-			logger.Info("The error ID is: ", errID)
-			tr, err := op.TradeService.GetByHash(tradeHash)
+			trades, err := op.TradeService.GetByTakerOrderHash(takerOrderHash)
 			if err != nil {
 				logger.Error(err)
 			}
 
-			// or, err := op.OrderService.GetByHash(tr.OrderHash)
-			// if err != nil {
-			// 	logger.Error(err)
-			// }
-
-			go func() {
-				err = op.RabbitMQConnection.PublishTxErrorMessage(tr, errID)
-				if err != nil {
-					logger.Error(err)
-				}
-			}()
-
-		case event := <-tradeEvents:
-			tr, err := op.TradeService.GetByHash(event.TradeHash)
+			to, err := op.OrderService.GetByHash(takerOrderHash)
 			if err != nil {
 				logger.Error(err)
 			}
 
-			logger.Info("TRADE_SUCCESS_EVENT")
-
-			or, err := op.OrderService.GetByHash(tr.OrderHash)
+			makerOrders, err := op.OrderService.GetByHash(makerOrderHash)
 			if err != nil {
 				logger.Error(err)
 			}
 
-			go func() {
-				_, err := op.EthereumProvider.WaitMined(tr.TxHash)
-				if err != nil {
-					logger.Error(err)
-				}
+			matches := &types.Matches{
+				MakerOrders: []*types.Order{makerOrders},
+				TakerOrder:  to,
+				Trades:      trades,
+			}
 
-				err = op.RabbitMQConnection.PublishTradeSuccessMessage(or, tr)
-				if err != nil {
-					logger.Error(err)
-				}
-			}()
+			go op.HandleTxError(matches, errID)
 		}
 	}
 }
 
 func (op *Operator) HandleTrades(msg *types.OperatorMessage) error {
-	o := msg.Order
-	// t := msg.Trade
-
-	//TODO move this to the order service
-	err := o.Validate()
-	if err != nil {
-		logger.Error(err)
-		return err
-	}
-
-	//TODO move this to the order service
-	ok, err := o.VerifySignature()
-	if err != nil {
-		return err
-	}
-
-	if !ok {
-		return errors.New("Invalid signature")
-	}
-
-	err = op.QueueTrade(msg.Order, msg.Trade)
+	err := op.QueueTrade(msg.Matches)
 	if err != nil {
 		logger.Error(err)
 		return err
@@ -247,7 +221,7 @@ func (op *Operator) HandleTrades(msg *types.OperatorMessage) error {
 }
 
 // QueueTrade
-func (op *Operator) QueueTrade(o *types.Order, t *types.Trade) error {
+func (op *Operator) QueueTrade(m *types.Matches) error {
 	op.mutex.Lock()
 	defer op.mutex.Unlock()
 
@@ -257,15 +231,18 @@ func (op *Operator) QueueTrade(o *types.Order, t *types.Trade) error {
 		return err
 	}
 
+	logger.Infof("Queuing matches on queue: %v", txq.Name)
+
 	if len > 10 {
-		logger.Info("Transaction queue is full")
+		logger.Warning("Transaction queue is full")
 		return errors.New("Transaction queue is full")
 	}
 
-	logger.Info("QUEING TRADE", len)
-	err = txq.QueueTrade(o, t)
+	logger.Infof("Queuing Trade on queue: %v (previous queue length = %v)", txq.Name, len)
+
+	err = txq.PublishPendingTrades(m)
 	if err != nil {
-		logger.Warning("INVALID TRADE")
+		logger.Error(err)
 		return err
 	}
 
@@ -372,109 +349,3 @@ func (op *Operator) GetTxSendOptions() (*bind.TransactOpts, error) {
 
 	return bind.NewKeyedTransactor(wallet.PrivateKey), nil
 }
-
-// func (op *Operator) ValidateTrade(o *types.Order, t *types.Trade) error {
-// 	// fee balance validation
-// 	wethAddress := common.HexToAddress(app.Config.Ethereum["weth_address"])
-// 	exchangeAddress := common.HexToAddress(app.Config.Ethereum["exchange_address"])
-
-// 	makerBalanceRecord, err := op.AccountService.GetTokenBalances(o.UserAddress)
-// 	if err != nil {
-// 		logger.Error("Error retrieving maker token balances", err)
-// 		return err
-// 	}
-
-// 	takerBalanceRecord, err := op.AccountService.GetTokenBalances(t.Taker)
-// 	if err != nil {
-// 		logger.Error("Error retrieving taker token balances", err)
-// 		return err
-// 	}
-
-// 	makerWethBalance, err := op.EthereumProvider.BalanceOf(o.UserAddress, wethAddress)
-// 	if err != nil {
-// 		logger.Error("Error", err)
-// 		return err
-// 	}
-
-// 	makerWethAllowance, err := op.EthereumProvider.Allowance(o.UserAddress, exchangeAddress, wethAddress)
-// 	if err != nil {
-// 		logger.Error("Error", err)
-// 		return err
-// 	}
-
-// 	makerTokenBalance, err := op.EthereumProvider.BalanceOf(o.UserAddress, o.SellToken)
-// 	if err != nil {
-// 		logger.Error("Error", err)
-// 		return err
-// 	}
-
-// 	makerTokenAllowance, err := op.EthereumProvider.Allowance(o.UserAddress, exchangeAddress, o.SellToken)
-// 	if err != nil {
-// 		logger.Error("Error", err)
-// 		return err
-// 	}
-
-// 	takerWethBalance, err := op.EthereumProvider.BalanceOf(t.Taker, wethAddress)
-// 	if err != nil {
-// 		logger.Error("Error", err)
-// 		return err
-// 	}
-
-// 	takerWethAllowance, err := op.EthereumProvider.Allowance(t.Taker, exchangeAddress, wethAddress)
-// 	if err != nil {
-// 		logger.Error("Error", err)
-// 		return err
-// 	}
-
-// 	takerTokenBalance, err := op.EthereumProvider.BalanceOf(t.Taker, o.BuyToken)
-// 	if err != nil {
-// 		logger.Error("Error", err)
-// 		return err
-// 	}
-
-// 	takerTokenAllowance, err := op.EthereumProvider.Allowance(t.Taker, exchangeAddress, o.BuyToken)
-// 	if err != nil {
-// 		logger.Error("Error", err)
-// 		return err
-// 	}
-
-// 	fee := math.Max(o.MakeFee, o.TakeFee)
-// 	makerAvailableWethBalance := math.Sub(makerWethBalance, makerBalanceRecord[wethAddress].LockedBalance)
-// 	makerAvailableTokenBalance := math.Sub(makerTokenBalance, makerBalanceRecord[o.SellToken].LockedBalance)
-// 	takerAvailableWethBalance := math.Sub(takerWethBalance, takerBalanceRecord[wethAddress].LockedBalance)
-// 	takerAvailableTokenBalance := math.Sub(takerTokenBalance, takerBalanceRecord[o.BuyToken].LockedBalance)
-
-// 	if makerAvailableWethBalance.Cmp(fee) == -1 {
-// 		return errors.New("Insufficient WETH Balance")
-// 	}
-
-// 	if makerWethAllowance.Cmp(fee) == -1 {
-// 		return errors.New("Insufficient WETH Balance")
-// 	}
-
-// 	if makerAvailableSellTokenBalance.Cmp(o.SellAmount) != 1 {
-// 		return errors.New("Insufficient Balance")
-// 	}
-
-// 	if makerTokenAllowance.Cmp(o.SellAmount) != 1 {
-// 		return errors.New("Insufficient Allowance")
-// 	}
-
-// 	if takerAvailableWethBalance.Cmp(fee) == -1 {
-// 		return errors.New("Insufficient WETH Balance")
-// 	}
-
-// 	if takerWethAllowance.Cmp(fee) == -1 {
-// 		return errors.New("Insufficient WETH Balance")
-// 	}
-
-// 	if takerAvailableTokenBalance.Cmp(t.Amount) != 1 {
-// 		return errors.New("Insufficient Balance")
-// 	}
-
-// 	if takerTokenAllowance.Cmp(t.Amount) != 1 {
-// 		return errors.New("Insufficient Allowance")
-// 	}
-
-// 	return nil
-// }

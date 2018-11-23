@@ -19,16 +19,22 @@ type OrderDao interface {
 	Create(o *types.Order) error
 	Update(id bson.ObjectId, o *types.Order) error
 	Upsert(id bson.ObjectId, o *types.Order) error
+	Delete(orders ...*types.Order) error
+	DeleteByHashes(hashes ...common.Hash) error
 	UpdateAllByHash(h common.Hash, o *types.Order) error
 	UpdateByHash(h common.Hash, o *types.Order) error
 	UpsertByHash(h common.Hash, o *types.Order) error
 	GetByID(id bson.ObjectId) (*types.Order, error)
 	GetByHash(h common.Hash) (*types.Order, error)
 	GetByHashes(hashes []common.Hash) ([]*types.Order, error)
-	GetByUserAddress(a common.Address) ([]*types.Order, error)
-	GetCurrentByUserAddress(a common.Address) ([]*types.Order, error)
-	GetHistoryByUserAddress(a common.Address) ([]*types.Order, error)
+	GetByUserAddress(addr common.Address, limit ...int) ([]*types.Order, error)
+	GetCurrentByUserAddress(a common.Address, limit ...int) ([]*types.Order, error)
+	GetHistoryByUserAddress(a common.Address, limit ...int) ([]*types.Order, error)
+	GetMatchingBuyOrders(o *types.Order) ([]*types.Order, error)
+	GetMatchingSellOrders(o *types.Order) ([]*types.Order, error)
 	UpdateOrderFilledAmount(h common.Hash, value *big.Int) error
+	UpdateOrderFilledAmounts(h []common.Hash, values []*big.Int) ([]*types.Order, error)
+	UpdateOrderStatusesByHashes(status string, hashes ...common.Hash) ([]*types.Order, error)
 	GetUserLockedBalance(account common.Address, token common.Address) (*big.Int, error)
 	UpdateOrderStatus(h common.Hash, status string) error
 	GetRawOrderBook(*types.Pair) ([]*types.Order, error)
@@ -47,6 +53,7 @@ type AccountDao interface {
 	GetTokenBalance(owner common.Address, token common.Address) (*types.TokenBalance, error)
 	UpdateTokenBalance(owner common.Address, token common.Address, tokenBalance *types.TokenBalance) (err error)
 	UpdateBalance(owner common.Address, token common.Address, balance *big.Int) (err error)
+	FindOrCreate(addr common.Address) (*types.Account, error)
 	UpdateAllowance(owner common.Address, token common.Address, allowance *big.Int) (err error)
 	Drop()
 }
@@ -63,11 +70,11 @@ type WalletDao interface {
 type PairDao interface {
 	Create(o *types.Pair) error
 	GetAll() ([]types.Pair, error)
+	GetActivePairs() ([]*types.Pair, error)
 	GetByID(id bson.ObjectId) (*types.Pair, error)
 	GetByName(name string) (*types.Pair, error)
 	GetByTokenSymbols(baseTokenSymbol, quoteTokenSymbol string) (*types.Pair, error)
 	GetByTokenAddress(baseToken, quoteToken common.Address) (*types.Pair, error)
-	GetByBuySellTokenAddress(buyToken, sellToken common.Address) (*types.Pair, error)
 }
 
 type TradeDao interface {
@@ -78,13 +85,19 @@ type TradeDao interface {
 	Aggregate(q []bson.M) ([]*types.Tick, error)
 	GetByPairName(name string) ([]*types.Trade, error)
 	GetByHash(h common.Hash) (*types.Trade, error)
-	GetByOrderHash(h common.Hash) ([]*types.Trade, error)
-	GetSortedTradesByDate(bt, qt common.Address, n int) ([]*types.Trade, error)
+	GetByMakerOrderHash(h common.Hash) ([]*types.Trade, error)
+	GetByTakerOrderHash(h common.Hash) ([]*types.Trade, error)
+	GetByOrderHashes(hashes []common.Hash) ([]*types.Trade, error)
+	GetSortedTrades(bt, qt common.Address, n int) ([]*types.Trade, error)
+	GetSortedTradesByUserAddress(a common.Address, limit ...int) ([]*types.Trade, error)
 	GetNTradesByPairAddress(bt, qt common.Address, n int) ([]*types.Trade, error)
 	GetTradesByPairAddress(bt, qt common.Address, n int) ([]*types.Trade, error)
 	GetAllTradesByPairAddress(bt, qt common.Address) ([]*types.Trade, error)
+	FindAndModify(h common.Hash, t *types.Trade) (*types.Trade, error)
 	GetByUserAddress(a common.Address) ([]*types.Trade, error)
 	UpdateTradeStatus(h common.Hash, status string) error
+	UpdateTradeStatuses(status string, hashes ...common.Hash) ([]*types.Trade, error)
+	UpdateTradeStatusesByOrderHashes(status string, hashes ...common.Hash) ([]*types.Trade, error)
 	Drop()
 }
 
@@ -103,12 +116,15 @@ type Exchange interface {
 	GetTxCallOptions() *bind.CallOpts
 	SetFeeAccount(a common.Address, txOpts *bind.TransactOpts) (*eth.Transaction, error)
 	SetOperator(a common.Address, isOperator bool, txOpts *bind.TransactOpts) (*eth.Transaction, error)
-	CallTrade(o *types.Order, t *types.Trade, call *ethereum.CallMsg) (uint64, error)
+	CallTrade(m *types.Matches, call *ethereum.CallMsg) (uint64, error)
+	CallBatchTrades(m *types.Matches, txOpts *ethereum.CallMsg) (uint64, error)
 	FeeAccount() (common.Address, error)
 	Operator(a common.Address) (bool, error)
-	Trade(o *types.Order, t *types.Trade, txOpts *bind.TransactOpts) (*eth.Transaction, error)
+	Trade(m *types.Matches, txOpts *bind.TransactOpts) (*eth.Transaction, error)
+	ExecuteBatchTrades(m *types.Matches, txOpts *bind.TransactOpts) (*eth.Transaction, error)
 	ListenToErrors() (chan *contractsinterfaces.ExchangeLogError, error)
 	ListenToTrades() (chan *contractsinterfaces.ExchangeLogTrade, error)
+	ListenToBatchTrades() (chan *contractsinterfaces.ExchangeLogBatchTrades, error)
 	GetErrorEvents(logs chan *contractsinterfaces.ExchangeLogError) error
 	GetTrades(logs chan *contractsinterfaces.ExchangeLogTrade) error
 	PrintTrades() error
@@ -117,58 +133,54 @@ type Exchange interface {
 
 type Engine interface {
 	HandleOrders(msg *rabbitmq.Message) error
-	RecoverOrders(orders []*types.OrderTradePair) error
-	CancelOrder(order *types.Order) (*types.EngineResponse, error)
-	CancelTrades(orders []*types.Order, amount []*big.Int) error
-	DeleteOrder(o *types.Order) error
-	DeleteOrders(orders ...types.Order) error
+	// RecoverOrders(matches types.Matches) error
+	// CancelOrder(order *types.Order) (*types.EngineResponse, error)
+	// DeleteOrder(o *types.Order) error
 }
 
 type WalletService interface {
 	CreateAdminWallet(a common.Address) (*types.Wallet, error)
 	GetDefaultAdminWallet() (*types.Wallet, error)
 	GetOperatorWallets() ([]*types.Wallet, error)
+	GetOperatorAddresses() ([]common.Address, error)
 	GetAll() ([]types.Wallet, error)
 	GetByAddress(addr common.Address) (*types.Wallet, error)
 }
 
 type OHLCVService interface {
-	Unsubscribe(conn *ws.Conn)
-	UnsubscribeChannel(conn *ws.Conn, p *types.SubscriptionPayload)
-	Subscribe(conn *ws.Conn, p *types.SubscriptionPayload)
+	Unsubscribe(c *ws.Client)
+	UnsubscribeChannel(c *ws.Client, p *types.SubscriptionPayload)
+	Subscribe(c *ws.Client, p *types.SubscriptionPayload)
 	GetOHLCV(p []types.PairAddresses, duration int64, unit string, timeInterval ...int64) ([]*types.Tick, error)
 }
 
 type EthereumService interface {
 	WaitMined(hash common.Hash) (*eth.Receipt, error)
-	GetBalanceAt(a common.Address) (*big.Int, error)
 	GetPendingNonceAt(a common.Address) (uint64, error)
+	GetBalanceAt(a common.Address) (*big.Int, error)
 }
 
 type OrderService interface {
 	GetByID(id bson.ObjectId) (*types.Order, error)
 	GetByHash(h common.Hash) (*types.Order, error)
-	GetByUserAddress(a common.Address) ([]*types.Order, error)
+	GetByHashes(hashes []common.Hash) ([]*types.Order, error)
+	GetByUserAddress(a common.Address, limit ...int) ([]*types.Order, error)
+	GetCurrentByUserAddress(a common.Address, limit ...int) ([]*types.Order, error)
+	GetHistoryByUserAddress(a common.Address, limit ...int) ([]*types.Order, error)
 	NewOrder(o *types.Order) error
 	CancelOrder(oc *types.OrderCancel) error
-	CancelTrades(trades []*types.Trade) error
 	HandleEngineResponse(res *types.EngineResponse) error
-	GetCurrentByUserAddress(a common.Address) ([]*types.Order, error)
-	GetHistoryByUserAddress(a common.Address) ([]*types.Order, error)
-	Rollback(res *types.EngineResponse) *types.EngineResponse
-	RollbackOrder(o *types.Order) error
-	RollbackTrade(o *types.Order, t *types.Trade) error
 }
 
 type OrderBookService interface {
 	GetOrderBook(bt, qt common.Address) (map[string]interface{}, error)
-	GetRawOrderBook(bt, qt common.Address) ([]*types.Order, error)
-	SubscribeOrderBook(conn *ws.Conn, bt, qt common.Address)
-	UnsubscribeOrderBook(conn *ws.Conn)
-	UnsubscribeOrderBookChannel(conn *ws.Conn, bt, qt common.Address)
-	SubscribeRawOrderBook(conn *ws.Conn, bt, qt common.Address)
-	UnsubscribeRawOrderBook(conn *ws.Conn)
-	UnsubscribeRawOrderBookChannel(conn *ws.Conn, bt, qt common.Address)
+	GetRawOrderBook(bt, qt common.Address) (*types.RawOrderBook, error)
+	SubscribeOrderBook(c *ws.Client, bt, qt common.Address)
+	UnsubscribeOrderBook(c *ws.Client)
+	UnsubscribeOrderBookChannel(c *ws.Client, bt, qt common.Address)
+	SubscribeRawOrderBook(c *ws.Client, bt, qt common.Address)
+	UnsubscribeRawOrderBook(c *ws.Client)
+	UnsubscribeRawOrderBookChannel(c *ws.Client, bt, qt common.Address)
 }
 
 type PairService interface {
@@ -192,14 +204,19 @@ type TokenService interface {
 type TradeService interface {
 	GetByPairName(p string) ([]*types.Trade, error)
 	GetAllTradesByPairAddress(bt, qt common.Address) ([]*types.Trade, error)
-	GetSortedTradesByDate(bt, qt common.Address, n int) ([]*types.Trade, error)
+	GetSortedTrades(bt, qt common.Address, n int) ([]*types.Trade, error)
+	GetSortedTradesByUserAddress(a common.Address, limit ...int) ([]*types.Trade, error)
 	GetByUserAddress(a common.Address) ([]*types.Trade, error)
 	GetByHash(h common.Hash) (*types.Trade, error)
-	GetByOrderHash(h common.Hash) ([]*types.Trade, error)
+	GetByOrderHashes(h []common.Hash) ([]*types.Trade, error)
+	GetByMakerOrderHash(h common.Hash) ([]*types.Trade, error)
+	GetByTakerOrderHash(h common.Hash) ([]*types.Trade, error)
 	UpdateTradeTxHash(tr *types.Trade, txh common.Hash) error
-	Subscribe(conn *ws.Conn, bt, qt common.Address)
-	UnsubscribeChannel(conn *ws.Conn, bt, qt common.Address)
-	Unsubscribe(conn *ws.Conn)
+	UpdateSuccessfulTrade(t *types.Trade) (*types.Trade, error)
+	UpdatePendingTrade(t *types.Trade, txh common.Hash) (*types.Trade, error)
+	Subscribe(c *ws.Client, bt, qt common.Address)
+	UnsubscribeChannel(c *ws.Client, bt, qt common.Address)
+	Unsubscribe(c *ws.Client)
 }
 
 type TxService interface {
@@ -211,24 +228,29 @@ type TxService interface {
 }
 
 type AccountService interface {
+	GetAll() ([]types.Account, error)
 	Create(account *types.Account) error
 	GetByID(id bson.ObjectId) (*types.Account, error)
-	GetAll() ([]types.Account, error)
 	GetByAddress(a common.Address) (*types.Account, error)
+	FindOrCreate(a common.Address) (*types.Account, error)
 	GetTokenBalance(owner common.Address, token common.Address) (*types.TokenBalance, error)
 	GetTokenBalances(owner common.Address) (map[common.Address]*types.TokenBalance, error)
+}
+
+type ValidatorService interface {
+	ValidateBalance(o *types.Order) error
 }
 
 type EthereumConfig interface {
 	GetURL() string
 	ExchangeAddress() common.Address
-	WethAddress() common.Address
 }
 
 type EthereumClient interface {
 	CodeAt(ctx context.Context, contract common.Address, blockNumber *big.Int) ([]byte, error)
 	CallContract(ctx context.Context, call ethereum.CallMsg, blockNumber *big.Int) ([]byte, error)
 	PendingCodeAt(ctx context.Context, account common.Address) ([]byte, error)
+	PendingCallContract(ctx context.Context, call ethereum.CallMsg) ([]byte, error)
 	TransactionReceipt(ctx context.Context, txHash common.Hash) (*eth.Receipt, error)
 	EstimateGas(ctx context.Context, call ethereum.CallMsg) (gas uint64, err error)
 	SendTransaction(ctx context.Context, tx *eth.Transaction) error

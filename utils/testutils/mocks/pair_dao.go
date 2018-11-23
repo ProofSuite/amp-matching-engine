@@ -27,6 +27,29 @@ func (_m *PairDao) Create(o *types.Pair) error {
 	return r0
 }
 
+// GetActivePairs provides a mock function with given fields:
+func (_m *PairDao) GetActivePairs() ([]*types.Pair, error) {
+	ret := _m.Called()
+
+	var r0 []*types.Pair
+	if rf, ok := ret.Get(0).(func() []*types.Pair); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*types.Pair)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetAll provides a mock function with given fields:
 func (_m *PairDao) GetAll() ([]types.Pair, error) {
 	ret := _m.Called()
@@ -43,29 +66,6 @@ func (_m *PairDao) GetAll() ([]types.Pair, error) {
 	var r1 error
 	if rf, ok := ret.Get(1).(func() error); ok {
 		r1 = rf()
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// GetByBuySellTokenAddress provides a mock function with given fields: buyToken, sellToken
-func (_m *PairDao) GetByBuySellTokenAddress(buyToken common.Address, sellToken common.Address) (*types.Pair, error) {
-	ret := _m.Called(buyToken, sellToken)
-
-	var r0 *types.Pair
-	if rf, ok := ret.Get(0).(func(common.Address, common.Address) *types.Pair); ok {
-		r0 = rf(buyToken, sellToken)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*types.Pair)
-		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(common.Address, common.Address) error); ok {
-		r1 = rf(buyToken, sellToken)
 	} else {
 		r1 = ret.Error(1)
 	}

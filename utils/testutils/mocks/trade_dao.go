@@ -84,59 +84,13 @@ func (_m *TradeDao) GetAll() ([]types.Trade, error) {
 	return r0, r1
 }
 
-// GetByHash provides a mock function with given fields: hash
-func (_m *TradeDao) GetByHash(hash common.Hash) (*types.Trade, error) {
-	ret := _m.Called(hash)
-
-	var r0 *types.Trade
-	if rf, ok := ret.Get(0).(func(common.Hash) *types.Trade); ok {
-		r0 = rf(hash)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*types.Trade)
-		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(common.Hash) error); ok {
-		r1 = rf(hash)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// GetByOrderHash provides a mock function with given fields: hash
-func (_m *TradeDao) GetByOrderHash(hash common.Hash) ([]*types.Trade, error) {
-	ret := _m.Called(hash)
-
-	var r0 []*types.Trade
-	if rf, ok := ret.Get(0).(func(common.Hash) []*types.Trade); ok {
-		r0 = rf(hash)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*types.Trade)
-		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(common.Hash) error); ok {
-		r1 = rf(hash)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// GetByPairAddress provides a mock function with given fields: baseToken, quoteToken
-func (_m *TradeDao) GetByPairAddress(baseToken common.Address, quoteToken common.Address) ([]*types.Trade, error) {
-	ret := _m.Called(baseToken, quoteToken)
+// GetAllTradesByPairAddress provides a mock function with given fields: bt, qt
+func (_m *TradeDao) GetAllTradesByPairAddress(bt common.Address, qt common.Address) ([]*types.Trade, error) {
+	ret := _m.Called(bt, qt)
 
 	var r0 []*types.Trade
 	if rf, ok := ret.Get(0).(func(common.Address, common.Address) []*types.Trade); ok {
-		r0 = rf(baseToken, quoteToken)
+		r0 = rf(bt, qt)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*types.Trade)
@@ -145,7 +99,76 @@ func (_m *TradeDao) GetByPairAddress(baseToken common.Address, quoteToken common
 
 	var r1 error
 	if rf, ok := ret.Get(1).(func(common.Address, common.Address) error); ok {
-		r1 = rf(baseToken, quoteToken)
+		r1 = rf(bt, qt)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetByHash provides a mock function with given fields: h
+func (_m *TradeDao) GetByHash(h common.Hash) (*types.Trade, error) {
+	ret := _m.Called(h)
+
+	var r0 *types.Trade
+	if rf, ok := ret.Get(0).(func(common.Hash) *types.Trade); ok {
+		r0 = rf(h)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*types.Trade)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(common.Hash) error); ok {
+		r1 = rf(h)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetByMakerOrderHash provides a mock function with given fields: h
+func (_m *TradeDao) GetByMakerOrderHash(h common.Hash) ([]*types.Trade, error) {
+	ret := _m.Called(h)
+
+	var r0 []*types.Trade
+	if rf, ok := ret.Get(0).(func(common.Hash) []*types.Trade); ok {
+		r0 = rf(h)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*types.Trade)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(common.Hash) error); ok {
+		r1 = rf(h)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetByOrderHashes provides a mock function with given fields: hashes
+func (_m *TradeDao) GetByOrderHashes(hashes []common.Hash) ([]*types.Trade, error) {
+	ret := _m.Called(hashes)
+
+	var r0 []*types.Trade
+	if rf, ok := ret.Get(0).(func([]common.Hash) []*types.Trade); ok {
+		r0 = rf(hashes)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*types.Trade)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func([]common.Hash) error); ok {
+		r1 = rf(hashes)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -176,13 +199,36 @@ func (_m *TradeDao) GetByPairName(name string) ([]*types.Trade, error) {
 	return r0, r1
 }
 
-// GetByUserAddress provides a mock function with given fields: addr
-func (_m *TradeDao) GetByUserAddress(addr common.Address) ([]*types.Trade, error) {
-	ret := _m.Called(addr)
+// GetByTakerOrderHash provides a mock function with given fields: h
+func (_m *TradeDao) GetByTakerOrderHash(h common.Hash) ([]*types.Trade, error) {
+	ret := _m.Called(h)
+
+	var r0 []*types.Trade
+	if rf, ok := ret.Get(0).(func(common.Hash) []*types.Trade); ok {
+		r0 = rf(h)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*types.Trade)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(common.Hash) error); ok {
+		r1 = rf(h)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetByUserAddress provides a mock function with given fields: a
+func (_m *TradeDao) GetByUserAddress(a common.Address) ([]*types.Trade, error) {
+	ret := _m.Called(a)
 
 	var r0 []*types.Trade
 	if rf, ok := ret.Get(0).(func(common.Address) []*types.Trade); ok {
-		r0 = rf(addr)
+		r0 = rf(a)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]*types.Trade)
@@ -191,7 +237,76 @@ func (_m *TradeDao) GetByUserAddress(addr common.Address) ([]*types.Trade, error
 
 	var r1 error
 	if rf, ok := ret.Get(1).(func(common.Address) error); ok {
-		r1 = rf(addr)
+		r1 = rf(a)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetNTradesByPairAddress provides a mock function with given fields: bt, qt, n
+func (_m *TradeDao) GetNTradesByPairAddress(bt common.Address, qt common.Address, n int) ([]*types.Trade, error) {
+	ret := _m.Called(bt, qt, n)
+
+	var r0 []*types.Trade
+	if rf, ok := ret.Get(0).(func(common.Address, common.Address, int) []*types.Trade); ok {
+		r0 = rf(bt, qt, n)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*types.Trade)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(common.Address, common.Address, int) error); ok {
+		r1 = rf(bt, qt, n)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetSortedTrades provides a mock function with given fields: bt, qt, n
+func (_m *TradeDao) GetSortedTrades(bt common.Address, qt common.Address, n int) ([]*types.Trade, error) {
+	ret := _m.Called(bt, qt, n)
+
+	var r0 []*types.Trade
+	if rf, ok := ret.Get(0).(func(common.Address, common.Address, int) []*types.Trade); ok {
+		r0 = rf(bt, qt, n)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*types.Trade)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(common.Address, common.Address, int) error); ok {
+		r1 = rf(bt, qt, n)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetTradesByPairAddress provides a mock function with given fields: bt, qt, n
+func (_m *TradeDao) GetTradesByPairAddress(bt common.Address, qt common.Address, n int) ([]*types.Trade, error) {
+	ret := _m.Called(bt, qt, n)
+
+	var r0 []*types.Trade
+	if rf, ok := ret.Get(0).(func(common.Address, common.Address, int) []*types.Trade); ok {
+		r0 = rf(bt, qt, n)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*types.Trade)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(common.Address, common.Address, int) error); ok {
+		r1 = rf(bt, qt, n)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -213,13 +328,13 @@ func (_m *TradeDao) Update(t *types.Trade) error {
 	return r0
 }
 
-// UpdateByHash provides a mock function with given fields: hash, t
-func (_m *TradeDao) UpdateByHash(hash common.Hash, t *types.Trade) error {
-	ret := _m.Called(hash, t)
+// UpdateByHash provides a mock function with given fields: h, t
+func (_m *TradeDao) UpdateByHash(h common.Hash, t *types.Trade) error {
+	ret := _m.Called(h, t)
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(common.Hash, *types.Trade) error); ok {
-		r0 = rf(hash, t)
+		r0 = rf(h, t)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -227,16 +342,76 @@ func (_m *TradeDao) UpdateByHash(hash common.Hash, t *types.Trade) error {
 	return r0
 }
 
-// UpdateTradeStatus provides a mock function with given fields: hash, status
-func (_m *TradeDao) UpdateTradeStatus(hash common.Hash, status string) error {
-	ret := _m.Called(hash, status)
+// UpdateTradeStatus provides a mock function with given fields: h, status
+func (_m *TradeDao) UpdateTradeStatus(h common.Hash, status string) error {
+	ret := _m.Called(h, status)
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(common.Hash, string) error); ok {
-		r0 = rf(hash, status)
+		r0 = rf(h, status)
 	} else {
 		r0 = ret.Error(0)
 	}
 
 	return r0
+}
+
+// UpdateTradeStatuses provides a mock function with given fields: status, hashes
+func (_m *TradeDao) UpdateTradeStatuses(status string, hashes ...common.Hash) ([]*types.Trade, error) {
+	_va := make([]interface{}, len(hashes))
+	for _i := range hashes {
+		_va[_i] = hashes[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, status)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	var r0 []*types.Trade
+	if rf, ok := ret.Get(0).(func(string, ...common.Hash) []*types.Trade); ok {
+		r0 = rf(status, hashes...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*types.Trade)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(string, ...common.Hash) error); ok {
+		r1 = rf(status, hashes...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// UpdateTradeStatusesByOrderHashes provides a mock function with given fields: status, hashes
+func (_m *TradeDao) UpdateTradeStatusesByOrderHashes(status string, hashes ...common.Hash) ([]*types.Trade, error) {
+	_va := make([]interface{}, len(hashes))
+	for _i := range hashes {
+		_va[_i] = hashes[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, status)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	var r0 []*types.Trade
+	if rf, ok := ret.Get(0).(func(string, ...common.Hash) []*types.Trade); ok {
+		r0 = rf(status, hashes...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*types.Trade)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(string, ...common.Hash) error); ok {
+		r1 = rf(status, hashes...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }

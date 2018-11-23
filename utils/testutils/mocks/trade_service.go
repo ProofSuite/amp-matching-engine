@@ -152,12 +152,12 @@ func (_m *TradeService) GetTrades(bt common.Address, qt common.Address) ([]types
 }
 
 // Subscribe provides a mock function with given fields: conn, bt, qt
-func (_m *TradeService) Subscribe(conn *ws.Conn, bt common.Address, qt common.Address) {
+func (_m *TradeService) Subscribe(conn *ws.Client, bt common.Address, qt common.Address) {
 	_m.Called(conn, bt, qt)
 }
 
 // Unsubscribe provides a mock function with given fields: conn, bt, qt
-func (_m *TradeService) Unsubscribe(conn *ws.Conn, bt common.Address, qt common.Address) {
+func (_m *TradeService) Unsubscribe(conn *ws.Client, bt common.Address, qt common.Address) {
 	_m.Called(conn, bt, qt)
 }
 

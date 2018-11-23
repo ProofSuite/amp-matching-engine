@@ -14,7 +14,6 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/ethereum"
 	"github.com/Proofsuite/amp-matching-engine/operator"
 	"github.com/Proofsuite/amp-matching-engine/rabbitmq"
-	"github.com/Proofsuite/amp-matching-engine/redis"
 	"github.com/Proofsuite/amp-matching-engine/services"
 	"github.com/Proofsuite/amp-matching-engine/ws"
 	"github.com/ethereum/go-ethereum/common"
@@ -41,12 +40,10 @@ func Start() {
 		panic(err)
 	}
 
-	rabbitConn := rabbitmq.InitConnection(app.Config.Rabbitmq)
-	redisConn := redis.NewRedisConnection(app.Config.Redis)
+	rabbitConn := rabbitmq.InitConnection(app.Config.RabbitMQURL)
 	provider := ethereum.NewWebsocketProvider()
 
-	router := NewRouter(provider, redisConn, rabbitConn)
-	// http.Handle("/", router)
+	router := NewRouter(provider, rabbitConn)
 	router.HandleFunc("/socket", ws.ConnectionEndpoint)
 
 	// start the server
@@ -57,12 +54,27 @@ func Start() {
 	allowedOrigins := handlers.AllowedOrigins([]string{"*"})
 	allowedMethods := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS"})
 
-	panic(http.ListenAndServe(address, handlers.CORS(allowedHeaders, allowedOrigins, allowedMethods)(router)))
+	if app.Config.EnableTLS {
+		err := http.ListenAndServeTLS(
+			address,
+			app.Config.ServerCert,
+			app.Config.ServerKey,
+			handlers.CORS(allowedHeaders, allowedOrigins, allowedMethods)(router),
+		)
+
+		if err != nil {
+			log.Fatal("The process exited with error:", err.Error())
+		}
+	} else {
+		err := http.ListenAndServe(address, handlers.CORS(allowedHeaders, allowedOrigins, allowedMethods)(router))
+		if err != nil {
+			log.Fatal("The process exited with error:", err.Error())
+		}
+	}
 }
 
 func NewRouter(
 	provider *ethereum.EthereumProvider,
-	redisConn *redis.RedisConnection,
 	rabbitConn *rabbitmq.Connection,
 ) *mux.Router {
 
@@ -77,15 +89,16 @@ func NewRouter(
 	walletDao := daos.NewWalletDao()
 
 	// instantiate engine
-	eng := engine.NewEngine(redisConn, rabbitConn, pairDao)
+	eng := engine.NewEngine(rabbitConn, orderDao, tradeDao, pairDao)
 
 	// get services for injection
 	accountService := services.NewAccountService(accountDao, tokenDao)
 	ohlcvService := services.NewOHLCVService(tradeDao)
 	tokenService := services.NewTokenService(tokenDao)
 	tradeService := services.NewTradeService(tradeDao)
+	validatorService := services.NewValidatorService(provider, accountDao, orderDao, pairDao)
 	pairService := services.NewPairService(pairDao, tokenDao, tradeDao, eng)
-	orderService := services.NewOrderService(orderDao, pairDao, accountDao, tradeDao, eng, provider, rabbitConn)
+	orderService := services.NewOrderService(orderDao, pairDao, accountDao, tradeDao, eng, validatorService, rabbitConn)
 	orderBookService := services.NewOrderBookService(pairDao, tokenDao, orderDao, eng)
 	walletService := services.NewWalletService(walletDao)
 	// cronService := crons.NewCronService(ohlcvService)
@@ -117,13 +130,14 @@ func NewRouter(
 	}
 
 	// deploy http and ws endpoints
+	endpoints.ServeInfoResource(r, walletService, tokenService)
 	endpoints.ServeAccountResource(r, accountService)
 	endpoints.ServeTokenResource(r, tokenService)
 	endpoints.ServePairResource(r, pairService)
 	endpoints.ServeOrderBookResource(r, orderBookService)
 	endpoints.ServeOHLCVResource(r, ohlcvService)
 	endpoints.ServeTradeResource(r, tradeService)
-	endpoints.ServeOrderResource(r, orderService, eng)
+	endpoints.ServeOrderResource(r, orderService, accountService, eng)
 
 	//initialize rabbitmq subscriptions
 	rabbitConn.SubscribeOrders(eng.HandleOrders)

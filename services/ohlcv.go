@@ -20,19 +20,19 @@ func NewOHLCVService(TradeDao interfaces.TradeDao) *OHLCVService {
 }
 
 // Unsubscribe handles all the unsubscription messages for ticks corresponding to a pair
-func (s *OHLCVService) Unsubscribe(conn *ws.Conn) {
+func (s *OHLCVService) Unsubscribe(conn *ws.Client) {
 	ws.GetOHLCVSocket().Unsubscribe(conn)
 }
 
 // Unsubscribe handles all the unsubscription messages for ticks corresponding to a pair
-func (s *OHLCVService) UnsubscribeChannel(conn *ws.Conn, p *types.SubscriptionPayload) {
+func (s *OHLCVService) UnsubscribeChannel(conn *ws.Client, p *types.SubscriptionPayload) {
 	id := utils.GetOHLCVChannelID(p.BaseToken, p.QuoteToken, p.Units, p.Duration)
 	ws.GetOHLCVSocket().UnsubscribeChannel(id, conn)
 }
 
 // Subscribe handles all the subscription messages for ticks corresponding to a pair
 // It calls the corresponding channel's subscription method and sends trade history back on the connection
-func (s *OHLCVService) Subscribe(conn *ws.Conn, p *types.SubscriptionPayload) {
+func (s *OHLCVService) Subscribe(conn *ws.Client, p *types.SubscriptionPayload) {
 	socket := ws.GetOHLCVSocket()
 
 	ohlcv, err := s.GetOHLCV(
@@ -98,6 +98,10 @@ func (s *OHLCVService) GetOHLCV(pairs []types.PairAddresses, duration int64, uni
 	res, err := s.tradeDao.Aggregate(query)
 	if err != nil {
 		return nil, err
+	}
+
+	if res == nil {
+		return []*types.Tick{}, nil
 	}
 
 	return res, nil

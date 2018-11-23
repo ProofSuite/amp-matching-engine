@@ -46,7 +46,7 @@ func SetupTest(t *testing.T) (
 	log.SetFlags(log.LstdFlags | log.Llongfile)
 	log.SetPrefix("\nLOG: ")
 
-	rabbitConn := rabbitmq.InitConnection(app.Config.Rabbitmq)
+	rabbitConn := rabbitmq.InitConnection(app.Config.RabbitMQURL)
 
 	wallet1 := testutils.GetTestWallet1()
 	wallet2 := testutils.GetTestWallet2()
@@ -79,7 +79,6 @@ func SetupTest(t *testing.T) (
 	provider := ethereum.NewEthereumProvider(client)
 	// provider := ethereum.NewEthereumProvider(simulator)
 
-	//Initially Maker owns 1e18 units of sellToken and Taker owns 1e18 units buyToken
 	wethToken, weth, _, err := deployer.DeployToken(maker.Address, big.NewInt(1e18))
 	if err != nil {
 		t.Errorf("Error deploying token 1: %v", err)
@@ -585,11 +584,11 @@ func TestHandleEvents3(t *testing.T) {
 		t5.TxHash = args.Get(1).(common.Hash)
 	})
 
-	orderService.On("GetByHash", t1.OrderHash).Return(o1, nil)
-	orderService.On("GetByHash", t2.OrderHash).Return(o2, nil)
-	orderService.On("GetByHash", t3.OrderHash).Return(o3, nil)
-	orderService.On("GetByHash", t4.OrderHash).Return(o4, nil)
-	orderService.On("GetByHash", t5.OrderHash).Return(o5, nil)
+	orderService.On("GetByHash", t1.MakerOrderHash).Return(o1, nil)
+	orderService.On("GetByHash", t2.MakerOrderHash).Return(o2, nil)
+	orderService.On("GetByHash", t3.MakerOrderHash).Return(o3, nil)
+	orderService.On("GetByHash", t4.MakerOrderHash).Return(o4, nil)
+	orderService.On("GetByHash", t5.MakerOrderHash).Return(o5, nil)
 	tradeService.On("GetByHash", t1.Hash).Return(&t1, nil)
 	tradeService.On("GetByHash", t2.Hash).Return(&t2, nil)
 	tradeService.On("GetByHash", t3.Hash).Return(&t3, nil)

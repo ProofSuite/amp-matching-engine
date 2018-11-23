@@ -1,6 +1,7 @@
 package types
 
 import (
+	"fmt"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -26,10 +27,18 @@ type WebsocketMessage struct {
 	Event   WebsocketEvent `json:"event"`
 }
 
+func (ev *WebsocketMessage) String() string {
+	return fmt.Sprintf("%v/%v", ev.Channel, ev.Event.String())
+}
+
 type WebsocketEvent struct {
 	Type    string      `json:"type"`
 	Hash    string      `json:"hash,omitempty"`
 	Payload interface{} `json:"payload"`
+}
+
+func (ev *WebsocketEvent) String() string {
+	return fmt.Sprintf("%v", ev.Type)
 }
 
 // Params is a sub document used to pass parameters in Subscription messages
@@ -41,19 +50,16 @@ type Params struct {
 	PairID   string `json:"pair"`
 }
 
-type SignaturePayload struct {
-	Order   *Order            `json:"order"`
-	Matches []*OrderTradePair `json:"matches"`
-}
-
 type OrderPendingPayload struct {
-	Order *Order `json:"order"`
-	Trade *Trade `json:"trade"`
+	Matches *Matches `json:"matches"`
 }
 
 type OrderSuccessPayload struct {
-	Order *Order `json:"order"`
-	Trade *Trade `json:"trade"`
+	Matches *Matches `json:"matches"`
+}
+
+type OrderMatchedPayload struct {
+	Matches *Matches `json:"matches"`
 }
 
 type SubscriptionPayload struct {
@@ -98,28 +104,6 @@ func NewOrderCancelWebsocketMessage(oc *OrderCancel) *WebsocketMessage {
 			Type:    "CANCEL_ORDER",
 			Hash:    oc.Hash.Hex(),
 			Payload: oc,
-		},
-	}
-}
-
-func NewRequestSignaturesWebsocketMessage(hash common.Hash, m []*OrderTradePair, o *Order) *WebsocketMessage {
-	return &WebsocketMessage{
-		Channel: "orders",
-		Event: WebsocketEvent{
-			Type:    "REQUEST_SIGNATURE",
-			Hash:    hash.Hex(),
-			Payload: SignaturePayload{o, m},
-		},
-	}
-}
-
-func NewSubmitSignatureWebsocketMessage(hash string, m []*OrderTradePair, o *Order) *WebsocketMessage {
-	return &WebsocketMessage{
-		Channel: "orders",
-		Event: WebsocketEvent{
-			Type:    "SUBMIT_SIGNATURE",
-			Hash:    hash,
-			Payload: SignaturePayload{o, m},
 		},
 	}
 }

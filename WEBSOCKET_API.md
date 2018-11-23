@@ -2,792 +2,919 @@
 
 **Websocket Endpoint**: `/socket`
 
-### PLACE_ORDER (client -> engine)
+There are 5 channels on the matching engine websocket API:
 
-The PLACE_ORDER message payload consists in an order in the  format. This
-message is send in order to provide
+* orders
+* ohlcv
+* orderbook
+* raw_orderbook
+* trades
 
-**Payload**
-```
+To send a message to a specific channel, the channel the general format of a message is the following:
+
+```json
 {
-	"channel": "order_channel",
-	"message":
-	{
-		"msgType": "NEW_ORDER",
-		"data": {
-			"userAddress": "0xefD7eB287CeeFCE8256Dd46e25F398acEA7C4b63",
-			"amount": 50,
-			"price": 2.2,
-			"type": 2,
-			"buyToken": "0x2034842261b82651885751fc293bba7ba5398156",
-			"sellToken": "0x1888a8db0b7db59413ce07150b3373972bf818d3",
-      "signature":[string]
-		}
-	}
-}
-```
-**Response** [engine->client]
-If order added to orderbook:
-
-```
-{
-  "msgType": "ORDER_ADDED",
-  "orderId": "5b50d0ac7b44578e7e436815",
-  "data": {
-    "Order": {
-      "id": "5b50d0ac7b44578e7e436815",
-      "buyToken": "AUT",
-      "sellToken": "HPC",
-      "buyTokenAddress": "0x2034842261b82651885751fc293bba7ba5398156",
-      "sellTokenAddress": "0x1888a8db0b7db59413ce07150b3373972bf818d3",
-      "filledAmount": 0,
-      "amount": 5000000000,
-      "price": 220000000,
-      "fee": 0,
-      "type": "SELL",
-      "amountBuy": 5000000000,
-      "amountSell": 11000000000,
-      "exchangeAddress": "",
-      "status": "OPEN",
-      "pairID": "5b3e82a07b44576ba8000003",
-      "pairName": "HPC-AUT",
-      "hash": "0xa9a89346cc62330626c5853b74493a1f8e933db582c444bf2288bd6a211586ee",
-      "userAddress": "0xefD7eB287CeeFCE8256Dd46e25F398acEA7C4b63",
-      "orderBook": null,
-      "createdAt": "2018-07-19T23:25:56.28077166+05:30",
-      "updatedAt": "2018-07-19T23:25:56.280771695+05:30"
-    },
-    "Trades": [],
-    "RemainingOrder": {
-      "id": "5b50d0ac7b44578e7e436815",
-      "buyToken": "AUT",
-      "sellToken": "HPC",
-      "buyTokenAddress": "0x2034842261b82651885751fc293bba7ba5398156",
-      "sellTokenAddress": "0x1888a8db0b7db59413ce07150b3373972bf818d3",
-      "filledAmount": 0,
-      "amount": 5000000000,
-      "price": 220000000,
-      "fee": 0,
-      "type": "SELL",
-      "amountBuy": 5000000000,
-      "amountSell": 11000000000,
-      "exchangeAddress": "",
-      "status": "OPEN",
-      "pairID": "5b3e82a07b44576ba8000003",
-      "pairName": "HPC-AUT",
-      "hash": "0xa9a89346cc62330626c5853b74493a1f8e933db582c444bf2288bd6a211586ee",
-      "userAddress": "0xefD7eB287CeeFCE8256Dd46e25F398acEA7C4b63",
-      "orderBook": null,
-      "createdAt": "2018-07-19T23:25:56.28077166+05:30",
-      "updatedAt": "2018-07-19T23:25:56.280771695+05:30"
-    },
-    "FillStatus": 1,
-    "MatchingOrders": []
+  "channel": <channel_name>,
+  "event": {
+    "type": <event_type>,
+    "payload": <payload>
   }
 }
 ```
 
-If order filled/partially filled, Then we need to send a new message with payload as signed trades and signed remaining order within a given amount of time, otherwise the match will be reverted and order will be marked as error
+where
 
-```
+* \<channel_name> is either 'orders', 'ohlcv', 'orderbook', 'raw_orderbook', 'trades'
+* \<event_type> is a string describing what type of message is being sent
+* \<payload> is a JSON object
+
+
+# Trades Channel
+
+## Message:
+
+* SUBSCRIBE_TRADES (client --> server)
+* UNSUBSCRIBE_TRADES (client --> server)
+* INIT (server --> client)
+* UPDATE (server --> client)
+
+## SUBSCRIBE_TRADES MESSAGE (client --> server)
+
+```json
 {
-  "msgType": "REQUEST_SIGNATURE",
-  "orderId": "5b50d0ff7b44578e7e436816",
-  "data": {
-    "Order": {
-      "id": "5b50d0ff7b44578e7e436816",
-      "buyToken": "AUT",
-      "sellToken": "HPC",
-      "buyTokenAddress": "0x2034842261b82651885751fc293bba7ba5398156",
-      "sellTokenAddress": "0x1888a8db0b7db59413ce07150b3373972bf818d3",
-      "filledAmount": 6000000000,
-      "amount": 6000000000,
-      "price": 220000000,
-      "fee": 0,
-      "type": "BUY",
-      "amountBuy": 6000000000,
-      "amountSell": 13200000000,
-      "exchangeAddress": "",
-      "status": "FILLED",
-      "pairID": "5b3e82a07b44576ba8000003",
-      "pairName": "HPC-AUT",
-      "hash": "0xf9f05bf18c6e43c1622b9613707fe931546bf7207341b34cab33a14c0d5a8a10",
-      "userAddress": "0xefD7eB287CeeFCE8256Dd46e25F398acEA7C4b63",
-      "orderBook": null,
-      "createdAt": "2018-07-19T23:27:19.878444154+05:30",
-      "updatedAt": "2018-07-19T23:27:19.878444175+05:30"
-    },
-    "Trades": [{
-      "orderHash": "0x23e38e470bd683414f2fad7916811c35050e43ff3d71b0c053ef5ae22e41708d",
-      "amount": 1000000000,
-      "price": 220000000,
-      "type": "BUY",
-      "tradeNonce": 0,
-      "taker": "0xefD7eB287CeeFCE8256Dd46e25F398acEA7C4b63",
-      "maker": "0xefD7eB287CeeFCE8256Dd46e25F398acEA7C4b63",
-      "takerOrderId": "5b50d0ff7b44578e7e436816",
-      "makerOrderId": "5b46ea917b445743bb0ffaff",
-      "signature": null,
-      "hash": "0xf43c261f49a2fe2398830024f32ac86b1ee5abfd9b7299ac1a64df19ec961bd7",
-      "pairName": "HPC-AUT",
-      "createdAt": "0001-01-01T00:00:00Z",
-      "updatedAt": "0001-01-01T00:00:00Z"
-    }, {
-      "orderHash": "0xa9a89346cc62330626c5853b74493a1f8e933db582c444bf2288bd6a211586ee",
-      "amount": 5000000000,
-      "price": 220000000,
-      "type": "BUY",
-      "tradeNonce": 0,
-      "taker": "0xefD7eB287CeeFCE8256Dd46e25F398acEA7C4b63",
-      "maker": "0xefD7eB287CeeFCE8256Dd46e25F398acEA7C4b63",
-      "takerOrderId": "5b50d0ff7b44578e7e436816",
-      "makerOrderId": "5b50d0ac7b44578e7e436815",
-      "signature": null,
-      "hash": "0x0902fa3e6c4e6bd3045fe4081b75cc17c12c2fa6135a30e45d203f2e731133b3",
-      "pairName": "HPC-AUT",
-      "createdAt": "0001-01-01T00:00:00Z",
-      "updatedAt": "0001-01-01T00:00:00Z"
-    }],
-    "RemainingOrder": null,
-    "FillStatus": 3,
-    "MatchingOrders": [{
-      "Amount": 1000000000,
-      "Order": {
-        "id": "5b46ea917b445743bb0ffaff",
-        "buyToken": "AUT",
-        "sellToken": "HPC",
-        "buyTokenAddress": "0x2034842261b82651885751fc293bba7ba5398156",
-        "sellTokenAddress": "0x1888a8db0b7db59413ce07150b3373972bf818d3",
-        "filledAmount": 2000000000,
-        "amount": 2000000000,
-        "price": 220000000,
-        "fee": 0,
-        "type": "SELL",
-        "amountBuy": 2000000000,
-        "amountSell": 4400000000,
-        "exchangeAddress": "",
-        "status": "FILLED",
-        "pairID": "5b3e82a07b44576ba8000003",
-        "pairName": "HPC-AUT",
-        "hash": "0x23e38e470bd683414f2fad7916811c35050e43ff3d71b0c053ef5ae22e41708d",
-        "userAddress": "0xefD7eB287CeeFCE8256Dd46e25F398acEA7C4b63",
-        "orderBook": null,
-        "createdAt": "2018-07-12T11:13:45.031963564+05:30",
-        "updatedAt": "2018-07-12T11:13:45.031963664+05:30"
-      }
-    }, {
-      "Amount": 5000000000,
-      "Order": {
-        "id": "5b50d0ac7b44578e7e436815",
-        "buyToken": "AUT",
-        "sellToken": "HPC",
-        "buyTokenAddress": "0x2034842261b82651885751fc293bba7ba5398156",
-        "sellTokenAddress": "0x1888a8db0b7db59413ce07150b3373972bf818d3",
-        "filledAmount": 5000000000,
-        "amount": 5000000000,
-        "price": 220000000,
-        "fee": 0,
-        "type": "SELL",
-        "amountBuy": 5000000000,
-        "amountSell": 11000000000,
-        "exchangeAddress": "",
-        "status": "FILLED",
-        "pairID": "5b3e82a07b44576ba8000003",
-        "pairName": "HPC-AUT",
-        "hash": "0xa9a89346cc62330626c5853b74493a1f8e933db582c444bf2288bd6a211586ee",
-        "userAddress": "0xefD7eB287CeeFCE8256Dd46e25F398acEA7C4b63",
-        "orderBook": null,
-        "createdAt": "2018-07-19T23:25:56.28077166+05:30",
-        "updatedAt": "2018-07-19T23:25:56.280771695+05:30"
-      }
-    }]
+  "channel": "trades",
+  "event": {
+    "type": "SUBSCRIBE",
+    "payload": {
+      "baseToken": <address>,
+      "quoteToken": <address>,
+      "name": <baseTokenSymbol>/<quoteTokenSymbol>,
+    }
   }
 }
 ```
 
-SIGNED_DATA (client -> engine)
+The name parameter is optional but the API will return an error if the symbols do not correspond to the symbols registered
+in the matching engine. This optional parameter can be used for verifying you are subscribing to the right channel.
 
-To execute an order/trade on the connected ethereum chain, the matching engine requires a cryptographic signature that will be used to verify the users will to trade tokens.
-
-Payload:
-```
+###Example:
+```json
 {
-	"channel": "order_channel",
-	"message":
-	{
-  "msgType": "REQUEST_SIGNATURE",
-  "orderId": "5b50d0ff7b44578e7e436816",
-  "data": {
-    "Order": {
-      "id": "5b50d0ff7b44578e7e436816",
-      "buyToken": "AUT",
-      "sellToken": "HPC",
-      "buyTokenAddress": "0x2034842261b82651885751fc293bba7ba5398156",
-      "sellTokenAddress": "0x1888a8db0b7db59413ce07150b3373972bf818d3",
-      "filledAmount": 6000000000,
-      "amount": 6000000000,
-      "price": 220000000,
-      "fee": 0,
-      "type": "BUY",
-      "amountBuy": 6000000000,
-      "amountSell": 13200000000,
-      "exchangeAddress": "",
-      "status": "FILLED",
-      "pairID": "5b3e82a07b44576ba8000003",
-      "pairName": "HPC-AUT",
-      "hash": "0xf9f05bf18c6e43c1622b9613707fe931546bf7207341b34cab33a14c0d5a8a10",
-      "userAddress": "0xefD7eB287CeeFCE8256Dd46e25F398acEA7C4b63",
-      "signature":""
-    },
-    "Trades": [{
-      "orderHash": "0x23e38e470bd683414f2fad7916811c35050e43ff3d71b0c053ef5ae22e41708d",
-      "amount": 1000000000,
-      "price": 220000000,
-      "type": "BUY",
-      "tradeNonce": 0,
-      "taker": "0xefD7eB287CeeFCE8256Dd46e25F398acEA7C4b63",
-      "maker": "0xefD7eB287CeeFCE8256Dd46e25F398acEA7C4b63",
-      "takerOrderId": "5b50d0ff7b44578e7e436816",
-      "makerOrderId": "5b46ea917b445743bb0ffaff",
-      "signature": "",
-      "hash": "0xf43c261f49a2fe2398830024f32ac86b1ee5abfd9b7299ac1a64df19ec961bd7",
-      "pairName": "HPC-AUT"
-    }, {
-      "orderHash": "0xa9a89346cc62330626c5853b74493a1f8e933db582c444bf2288bd6a211586ee",
-      "amount": 5000000000,
-      "price": 220000000,
-      "type": "BUY",
-      "tradeNonce": 0,
-      "taker": "0xefD7eB287CeeFCE8256Dd46e25F398acEA7C4b63",
-      "maker": "0xefD7eB287CeeFCE8256Dd46e25F398acEA7C4b63",
-      "takerOrderId": "5b50d0ff7b44578e7e436816",
-      "makerOrderId": "5b50d0ac7b44578e7e436815",
-      "signature": "",
-      "hash": "0x0902fa3e6c4e6bd3045fe4081b75cc17c12c2fa6135a30e45d203f2e731133b3",
-      "pairName": "HPC-AUT"
-    }],
-    "RemainingOrder": null,
-    "FillStatus": 3,
-    "MatchingOrders": [{
-      "Amount": 1000000000,
-      "Order": {
-        "id": "5b46ea917b445743bb0ffaff",
-        "buyToken": "AUT",
-        "sellToken": "HPC",
-        "buyTokenAddress": "0x2034842261b82651885751fc293bba7ba5398156",
-        "sellTokenAddress": "0x1888a8db0b7db59413ce07150b3373972bf818d3",
-        "filledAmount": 2000000000,
-        "amount": 2000000000,
-        "price": 220000000,
-        "fee": 0,
-        "type": "SELL",
-        "amountBuy": 2000000000,
-        "amountSell": 4400000000,
-        "exchangeAddress": "",
-        "status": "FILLED",
-        "pairID": "5b3e82a07b44576ba8000003",
-        "pairName": "HPC-AUT",
-        "hash": "0x23e38e470bd683414f2fad7916811c35050e43ff3d71b0c053ef5ae22e41708d",
-        "userAddress": "0xefD7eB287CeeFCE8256Dd46e25F398acEA7C4b63",
-        "signature":""
-      }
-    }, {
-      "Amount": 5000000000,
-      "Order": {
-        "id": "5b50d0ac7b44578e7e436815",
-        "buyToken": "AUT",
-        "sellToken": "HPC",
-        "buyTokenAddress": "0x2034842261b82651885751fc293bba7ba5398156",
-        "sellTokenAddress": "0x1888a8db0b7db59413ce07150b3373972bf818d3",
-        "filledAmount": 5000000000,
-        "amount": 5000000000,
-        "price": 220000000,
-        "fee": 0,
-        "type": "SELL",
-        "amountBuy": 5000000000,
-        "amountSell": 11000000000,
-        "exchangeAddress": "",
-        "status": "FILLED",
-        "pairName": "HPC-AUT",
-        "hash": "0xa9a89346cc62330626c5853b74493a1f8e933db582c444bf2288bd6a211586ee",
-        "userAddress": "0xefD7eB287CeeFCE8256Dd46e25F398acEA7C4b63",
-        "signature":""
-      }
-    }]
+  "channel": "trades",
+  "event": {
+    "type": "SUBSCRIBE",
+    "payload": {
+      "baseToken": "0x546d3B3d69E30859f4F3bA15F81809a2efCE6e67",
+      "quoteToken": "0x17b4E8B709ca82ABF89E172366b151c72DF9C62E",
+      "name": "FUN/WETH",
+    }
   }
 }
-}
 ```
-CANCEL_ORDER (client -> engine)
 
-To cancel an order (off-chain), the client sends a CANCEL_ORDER message.
 
-Payload:
-```
-{
-	"channel": "order_channel",
-	"message":
-	{
-		"msgType": "CANCEL_ORDER",
-		"data": {
-		  "id":"5b46eb9f7b445747d1673b21",
-      "hash":"",
-			"userAddress": "0xefD7eB287CeeFCE8256Dd46e25F398acEA7C4b63"
-      "signature":""
-		}
-	}
-}
-```
-ORDER_BOOK_SUBSCRIBE (client->engine)
+## UNSUBSCRIBE_TRADES MESSAGE (client --> server)
 
-To subscribe to orderbook channel for any given pair. client needs to send message with payload:
-**Payload**:
-```
+```json
 {
-	"channel": "order_book",
-	"message": {
-		"event":"subscribe",
-		"key":"hpc-aut"
-	}
-}
-```
-**Response**
-```
-{
-  "buy": null,
-  "sell": [{
-    "price": 2.2,
-    "volume": 60
-  }],
-  "trades": [{
-    "id": "5b46ead87b445743bb0ffb03",
-    "orderHash": "0x23e38e470bd683414f2fad7916811c35050e43ff3d71b0c053ef5ae22e41708d",
-    "amount": 2000000000,
-    "price": 220000000,
-    "type": "BUY",
-    "tradeNonce": 0,
-    "taker": "0xefD7eB287CeeFCE8256Dd46e25F398acEA7C4b63",
-    "maker": "0xefD7eB287CeeFCE8256Dd46e25F398acEA7C4b63",
-    "takerOrderId": "5b46ead37b445743bb0ffb02",
-    "makerOrderId": "5b46ea8c7b445743bb0ffafd",
-    "signature": null,
-    "hash": "0x293b6d2aa83841af6e56c1ae86b8fbb953c1f8b19f482fc7b2df64109c320920",
-    "pairName": "HPC-AUT",
-    "createdAt": "2018-07-12T11:14:56.443+05:30",
-    "updatedAt": "2018-07-12T11:14:56.443+05:30"
-  }, {
-    "id": "5b46ead87b445743bb0ffb04",
-    "orderHash": "0x23e38e470bd683414f2fad7916811c35050e43ff3d71b0c053ef5ae22e41708d",
-    "amount": 2000000000,
-    "price": 220000000,
-    "type": "BUY",
-    "tradeNonce": 0,
-    "taker": "0xefD7eB287CeeFCE8256Dd46e25F398acEA7C4b63",
-    "maker": "0xefD7eB287CeeFCE8256Dd46e25F398acEA7C4b63",
-    "takerOrderId": "5b46ead37b445743bb0ffb02",
-    "makerOrderId": "5b46ea8e7b445743bb0ffafe",
-    "signature": null,
-    "hash": "0x293b6d2aa83841af6e56c1ae86b8fbb953c1f8b19f482fc7b2df64109c320920",
-    "pairName": "HPC-AUT",
-    "createdAt": "2018-07-12T11:14:56.443+05:30",
-    "updatedAt": "2018-07-12T11:14:56.443+05:30"
-  }, {
-    "id": "5b46ead87b445743bb0ffb05",
-    "orderHash": "0x23e38e470bd683414f2fad7916811c35050e43ff3d71b0c053ef5ae22e41708d",
-    "amount": 1000000000,
-    "price": 220000000,
-    "type": "BUY",
-    "tradeNonce": 0,
-    "taker": "0xefD7eB287CeeFCE8256Dd46e25F398acEA7C4b63",
-    "maker": "0xefD7eB287CeeFCE8256Dd46e25F398acEA7C4b63",
-    "takerOrderId": "5b46ead37b445743bb0ffb02",
-    "makerOrderId": "5b46ea917b445743bb0ffaff",
-    "signature": null,
-    "hash": "0xf43c261f49a2fe2398830024f32ac86b1ee5abfd9b7299ac1a64df19ec961bd7",
-    "pairName": "HPC-AUT",
-    "createdAt": "2018-07-12T11:14:56.443+05:30",
-    "updatedAt": "2018-07-12T11:14:56.443+05:30"
-  }]
+  "channel": "trades",
+  "event": {
+    "type": "UNSUBSCRIBE",
+  }
 }
 ```
 
-ORDER_BOOK_UNSUBSCRIBE (client->engine)
-To unsubscribe from orderbook channel for any given pair. client needs to send message with payload:
-**Payload**
-```
+## INIT MESSAGE (server --> client)
+
+The general format of the init message is the following:
+
+```json
 {
-	"channel": "order_book",
-	"message": {
-		"event":"unsubscribe",
-		"key":"hpc-aut"
-	}
+  "channel": "trades",
+  "event": {
+    "type": "INIT",
+    "payload": [
+      <trade>,
+      <trade>,
+      ...
+    ]
+  }
 }
 ```
 
-TRADES_SUBSCRIBE (client->engine)
-**Payload**
-```
-{
-	"channel": "trades",
-	"message": {
-		"event":"subscribe",
-		"key":"hpc-aut",
-		"params":{
-		  "from":1531440000,
-		  "to":1532075163,
-		  "duration":30,
-		  "units":"min"
-		}
-	}
-}
-```
-TRADES_UNSUBSCRIBE (client->engine)
-**Payload**
-```
-{
-	"channel": "trades",
-	"message": {
-		"event":"unsubscribe",
-		"key":"hpc-aut",
-		"params":{
-		  "from":1531440000,
-		  "to":1532075163,
-		  "duration":30,
-		  "units":"min"
-		}
-	}
-}
-```
-ORDER_PLACED (engine -> client)
+## UPDATE MESSAGE (server --> client)
 
-Payload:
+The general format of the update message is the following:
+
+```json
+{
+  "channel": "trades",
+  "event": {
+    "type": "UPDATE",
+    "payload": [
+      <trade>,
+      <trade>,
+      ...
+    ]
+  }
+}
+```
+
+The format of the message is identical to the INIT message.
+This message differs from the INIT message in that the client is supposed
+to updated trades with identical hashes in their data set. The INIT messages
+supposes that there are no other existing trades for the currently subscribe pair.
+
+
+
+
+
+# Orderbook Channel
+
+## Message:
+* SUBSCRIBE_ORDERBOOK (client --> server)
+* UNSUBSCRIBE_ORDERBOOK (client --> server)
+* INIT (server --> client)
+* UPDATE (server --> client)
+
+
+## SUBSCRIBE_ORDERBOOK MESSAGE (client --> server)
+
+```json
+{
+  "channel": "orderbook",
+  "event": {
+    "type": "SUBSCRIBE",
+    "payload": {
+      "baseToken": <address>,
+      "quoteToken": <address>,
+      "name": <baseTokenSymbol>/<quoteTokenSymbol>,
+    }
+  }
+}
+```
+
+### Example:
+
+```json
+{
+  "channel": "orderbook",
+  "event": {
+    "type": "SUBSCRIBE",
+    "payload": {
+      "baseToken": "0x546d3B3d69E30859f4F3bA15F81809a2efCE6e67",
+      "quoteToken": "0x17b4E8B709ca82ABF89E172366b151c72DF9C62E"
+      "name": "FUN/WETH",
+    }
+  }
+}
+```
+
+## UNSUBSCRIBE_ORDERBOOK MESSAGE (client --> server)
+
+```json
+{
+  "channel": "orderbook",
+  "event": {
+    "type": "UNSUBSCRIBE",
+  }
+}
+```
+
+
+## INIT MESSAGE (server --> client)
+
+The general format of the INIT message is the following:
+
+```json
+{
+  "channel": "trades",
+  "event": {
+    "type": "INIT",
+    "payload": {
+      "asks": [ <ask>, <ask>, ... ],
+      "bids": [ <bid>, <bid>, ... ],
+    }
+  }
+}
+```
+
+# Example:
+
+```json
+{
+  "channel": "orderbook",
+  "event": {
+    "type": "UDPATE",
+    "payload": {
+      "asks": [
+        { "amount": "10000", "pricepoint": "1000000" },
+        { "amount": "10000", "pricepoint": "1000000" },
+      ],
+      "bids": [
+        { "amount": "10000", "pricepoint": "1000000" },
+        { "amount": "10000", "pricepoint": "1000000" },
+      ]
+    }
+  }
+}
+```
+
+## UPDATE MESSAGE (server --> client)
+
+The general format of the update message is the following:
+
+```json
+{
+  "channel": "trades",
+  "event": {
+    "type": "UPDATE",
+    "payload": {
+      "asks": [ <ask>, <ask>, ... ],
+      "bids": [ <bid>, <bid>, ... ],
+    },
+  },
+}
+```
+
+The format of the message is identical to the INIT message.
+This message differs from the INIT message in that the client is supposed
+to updated trades with identical hashes in their data set. The INIT messages
+supposes that there are no other existing trades for the currently subscribe pair.
+
+
+# Example:
+
+```json
+{
+  "channel": "orderbook",
+  "event": {
+    "type": "UDPATE",
+    "payload": {
+      "asks": [
+        { "amount": "10000", "pricepoint": "1000000" },
+        { "amount": "10000", "pricepoint": "1000000" },
+      ],
+      "bids": [
+        { "amount": "10000", "pricepoint": "1000000" },
+        { "amount": "10000", "pricepoint": "1000000" },
+      ]
+    }
+  }
+}
+```
+
+# OHLCV Channel
+
+## Message:
+* SUBSCRIBE_OHLCV (client --> server)
+* UNSUBSCRIBE_OHLCV (client --> server)
+* INIT (server --> client)
+* UPDATE (server --> client)
+
+
+## SUBSCRIBE_OHLCV MESSAGE (client --> server)
+
+```json
+{
+  "channel": "ohlcv",
+  "event": {
+    "type": "SUBSCRIBE",
+    "payload": {
+      "baseToken": <baseTokenAddress>,
+      "quoteToken": <quoteTokenAddress>,
+      "name": <baseTokenSymbol/quoteTokenSymbol>,
+      "from": <from>,
+      "to": <to>,
+      "duration": <duration>,
+      "units": <hour>
+    }
+  }
+}
+```
+
+where
+* \<baseTokenAddress> is the Ethereum address of the base token contract,
+* \<quoteTokenAddress> is the Ethereum address of the quote token contract,
+* \<duration> is the duration (in units, see param below) of each candlestick
+* \<units> is the unit used to represent the above duration: "minute", "hour", "day", "week", "month"
+* \<from> is the beginning timestamp from which ohlcv data has to be queried
+* \<to> is the ending timestamp until which ohlcv data has to be queried
+
+### Example:
+
+```json
+{
+  "channel": "ohlcv",
+  "event": {
+    "type": "SUBSCRIBE",
+    "payload": {
+      "baseToken": "0x546d3B3d69E30859f4F3bA15F81809a2efCE6e67",
+      "quoteToken": "0x17b4E8B709ca82ABF89E172366b151c72DF9C62E",
+      "name": "FUN/WETH",
+      "from": 1534746133,
+      "to": 1540016533,
+      "duration": 1,
+      "units": "hour"
+    }
+  }
+}
+```
+
+
+
+
+## UNSUBSCRIBE_OHLCV MESSAGE (client --> server)
+
+```json
+{
+  "channel": "ohlcv",
+  "event": {
+    "type": "UNSUBSCRIBE",
+  }
+}
+```
+
+
+
+
+# Orders Channel
+
+## Message:
+* NEW_ORDER (client --> server)
+* ORDER_ADDED (server --> client)
+* CANCEL_ORDER (client --> server)
+* ORDER_CANCELLED (server --> client) #CANCELLED with two L
+* REQUEST_SIGNATURE (server --> client)
+* SUBMIT_SIGNATURE (client --> server)
+* ORDER_PENDING (server --> client)
+* ORDER_SUCCESS (server --> client)
+* ORDER_ERROR (server --> client)
+* ERROR (server --> client)
+* UPDATE (server --> client)
+
+## NEW_ORDER (client --> server)
+
+The general format of the NEW_ORDER message is the following:
+```json
+{
+  "channel": "orders",
+  "event": {
+    "type": "NEW_ORDER",
+    "hash": <orderhash>,
+    "payload": <order>,
+  }
+}
+```
+
+where:
+* \<orderhash> is the hash of the order in the payload (probably will get deprecated)
+* \<order> is an order signed by the client
+
+## Example:
+```json
+{
+  "channel": "orders",
+  "event": {
+    "type": "NEW_ORDER",
+    "hash": "0x70034a326ab444412ae57b84dd30b0566c3a86e3cba15717d319847429444d12",
+    "payload": {
+      "exchangeAddress": "0x44e5a8cc74C389e805DAa84993bacC2b833E13f0",
+      "userAddress": "0xCf7389Dc6c63637598402907d5431160eC8972A5",
+      "baseToken": "0x546d3B3d69E30859f4F3bA15F81809a2efCE6e67",
+      "quoteToken": "0x17b4E8B709ca82ABF89E172366b151c72DF9C62E",
+      "amount": "1000000000000000000",
+      "pricepoint": "1000000000000000000",
+      "hash": "0x70034a326ab444412ae57b84dd30b0566c3a86e3cba15717d319847429444d12",
+      "makeFee": "0",
+      "takeFee": "0",
+      "nonce": "3426223084368067",
+      "signature": {
+        "R": "0x14f9f97a43df77b79e79fa0af2ccfc8798be6ab2fa1f4468f92f99ed3542c1b9",
+        "S": "0x78b035c950f5cb54a58ca54961f82a8c301027693f50272ea0f178b55891f8fc",
+        "V": 28
+      },
+
+    }
+  }
+}
+```
+
+Note: Take note that most values are strings (except for the V value in the signature).
+Using numbers or floats instead of strings will fail. This is required
+
+
+## ORDER_ADDED MESSAGE (server --> client)
+
+The general format of the ORDER_ADDED message is the following:
+
 ```
 {
-  "msgType": "ORDER_ADDED",
-  "orderId": "",
-  "data": {
-    "id": "5b523800dbd89c85aee3dcaf",
-    "buyToken": "AUT",
-    "sellToken": "HPC",
-    "buyTokenAddress": "0x2034842261b82651885751fc293bba7ba5398156",
-    "sellTokenAddress": "0x1888a8db0b7db59413ce07150b3373972bf818d3",
-    "filledAmount": 0,
-    "amount": 6000000000,
-    "price": 220000000,
-    "fee": 0,
-    "type": "SELL",
-    "amountBuy": 6000000000,
-    "amountSell": 13200000000,
-    "exchangeAddress": "",
+  "channel": "orders",
+  "event": {
+    "type": "ORDER_ADDED",
+    "hash": <orderhash>,
+    "payload": <order>
+  }
+}
+```
+
+where:
+
+* \<orderhash> is the hash of the order in the payload (probably will get deprecated)
+* \<order> is the original order sent by the client. Additional fields are added such as the `status`
+
+
+```json
+{
+  "channel": "orders",
+  "event": {
+    "userAddress": "0xcf7389dc6c63637598402907d5431160ec8972a5",
+    "exchangeAddress": "0x44e5a8cc74c389e805daa84993bacc2b833e13f0",
+    "buyToken": "0x17b4e8b709ca82abf89e172366b151c72df9c62e",
+    "sellToken": "0x546d3b3d69e30859f4f3ba15f81809a2efce6e67",
+    "hash": "0xb958a32836f4ca15c93c0e54a22e83b384dc7ec899c6b66952195f12b0ed5708",
+    "makeFee": "0",
+    "takeFee": "0"
+    "nonce": "7740163281176971",
+    "amount": "1000000000000000000",
+    "filledAmount": "0",
+    "pricepoint": "1000000",
+    "side": "SELL",
     "status": "OPEN",
-    "pairID": "5b3e82a07b44576ba8000003",
-    "pairName": "HPC-AUT",
-    "hash": "0xfc4c476cb2166d520a28ec1d4d4a42f1ef1ce5d7ac10433b03a39c99320a69d0",
-    "userAddress": "0xefD7eB287CeeFCE8256Dd46e25F398acEA7C4b63",
-    "orderBook": null,
-    "createdAt": "2018-07-21T00:59:04.290048711+05:30",
-    "updatedAt": "2018-07-21T00:59:04.290048765+05:30"
+    "pairName": "FUN/WETH",
+    "signature": {
+      "R": "0x1106adc21f1d85e37d245df4808c683b2dad7970f6e831c96d2c91c886281a9d",
+      "S": "0x43dbfbb4c2c7cfcb2afadc3abd63854449eaad9e9d306981fad9bcd46dce0d0b",
+      "V": 27},
+    "quoteToken": "0x17b4e8b709ca82abf89e172366b151c72df9c62e",
+    "baseToken": "0x546d3b3d69e30859f4f3ba15f81809a2efce6e67",
+    "createdAt": "2018-10-20T15:21:55.119253+09:00"
+    }
   }
 }
 ```
 
-ORDER_CANCELED (engine -> client)
 
-To report an order has been successfully cancelled, the matching engine sends
-back an ORDER_CANCELED message.
+## CANCEL_ORDER MESSAGE (client --> server)
 
-Payload:
-```
+The general format of the CANCEL_ORDER message is the following:
+
+```json
 {
-  "order": {
-    "id": [Number],
-    "exchangeAddress": [String],
-    "maker": [String],
-    "tokenBuy": [String],
-    "tokenSell": [String],
-    "amountBuy": [String],
-    "amountSell": [String],
-    "expires": [String],
-    "nonce": [String],
-    "feeMake": [String],
-    "feeTake": [String],
-    "signature": {
-      "R": [Number],
-      "S": [String],
-      "V": [String]
-    },
-    "pairID": [String],
-    "hash": [String]
+  "channel": "orders",
+  "event": {
+    "type": "CANCEL_ORDER",
+    "hash": <hash>, # will get deprecated i think
+    "payload": {
+      "hash": <hash>,
+      "orderHash": <orderHash>,
+      "signature": <signature>,
+    }
   }
 }
 ```
 
-ORDER_FILLED (engine -> client)
+where:
 
-To report an order has been successfully filled, the matching engine sends
-an ORDER_FILLED message to the client. The client needs to follow-up by
-signing the given "makerOrder" and return it in a SIGNED_DATA message
+* \<orderhash> is the hash of the order that needs to be canceled
+* \<hash> is a hash of the orderHash
+* \<signature> is a signature of the previous \<hash> by the private key that was used to sign \<orderHash>
 
-Payload:
-```
+Example:
+
+```json
 {
-  "makerOrder": {
-    "id": [Number],
-    "exchangeAddress": [String],
-    "maker": [String],
-    "tokenBuy": [String],
-    "tokenSell": [String],
-    "amountBuy": [String],
-    "amountSell": [String],
-    "expires": [String],
-    "nonce": [String],
-    "feeMake": [String],
-    "feeTake": [String],
-    "signature": {
-      "R": [Number],
-      "S": [String],
-      "V": [String]
-    },
-    "pairID": [String],
-    "hash": [String]
-  },
-  "takerOrder": {
-    "id": [Number],
-    "exchangeAddress": [String],
-    "maker": [String],
-    "tokenBuy": [String],
-    "tokenSell": [String],
-    "amountBuy": [String],
-    "amountSell": [String],
-    "expires": [String],
-    "nonce": [String],
-    "feeMake": [String],
-    "feeTake": [String],
-    "signature": {
-      "R": [Number],
-      "S": [String],
-      "V": [String]
-    },
-    "pairID": [String],
-    "hash": [String]
+  "channel": "orders",
+  "event": {
+    "type": "CANCEL_ORDER",
+    "hash": "0xd3cad812e8a15d0efedb11187d14e82f4ec190df455844583b8844dbc2e068b2",
+    "payload": {
+      "hash": "0xd3cad812e8a15d0efedb11187d14e82f4ec190df455844583b8844dbc2e068b2",
+      "orderHash": "0xb958a32836f4ca15c93c0e54a22e83b384dc7ec899c6b66952195f12b0ed5708",
+      "signature": {
+        "R": "0x584391c40d49fedd7760ba2d1becc960ceb8a220f1c93156198fe6d18d31db02",
+        "S": "0x34a5775f8a0ef32ea0fea8158975203c74b0646e1f37b27fc640ec902290ceca",
+        "V": 27
+      }
+    }
   }
 }
 ```
 
-ORDER_PARTIALLY_FILLED (engine -> client)
 
-To report an order has been partially filled, the matching engine sends an
-ORDER_PARTIALLY_FILLED message to the client. The client needs to follow-up
-by signing the given "takerOrder" and return it in a SIGNED_DATA message
 
-Payload:
-```
+## ORDER_CANCELLED_MESSAGE (client --> server)
+
+The general format of the order cancelled message is the following:
+
+```json
 {
-  "makerOrder": {
-    "id": [Number],
-    "exchangeAddress": [String],
-    "maker": [String],
-    "tokenBuy": [String],
-    "tokenSell": [String],
-    "amountBuy": [String],
-    "amountSell": [String],
-    "expires": [String],
-    "nonce": [String],
-    "feeMake": [String],
-    "feeTake": [String],
-    "signature": {
-      "R": [Number],
-      "S": [String],
-      "V": [String]
-    },
-    "pairID": [String],
-    "hash": [String]
-  },
-  "takerOrder": {
-    "id": [Number],
-    "exchangeAddress": [String],
-    "maker": [String],
-    "tokenBuy": [String],
-    "tokenSell": [String],
-    "amountBuy": [String],
-    "amountSell": [String],
-    "expires": [String],
-    "nonce": [String],
-    "feeMake": [String],
-    "feeTake": [String],
-    "signature": {
-      "R": [Number],
-      "S": [String],
-      "V": [String]
-    },
-    "pairID": [String],
-    "hash": [String]
+  "channel": "orders",
+  "event": {
+    "type": "ORDER_CANCELLED",
+    "hash": "0xd3cad812e8a15d0efedb11187d14e82f4ec190df455844583b8844dbc2e068b2",
+    "payload": <order>,
   }
 }
 ```
 
-Note: This is currently not completely implemeted I believe.
-
-ORDER_EXECUTED (engine -> client)
-
-The order executed message is sent by the server to the maker client
-when a (order/trade) pair is sent the exchange smart contract. This does not mean that the transaction is sucessful but merely that a transaction has been sent.
-
-Payload:
-```
+## Example:
+```json
 {
-  "order": {
-    "id": [Number],
-    "exchangeAddress": [String],
-    "maker": [String],
-    "tokenBuy": [String],
-    "tokenSell": [String],
-    "amountBuy": [String],
-    "amountSell": [String],
-    "expires": [String],
-    "nonce": [String],
-    "feeMake": [String],
-    "feeTake": [String],
-    "signature": {
-      "R": [Number],
-      "S": [String],
-      "V": [String]
-    },
-    "pairID": [String],
-    "hash": [String]
-  },
-  "tx": [String]
-}
-```
-TRADE_EXECUTED: (engine -> client)
-
-The TRADE_EXECUTED message is sent by the server to the taker client
-when a (order/trade) pair is sent the exchange smart contract. This does not mean that the transaction is sucessful but merely that a transaction has been sent.
-
-Payload:
-```
-{
-  "order": {
-    "id": [Number],
-    "exchangeAddress": [String],
-    "maker": [String],
-    "tokenBuy": [String],
-    "tokenSell": [String],
-    "amountBuy": [String],
-    "amountSell": [String],
-    "expires": [String],
-    "nonce": [String],
-    "feeMake": [String],
-    "feeTake": [String],
-    "signature": {
-      "R": [Number],
-      "S": [String],
-      "V": [String]
-    },
-    "pairID": [String],
-    "hash": [String],
-  },
-  "trade": {
-    "orderHash": [String],
-    "amount": [Number],
-    "tradeNonce": [String],
-    "taker": [String],
-    "signature": {
-      "R": [Number],
-      "S": [String],
-      "V": [String]
-    },
-    "hash": [String],
-    "pairID": [String]
-  },
-  "tx":
-}
-```
-ORDER_TX_SUCCESS / TRADE_TX_SUCCESS (engine -> client)
-
-The ORDER_TX_SUCCESS and TRADE_TX_SUCCESS messages are sent by the server respectively to the maker client and to the taker client when a trade has been successfully executed on the exchange smart-contract.
-
-Payload:
-```
-{
-  "order": {
-    "id": [Number],
-    "exchangeAddress": [String],
-    "maker": [String],
-    "tokenBuy": [String],
-    "tokenSell": [String],
-    "amountBuy": [String],
-    "amountSell": [String],
-    "expires": [String],
-    "nonce": [String],
-    "feeMake": [String],
-    "feeTake": [String],
-    "signature": {
-      "R": [Number],
-      "S": [String],
-      "V": [String]
-    },
-    "pairID": [String],
-    "hash": [String],
-  },
-  "trade": {
-    "orderHash": [String],
-    "amount": [Number],
-    "tradeNonce": [String],
-    "taker": [String],
-    "signature": {
-      "R": [Number],
-      "S": [String],
-      "V": [String]
-    },
-    "hash": [String],
-    "pairID": [String]
-  },
-  "tx":
+  "channel": "orders",
+  "event": {
+    "type": "ORDER_CANCELLED",
+    "hash": "0xd3cad812e8a15d0efedb11187d14e82f4ec190df455844583b8844dbc2e068b2",
+    "payload": {
+      "exchangeAddress": "0x44e5a8cc74c389e805daa84993bacc2b833e13f0",
+      "userAddress": "0xcf7389dc6c63637598402907d5431160ec8972a5",
+      "makeFee": "0",
+      "takeFee": "0",
+      "nonce": "7740163281176971",
+      "side": "SELL",
+      "status": "CANCELLED",
+      "amount": "1000000000000000000",
+      "filledAmount": "0",
+      "hash": "0xb958a32836f4ca15c93c0e54a22e83b384dc7ec899c6b66952195f12b0ed5708",
+      "pricepoint": "1000000",
+      "pairName": "FUN/WETH",
+      "quoteToken": "0x17b4e8b709ca82abf89e172366b151c72df9c62e",
+      "baseToken": "0x546d3b3d69e30859f4f3ba15f81809a2efce6e67",
+      "signature": {,
+        "R": "0x1106adc21f1d85e37d245df4808c683b2dad7970f6e831c96d2c91c886281a9d",
+        "S": "0x43dbfbb4c2c7cfcb2afadc3abd63854449eaad9e9d306981fad9bcd46dce0d0b",
+        "V": 27,
+      },
+    }
 }
 ```
 
-ORDER_TX_ERROR / TRADE_TX_ERROR (engine -> client)
 
-The ORDER_TX_ERROR and TRADE_TX_ERROR messages are sent by the server respectively to the maker client and to the taker client when trade blockchain transaction fails after being sent to the exchange smart contract.
+## REQUEST_SIGNATURE MESSAGE (server --> client)
 
-Payload:
-```
+The general format of the request signature message is the following:
+
+```json
 {
-  "order": {
-    "id": [Number],
-    "exchangeAddress": [String],
-    "maker": [String],
-    "tokenBuy": [String],
-    "tokenSell": [String],
-    "amountBuy": [String],
-    "amountSell": [String],
-    "expires": [String],
-    "nonce": [String],
-    "feeMake": [String],
-    "feeTake": [String],
-    "signature": {
-      "R": [Number],
-      "S": [String],
-      "V": [String]
-    },
-    "pairID": [String],
-    "hash": [String],
-  },
-  "trade": {
-    "orderHash": [String],
-    "amount": [Number],
-    "tradeNonce": [String],
-    "taker": [String],
-    "signature": {
-      "R": [Number],
-      "S": [String],
-      "V": [String]
-    },
-    "hash": [String],
-    "pairID": [String]
-  },
-  "tx":
+  "channel": "orders",
+  "event": {
+    "type": "SUBMIT_SIGNATURE",
+    "hash": <orderHash>,
+    "payload": {
+      "order": <order>,
+      "remainingOrder": <remainingOrder>,
+      "matches": [
+        {
+          "order": <order>,
+          "trade": <trade>
+        },
+        {
+          "order": <order>,
+          "trade": <trade>
+        },
+        ...
+      ]
+    }
+  }
+}
+
+```
+
+where:
+
+* \<orderhash> is the order hash of the initially sent order (also the hash of in the REQUEST_SIGNATURE message)
+
+* \<order> is the signed order given in the REQUEST_SIGNATURE message. It is the order that was initially made by the user (with additional fields such as `createdAt` or `filledAmount` added by the matching engine)
+
+* \<remainingOrder> is a signed order that represents a new order that has to be signed by the user in case his initial order was a "taker" order and was a partial match. Indeed, in order for an order to be accepted by the exchange smart contract, the order data needs to be signed. In case of a partial match, the remaining order comes with a new amount meaning the order has to be resigned by the sender.
+
+* `matches` contains an array of { order, trade } objects that have been matched.
+
+
+## SUBMIT_SIGNATURE MESSAGE (client --> server)
+
+The general format of the submit signature messages is the following:
+
+```json
+{
+  "channel": "orders",
+  "event": {
+    "type": "SUBMIT_SIGNATURE",
+    "hash": <orderHash>,
+    "payload": {
+      "order": <order>,
+      "remainingOrder": <remainingOrder>,
+      "matches": [
+        {
+          "order": <order>,
+          "trade": <trade>
+        },
+        {
+          "order": <order>,
+          "trade": <trade>
+        },
+        ...
+      ]
+    }
+  }
+}
+
+```
+
+where:
+
+* \<orderhash> is the order hash of the initially sent order (also the hash of in the REQUEST_SIGNATURE message)
+
+* \<order> is the signed order given in the REQUEST_SIGNATURE message. It is the order that was initially made by the user (with additional fields such as `createdAt` or `filledAmount` added by the matching engine).
+
+* \<remainingOrder> is a signed order that represents a new order that has to be signed by the user in case his initial order was a "taker" order and was a partial match. Indeed, in order for an order to be accepted by the exchange smart contract, the order data needs to be signed. In case of a partial match, the remaining order comes with a new amount meaning the order has to be resigned by the sender. The remaining order needs to be signed by the client
+
+* `matches` contains an array of { order, trade } objects that have been matched. Each trade needs to be signed by the original client that made the request.
+
+
+### Example:
+
+```json
+{
+  "channel": "orders",
+  "event": {
+    "type": "SUBMIT_SIGNATURE",
+    "hash": "0x70034a326ab444412ae57b84dd30b0566c3a86e3cba15717d319847429444d12",
+    "payload": {
+        "order": {
+          "exchangeAddress": "0x44e5a8cc74c389e805daa84993bacc2b833e13f0",
+          "userAddress": "0xcf7389dc6c63637598402907d5431160ec8972a5",
+          "baseToken": "0x546d3b3d69e30859f4f3ba15f81809a2efce6e67",
+          "quoteToken": "0x17b4e8b709ca82abf89e172366b151c72df9c62e",
+          "hash": "0x70034a326ab444412ae57b84dd30b0566c3a86e3cba15717d319847429444d12",
+          "makeFee": "0",
+          "takeFee": "0",
+
+          "nonce": "3426223084368067",
+          "createdAt": "2018-10-20T14:48:27.619218+09:00",
+          "amount": "1000000000000000000",
+          "filledAmount": "1000000000000000000",
+          "side": "BUY",
+          "status": "FILLED",
+          "pairName": "FUN/WETH",
+          "pricepoint": "1000000",
+          "signature": {
+            "R": "0x14f9f97a43df77b79e79fa0af2ccfc8798be6ab2fa1f4468f92f99ed3542c1b9",
+            "S": "0x78b035c950f5cb54a58ca54961f82a8c301027693f50272ea0f178b55891f8fc",
+            "V": 28
+          },
+          "baseToken": "0x546d3b3d69e30859f4f3ba15f81809a2efce6e67",
+          "quoteToken": "0x17b4e8b709ca82abf89e172366b151c72df9c62e",
+      },
+      "matches": [
+        {
+          "order": {
+            "exchangeAddress": "0x44e5a8cc74c389e805daa84993bacc2b833e13f0",
+            "userAddress": "0xcf7389dc6c63637598402907d5431160ec8972a5",
+            "baseToken": "0x17b4e8b709ca82abf89e172366b151c72df9c62e",
+            "quoteToken": "0x546d3b3d69e30859f4f3ba15f81809a2efce6e67",
+            "hash": "0x4c6b45c7b8d9df7a2f2f07521b545b22d075a6eb28cc2a849bb441ae5b91fe6c",
+            "makeFee": "0",
+            "takeFee": "0",
+
+            "nonce": "6155556364519545",
+            "createdAt": "2018-10-20T02:57:51.287+09:00",
+            "amount": "1000000000000000000",
+            "filledAmount": "1000000000000000000",
+            "side": "SELL",
+            "status": "FILLED",
+            "pairName": "FUN/WETH",
+            "pricepoint": "900000",
+            "signature": {
+              "R": "0x0796313b59449ca056244d63089a6c7043bfe7c1eebd69f9a6374ae9975b206e",
+              "S": "0x587b5f42ec0007ae07851c24d489cb9d5024a02d0c91a6066d135f451fa074da",
+              "V": 28
+            },
+          },
+          "trade": {
+            "maker": "0xcf7389dc6c63637598402907d5431160ec8972a5",
+            "taker": "0xcf7389dc6c63637598402907d5431160ec8972a5",
+            "baseToken": "0x546d3B3d69E30859f4F3bA15F81809a2efCE6e67",
+            "quoteToken": "0x17b4E8B709ca82ABF89E172366b151c72DF9C62E",
+            "amount": "1000000000000000000",
+            "pricepoint": "1000000",
+            "createdAt": "0001-01-01T00:00:00Z",
+            "hash": "0xc7506b0c3316305cbdcf9d2135610550eff1a2c010f33a3a20e84fe5535c17a9",
+            "makerOrderHash": "0x4c6b45c7b8d9df7a2f2f07521b545b22d075a6eb28cc2a849bb441ae5b91fe6c",
+            "takerOrderHash": "0x70034a326ab444412ae57b84dd30b0566c3a86e3cba15717d319847429444d12",
+            "pairName": "FUN/WETH",
+            "side": "BUY",
+            "signature": {
+              "R": "0xcc881329d253de13a9a7b9c7c48d381954038e9899099d4453a858d7799db7e1",
+              "S": "0x55a78923f7d6d7cf4d0e06e2bfbc511d87dbfdfa58cad51de8882b99e5da0976",
+              "V": 27
+            },
+          }
+        }
+      ]
+    }
+  }
 }
 ```
-Note: errorId will be renamed to errorID
+
+
+
+## ORDER PENDING MESSAGE (server --> client)
+
+The general format of the submit signature messages is the following:
+
+```
+{
+  "channel": "orders",
+  "event": {
+    "type": "ORDER_PENDING",
+    "hash": <order hash>
+    "payload": {
+      "order": <order>,
+      "matches": [
+        {
+          "order": <order>,
+          "trade": <trade>
+        },
+        {
+          "order": <order>,
+          "trade": <trade>
+        },
+        ...
+      ]
+    }
+  }
+}
+
+```
+
+where
+
+* \<order> is the order that was initially sent by the user/client
+* `matches` is an array of all orders that are being matched
+
+This message can be used by the client to get updated information on each order such as the order status or simply
+to confirm that this order was indeed been sent to the transaction queue
+
+
+
+## ORDER SUCCESS MESSAGE (server --> client)
+
+The order success message indicates that the order was successful and correctly executed on the Ethereum chain.
+
+The general format of the order success message is the following:
+
+```json
+{
+  "channel": "orders",
+  "event": {
+    "type": "ORDER_PENDING",
+    "hash": <order hash>
+    "payload": {
+      "order": <order>,
+      "matches": [
+        {
+          "order": <order>,
+          "trade": <trade>
+        },
+        {
+          "order": <order>,
+          "trade": <trade>
+        },
+        ...
+      ]
+    }
+  }
+}
+
+```
+
+It is identical to the order success message except that order statuses are different.
+This means that the trade transaction was successful.
+
+
+
+## ORDER ERROR MESSAGE (server --> client)
+
+The ORDER_ERROR message indicates that a trade transaction was sent to the blockchain but was rejected.
+
+```json
+{
+  "channel": "orders",
+  "event": {
+    "type": "ORDER_ERROR",
+    "hash": <orderhash>,
+    "payload": {
+      "order": <order>,
+      "matches": [
+        {
+          "order": <order>,
+          "trade": <trade>
+        },
+        {
+          "order": <order>,
+          "trade": <trade>
+        },
+        ...
+      ]
+    }
+  }
+}
+
+```
+
+
+It is identical to the order successs message exect that order statuses are different.
+The client should usually not receive this message and it can be interpreted as an 'internal server error' (bug in the system rather than a malformed payload or client error)
+
+
+
+# Raw Orderbook Channel
+
+## Message:
+* SUBSCRIBE (client --> server)
+* UNSUBSCRIBE (client --> server)
+* INIT (server --> client)
+* UPDATE (server --> client)
+
+
+## SUBSCRIBE_RAW_ORDERBOOK MESSAGE (client --> server)
+
+```json
+{
+  "channel": "raw_orderbook",
+  "event": {
+    "type": "SUBSCRIBE",
+    "payload": {
+      "baseToken": <address>,
+      "quoteToken": <address>,
+      "name": <baseTokenSymbol>/<quoteTokenSymbol>,
+    }
+  }
+}
+```
+
+### Example:
+
+```json
+{
+  "channel": "raw_orderbook",
+  "event": {
+    "type": "SUBSCRIBE",
+    "payload": {
+      "baseToken": "0x546d3B3d69E30859f4F3bA15F81809a2efCE6e67",
+      "quoteToken": "0x17b4E8B709ca82ABF89E172366b151c72DF9C62E"
+      "name": "FUN/WETH",
+    }
+  }
+}
+```
+
+## UNSUBSRIBE MESSAGE (client --> server)
+
+```json
+{
+  "channel": "raw_orderbook",
+  "event": {
+    "type": "UNSUBSCRIBE",
+  }
+}
+```
+
+
+## INIT MESSAGE (server --> client)
+
+The general format of the INIT message is the following:
+
+```json
+{
+  "channel": "raw_orderbook",
+  "event": {
+    "type": "INIT",
+    "payload": [
+      <order>,
+      <order>,
+      <order>
+    ]
+  }
+}
+```
+
+## UPDATE MESSAGE (server --> client)
+
+The general format of the update message is the following:
+
+```json
+{
+  "channel": "raw_orderbook",
+  "event": {
+    "type": "INIT",
+    "payload": [
+      <order>,
+      <order>,
+      <order>
+    ]
+  }
+}
+```

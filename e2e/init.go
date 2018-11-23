@@ -18,7 +18,6 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/ethereum"
 	"github.com/Proofsuite/amp-matching-engine/operator"
 	"github.com/Proofsuite/amp-matching-engine/rabbitmq"
-	"github.com/Proofsuite/amp-matching-engine/redis"
 	"github.com/Proofsuite/amp-matching-engine/services"
 	"github.com/ethereum/go-ethereum/common"
 	routing "github.com/go-ozzo/ozzo-routing"
@@ -64,9 +63,7 @@ func Init(t *testing.T) {
 
 func NewRouter() *mux.Router {
 	provider := ethereum.NewWebsocketProvider()
-	rabbitConn := rabbitmq.InitConnection(app.Config.Rabbitmq)
-	redisConn := redis.NewRedisConnection(app.Config.Redis)
-	redisConn.FlushAll()
+	rabbitConn := rabbitmq.InitConnection(app.Config.RabbitMQURL)
 
 	r := mux.NewRouter()
 
@@ -79,7 +76,7 @@ func NewRouter() *mux.Router {
 	walletDao := daos.NewWalletDao()
 
 	// instantiate engine
-	eng := engine.NewEngine(redisConn, rabbitConn, pairDao)
+	eng := engine.NewEngine(rabbitConn, pairDao)
 
 	// get services for injection
 	accountService := services.NewAccountService(accountDao, tokenDao)

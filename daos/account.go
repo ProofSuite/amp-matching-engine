@@ -37,18 +37,39 @@ func NewAccountDao() *AccountDao {
 }
 
 // Create function performs the DB insertion task for Balance collection
-func (dao *AccountDao) Create(account *types.Account) error {
-	account.ID = bson.NewObjectId()
-	account.CreatedAt = time.Now()
-	account.UpdatedAt = time.Now()
+func (dao *AccountDao) Create(a *types.Account) error {
+	a.ID = bson.NewObjectId()
+	a.CreatedAt = time.Now()
+	a.UpdatedAt = time.Now()
 
-	err := db.Create(dao.dbName, dao.collectionName, account)
+	err := db.Create(dao.dbName, dao.collectionName, a)
 	if err != nil {
 		logger.Error(err)
 		return err
 	}
 
 	return nil
+}
+
+func (dao *AccountDao) FindOrCreate(addr common.Address) (*types.Account, error) {
+	a := &types.Account{Address: addr}
+	query := bson.M{"address": addr.Hex()}
+	updated := &types.Account{}
+
+	change := mgo.Change{
+		Update:    types.AccountBSONUpdate{a},
+		Upsert:    true,
+		Remove:    false,
+		ReturnNew: true,
+	}
+
+	err := db.FindAndModify(dao.dbName, dao.collectionName, query, change, &updated)
+	if err != nil {
+		logger.Error(err)
+		return nil, err
+	}
+
+	return updated, nil
 }
 
 func (dao *AccountDao) GetAll() (res []types.Account, err error) {

@@ -1,6 +1,8 @@
 package math
 
-import "math/big"
+import (
+	"math/big"
+)
 
 func Mul(x, y *big.Int) *big.Int {
 	return big.NewInt(0).Mul(x, y)
@@ -28,6 +30,27 @@ func ToBigInt(s string) *big.Int {
 	return res
 }
 
+func Exp(x, y *big.Int) *big.Int {
+	return big.NewInt(0).Exp(x, y, nil)
+}
+
+func BigIntToBigFloat(a *big.Int) *big.Float {
+	b := new(big.Float).SetInt(a)
+	return b
+}
+
+func ToDecimal(value *big.Int) float64 {
+	bigFloatValue := BigIntToBigFloat(value)
+	result := DivFloat(bigFloatValue, big.NewFloat(1e18))
+
+	floatValue, _ := result.Float64()
+	return floatValue
+}
+
+func DivFloat(x, y *big.Float) *big.Float {
+	return big.NewFloat(0).Quo(x, y)
+}
+
 func Max(a, b *big.Int) *big.Int {
 	if a.Cmp(b) == 1 {
 		return a
@@ -53,6 +76,14 @@ func IsEqual(x, y *big.Int) bool {
 }
 
 func IsGreaterThan(x, y *big.Int) bool {
+	if x.Cmp(y) == 1 || x.Cmp(y) == 0 {
+		return true
+	} else {
+		return false
+	}
+}
+
+func IsStrictlyGreaterThan(x, y *big.Int) bool {
 	if x.Cmp(y) == 1 {
 		return true
 	} else {
@@ -61,6 +92,14 @@ func IsGreaterThan(x, y *big.Int) bool {
 }
 
 func IsSmallerThan(x, y *big.Int) bool {
+	if x.Cmp(y) == -1 || x.Cmp(y) == 0 {
+		return true
+	} else {
+		return false
+	}
+}
+
+func IsStrictlySmallerThan(x, y *big.Int) bool {
 	if x.Cmp(y) == -1 {
 		return true
 	} else {

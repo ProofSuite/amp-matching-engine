@@ -10,22 +10,65 @@ import (
 	"gopkg.in/mgo.v2/dbtest"
 )
 
-func CompareOrder(t *testing.T, a, b *types.Order) {
-	assert.Equal(t, a.ID, b.ID)
+func CompareEngineResponse(t *testing.T, a, b *types.EngineResponse) {
+	assert.Equal(t, a.Status, b.Status)
+
+	if a.Order != nil && b.Order != nil {
+		assert.NotNil(t, a.Order)
+		assert.NotNil(t, b.Order)
+		CompareOrder(t, a.Order, b.Order)
+	}
+
+	if a.Matches != nil && b.Matches != nil {
+		assert.NotNil(t, a.Matches)
+		assert.NotNil(t, b.Matches)
+		CompareMatches(t, a.Matches, b.Matches)
+	}
+}
+
+func CompareMatches(t *testing.T, a, b *types.Matches) {
+	if a != nil && b != nil {
+		assert.NotNil(t, a)
+		assert.NotNil(t, b)
+
+		for i, _ := range a.MakerOrders {
+			ComparePublicOrder(t, a.MakerOrders[i], b.MakerOrders[i])
+		}
+
+		ComparePublicOrder(t, a.TakerOrder, b.TakerOrder)
+
+		for i, _ := range a.Trades {
+			ComparePublicTrade(t, a.Trades[i], b.Trades[i])
+		}
+	}
+}
+
+func ComparePublicOrder(t *testing.T, a, b *types.Order) {
 	assert.Equal(t, a.UserAddress, b.UserAddress)
 	assert.Equal(t, a.ExchangeAddress, b.ExchangeAddress)
-	assert.Equal(t, a.BuyToken, b.BuyToken)
-	assert.Equal(t, a.SellToken, b.SellToken)
-	assert.Equal(t, a.BaseToken, b.BaseToken)
-	assert.Equal(t, a.BuyAmount, b.BuyAmount)
-	assert.Equal(t, a.SellAmount, b.SellAmount)
 	assert.Equal(t, a.PricePoint, b.PricePoint)
 	assert.Equal(t, a.Amount, b.Amount)
 	assert.Equal(t, a.FilledAmount, b.FilledAmount)
 	assert.Equal(t, a.Status, b.Status)
 	assert.Equal(t, a.Side, b.Side)
 	assert.Equal(t, a.PairName, b.PairName)
-	assert.Equal(t, a.Expires, b.Expires)
+	assert.Equal(t, a.MakeFee, b.MakeFee)
+	assert.Equal(t, a.Nonce, b.Nonce)
+	assert.Equal(t, a.TakeFee, b.TakeFee)
+	assert.Equal(t, a.Signature, b.Signature)
+	assert.Equal(t, a.Hash, b.Hash)
+}
+
+func CompareOrder(t *testing.T, a, b *types.Order) {
+	assert.Equal(t, a.ID, b.ID)
+	assert.Equal(t, a.UserAddress, b.UserAddress)
+	assert.Equal(t, a.ExchangeAddress, b.ExchangeAddress)
+	assert.Equal(t, a.PricePoint, b.PricePoint)
+	assert.Equal(t, a.Amount, b.Amount)
+	assert.Equal(t, a.FilledAmount, b.FilledAmount)
+	assert.Equal(t, a.Status, b.Status)
+	assert.Equal(t, a.Side, b.Side)
+	assert.Equal(t, a.PairName, b.PairName)
 	assert.Equal(t, a.MakeFee, b.MakeFee)
 	assert.Equal(t, a.Nonce, b.Nonce)
 	assert.Equal(t, a.TakeFee, b.TakeFee)
@@ -60,14 +103,26 @@ func CompareTrade(t *testing.T, a, b *types.Trade) {
 	assert.Equal(t, a.Taker, b.Taker)
 	assert.Equal(t, a.BaseToken, b.BaseToken)
 	assert.Equal(t, a.QuoteToken, b.QuoteToken)
-	assert.Equal(t, a.OrderHash, b.OrderHash)
+	assert.Equal(t, a.MakerOrderHash, b.MakerOrderHash)
+	assert.Equal(t, a.TakerOrderHash, b.TakerOrderHash)
 	assert.Equal(t, a.Hash, b.Hash)
+	assert.Equal(t, a.PricePoint, b.PricePoint)
 	assert.Equal(t, a.PairName, b.PairName)
-	assert.Equal(t, a.TradeNonce, b.TradeNonce)
-	assert.Equal(t, a.Signature, b.Signature)
 	assert.Equal(t, a.TxHash, b.TxHash)
+	assert.Equal(t, a.Amount, b.Amount)
+}
 
-	assert.Equal(t, a.Side, b.Side)
+func ComparePublicTrade(t *testing.T, a, b *types.Trade) {
+	assert.Equal(t, a.Maker, b.Maker)
+	assert.Equal(t, a.Taker, b.Taker)
+	assert.Equal(t, a.BaseToken, b.BaseToken)
+	assert.Equal(t, a.QuoteToken, b.QuoteToken)
+	assert.Equal(t, a.MakerOrderHash, b.MakerOrderHash)
+	assert.Equal(t, a.TakerOrderHash, b.TakerOrderHash)
+	assert.Equal(t, a.Hash, b.Hash)
+	assert.Equal(t, a.PricePoint, b.PricePoint)
+	assert.Equal(t, a.PairName, b.PairName)
+	assert.Equal(t, a.TxHash, b.TxHash)
 	assert.Equal(t, a.Amount, b.Amount)
 }
 

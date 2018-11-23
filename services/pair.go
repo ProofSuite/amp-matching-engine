@@ -32,7 +32,7 @@ func NewPairService(
 // Create function is responsible for inserting new pair in DB.
 // It checks for existence of tokens in DB first
 func (s *PairService) Create(pair *types.Pair) error {
-	p, err := s.pairDao.GetByBuySellTokenAddress(pair.BaseTokenAddress, pair.QuoteTokenAddress)
+	p, err := s.pairDao.GetByTokenAddress(pair.BaseTokenAddress, pair.QuoteTokenAddress)
 	if err != nil {
 		return err
 	}
@@ -65,10 +65,10 @@ func (s *PairService) Create(pair *types.Pair) error {
 
 	pair.QuoteTokenSymbol = st.Symbol
 	pair.QuoteTokenAddress = st.ContractAddress
-	pair.QuoteTokenDecimal = st.Decimal
+	pair.QuoteTokenDecimals = st.Decimals
 	pair.BaseTokenSymbol = bt.Symbol
 	pair.BaseTokenAddress = bt.ContractAddress
-	pair.BaseTokenDecimal = bt.Decimal
+	pair.BaseTokenDecimals = bt.Decimals
 	err = s.pairDao.Create(pair)
 	if err != nil {
 		return err
@@ -142,6 +142,11 @@ func (s *PairService) GetAllTokenPairData() ([]*types.Tick, error) {
 	start := time.Unix(now.AddDate(0, 0, -7).Unix(), 0)
 	one, _ := bson.ParseDecimal128("1")
 
+	pairs, err := s.pairDao.GetActivePairs()
+	if err != nil {
+		return nil, err
+	}
+
 	q := []bson.M{
 		bson.M{
 			"$match": bson.M{
@@ -169,10 +174,24 @@ func (s *PairService) GetAllTokenPairData() ([]*types.Tick, error) {
 		},
 	}
 
-	res, err := s.tradeDao.Aggregate(q)
+	ticks, err := s.tradeDao.Aggregate(q)
 	if err != nil {
 		return nil, err
 	}
 
-	return res, nil
+	pairsData := []*types.Tick{}
+
+	for _, p := range pairs {
+		pairData := &types.Tick{Pair: types.PairID{p.Name(), p.BaseTokenAddress, p.QuoteTokenAddress}}
+		for _, tick := range ticks {
+			if tick.AddressCode() == p.AddressCode() {
+				pairData = tick
+				break
+			}
+		}
+
+		pairsData = append(pairsData, pairData)
+	}
+
+	return pairsData, nil
 }

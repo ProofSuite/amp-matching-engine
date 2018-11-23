@@ -24,41 +24,41 @@ package engine
 // Values: serialized order
 
 import (
-	"encoding/json"
 	"math/big"
 	"sync"
 
+	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/Proofsuite/amp-matching-engine/rabbitmq"
-	"github.com/Proofsuite/amp-matching-engine/redis"
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/Proofsuite/amp-matching-engine/utils/math"
 	"github.com/ethereum/go-ethereum/common"
 )
 
 type OrderBook struct {
-	redisConn    *redis.RedisConnection
 	rabbitMQConn *rabbitmq.Connection
+	orderDao     interfaces.OrderDao
+	tradeDao     interfaces.TradeDao
 	pair         *types.Pair
 	mutex        *sync.Mutex
 }
 
 // newOrder calls buyOrder/sellOrder based on type of order recieved and
 // publishes the response back to rabbitmq
-func (ob *OrderBook) newOrder(o *types.Order, hashID common.Hash) (err error) {
+func (ob *OrderBook) newOrder(o *types.Order) (err error) {
 	// Attain lock on engineResource, so that recovery or cancel order function doesn't interfere
 	ob.mutex.Lock()
 	defer ob.mutex.Unlock()
 
-	resp := &types.EngineResponse{}
+	res := &types.EngineResponse{}
 	if o.Side == "SELL" {
-		resp, err = ob.sellOrder(o)
+		res, err = ob.sellOrder(o)
 		if err != nil {
 			logger.Error(err)
 			return err
 		}
 
 	} else if o.Side == "BUY" {
-		resp, err = ob.buyOrder(o)
+		res, err = ob.buyOrder(o)
 		if err != nil {
 			logger.Error(err)
 			return err
@@ -66,9 +66,23 @@ func (ob *OrderBook) newOrder(o *types.Order, hashID common.Hash) (err error) {
 	}
 
 	// Note: Plug the option for orders like FOC, Limit here (if needed)
-	resp.HashID = hashID
-	err = ob.rabbitMQConn.PublishEngineResponse(resp)
+	err = ob.rabbitMQConn.PublishEngineResponse(res)
 	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	return nil
+}
+
+func (ob *OrderBook) addOrder(o *types.Order) error {
+	if o.FilledAmount == nil || math.IsZero(o.FilledAmount) {
+		o.Status = "OPEN"
+	}
+
+	_, err := ob.orderDao.FindAndModify(o.Hash, o)
+	if err != nil {
+		// we add this condition in the case an order is re-run through the orderbook (in case of invalid counterpart order for example)
 		logger.Error(err)
 		return err
 	}
@@ -81,75 +95,62 @@ func (ob *OrderBook) newOrder(o *types.Order, hashID common.Hash) (err error) {
 // or not, if there are pricepoints that can satisfy the order then corresponding list of orders
 // are fetched and trade is executed
 func (ob *OrderBook) buyOrder(o *types.Order) (*types.EngineResponse, error) {
-	res := &types.EngineResponse{
-		Order:  o,
-		Status: "NOMATCH",
-	}
-
+	res := &types.EngineResponse{}
 	remainingOrder := *o
-	res.RemainingOrder = &remainingOrder
-	oskv := o.GetOBMatchKey()
 
-	// GET Range of sellOrder between minimum Sell order and o.Price
-	pps, err := ob.GetMatchingBuyPricePoints(oskv, o.PricePoint.Int64())
+	matchingOrders, err := ob.orderDao.GetMatchingSellOrders(o)
 	if err != nil {
 		logger.Error(err)
 		return nil, err
 	}
 
-	if len(pps) == 0 {
-		o.Status = "OPEN"
-		res.Status = "NOMATCH"
-		res.RemainingOrder = nil
+	// case where no order is matched
+	if len(matchingOrders) == 0 {
 		ob.addOrder(o)
+		res.Status = "ORDER_ADDED"
+		res.Order = o
 		return res, nil
 	}
 
-	for _, pp := range pps {
-		entries, err := ob.GetMatchingOrders(oskv, pp)
+	matches := types.Matches{TakerOrder: o}
+	for _, mo := range matchingOrders {
+		trade, err := ob.execute(o, mo)
 		if err != nil {
 			logger.Error(err)
 			return nil, err
 		}
 
-		for _, bookEntry := range entries {
-			entry := &types.Order{}
-			err = json.Unmarshal(bookEntry, &entry)
-			if err != nil {
-				return nil, err
-			}
+		matches.AppendMatch(mo, trade)
+		remainingOrder.Amount = math.Sub(remainingOrder.Amount, trade.Amount)
 
-			trade, err := ob.execute(o, entry)
+		if math.IsZero(remainingOrder.Amount) {
+			o.FilledAmount = o.Amount
+			o.Status = "FILLED"
+
+			_, err := ob.orderDao.FindAndModify(o.Hash, o)
 			if err != nil {
 				logger.Error(err)
 				return nil, err
 			}
 
-			match := &types.OrderTradePair{entry, trade}
-			res.Matches = append(res.Matches, match)
-			res.RemainingOrder.Amount = math.Sub(res.RemainingOrder.Amount, trade.Amount)
-
-			if math.IsZero(res.RemainingOrder.Amount) {
-				res.Status = "FULL"
-				res.Order.Status = "FILLED"
-				res.RemainingOrder = nil
-				return res, nil
-			}
+			res.Status = "ORDER_FILLED"
+			res.Order = o
+			res.Matches = &matches
+			return res, nil
 		}
 	}
 
-	//TODO refactor this in a different function (make above function more clear in general)
-	res.Order.Status = "REPLACED"
-	res.Status = "PARTIAL"
-	res.RemainingOrder.Signature = nil
-	res.RemainingOrder.Nonce = nil
-	res.RemainingOrder.Hash = common.HexToHash("")
-	res.RemainingOrder.BuyAmount = res.RemainingOrder.Amount
-	res.RemainingOrder.SellAmount = math.Div(
-		math.Mul(res.RemainingOrder.Amount, res.Order.SellAmount),
-		res.Order.BuyAmount,
-	)
+	//TODO refactor
+	o.Status = "PARTIAL_FILLED"
+	_, err = ob.orderDao.FindAndModify(o.Hash, o)
+	if err != nil {
+		logger.Error(err)
+		return nil, err
+	}
 
+	res.Status = "ORDER_PARTIALLY_FILLED"
+	res.Order = o
+	res.Matches = &matches
 	return res, nil
 }
 
@@ -158,395 +159,268 @@ func (ob *OrderBook) buyOrder(o *types.Order) (*types.EngineResponse, error) {
 // or not, if there are pricepoints that can satisfy the order then corresponding list of orders
 // are fetched and trade is executed
 func (ob *OrderBook) sellOrder(o *types.Order) (*types.EngineResponse, error) {
-	res := &types.EngineResponse{
-		Status: "NOMATCH",
-		Order:  o,
-	}
-
+	res := &types.EngineResponse{}
 	remainingOrder := *o
-	res.RemainingOrder = &remainingOrder
-	obkv := o.GetOBMatchKey()
 
-	pps, err := ob.GetMatchingSellPricePoints(obkv, o.PricePoint.Int64())
+	matchingOrders, err := ob.orderDao.GetMatchingBuyOrders(o)
 	if err != nil {
 		logger.Error(err)
 		return nil, err
 	}
 
-	if len(pps) == 0 {
-		res.Status = "NOMATCH"
-		res.RemainingOrder = nil
-		ob.addOrder(o)
+	if len(matchingOrders) == 0 {
 		o.Status = "OPEN"
+		ob.addOrder(o)
+
+		res.Status = "ORDER_ADDED"
+		res.Order = o
 		return res, nil
 	}
 
-	for _, pp := range pps {
-		entries, err := ob.GetMatchingOrders(obkv, pp)
+	matches := types.Matches{TakerOrder: o}
+	for _, mo := range matchingOrders {
+		trade, err := ob.execute(o, mo)
 		if err != nil {
 			logger.Error(err)
 			return nil, err
 		}
 
-		for _, b := range entries {
-			entry := &types.Order{}
-			err = json.Unmarshal(b, &entry)
+		matches.AppendMatch(mo, trade)
+		remainingOrder.Amount = math.Sub(remainingOrder.Amount, trade.Amount)
 
+		if math.IsZero(remainingOrder.Amount) {
+			o.FilledAmount = o.Amount
+			o.Status = "FILLED"
+
+			_, err := ob.orderDao.FindAndModify(o.Hash, o)
 			if err != nil {
 				logger.Error(err)
 				return nil, err
 			}
 
-			trade, err := ob.execute(o, entry)
-			if err != nil {
-				logger.Error(err)
-				return nil, err
-			}
-
-			match := &types.OrderTradePair{entry, trade}
-			res.Matches = append(res.Matches, match)
-			res.RemainingOrder.Amount = math.Sub(res.RemainingOrder.Amount, trade.Amount)
-
-			if math.IsZero(res.RemainingOrder.Amount) {
-				res.Status = "FULL"
-				res.Order.Status = "FILLED"
-				res.RemainingOrder = nil
-				return res, nil
-			}
+			res.Status = "ORDER_FILLED"
+			res.Order = o
+			res.Matches = &matches
+			return res, nil
 		}
 	}
 
-	//TODO refactor this in a different function (make above function more clear in general)
-	res.Order.Status = "REPLACED"
-	res.Status = "PARTIAL"
-	res.RemainingOrder.Signature = nil
-	res.RemainingOrder.Nonce = nil
-	res.RemainingOrder.Hash = common.HexToHash("")
-	res.RemainingOrder.BuyAmount = res.RemainingOrder.Amount
-	res.RemainingOrder.SellAmount = math.Div(
-		math.Mul(res.RemainingOrder.Amount, res.Order.SellAmount),
-		res.Order.BuyAmount,
-	)
-
-	return res, nil
-}
-
-// addOrder adds an order to redis
-func (ob *OrderBook) addOrder(o *types.Order) error {
-	o.Status = "OPEN"
-	pricePointSetKey, orderHashListKey := o.GetOBKeys()
-
-	err := ob.AddToPricePointSet(pricePointSetKey, o.PricePoint.Int64())
-	if err != nil {
-		logger.Error(err)
-		return err
-	}
-
-	err = ob.AddToOrderMap(o)
-	if err != nil {
-		logger.Error(err)
-		return err
-	}
-
-	err = ob.AddToPricePointHashesSet(orderHashListKey, o.CreatedAt, o.Hash)
-	if err != nil {
-		logger.Error(err)
-		return err
-	}
-
-	return nil
-}
-
-// updateOrder updates the order in redis
-func (ob *OrderBook) updateOrder(o *types.Order, tradeAmount *big.Int) error {
-	stored := &types.Order{}
-
-	stored, err := ob.GetFromOrderMap(o.Hash)
-	if err != nil {
-		logger.Error(err)
-		return err
-	}
-
-	filledAmount := math.Add(stored.FilledAmount, tradeAmount)
-	if math.IsEqualOrSmallerThan(filledAmount, big.NewInt(0)) {
-		stored.Status = "OPEN"
-		stored.FilledAmount = big.NewInt(0)
-	} else if math.IsEqualOrGreaterThan(filledAmount, stored.Amount) {
-		stored.Status = "FILLED"
-		stored.FilledAmount = stored.Amount
-	} else {
-		stored.Status = "PARTIAL_FILLED"
-		stored.FilledAmount = filledAmount
-	}
-
-	err = ob.AddToOrderMap(stored)
-	if err != nil {
-		logger.Error(err)
-		return err
-	}
-
-	return nil
-}
-
-// deleteOrder deletes the order in redis
-func (ob *OrderBook) deleteOrder(o *types.Order) (err error) {
-	//TODO decide to put the mutex on deleteOrder or on cancelOrder
-	// ob.mutex.Lock()
-	// defer ob.mutex.Unlock()
-
-	pricePointSetKey, orderHashListKey := o.GetOBKeys()
-	pp := o.PricePoint.Int64()
-
-	err = ob.RemoveFromPricePointHashesSet(orderHashListKey, o.Hash)
-	if err != nil {
-		logger.Error(err)
-	}
-
-	pplen, err := ob.GetPricePointHashesSetLength(orderHashListKey)
-	if err != nil {
-		logger.Error(err)
-	}
-
-	if pplen == 0 {
-		err = ob.RemoveFromPricePointSet(pricePointSetKey, pp)
-		if err != nil {
-			logger.Error(err)
-		}
-	}
-
-	err = ob.RemoveFromOrderMap(o.Hash)
-	if err != nil {
-		logger.Error(err)
-	}
-
-	return err
-}
-
-func (ob *OrderBook) deleteOrders(orders ...types.Order) error {
-	for _, o := range orders {
-		err := ob.deleteOrder(&o)
-		if err != nil {
-			logger.Error(err)
-			return err
-		}
-	}
-
-	return nil
-}
-
-// RecoverOrders is responsible for recovering the orders that failed to execute after matching
-// Orders are updated or added to orderbook based on whether that order exists in orderbook or not.
-func (ob *OrderBook) RecoverOrders(matches []*types.OrderTradePair) error {
-	ob.mutex.Lock()
-	defer ob.mutex.Unlock()
-
-	for _, m := range matches {
-		t := m.Trade
-		o := m.Order
-
-		o.Status = "PARTIAL_FILLED"
-		filledAmount := math.Sub(o.FilledAmount, t.Amount)
-		if math.IsEqualOrSmallerThan(filledAmount, big.NewInt(0)) {
-			o.Status = "OPEN"
-			o.FilledAmount = big.NewInt(0)
-		}
-
-		_, obListKey := o.GetOBKeys()
-		if !ob.redisConn.Exists(obListKey + "::orders::" + o.Hash.Hex()) {
-			if err := ob.addOrder(o); err != nil {
-				logger.Error(err)
-				return err
-			}
-		} else {
-			if err := ob.updateOrder(o, math.Neg(t.Amount)); err != nil {
-				logger.Error(err)
-				return err
-			}
-		}
-	}
-
-	return nil
-}
-
-func (ob *OrderBook) CancelTrades(orders []*types.Order, amounts []*big.Int) error {
-	ob.mutex.Lock()
-	defer ob.mutex.Unlock()
-
-	for i, o := range orders {
-		o.Status = "PARTIAL_FILLED"
-		o.FilledAmount = math.Sub(o.FilledAmount, amounts[i])
-		if math.IsZero(o.FilledAmount) {
-			o.Status = "OPEN"
-		}
-		_, obListKey := o.GetOBKeys()
-		if !ob.redisConn.Exists(obListKey + "::orders::" + o.Hash.Hex()) {
-			if err := ob.addOrder(o); err != nil {
-				logger.Error(err)
-				return err
-			}
-		} else {
-			err := ob.updateOrder(o, math.Neg(o.Amount))
-			if err != nil {
-				logger.Error(err)
-				return err
-			}
-		}
-	}
-
-	return nil
-}
-
-// CancelOrder is used to cancel the order from orderbook
-func (ob *OrderBook) CancelOrder(o *types.Order) (*types.EngineResponse, error) {
-	ob.mutex.Lock()
-	defer ob.mutex.Unlock()
-
-	stored, err := ob.GetFromOrderMap(o.Hash)
+	//TODO refactor
+	o.Status = "PARTIAL_FILLED"
+	_, err = ob.orderDao.FindAndModify(o.Hash, o)
 	if err != nil {
 		logger.Error(err)
 		return nil, err
 	}
 
-	if err := ob.deleteOrder(o); err != nil {
-		logger.Error(err)
-		return nil, err
-	}
-
-	stored.Status = "CANCELLED"
-	res := &types.EngineResponse{
-		HashID:         o.Hash,
-		Status:         "CANCELLED",
-		Order:          stored,
-		RemainingOrder: nil,
-		Matches:        nil,
-	}
-
+	res.Status = "ORDER_PARTIALLY_FILLED"
+	res.Order = o
+	res.Matches = &matches
 	return res, nil
 }
 
 // execute function is responsible for executing of matched orders
 // i.e it deletes/updates orders in case of order matching and responds
 // with trade instance and fillOrder
-func (ob *OrderBook) execute(o *types.Order, bookEntry *types.Order) (*types.Trade, error) {
+func (ob *OrderBook) execute(takerOrder *types.Order, makerOrder *types.Order) (*types.Trade, error) {
 	trade := &types.Trade{}
 	tradeAmount := big.NewInt(0)
-	bookEntryAvailableAmount := math.Sub(bookEntry.Amount, bookEntry.FilledAmount)
-	orderAvailableAmount := math.Sub(o.Amount, o.FilledAmount)
 
-	if math.IsGreaterThan(bookEntryAvailableAmount, orderAvailableAmount) {
-		tradeAmount = orderAvailableAmount
-		bookEntry.FilledAmount = math.Add(bookEntry.FilledAmount, orderAvailableAmount)
-		bookEntry.Status = "PARTIAL_FILLED"
+	//TODO changes 'strictly greater than' condition. The orders that are almost completely filled
+	//TODO should be removed/skipped
+	if math.IsStrictlyGreaterThan(makerOrder.RemainingAmount(), takerOrder.RemainingAmount()) {
+		tradeAmount = takerOrder.RemainingAmount()
+		makerOrder.FilledAmount = math.Add(makerOrder.FilledAmount, tradeAmount)
+		makerOrder.Status = "PARTIAL_FILLED"
 
-		err := ob.updateOrder(bookEntry, tradeAmount)
+		_, err := ob.orderDao.FindAndModify(makerOrder.Hash, makerOrder)
 		if err != nil {
 			logger.Error(err)
 			return nil, err
 		}
-
 	} else {
-		err := ob.deleteOrder(bookEntry)
+		tradeAmount = makerOrder.RemainingAmount()
+		makerOrder.FilledAmount = makerOrder.Amount
+		makerOrder.Status = "FILLED"
+
+		_, err := ob.orderDao.FindAndModify(makerOrder.Hash, makerOrder)
 		if err != nil {
 			logger.Error(err)
 			return nil, err
 		}
-
-		tradeAmount = bookEntryAvailableAmount
-		bookEntry.FilledAmount = bookEntry.Amount
-		bookEntry.Status = "FILLED"
 	}
 
-	o.FilledAmount = math.Add(o.FilledAmount, tradeAmount)
+	takerOrder.FilledAmount = math.Add(takerOrder.FilledAmount, tradeAmount)
 	trade = &types.Trade{
 		Amount:         tradeAmount,
-		PricePoint:     o.PricePoint,
-		BaseToken:      o.BaseToken,
-		QuoteToken:     o.QuoteToken,
-		OrderHash:      bookEntry.Hash,
-		TakerOrderHash: o.Hash,
-		Side:           o.Side,
-		Taker:          o.UserAddress,
-		PairName:       o.PairName,
-		Maker:          bookEntry.UserAddress,
+		PricePoint:     takerOrder.PricePoint,
+		BaseToken:      takerOrder.BaseToken,
+		QuoteToken:     takerOrder.QuoteToken,
+		MakerOrderHash: makerOrder.Hash,
+		TakerOrderHash: takerOrder.Hash,
+		Taker:          takerOrder.UserAddress,
+		PairName:       takerOrder.PairName,
+		Maker:          makerOrder.UserAddress,
+		Status:         "PENDING",
 	}
 
+	trade.Hash = trade.ComputeHash()
 	return trade, nil
 }
 
-// buyOrder is triggered when a buy order comes in, it fetches the ask list
-// from orderbook. First it checks ths price point list to check whether the order can be matched
-// or not, if there are pricepoints that can satisfy the order then corresponding list of orders
-// are fetched and trade is executed
-func (ob *OrderBook) buyOrderBis(o *types.Order) (*types.EngineResponse, error) {
-	res := &types.EngineResponse{
-		Order:  o,
-		Status: "NOMATCH",
+// CancelOrder is used to cancel the order from orderbook
+func (ob *OrderBook) cancelOrder(o *types.Order) error {
+	ob.mutex.Lock()
+	defer ob.mutex.Unlock()
+
+	o.Status = "CANCELLED"
+	err := ob.orderDao.UpdateOrderStatus(o.Hash, "CANCELLED")
+	if err != nil {
+		logger.Error(err)
+		return err
 	}
 
-	remainingOrder := *o
-	res.RemainingOrder = &remainingOrder
-	oskv := o.GetOBMatchKey()
+	res := &types.EngineResponse{
+		Status:  "ORDER_CANCELLED",
+		Order:   o,
+		Matches: nil,
+	}
 
-	// GET Range of sellOrder between minimum Sell order and o.Price
-	pps, err := ob.GetMatchingBuyPricePoints(oskv, o.PricePoint.Int64())
+	err = ob.rabbitMQConn.PublishEngineResponse(res)
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	return nil
+}
+
+// cancelTrades revertTrades and reintroduces the taker orders in the orderbook
+func (ob *OrderBook) invalidateMakerOrders(matches types.Matches) error {
+	ob.mutex.Lock()
+	defer ob.mutex.Unlock()
+
+	orders := matches.MakerOrders
+	trades := matches.Trades
+	tradeAmounts := matches.TradeAmounts()
+	makerOrderHashes := []common.Hash{}
+	takerOrderHashes := []common.Hash{}
+
+	for i, _ := range orders {
+		makerOrderHashes = append(makerOrderHashes, trades[i].MakerOrderHash)
+		takerOrderHashes = append(takerOrderHashes, trades[i].TakerOrderHash)
+	}
+
+	takerOrders, err := ob.orderDao.UpdateOrderFilledAmounts(takerOrderHashes, tradeAmounts)
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	makerOrders, err := ob.orderDao.UpdateOrderStatusesByHashes("INVALIDATED", makerOrderHashes...)
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	//TODO in the case the trades are not in the database they should not be created.
+	cancelledTrades, err := ob.tradeDao.UpdateTradeStatusesByOrderHashes("CANCELLED", takerOrderHashes...)
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	res := &types.EngineResponse{
+		Status:            "TRADES_CANCELLED",
+		InvalidatedOrders: &makerOrders,
+		CancelledTrades:   &cancelledTrades,
+	}
+
+	err = ob.rabbitMQConn.PublishEngineResponse(res)
+	if err != nil {
+		logger.Error(err)
+	}
+
+	for _, o := range takerOrders {
+		err := ob.rabbitMQConn.PublishNewOrderMessage(o)
+		if err != nil {
+			logger.Error(err)
+		}
+	}
+
+	return nil
+}
+
+func (ob *OrderBook) invalidateTakerOrders(matches types.Matches) error {
+	ob.mutex.Lock()
+	defer ob.mutex.Unlock()
+
+	makerOrders := matches.MakerOrders
+	takerOrder := matches.TakerOrder
+	trades := matches.Trades
+	tradeAmounts := matches.TradeAmounts()
+
+	makerOrderHashes := []common.Hash{}
+	for i, _ := range trades {
+		makerOrderHashes = append(makerOrderHashes, trades[i].MakerOrderHash)
+	}
+
+	makerOrders, err := ob.orderDao.UpdateOrderFilledAmounts(makerOrderHashes, tradeAmounts)
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	invalidatedOrders, err := ob.orderDao.UpdateOrderStatusesByHashes("INVALIDATED", takerOrder.Hash)
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	cancelledTrades, err := ob.tradeDao.UpdateTradeStatusesByOrderHashes("CANCELLED", makerOrderHashes...)
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	res := &types.EngineResponse{
+		Status:            "TRADES_CANCELLED",
+		InvalidatedOrders: &invalidatedOrders,
+		CancelledTrades:   &cancelledTrades,
+	}
+
+	err = ob.rabbitMQConn.PublishEngineResponse(res)
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	for _, o := range makerOrders {
+		err := ob.rabbitMQConn.PublishNewOrderMessage(o)
+		if err != nil {
+			logger.Error(err)
+		}
+	}
+
+	return nil
+}
+
+func (ob *OrderBook) InvalidateOrder(o *types.Order) (*types.EngineResponse, error) {
+	ob.mutex.Lock()
+	defer ob.mutex.Unlock()
+
+	o.Status = "ERROR"
+	err := ob.orderDao.UpdateOrderStatus(o.Hash, "ERROR")
 	if err != nil {
 		logger.Error(err)
 		return nil, err
 	}
 
-	if len(pps) == 0 {
-		o.Status = "OPEN"
-		res.Status = "NOMATCH"
-		res.RemainingOrder = nil
-		ob.addOrder(o)
-		return res, nil
+	res := &types.EngineResponse{
+		Status:  "INVALIDATED",
+		Order:   o,
+		Matches: nil,
 	}
-
-	for _, pp := range pps {
-		entries, err := ob.GetMatchingOrders(oskv, pp)
-		if err != nil {
-			logger.Error(err)
-			return nil, err
-		}
-
-		//TODO refactor to make the redis transaction atomic
-		for _, bookEntry := range entries {
-			entry := &types.Order{}
-			err = json.Unmarshal(bookEntry, &entry)
-			if err != nil {
-				return nil, err
-			}
-
-			trade, err := ob.execute(o, entry)
-			if err != nil {
-				logger.Error(err)
-				return nil, err
-			}
-
-			match := &types.OrderTradePair{entry, trade}
-			res.Matches = append(res.Matches, match)
-			res.RemainingOrder.Amount = math.Sub(res.RemainingOrder.Amount, trade.Amount)
-
-			if math.IsZero(res.RemainingOrder.Amount) {
-				res.Status = "FULL"
-				res.Order.Status = "FILLED"
-				res.RemainingOrder = nil
-				return res, nil
-			}
-		}
-	}
-
-	//TODO refactor this in a different function (make above function more clear in general)
-	res.Order.Status = "REPLACED"
-	res.Status = "PARTIAL"
-	res.RemainingOrder.Signature = nil
-	res.RemainingOrder.Nonce = nil
-	res.RemainingOrder.Hash = common.HexToHash("")
-	res.RemainingOrder.BuyAmount = res.RemainingOrder.Amount
-	res.RemainingOrder.SellAmount = math.Div(
-		math.Mul(res.RemainingOrder.Amount, res.Order.SellAmount),
-		res.Order.BuyAmount,
-	)
 
 	return res, nil
 }
