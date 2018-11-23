@@ -40,7 +40,7 @@ func Start() {
 		panic(err)
 	}
 
-	rabbitConn := rabbitmq.InitConnection(app.Config.Rabbitmq)
+	rabbitConn := rabbitmq.InitConnection(app.Config.RabbitMQURL)
 	provider := ethereum.NewWebsocketProvider()
 
 	router := NewRouter(provider, rabbitConn)
@@ -54,7 +54,23 @@ func Start() {
 	allowedOrigins := handlers.AllowedOrigins([]string{"*"})
 	allowedMethods := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS"})
 
-	panic(http.ListenAndServe(address, handlers.CORS(allowedHeaders, allowedOrigins, allowedMethods)(router)))
+	if app.Config.EnableTLS {
+		err := http.ListenAndServeTLS(
+			address,
+			app.Config.ServerCert,
+			app.Config.ServerKey,
+			handlers.CORS(allowedHeaders, allowedOrigins, allowedMethods)(router),
+		)
+
+		if err != nil {
+			log.Fatal("The process exited with error:", err.Error())
+		}
+	} else {
+		err := http.ListenAndServe(address, handlers.CORS(allowedHeaders, allowedOrigins, allowedMethods)(router))
+		if err != nil {
+			log.Fatal("The process exited with error:", err.Error())
+		}
+	}
 }
 
 func NewRouter(

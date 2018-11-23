@@ -35,7 +35,6 @@ func NewValidatorService(
 }
 
 func (s *ValidatorService) ValidateBalance(o *types.Order) error {
-	// wethAddress := common.HexToAddress(app.Config.Ethereum["weth_address"])
 	exchangeAddress := common.HexToAddress(app.Config.Ethereum["exchange_address"])
 
 	pair, err := s.pairDao.GetByTokenAddress(o.BaseToken, o.QuoteToken)

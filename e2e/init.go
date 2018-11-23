@@ -63,7 +63,7 @@ func Init(t *testing.T) {
 
 func NewRouter() *mux.Router {
 	provider := ethereum.NewWebsocketProvider()
-	rabbitConn := rabbitmq.InitConnection(app.Config.Rabbitmq)
+	rabbitConn := rabbitmq.InitConnection(app.Config.RabbitMQURL)
 
 	r := mux.NewRouter()
 

@@ -40,7 +40,6 @@ func SetupTest() (*testutils.Deployer, *types.Wallet, common.Address, common.Add
 	}
 
 	feeAccount := common.HexToAddress(app.Config.Ethereum["fee_account"])
-	wethToken := common.HexToAddress(app.Config.Ethereum["weth_address"])
 
 	return deployer, wallet, feeAccount, wethToken, maker, taker
 }

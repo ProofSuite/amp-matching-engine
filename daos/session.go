@@ -1,6 +1,9 @@
 package daos
 
 import (
+	"crypto/tls"
+	"crypto/x509"
+	"net"
 	"reflect"
 
 	"github.com/Proofsuite/amp-matching-engine/app"
@@ -19,26 +22,105 @@ type Database struct {
 var db *Database
 var logger = utils.Logger
 
-// InitSession initializes a new session with mongodb
 func InitSession(session *mgo.Session) (*mgo.Session, error) {
+	var err error
+
+	logger.Info("I am here")
 	if db == nil {
 		if session == nil {
-			db1, err := mgo.Dial(app.Config.DSN)
-			if err != nil {
-				logger.Error(err)
-				return nil, err
+			if app.Config.EnableTLS {
+				logger.Info("I am here")
+				session = NewSecureTLSSession()
+			} else {
+				session, err = mgo.Dial(app.Config.MongoURL)
+				if err != nil {
+					panic(err)
+				}
 			}
-
-			session = db1
 		}
 
 		db = &Database{session}
 	}
+
+	return db.Session, nil
+}
+
+func InitTLSSession() (*mgo.Session, error) {
+	session := NewTLSSession()
+	db = &Database{session}
 	return db.Session, nil
 }
 
 func (d *Database) InitDatabase(session *mgo.Session) {
 	d.Session = session
+}
+
+func NewTLSSession() *mgo.Session {
+
+	tlsConfig := &tls.Config{}
+	tlsConfig.InsecureSkipVerify = true
+
+	dialInfo := &mgo.DialInfo{
+		Addrs:    []string{app.Config.MongoURL},
+		Username: app.Config.MongoDBUsername,
+		Password: app.Config.MongoDBPassword,
+	}
+
+	dialInfo.DialServer = func(addr *mgo.ServerAddr) (net.Conn, error) {
+		conn, err := tls.Dial("tcp", addr.String(), tlsConfig)
+		return conn, err
+	}
+
+	session, err := mgo.DialWithInfo(dialInfo)
+	if err != nil {
+		panic(err)
+	}
+
+	session.SetMode(mgo.Monotonic, true)
+	return session
+}
+
+func NewSecureTLSSession() *mgo.Session {
+	tlsConfig := &tls.Config{}
+	tlsConfig.InsecureSkipVerify = true
+	roots := x509.NewCertPool()
+
+	logger.Info(app.Config.MongoDBUsername)
+	logger.Info(app.Config.MongoDBPassword)
+	logger.Info(app.Config.MongoURL)
+
+	//doesn't seem like it's the right file to be used
+	// ca, err := ioutil.ReadFile(app.Config.TLSCACertFile)
+	// if err != nil {
+	// 	panic(err)
+	// }
+
+	// roots.AppendCertsFromPEM(ca)
+
+	tlsConfig.RootCAs = roots
+
+	dialInfo := &mgo.DialInfo{
+		Addrs:    []string{app.Config.MongoURL},
+		Username: app.Config.MongoDBUsername,
+		Password: app.Config.MongoDBPassword,
+		Database: "proofdex",
+	}
+
+	dialInfo.DialServer = func(addr *mgo.ServerAddr) (net.Conn, error) {
+		conn, err := tls.Dial("tcp", addr.String(), tlsConfig)
+		if err != nil {
+			logger.Error(err)
+		}
+		return conn, err
+	}
+
+	session, err := mgo.DialWithInfo(dialInfo)
+	if err != nil {
+		panic(err)
+	}
+
+	// session.SetMode(mgo.Monotonic, true)
+	return session
 }
 
 // Create is a wrapper for mgo.Insert function.

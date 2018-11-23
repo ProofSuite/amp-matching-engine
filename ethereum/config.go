@@ -10,14 +10,12 @@ var logger = utils.Logger
 type EthereumConfig struct {
 	url             string
 	exchangeAddress common.Address
-	wethAddress     common.Address
 }
 
-func NewEthereumConfig(url string, exchange, weth common.Address) *EthereumConfig {
+func NewEthereumConfig(url string, exchange common.Address) *EthereumConfig {
 	return &EthereumConfig{
 		url:             url,
 		exchangeAddress: exchange,
-		wethAddress:     weth,
 	}
 }
 
@@ -27,8 +25,4 @@ func (c *EthereumConfig) GetURL() string {
 
 func (c *EthereumConfig) ExchangeAddress() common.Address {
 	return c.exchangeAddress
-}
-
-func (c *EthereumConfig) WethAddress() common.Address {
-	return c.wethAddress
 }
