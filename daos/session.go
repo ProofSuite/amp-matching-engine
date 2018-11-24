@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"net"
 	"reflect"
+	"time"
 
 	"github.com/Proofsuite/amp-matching-engine/app"
 	"github.com/Proofsuite/amp-matching-engine/utils"
@@ -25,12 +26,10 @@ var logger = utils.Logger
 func InitSession(session *mgo.Session) (*mgo.Session, error) {
 	var err error
 
-	logger.Info("I am here")
 	if db == nil {
 		if session == nil {
 			if app.Config.EnableTLS {
-				logger.Info("I am here")
-				session = NewSecureTLSSession()
+				session = NewTLSSession()
 			} else {
 				session, err = mgo.Dial(app.Config.MongoURL)
 				if err != nil {
@@ -56,14 +55,19 @@ func (d *Database) InitDatabase(session *mgo.Session) {
 }
 
 func NewTLSSession() *mgo.Session {
-
 	tlsConfig := &tls.Config{}
 	tlsConfig.InsecureSkipVerify = true
 
 	dialInfo := &mgo.DialInfo{
-		Addrs:    []string{app.Config.MongoURL},
-		Username: app.Config.MongoDBUsername,
-		Password: app.Config.MongoDBPassword,
+		Addrs: []string{
+			"ampcluster0-shard-00-00-xzynf.mongodb.net:27017",
+			"ampcluster0-shard-00-01-xzynf.mongodb.net:27017",
+			"ampcluster0-shard-00-02-xzynf.mongodb.net:27017",
+		},
+		Timeout:  60 * time.Second,
+		Database: "admin",
+		Username: app.Config.Username,
+		Password: app.Config.Password,
 	}
 
 	dialInfo.DialServer = func(addr *mgo.ServerAddr) (net.Conn, error) {
@@ -76,7 +80,7 @@ func NewTLSSession() *mgo.Session {
 		panic(err)
 	}
 
-	session.SetMode(mgo.Monotonic, true)
+	// session.SetMode(mgo.Monotonic, true)
 	return session
 }
 
@@ -84,11 +88,6 @@ func NewSecureTLSSession() *mgo.Session {
 	tlsConfig := &tls.Config{}
 	tlsConfig.InsecureSkipVerify = true
 	roots := x509.NewCertPool()
-
-	logger.Info(app.Config.MongoDBUsername)
-	logger.Info(app.Config.MongoDBPassword)
-	logger.Info(app.Config.MongoURL)
-
 	//doesn't seem like it's the right file to be used
 	// ca, err := ioutil.ReadFile(app.Config.TLSCACertFile)
 	// if err != nil {
