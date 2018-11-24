@@ -696,7 +696,7 @@ func TestOrderStatusesByHashes(t *testing.T) {
 }
 
 func ExampleGetOrderBook() {
-	session, err := mgo.Dial(app.Config.DSN)
+	session, err := mgo.Dial(app.Config.MongoURL)
 	if err != nil {
 		panic(err)
 	}
@@ -719,7 +719,7 @@ func ExampleGetOrderBook() {
 }
 
 func ExampleGetOrderBookPricePoint() {
-	session, err := mgo.Dial(app.Config.DSN)
+	session, err := mgo.Dial(app.Config.MongoURL)
 	if err != nil {
 		panic(err)
 	}
@@ -742,7 +742,7 @@ func ExampleGetOrderBookPricePoint() {
 }
 
 func ExampleGetRawOrderBook() {
-	session, err := mgo.Dial(app.Config.DSN)
+	session, err := mgo.Dial(app.Config.MongoURL)
 	if err != nil {
 		panic(err)
 	}

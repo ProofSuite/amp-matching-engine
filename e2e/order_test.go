@@ -47,7 +47,7 @@ func SetupTest() (
 	log.SetFlags(log.LstdFlags | log.Llongfile)
 	log.SetPrefix("\nLOG: ")
 
-	rabbitmq.InitConnection(app.Config.Rabbitmq)
+	rabbitmq.InitConnection(app.Config.RabbitMQURL)
 	ethereum.NewWebsocketProvider()
 
 	_, err = daos.InitSession(nil)

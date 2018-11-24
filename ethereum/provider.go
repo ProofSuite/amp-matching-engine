@@ -23,8 +23,7 @@ type EthereumProvider struct {
 func NewEthereumProvider(c interfaces.EthereumClient) *EthereumProvider {
 	url := app.Config.Ethereum["http_url"]
 	exchange := common.HexToAddress(app.Config.Ethereum["exchange_address"])
-	weth := common.HexToAddress(app.Config.Ethereum["weth_address"])
-	config := NewEthereumConfig(url, exchange, weth)
+	config := NewEthereumConfig(url, exchange)
 
 	return &EthereumProvider{
 		Client: c,
@@ -35,7 +34,6 @@ func NewEthereumProvider(c interfaces.EthereumClient) *EthereumProvider {
 func NewDefaultEthereumProvider() *EthereumProvider {
 	url := app.Config.Ethereum["http_url"]
 	exchange := common.HexToAddress(app.Config.Ethereum["exchange_address"])
-	weth := common.HexToAddress(app.Config.Ethereum["weth_address"])
 
 	conn, err := rpc.DialHTTP(app.Config.Ethereum["http_url"])
 	if err != nil {
@@ -43,7 +41,7 @@ func NewDefaultEthereumProvider() *EthereumProvider {
 	}
 
 	client := ethclient.NewClient(conn)
-	config := NewEthereumConfig(url, exchange, weth)
+	config := NewEthereumConfig(url, exchange)
 
 	return &EthereumProvider{
 		Client: client,
@@ -54,7 +52,6 @@ func NewDefaultEthereumProvider() *EthereumProvider {
 func NewWebsocketProvider() *EthereumProvider {
 	url := app.Config.Ethereum["ws_url"]
 	exchange := common.HexToAddress(app.Config.Ethereum["exchange_address"])
-	weth := common.HexToAddress(app.Config.Ethereum["weth_address"])
 
 	conn, err := rpc.DialWebsocket(context.Background(), url, "")
 	if err != nil {
@@ -62,7 +59,7 @@ func NewWebsocketProvider() *EthereumProvider {
 	}
 
 	client := ethclient.NewClient(conn)
-	config := NewEthereumConfig(url, exchange, weth)
+	config := NewEthereumConfig(url, exchange)
 
 	return &EthereumProvider{
 		Client: client,
@@ -73,9 +70,8 @@ func NewWebsocketProvider() *EthereumProvider {
 func NewSimulatedEthereumProvider(accs []common.Address) *EthereumProvider {
 	url := app.Config.Ethereum["http_url"]
 	exchange := common.HexToAddress(app.Config.Ethereum["exchange_address"])
-	weth := common.HexToAddress(app.Config.Ethereum["weth_address"])
 
-	config := NewEthereumConfig(url, exchange, weth)
+	config := NewEthereumConfig(url, exchange)
 	client := NewSimulatedClient(accs)
 
 	return &EthereumProvider{

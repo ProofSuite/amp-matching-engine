@@ -46,7 +46,7 @@ func SetupTest(t *testing.T) (
 	log.SetFlags(log.LstdFlags | log.Llongfile)
 	log.SetPrefix("\nLOG: ")
 
-	rabbitConn := rabbitmq.InitConnection(app.Config.Rabbitmq)
+	rabbitConn := rabbitmq.InitConnection(app.Config.RabbitMQURL)
 
 	wallet1 := testutils.GetTestWallet1()
 	wallet2 := testutils.GetTestWallet2()
