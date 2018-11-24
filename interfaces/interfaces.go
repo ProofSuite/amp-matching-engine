@@ -244,7 +244,6 @@ type ValidatorService interface {
 type EthereumConfig interface {
 	GetURL() string
 	ExchangeAddress() common.Address
-	WethAddress() common.Address
 }
 
 type EthereumClient interface {

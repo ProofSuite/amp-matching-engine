@@ -11,7 +11,7 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/utils"
 )
 
-// Engine contains daos and redis connection required for engine to work
+// Engine
 type Engine struct {
 	orderbooks   map[string]*OrderBook
 	rabbitMQConn *rabbitmq.Connection

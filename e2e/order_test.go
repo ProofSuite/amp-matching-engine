@@ -13,7 +13,6 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/ethereum"
 	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/Proofsuite/amp-matching-engine/rabbitmq"
-	"github.com/Proofsuite/amp-matching-engine/redis"
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/Proofsuite/amp-matching-engine/utils/testutils"
@@ -48,11 +47,8 @@ func SetupTest() (
 	log.SetFlags(log.LstdFlags | log.Llongfile)
 	log.SetPrefix("\nLOG: ")
 
-	rabbitmq.InitConnection(app.Config.Rabbitmq)
+	rabbitmq.InitConnection(app.Config.RabbitMQURL)
 	ethereum.NewWebsocketProvider()
-	redisConn := redis.NewRedisConnection(app.Config.Redis)
-
-	defer redisConn.FlushAll()
 
 	_, err = daos.InitSession(nil)
 	if err != nil {
