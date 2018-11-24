@@ -66,8 +66,8 @@ func NewTLSSession() *mgo.Session {
 		},
 		Timeout:  60 * time.Second,
 		Database: "admin",
-		Username: app.Config.Username,
-		Password: app.Config.Password,
+		Username: app.Config.MongoDBUsername,
+		Password: app.Config.MongoDBPassword,
 	}
 
 	dialInfo.DialServer = func(addr *mgo.ServerAddr) (net.Conn, error) {
