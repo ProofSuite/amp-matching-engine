@@ -1,6 +1,7 @@
 package server
 
 import (
+	"crypto/tls"
 	"fmt"
 	"log"
 	"net/http"
@@ -19,6 +20,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"golang.org/x/crypto/acme/autocert"
 
 	"github.com/Proofsuite/amp-matching-engine/engine"
 )
@@ -46,24 +48,29 @@ func Start() {
 	router := NewRouter(provider, rabbitConn)
 	router.HandleFunc("/socket", ws.ConnectionEndpoint)
 
-	// start the server
-	address := fmt.Sprintf(":%v", app.Config.ServerPort)
-	log.Printf("server %v is started at %v\n", app.Version, address)
+	certManager := autocert.Manager{
+		Prompt:     autocert.AcceptTOS,
+		HostPolicy: autocert.HostWhitelist("engine.amp.exchange"),
+		Cache:      autocert.DirCache("certs"),
+	}
 
 	allowedHeaders := handlers.AllowedHeaders([]string{"Content-Type", "Accept", "Authorization", "Access-Control-Allow-Origin"})
 	allowedOrigins := handlers.AllowedOrigins([]string{"*"})
 	allowedMethods := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS"})
+	address := fmt.Sprintf(":%v", app.Config.ServerPort)
 
+	// start the server
 	if app.Config.EnableTLS {
-		err := http.ListenAndServeTLS(
-			address,
-			app.Config.ServerCert,
-			app.Config.ServerKey,
-			handlers.CORS(allowedHeaders, allowedOrigins, allowedMethods)(router),
-		)
+		server := &http.Server{
+			Addr:      ":https",
+			Handler:   handlers.CORS(allowedHeaders, allowedOrigins, allowedMethods)(router),
+			TLSConfig: &tls.Config{GetCertificate: certManager.GetCertificate},
+		}
 
+		go http.ListenAndServe(":http", certManager.HTTPHandler(nil))
+		err := server.ListenAndServeTLS("", "")
 		if err != nil {
-			log.Fatal("The process exited with error:", err.Error())
+			panic(err)
 		}
 	} else {
 		err := http.ListenAndServe(address, handlers.CORS(allowedHeaders, allowedOrigins, allowedMethods)(router))
@@ -71,6 +78,8 @@ func Start() {
 			log.Fatal("The process exited with error:", err.Error())
 		}
 	}
+
+	log.Printf("server %v is started at %v\n", app.Version, address)
 }
 
 func NewRouter(
