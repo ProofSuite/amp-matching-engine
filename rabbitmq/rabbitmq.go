@@ -29,10 +29,10 @@ func InitConnection(address string) *Connection {
 	if conn == nil {
 		tlsEnabled := app.Config.EnableTLS
 		if tlsEnabled {
-			newConn := NewTLSConnection(address)
+			newConn := NewTLSConnection()
 			conn = &Connection{newConn}
 		} else {
-			newConn := NewConnection(address)
+			newConn := NewConnection()
 			conn = &Connection{newConn}
 		}
 
@@ -41,8 +41,16 @@ func InitConnection(address string) *Connection {
 	return conn
 }
 
-func NewConnection(address string) *amqp.Connection {
-	conn, err := amqp.Dial(address)
+func NewConnection() *amqp.Connection {
+	uri := amqp.URI{
+		Scheme:   "amqp",
+		Host:     app.Config.RabbitMQURL,
+		Port:     5672,
+		Username: "hey",
+		Password: "hey",
+	}
+
+	conn, err := amqp.Dial(uri.String())
 	if err != nil {
 		panic(err)
 	}
@@ -50,7 +58,7 @@ func NewConnection(address string) *amqp.Connection {
 	return conn
 }
 
-func NewTLSConnection(address string) *amqp.Connection {
+func NewTLSConnection() *amqp.Connection {
 	cfg := &tls.Config{InsecureSkipVerify: true}
 	cfg.RootCAs = x509.NewCertPool()
 
@@ -71,7 +79,7 @@ func NewTLSConnection(address string) *amqp.Connection {
 
 	// logger.Info(ui)
 
-	address = uri.String()
+	address := uri.String()
 
 	// address = "amqp://hey:cool@127.0.0.1:5672"
 
