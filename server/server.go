@@ -57,29 +57,38 @@ func Start() {
 	allowedHeaders := handlers.AllowedHeaders([]string{"Content-Type", "Accept", "Authorization", "Access-Control-Allow-Origin"})
 	allowedOrigins := handlers.AllowedOrigins([]string{"*"})
 	allowedMethods := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS"})
-	address := fmt.Sprintf(":%v", app.Config.ServerPort)
 
 	// start the server
 	if app.Config.EnableTLS {
 		server := &http.Server{
-			Addr:      ":https",
+			Addr:      ":443",
 			Handler:   handlers.CORS(allowedHeaders, allowedOrigins, allowedMethods)(router),
 			TLSConfig: &tls.Config{GetCertificate: certManager.GetCertificate},
 		}
 
-		go http.ListenAndServe(":http", certManager.HTTPHandler(nil))
+		go handleCerts(&certManager)
+		log.Printf("server %v starting on port :443", app.Version)
 		err := server.ListenAndServeTLS("", "")
 		if err != nil {
 			panic(err)
 		}
+
 	} else {
+		address := fmt.Sprintf(":%v", app.Config.ServerPort)
+		log.Printf("server %v starting at %v\n", app.Version, address)
 		err := http.ListenAndServe(address, handlers.CORS(allowedHeaders, allowedOrigins, allowedMethods)(router))
 		if err != nil {
 			log.Fatal("The process exited with error:", err.Error())
 		}
 	}
+}
 
-	log.Printf("server %v is started at %v\n", app.Version, address)
+func handleCerts(certManager *autocert.Manager) {
+	err := http.ListenAndServe(":80", certManager.HTTPHandler(nil))
+	if err != nil {
+		log.Print(err)
+		panic(err)
+	}
 }
 
 func NewRouter(
