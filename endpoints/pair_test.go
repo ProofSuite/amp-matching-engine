@@ -32,7 +32,6 @@ func TestHandleCreatePair(t *testing.T) {
 		BaseTokenAddress:  common.HexToAddress("0x1"),
 		QuoteTokenSymbol:  "WETH",
 		QuoteTokenAddress: common.HexToAddress("0x2"),
-		PriceMultiplier:   big.NewInt(1e6),
 		MakeFee:           big.NewInt(1e4),
 		TakeFee:           big.NewInt(1e4),
 	}
@@ -66,7 +65,6 @@ func TestHandleCreateInvalidPair(t *testing.T) {
 		BaseTokenSymbol:   "ZRX",
 		BaseTokenAddress:  common.HexToAddress("0x1"),
 		QuoteTokenAddress: common.HexToAddress("0x2"),
-		PriceMultiplier:   big.NewInt(1e6),
 		MakeFee:           big.NewInt(1e4),
 		TakeFee:           big.NewInt(1e4),
 	}
@@ -94,7 +92,6 @@ func TestHandleGetAllPairs(t *testing.T) {
 		BaseTokenSymbol:   "ZRX",
 		BaseTokenAddress:  common.HexToAddress("0x1"),
 		QuoteTokenAddress: common.HexToAddress("0x2"),
-		PriceMultiplier:   big.NewInt(1e6),
 		MakeFee:           big.NewInt(1e4),
 		TakeFee:           big.NewInt(1e4),
 	}
@@ -103,7 +100,6 @@ func TestHandleGetAllPairs(t *testing.T) {
 		BaseTokenSymbol:   "WETH",
 		BaseTokenAddress:  common.HexToAddress("0x3"),
 		QuoteTokenAddress: common.HexToAddress("0x4"),
-		PriceMultiplier:   big.NewInt(1e6),
 		MakeFee:           big.NewInt(1e4),
 		TakeFee:           big.NewInt(1e4),
 	}
@@ -141,7 +137,6 @@ func TestHandleGetPair(t *testing.T) {
 		QuoteTokenSymbol:  "WETH",
 		BaseTokenAddress:  base,
 		QuoteTokenAddress: quote,
-		PriceMultiplier:   big.NewInt(1e6),
 		MakeFee:           big.NewInt(1e4),
 		TakeFee:           big.NewInt(1e4),
 	}

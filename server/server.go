@@ -1,6 +1,7 @@
 package server
 
 import (
+	"crypto/tls"
 	"fmt"
 	"log"
 	"net/http"
@@ -19,6 +20,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"golang.org/x/crypto/acme/autocert"
 
 	"github.com/Proofsuite/amp-matching-engine/engine"
 )
@@ -46,30 +48,46 @@ func Start() {
 	router := NewRouter(provider, rabbitConn)
 	router.HandleFunc("/socket", ws.ConnectionEndpoint)
 
-	// start the server
-	address := fmt.Sprintf(":%v", app.Config.ServerPort)
-	log.Printf("server %v is started at %v\n", app.Version, address)
+	certManager := autocert.Manager{
+		Prompt:     autocert.AcceptTOS,
+		HostPolicy: autocert.HostWhitelist("engine.amp.exchange"),
+		Cache:      autocert.DirCache("certs"),
+	}
 
 	allowedHeaders := handlers.AllowedHeaders([]string{"Content-Type", "Accept", "Authorization", "Access-Control-Allow-Origin"})
 	allowedOrigins := handlers.AllowedOrigins([]string{"*"})
 	allowedMethods := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS"})
 
+	// start the server
 	if app.Config.EnableTLS {
-		err := http.ListenAndServeTLS(
-			address,
-			app.Config.ServerCert,
-			app.Config.ServerKey,
-			handlers.CORS(allowedHeaders, allowedOrigins, allowedMethods)(router),
-		)
-
-		if err != nil {
-			log.Fatal("The process exited with error:", err.Error())
+		server := &http.Server{
+			Addr:      ":443",
+			Handler:   handlers.CORS(allowedHeaders, allowedOrigins, allowedMethods)(router),
+			TLSConfig: &tls.Config{GetCertificate: certManager.GetCertificate},
 		}
+
+		go handleCerts(&certManager)
+		log.Printf("server %v starting on port :443", app.Version)
+		err := server.ListenAndServeTLS("", "")
+		if err != nil {
+			panic(err)
+		}
+
 	} else {
+		address := fmt.Sprintf(":%v", app.Config.ServerPort)
+		log.Printf("server %v starting at %v\n", app.Version, address)
 		err := http.ListenAndServe(address, handlers.CORS(allowedHeaders, allowedOrigins, allowedMethods)(router))
 		if err != nil {
 			log.Fatal("The process exited with error:", err.Error())
 		}
+	}
+}
+
+func handleCerts(certManager *autocert.Manager) {
+	err := http.ListenAndServe(":80", certManager.HTTPHandler(nil))
+	if err != nil {
+		log.Print(err)
+		panic(err)
 	}
 }
 

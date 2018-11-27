@@ -199,7 +199,7 @@ func (dao *OrderDao) UpdateByHash(h common.Hash, o *types.Order) error {
 	o.UpdatedAt = time.Now()
 	query := bson.M{"hash": h.Hex()}
 	update := bson.M{"$set": bson.M{
-		"pricepoint":   o.PricePoint.Int64(),
+		"pricepoint":   o.PricePoint.String(),
 		"amount":       o.Amount.String(),
 		"status":       o.Status,
 		"filledAmount": o.FilledAmount.String(),
@@ -572,7 +572,7 @@ func (dao *OrderDao) GetOrderBook(p *types.Pair) ([]map[string]string, []map[str
 		},
 		bson.M{
 			"$group": bson.M{
-				"_id": "$pricepoint",
+				"_id": bson.M{"$toDecimal": "$pricepoint"},
 				"amount": bson.M{
 					"$sum": bson.M{
 						"$subtract": []bson.M{bson.M{"$toDecimal": "$amount"}, bson.M{"$toDecimal": "$filledAmount"}},
@@ -618,13 +618,13 @@ func (dao *OrderDao) GetOrderBookPricePoint(p *types.Pair, pp *big.Int, side str
 				"status":     bson.M{"$in": []string{"OPEN", "PARTIAL_FILLED"}},
 				"baseToken":  p.BaseTokenAddress.Hex(),
 				"quoteToken": p.QuoteTokenAddress.Hex(),
-				"pricepoint": pp.Int64(),
+				"pricepoint": pp.String(),
 				"side":       side,
 			},
 		},
 		bson.M{
 			"$group": bson.M{
-				"_id": "$pricepoint",
+				"_id": bson.M{"$toDecimal": "$pricepoint"},
 				"amount": bson.M{
 					"$sum": bson.M{
 						"$subtract": []bson.M{bson.M{"$toDecimal": "$amount"}, bson.M{"$toDecimal": "$filledAmount"}},
@@ -657,6 +657,7 @@ func (dao *OrderDao) GetOrderBookPricePoint(p *types.Pair, pp *big.Int, side str
 
 func (dao *OrderDao) GetMatchingBuyOrders(o *types.Order) ([]*types.Order, error) {
 	var orders []*types.Order
+	decimalPricepoint, _ := bson.ParseDecimal128(o.PricePoint.String())
 
 	q := []bson.M{
 		bson.M{
@@ -665,11 +666,20 @@ func (dao *OrderDao) GetMatchingBuyOrders(o *types.Order) ([]*types.Order, error
 				"baseToken":  o.BaseToken.Hex(),
 				"quoteToken": o.QuoteToken.Hex(),
 				"side":       "BUY",
-				"pricepoint": bson.M{"$gte": o.PricePoint.Int64()},
 			},
 		},
 		bson.M{
-			"$sort": bson.M{"pricepoint": -1, "createdAt": 1},
+			"$addFields": bson.M{
+				"priceDecimal": bson.M{"$toDecimal": "$pricepoint"},
+			},
+		},
+		bson.M{
+			"$match": bson.M{
+				"priceDecimal": bson.M{"$gte": decimalPricepoint},
+			},
+		},
+		bson.M{
+			"$sort": bson.M{"priceDecimal": -1, "createdAt": 1},
 		},
 	}
 
@@ -684,6 +694,7 @@ func (dao *OrderDao) GetMatchingBuyOrders(o *types.Order) ([]*types.Order, error
 
 func (dao *OrderDao) GetMatchingSellOrders(o *types.Order) ([]*types.Order, error) {
 	var orders []*types.Order
+	decimalPricepoint, _ := bson.ParseDecimal128(o.PricePoint.String())
 
 	q := []bson.M{
 		bson.M{
@@ -692,11 +703,20 @@ func (dao *OrderDao) GetMatchingSellOrders(o *types.Order) ([]*types.Order, erro
 				"baseToken":  o.BaseToken.Hex(),
 				"quoteToken": o.QuoteToken.Hex(),
 				"side":       "SELL",
-				"pricepoint": bson.M{"$lte": o.PricePoint.Int64()},
 			},
 		},
 		bson.M{
-			"$sort": bson.M{"pricepoint": 1, "createdAt": 1},
+			"$addFields": bson.M{
+				"priceDecimal": bson.M{"$toDecimal": "$pricepoint"},
+			},
+		},
+		bson.M{
+			"$match": bson.M{
+				"priceDecimal": bson.M{"$lte": decimalPricepoint},
+			},
+		},
+		bson.M{
+			"$sort": bson.M{"priceDecimal": 1, "createdAt": 1},
 		},
 	}
 
