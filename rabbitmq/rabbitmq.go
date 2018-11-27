@@ -43,9 +43,11 @@ func InitConnection(address string) *Connection {
 
 func NewConnection() *amqp.Connection {
 	uri := amqp.URI{
-		Scheme: "amqp",
-		Host:   app.Config.RabbitMQURL,
-		Port:   5672,
+		Scheme:   "amqp",
+		Host:     app.Config.RabbitMQURL,
+		Port:     5672,
+		Username: "guest",
+		Password: "guest",
 	}
 
 	conn, err := amqp.Dial(uri.String())
