@@ -232,19 +232,19 @@ func (o *Order) BuyToken() common.Address {
 
 // SellAmount
 // If order is a "BUY", then sellToken = quoteToken
-func (o *Order) SellAmount(pricepointMultiplier *big.Int) *big.Int {
+func (o *Order) SellAmount(pairMultiplier *big.Int) *big.Int {
 	if o.Side == "BUY" {
-		return math.Div(math.Mul(o.Amount, o.PricePoint), pricepointMultiplier)
+		return math.Div(math.Mul(o.Amount, o.PricePoint), pairMultiplier)
 	} else {
 		return o.Amount
 	}
 }
 
-func (o *Order) BuyAmount() *big.Int {
+func (o *Order) BuyAmount(pairMultiplier *big.Int) *big.Int {
 	if o.Side == "SELL" {
 		return o.Amount
 	} else {
-		return math.Div(math.Mul(o.Amount, o.PricePoint), big.NewInt(1e9))
+		return math.Div(math.Mul(o.Amount, o.PricePoint), pairMultiplier)
 	}
 }
 
@@ -438,7 +438,7 @@ type OrderRecord struct {
 	Status          string           `json:"status" bson:"status"`
 	Side            string           `json:"side" bson:"side"`
 	Hash            string           `json:"hash" bson:"hash"`
-	PricePoint      int64            `json:"pricepoint" bson:"pricepoint"`
+	PricePoint      string            `json:"pricepoint" bson:"pricepoint"`
 	Amount          string           `json:"amount" bson:"amount"`
 	FilledAmount    string           `json:"filledAmount" bson:"filledAmount"`
 	Nonce           string           `json:"nonce" bson:"nonce"`
@@ -462,7 +462,7 @@ func (o *Order) GetBSON() (interface{}, error) {
 		Side:            o.Side,
 		Hash:            o.Hash.Hex(),
 		Amount:          o.Amount.String(),
-		PricePoint:      o.PricePoint.Int64(),
+		PricePoint:      o.PricePoint.String(),
 		Nonce:           o.Nonce.String(),
 		MakeFee:         o.MakeFee.String(),
 		TakeFee:         o.TakeFee.String(),
@@ -502,7 +502,7 @@ func (o *Order) SetBSON(raw bson.Raw) error {
 		Status          string           `json:"status" bson:"status"`
 		Side            string           `json:"side" bson:"side"`
 		Hash            string           `json:"hash" bson:"hash"`
-		PricePoint      int64            `json:"pricepoint" bson:"pricepoint"`
+		PricePoint      string            `json:"pricepoint" bson:"pricepoint"`
 		Amount          string           `json:"amount" bson:"amount"`
 		FilledAmount    string           `json:"filledAmount" bson:"filledAmount"`
 		Nonce           string           `json:"nonce" bson:"nonce"`
@@ -541,8 +541,8 @@ func (o *Order) SetBSON(raw bson.Raw) error {
 		o.FilledAmount = math.ToBigInt(decoded.FilledAmount)
 	}
 
-	if decoded.PricePoint != 0 {
-		o.PricePoint = big.NewInt(decoded.PricePoint)
+	if decoded.PricePoint != "" {
+		o.PricePoint = math.ToBigInt(decoded.PricePoint)
 	}
 
 	if decoded.Signature != nil {
@@ -574,7 +574,7 @@ func (o OrderBSONUpdate) GetBSON() (interface{}, error) {
 		"quoteToken":      o.QuoteToken.Hex(),
 		"status":          o.Status,
 		"side":            o.Side,
-		"pricepoint":      o.PricePoint.Int64(),
+		"pricepoint":      o.PricePoint.String(),
 		"amount":          o.Amount.String(),
 		"nonce":           o.Nonce.String(),
 		"makeFee":         o.MakeFee.String(),

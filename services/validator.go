@@ -7,7 +7,6 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/app"
 	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/Proofsuite/amp-matching-engine/types"
-	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/Proofsuite/amp-matching-engine/utils/math"
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -43,10 +42,7 @@ func (s *ValidatorService) ValidateBalance(o *types.Order) error {
 		return err
 	}
 
-	pricepointMultiplier := pair.PricepointMultiplier()
-
-	utils.PrintJSON(pricepointMultiplier)
-	utils.PrintJSON(o.SellAmount(pricepointMultiplier))
+	pairMultiplier := pair.PairMultiplier()
 
 	balanceRecord, err := s.accountDao.GetTokenBalances(o.UserAddress)
 	if err != nil {
@@ -75,15 +71,15 @@ func (s *ValidatorService) ValidateBalance(o *types.Order) error {
 	availableSellTokenBalance := math.Sub(sellTokenBalance, sellTokenLockedBalance)
 
 	//Sell Token Balance
-	if sellTokenBalance.Cmp(o.SellAmount(pricepointMultiplier)) == -1 {
+	if sellTokenBalance.Cmp(o.SellAmount(pairMultiplier)) == -1 {
 		return fmt.Errorf("Insufficient %v Balance", o.SellTokenSymbol())
 	}
 
-	if availableSellTokenBalance.Cmp(o.SellAmount(pricepointMultiplier)) == -1 {
+	if availableSellTokenBalance.Cmp(o.SellAmount(pairMultiplier)) == -1 {
 		return fmt.Errorf("Insufficient %v Balance", o.SellTokenSymbol())
 	}
 
-	if sellTokenAllowance.Cmp(o.SellAmount(pricepointMultiplier)) == -1 {
+	if sellTokenAllowance.Cmp(o.SellAmount(pairMultiplier)) == -1 {
 		return fmt.Errorf("Insufficient %v Allowance", o.SellTokenSymbol())
 	}
 
@@ -94,7 +90,6 @@ func (s *ValidatorService) ValidateBalance(o *types.Order) error {
 
 	sellTokenBalanceRecord.Balance.Set(sellTokenBalance)
 	sellTokenBalanceRecord.Allowance.Set(sellTokenAllowance)
-
 	err = s.accountDao.UpdateTokenBalance(o.UserAddress, o.SellToken(), sellTokenBalanceRecord)
 	if err != nil {
 		logger.Error(err)

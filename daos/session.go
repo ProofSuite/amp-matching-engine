@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"net"
 	"reflect"
+	"time"
 
 	"github.com/Proofsuite/amp-matching-engine/app"
 	"github.com/Proofsuite/amp-matching-engine/utils"
@@ -23,17 +24,12 @@ var db *Database
 var logger = utils.Logger
 
 func InitSession(session *mgo.Session) (*mgo.Session, error) {
-	var err error
-
 	if db == nil {
 		if session == nil {
 			if app.Config.EnableTLS {
 				session = NewTLSSession()
 			} else {
-				session, err = mgo.Dial(app.Config.MongoURL)
-				if err != nil {
-					panic(err)
-				}
+				session = NewSession()
 			}
 		}
 
@@ -51,6 +47,20 @@ func InitTLSSession() (*mgo.Session, error) {
 
 func (d *Database) InitDatabase(session *mgo.Session) {
 	d.Session = session
+}
+
+func NewSession() *mgo.Session {
+	dialInfo := &mgo.DialInfo{
+		Addrs:   []string{app.Config.MongoURL},
+		Timeout: 15 * time.Second,
+	}
+
+	session, err := mgo.DialWithInfo(dialInfo)
+	if err != nil {
+		panic(err)
+	}
+
+	return session
 }
 
 func NewTLSSession() *mgo.Session {

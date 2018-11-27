@@ -61,6 +61,29 @@ func (_m *TradeDao) Drop() {
 	_m.Called()
 }
 
+// FindAndModify provides a mock function with given fields: h, t
+func (_m *TradeDao) FindAndModify(h common.Hash, t *types.Trade) (*types.Trade, error) {
+	ret := _m.Called(h, t)
+
+	var r0 *types.Trade
+	if rf, ok := ret.Get(0).(func(common.Hash, *types.Trade) *types.Trade); ok {
+		r0 = rf(h, t)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*types.Trade)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(common.Hash, *types.Trade) error); ok {
+		r1 = rf(h, t)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetAll provides a mock function with given fields:
 func (_m *TradeDao) GetAll() ([]types.Trade, error) {
 	ret := _m.Called()
@@ -284,6 +307,36 @@ func (_m *TradeDao) GetSortedTrades(bt common.Address, qt common.Address, n int)
 	var r1 error
 	if rf, ok := ret.Get(1).(func(common.Address, common.Address, int) error); ok {
 		r1 = rf(bt, qt, n)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetSortedTradesByUserAddress provides a mock function with given fields: a, limit
+func (_m *TradeDao) GetSortedTradesByUserAddress(a common.Address, limit ...int) ([]*types.Trade, error) {
+	_va := make([]interface{}, len(limit))
+	for _i := range limit {
+		_va[_i] = limit[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, a)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
+
+	var r0 []*types.Trade
+	if rf, ok := ret.Get(0).(func(common.Address, ...int) []*types.Trade); ok {
+		r0 = rf(a, limit...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*types.Trade)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(common.Address, ...int) error); ok {
+		r1 = rf(a, limit...)
 	} else {
 		r1 = ret.Error(1)
 	}

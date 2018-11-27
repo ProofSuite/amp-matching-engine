@@ -20,7 +20,6 @@ type Pair struct {
 	QuoteTokenSymbol   string         `json:"quoteTokenSymbol,omitempty" bson:"quoteTokenSymbol"`
 	QuoteTokenAddress  common.Address `json:"quoteTokenAddress,omitempty" bson:"quoteTokenAddress"`
 	QuoteTokenDecimals int            `json:"quoteTokenDecimals,omitempty" bson:"quoteTokenDecimals"`
-	PriceMultiplier    *big.Int       `json:"priceMultiplier,omitempty" bson:"priceMultiplier"`
 	Active             bool           `json:"active,omitempty" bson:"active"`
 	MakeFee            *big.Int       `json:"makeFee,omitempty" bson:"makeFee"`
 	TakeFee            *big.Int       `json:"takeFee,omitempty" bson:"takeFee"`
@@ -50,24 +49,25 @@ type PairRecord struct {
 	QuoteTokenAddress  string    `json:"quoteTokenAddress" bson:"quoteTokenAddress"`
 	QuoteTokenDecimals int       `json:"quoteTokenDecimals" bson:"quoteTokenDecimals"`
 	Active             bool      `json:"active" bson:"active"`
-	PriceMultiplier    string    `json:"priceMultiplier" bson:"priceMultiplier"`
 	MakeFee            string    `json:"makeFee" bson:"makeFee"`
 	TakeFee            string    `json:"takeFee" bson:"takeFee"`
 	CreatedAt          time.Time `json:"createdAt" bson:"createdAt"`
 	UpdatedAt          time.Time `json:"updatedAt" bson:"updatedAt"`
 }
 
-func (p *Pair) PricepointMultiplier() *big.Int {
-	baseTokenMultiplier := math.Exp(big.NewInt(10), big.NewInt(int64(p.BaseTokenDecimals)))
-	quoteTokenMultiplier := math.Exp(big.NewInt(10), big.NewInt(int64(p.QuoteTokenDecimals)))
-	defaultMultiplier := math.Exp(big.NewInt(10), big.NewInt(9))
-
-	return math.Div(math.Mul(baseTokenMultiplier, defaultMultiplier), quoteTokenMultiplier)
+func (p *Pair) BaseTokenMultiplier() *big.Int {
+	return math.Exp(big.NewInt(10), big.NewInt(int64(p.BaseTokenDecimals)))
 }
 
-func (p *Pair) DecimalsMultiplier() *big.Int {
-	decimalsDiff := math.Sub(big.NewInt(int64(p.BaseTokenDecimals)), big.NewInt(int64(p.QuoteTokenDecimals)))
-	return math.Exp(big.NewInt(10), decimalsDiff)
+func (p *Pair) QuoteTokenMultiplier() *big.Int {
+	return math.Exp(big.NewInt(10), big.NewInt(int64(p.QuoteTokenDecimals)))
+}
+
+func (p *Pair) PairMultiplier() *big.Int {
+	defaultMultiplier := math.Exp(big.NewInt(10), big.NewInt(18))
+	baseTokenMultiplier := math.Exp(big.NewInt(10), big.NewInt(int64(p.BaseTokenDecimals)))
+
+	return math.Mul(defaultMultiplier, baseTokenMultiplier)
 }
 
 func (p *Pair) Code() string {
@@ -99,9 +99,6 @@ func (p *Pair) SetBSON(raw bson.Raw) error {
 	takeFee := big.NewInt(0)
 	takeFee, _ = takeFee.SetString(decoded.TakeFee, 10)
 
-	priceMultiplier := big.NewInt(0)
-	priceMultiplier, _ = priceMultiplier.SetString(decoded.PriceMultiplier, 10)
-
 	p.ID = decoded.ID
 	p.BaseTokenSymbol = decoded.BaseTokenSymbol
 	p.BaseTokenAddress = common.HexToAddress(decoded.BaseTokenAddress)
@@ -110,7 +107,6 @@ func (p *Pair) SetBSON(raw bson.Raw) error {
 	p.QuoteTokenAddress = common.HexToAddress(decoded.QuoteTokenAddress)
 	p.QuoteTokenDecimals = decoded.QuoteTokenDecimals
 	p.Active = decoded.Active
-	p.PriceMultiplier = priceMultiplier
 	p.MakeFee = makeFee
 	p.TakeFee = takeFee
 
@@ -129,7 +125,6 @@ func (p *Pair) GetBSON() (interface{}, error) {
 		QuoteTokenSymbol:   p.QuoteTokenSymbol,
 		QuoteTokenAddress:  p.QuoteTokenAddress.Hex(),
 		QuoteTokenDecimals: p.QuoteTokenDecimals,
-		PriceMultiplier:    p.PriceMultiplier.String(),
 		Active:             p.Active,
 		MakeFee:            p.MakeFee.String(),
 		TakeFee:            p.TakeFee.String(),
