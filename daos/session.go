@@ -24,17 +24,12 @@ var db *Database
 var logger = utils.Logger
 
 func InitSession(session *mgo.Session) (*mgo.Session, error) {
-	var err error
-
 	if db == nil {
 		if session == nil {
 			if app.Config.EnableTLS {
 				session = NewTLSSession()
 			} else {
-				session, err = mgo.Dial(app.Config.MongoURL)
-				if err != nil {
-					panic(err)
-				}
+				session = NewSession()
 			}
 		}
 
@@ -54,20 +49,38 @@ func (d *Database) InitDatabase(session *mgo.Session) {
 	d.Session = session
 }
 
+func NewSession() *mgo.Session {
+	dialInfo := &mgo.DialInfo{
+		Addrs:   []string{app.Config.MongoURL},
+		Timeout: 15 * time.Second,
+	}
+
+	session, err := mgo.DialWithInfo(dialInfo)
+	if err != nil {
+		panic(err)
+	}
+
+	return session
+}
+
 func NewTLSSession() *mgo.Session {
 	tlsConfig := &tls.Config{}
 	tlsConfig.InsecureSkipVerify = true
 
+	// dialInfo := &mgo.DialInfo{
+	// 	Addrs: []string{
+	// 		"ampcluster0-shard-00-00-xzynf.mongodb.net:27017",
+	// 		"ampcluster0-shard-00-01-xzynf.mongodb.net:27017",
+	// 		"ampcluster0-shard-00-02-xzynf.mongodb.net:27017",
+	// 	},
+	// 	Timeout:  60 * time.Second,
+	// 	Database: "admin",
+	// 	Username: app.Config.MongoDBUsername,
+	// 	Password: app.Config.MongoDBPassword,
+	// }
+
 	dialInfo := &mgo.DialInfo{
-		Addrs: []string{
-			"ampcluster0-shard-00-00-xzynf.mongodb.net:27017",
-			"ampcluster0-shard-00-01-xzynf.mongodb.net:27017",
-			"ampcluster0-shard-00-02-xzynf.mongodb.net:27017",
-		},
-		Timeout:  60 * time.Second,
-		Database: "admin",
-		Username: app.Config.MongoDBUsername,
-		Password: app.Config.MongoDBPassword,
+		Addrs: []string{app.Config.MongoURL},
 	}
 
 	dialInfo.DialServer = func(addr *mgo.ServerAddr) (net.Conn, error) {
@@ -79,6 +92,11 @@ func NewTLSSession() *mgo.Session {
 	if err != nil {
 		panic(err)
 	}
+
+	// session, err := mgo.Dial(app.Config.MongoURL)
+	// if err != nil {
+	// 	panic(err)
+	// }
 
 	// session.SetMode(mgo.Monotonic, true)
 	return session

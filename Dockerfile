@@ -21,3 +21,5 @@ COPY ./ ./
 CMD ["go", "run", "main.go"]
 
 EXPOSE 8081
+EXPOSE 443
+EXPOSE 80
