@@ -193,6 +193,10 @@ Pull requests need to be based and opened against the master branch
 Commit messages should properly describe the code modified
 Ensure all tests are passing before submitting a pull request
 
+# Contact
+
+If you have questions, ideas or suggestions, you can reach our development team on Discord in the #developer channel.  [Discord Link](https://discordapp.com/invite/eChaHFk)
+
 # License
 
 The Proof CryptoFiat smart contract (i.e. all code inside of the contracts and test directories) is licensed under the MIT License, also included in our repository in the LICENSE file.
