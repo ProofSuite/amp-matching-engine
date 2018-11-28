@@ -511,14 +511,27 @@ func (dao *OrderDao) GetUserLockedBalance(account common.Address, token common.A
 
 func (dao *OrderDao) GetRawOrderBook(p *types.Pair) ([]*types.Order, error) {
 	var orders []*types.Order
-	q := bson.M{
-		"status":     bson.M{"$in": []string{"OPEN", "PARTIAL_FILLED"}},
-		"baseToken":  p.BaseTokenAddress.Hex(),
-		"quoteToken": p.QuoteTokenAddress.Hex(),
+	q := []bson.M{
+		bson.M{
+			"$match": bson.M{
+				"status":     bson.M{"$in": []string{"OPEN", "PARTIAL_FILLED"}},
+				"baseToken":  p.BaseTokenAddress.Hex(),
+				"quoteToken": p.QuoteTokenAddress.Hex(),
+			},
+		},
+		bson.M{
+			"$addFields": bson.M{
+				"priceDecimal": bson.M{"$toDecimal": "$pricepoint"},
+			},
+		},
+		bson.M{
+			"$sort": bson.M{
+				"priceDecimal": 1,
+			},
+		},
 	}
 
-	sort := []string{"pricepoint"}
-	err := db.GetAndSort(dao.dbName, dao.collectionName, q, sort, 0, 0, &orders)
+	err := db.Aggregate(dao.dbName, dao.collectionName, q, &orders)
 	if err != nil {
 		logger.Error(err)
 		return nil, err
@@ -539,7 +552,8 @@ func (dao *OrderDao) GetOrderBook(p *types.Pair) ([]map[string]string, []map[str
 		},
 		bson.M{
 			"$group": bson.M{
-				"_id": "$pricepoint",
+				"_id":        bson.M{"$toDecimal": "$pricepoint"},
+				"pricepoint": bson.M{"$first": "$pricepoint"},
 				"amount": bson.M{
 					"$sum": bson.M{
 						"$subtract": []bson.M{bson.M{"$toDecimal": "$amount"}, bson.M{"$toDecimal": "$filledAmount"}},
@@ -555,7 +569,7 @@ func (dao *OrderDao) GetOrderBook(p *types.Pair) ([]map[string]string, []map[str
 		bson.M{
 			"$project": bson.M{
 				"_id":        0,
-				"pricepoint": bson.M{"$toString": "$_id"},
+				"pricepoint": 1,
 				"amount":     bson.M{"$toString": "$amount"},
 			},
 		},
@@ -572,7 +586,8 @@ func (dao *OrderDao) GetOrderBook(p *types.Pair) ([]map[string]string, []map[str
 		},
 		bson.M{
 			"$group": bson.M{
-				"_id": bson.M{"$toDecimal": "$pricepoint"},
+				"_id":        bson.M{"$toDecimal": "$pricepoint"},
+				"pricepoint": bson.M{"$first": "$pricepoint"},
 				"amount": bson.M{
 					"$sum": bson.M{
 						"$subtract": []bson.M{bson.M{"$toDecimal": "$amount"}, bson.M{"$toDecimal": "$filledAmount"}},
@@ -588,7 +603,7 @@ func (dao *OrderDao) GetOrderBook(p *types.Pair) ([]map[string]string, []map[str
 		bson.M{
 			"$project": bson.M{
 				"_id":        0,
-				"pricepoint": bson.M{"$toString": "$_id"},
+				"pricepoint": 1,
 				"amount":     bson.M{"$toString": "$amount"},
 			},
 		},
@@ -624,7 +639,8 @@ func (dao *OrderDao) GetOrderBookPricePoint(p *types.Pair, pp *big.Int, side str
 		},
 		bson.M{
 			"$group": bson.M{
-				"_id": bson.M{"$toDecimal": "$pricepoint"},
+				"_id":        bson.M{"$toDecimal": "$pricepoint"},
+				"pricepoint": bson.M{"$first": "$pricepoint"},
 				"amount": bson.M{
 					"$sum": bson.M{
 						"$subtract": []bson.M{bson.M{"$toDecimal": "$amount"}, bson.M{"$toDecimal": "$filledAmount"}},
@@ -635,7 +651,7 @@ func (dao *OrderDao) GetOrderBookPricePoint(p *types.Pair, pp *big.Int, side str
 		bson.M{
 			"$project": bson.M{
 				"_id":        0,
-				"pricepoint": "$_id",
+				"pricepoint": 1,
 				"amount":     bson.M{"$toString": "$amount"},
 			},
 		},
