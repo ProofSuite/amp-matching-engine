@@ -6,7 +6,6 @@ import (
 	"log"
 
 	"github.com/Proofsuite/amp-matching-engine/types"
-	"github.com/Proofsuite/amp-matching-engine/utils"
 )
 
 func (c *Connection) SubscribeOrders(fn func(*Message) error) error {
@@ -161,8 +160,6 @@ func (c *Connection) PublishCancelOrderMessage(o *types.Order) error {
 }
 
 func (c *Connection) PublishInvalidateMakerOrdersMessage(m types.Matches) error {
-	utils.PrintJSON("In publish invalidate")
-
 	b, err := json.Marshal(m)
 	if err != nil {
 		logger.Error(err)
