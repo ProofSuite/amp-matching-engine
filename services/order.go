@@ -8,6 +8,7 @@ import (
 
 	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/Proofsuite/amp-matching-engine/utils"
+	"github.com/Proofsuite/amp-matching-engine/utils/math"
 	"github.com/Proofsuite/amp-matching-engine/ws"
 	"github.com/ethereum/go-ethereum/common"
 
@@ -115,6 +116,13 @@ func (s *OrderService) NewOrder(o *types.Order) error {
 		return errors.New("Pair not found")
 	}
 
+	utils.PrintJSON(o.QuoteAmount(p).String())
+	utils.PrintJSON(p.MinQuoteAmount().String())
+
+	if math.IsStrictlySmallerThan(o.QuoteAmount(p), p.MinQuoteAmount()) {
+		return errors.New("Order amount too low")
+	}
+
 	// Fill token and pair data
 	err = o.Process(p)
 	if err != nil {
@@ -145,6 +153,15 @@ func (s *OrderService) CancelOrder(oc *types.OrderCancel) error {
 	if err != nil {
 		logger.Error(err)
 		return err
+	}
+
+	ok, err := oc.VerifySignature(o)
+	if err != nil {
+		logger.Error(err)
+	}
+
+	if !ok {
+		return errors.New("Invalid signature")
 	}
 
 	if o == nil {

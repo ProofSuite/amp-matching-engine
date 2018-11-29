@@ -1,6 +1,7 @@
 package types
 
 import (
+	"encoding/json"
 	"math/big"
 	"time"
 
@@ -25,6 +26,30 @@ type Pair struct {
 	TakeFee            *big.Int       `json:"takeFee,omitempty" bson:"takeFee"`
 	CreatedAt          time.Time      `json:"-" bson:"createdAt"`
 	UpdatedAt          time.Time      `json:"-" bson:"updatedAt"`
+}
+
+func (p *Pair) MarshalJSON() ([]byte, error) {
+	pair := map[string]interface{}{
+		"baseTokenSymbol":    p.BaseTokenSymbol,
+		"baseTokenDecimals":  p.BaseTokenDecimals,
+		"quoteTokenSymbol":   p.QuoteTokenSymbol,
+		"quoteTokenDecimals": p.QuoteTokenDecimals,
+		"baseTokenAddress":   p.BaseTokenAddress,
+		"quoteTokenAddress":  p.QuoteTokenAddress,
+		"active":             p.Active,
+		"createdAt":          p.CreatedAt.Format(time.RFC3339Nano),
+		"updatedAt":          p.UpdatedAt.Format(time.RFC3339Nano),
+	}
+
+	if p.MakeFee != nil {
+		pair["makeFee"] = p.MakeFee.String()
+	}
+
+	if p.TakeFee != nil {
+		pair["takeFee"] = p.TakeFee.String()
+	}
+
+	return json.Marshal(pair)
 }
 
 type PairAddresses struct {
@@ -83,6 +108,10 @@ func (p *Pair) AddressCode() string {
 func (p *Pair) Name() string {
 	name := p.BaseTokenSymbol + "/" + p.QuoteTokenSymbol
 	return name
+}
+
+func (p *Pair) MinQuoteAmount() *big.Int {
+	return math.Add(math.Mul(big.NewInt(2), p.MakeFee), math.Mul(big.NewInt(2), p.TakeFee))
 }
 
 func (p *Pair) SetBSON(raw bson.Raw) error {

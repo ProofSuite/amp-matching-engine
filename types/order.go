@@ -230,6 +230,11 @@ func (o *Order) BuyToken() common.Address {
 	}
 }
 
+func (o *Order) QuoteAmount(p *Pair) *big.Int {
+	pairMultiplier := p.PairMultiplier()
+	return math.Div(math.Mul(o.Amount, o.PricePoint), pairMultiplier)
+}
+
 // SellAmount
 // If order is a "BUY", then sellToken = quoteToken
 func (o *Order) SellAmount(pairMultiplier *big.Int) *big.Int {
@@ -238,6 +243,36 @@ func (o *Order) SellAmount(pairMultiplier *big.Int) *big.Int {
 	} else {
 		return o.Amount
 	}
+}
+
+func (o *Order) RequiredSellAmount(p *Pair) *big.Int {
+	var requiredSellTokenAmount *big.Int
+
+	pairMultiplier := p.PairMultiplier()
+
+	if o.Side == "BUY" {
+		requiredSellTokenAmount = math.Div(math.Mul(o.Amount, o.PricePoint), pairMultiplier)
+	} else {
+		requiredSellTokenAmount = o.Amount
+	}
+
+	return requiredSellTokenAmount
+}
+
+func (o *Order) TotalRequiredSellAmount(p *Pair) *big.Int {
+	var requiredSellTokenAmount *big.Int
+
+	pairMultiplier := p.PairMultiplier()
+
+	if o.Side == "BUY" {
+		sellAmount := math.Div(math.Mul(o.Amount, o.PricePoint), pairMultiplier)
+		fee := math.Max(p.MakeFee, p.TakeFee)
+		requiredSellTokenAmount = math.Add(sellAmount, fee)
+	} else {
+		requiredSellTokenAmount = o.Amount
+	}
+
+	return requiredSellTokenAmount
 }
 
 func (o *Order) BuyAmount(pairMultiplier *big.Int) *big.Int {
@@ -438,7 +473,7 @@ type OrderRecord struct {
 	Status          string           `json:"status" bson:"status"`
 	Side            string           `json:"side" bson:"side"`
 	Hash            string           `json:"hash" bson:"hash"`
-	PricePoint      string            `json:"pricepoint" bson:"pricepoint"`
+	PricePoint      string           `json:"pricepoint" bson:"pricepoint"`
 	Amount          string           `json:"amount" bson:"amount"`
 	FilledAmount    string           `json:"filledAmount" bson:"filledAmount"`
 	Nonce           string           `json:"nonce" bson:"nonce"`
@@ -502,7 +537,7 @@ func (o *Order) SetBSON(raw bson.Raw) error {
 		Status          string           `json:"status" bson:"status"`
 		Side            string           `json:"side" bson:"side"`
 		Hash            string           `json:"hash" bson:"hash"`
-		PricePoint      string            `json:"pricepoint" bson:"pricepoint"`
+		PricePoint      string           `json:"pricepoint" bson:"pricepoint"`
 		Amount          string           `json:"amount" bson:"amount"`
 		FilledAmount    string           `json:"filledAmount" bson:"filledAmount"`
 		Nonce           string           `json:"nonce" bson:"nonce"`
