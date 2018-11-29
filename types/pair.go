@@ -110,6 +110,10 @@ func (p *Pair) Name() string {
 	return name
 }
 
+func (p *Pair) MinQuoteAmount() *big.Int {
+	return math.Add(math.Mul(big.NewInt(2), p.MakeFee), math.Mul(big.NewInt(2), p.TakeFee))
+}
+
 func (p *Pair) SetBSON(raw bson.Raw) error {
 	decoded := &PairRecord{}
 

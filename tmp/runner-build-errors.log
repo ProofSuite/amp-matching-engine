@@ -1,3 +1,0 @@
-# github.com/Proofsuite/amp-matching-engine/services
-services/validator.go:84:48: syntax error: unexpected ), expecting {
-services/validator.go:88:57: syntax error: unexpected ), expecting {

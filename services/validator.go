@@ -42,7 +42,6 @@ func (s *ValidatorService) ValidateBalance(o *types.Order) error {
 		return err
 	}
 
-	requiredAmount := o.RequiredSellAmount(pair)
 	totalRequiredAmount := o.TotalRequiredSellAmount(pair)
 
 	balanceRecord, err := s.accountDao.GetTokenBalances(o.UserAddress)
@@ -81,11 +80,11 @@ func (s *ValidatorService) ValidateBalance(o *types.Order) error {
 		return fmt.Errorf("Insufficient %v Balance", o.SellTokenSymbol())
 	}
 
-	if sellTokenAllowance.Cmp(totalRequiredAmount)) == -1 {
+	if sellTokenAllowance.Cmp(totalRequiredAmount) == -1 {
 		return fmt.Errorf("Insufficient %v Allowance", o.SellTokenSymbol())
 	}
 
-	if availableSellTokenAllowance.Cmp(totalRequiredAmount)) == -1 {
+	if availableSellTokenAllowance.Cmp(totalRequiredAmount) == -1 {
 		return fmt.Errorf("Insufficient %v Balance", o.SellTokenSymbol())
 	}
 

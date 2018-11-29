@@ -230,6 +230,11 @@ func (o *Order) BuyToken() common.Address {
 	}
 }
 
+func (o *Order) QuoteAmount(p *Pair) *big.Int {
+	pairMultiplier := p.PairMultiplier()
+	return math.Div(math.Mul(o.Amount, o.PricePoint), pairMultiplier)
+}
+
 // SellAmount
 // If order is a "BUY", then sellToken = quoteToken
 func (o *Order) SellAmount(pairMultiplier *big.Int) *big.Int {
