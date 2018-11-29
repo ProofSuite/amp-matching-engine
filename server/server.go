@@ -43,6 +43,7 @@ func Start() {
 	}
 
 	rabbitConn := rabbitmq.InitConnection(app.Config.RabbitMQURL)
+
 	provider := ethereum.NewWebsocketProvider()
 
 	router := NewRouter(provider, rabbitConn)
@@ -67,6 +68,7 @@ func Start() {
 		}
 
 		go handleCerts(&certManager)
+
 		log.Printf("server %v starting on port :443", app.Version)
 		err := server.ListenAndServeTLS("", "")
 		if err != nil {
