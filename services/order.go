@@ -147,6 +147,15 @@ func (s *OrderService) CancelOrder(oc *types.OrderCancel) error {
 		return err
 	}
 
+	ok, err := oc.VerifySignature(o)
+	if err != nil {
+		logger.Error(err)
+	}
+
+	if !ok {
+		return errors.New("Invalid signature")
+	}
+
 	if o == nil {
 		return errors.New("No order with corresponding hash")
 	}
