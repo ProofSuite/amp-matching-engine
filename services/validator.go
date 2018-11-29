@@ -42,7 +42,8 @@ func (s *ValidatorService) ValidateBalance(o *types.Order) error {
 		return err
 	}
 
-	pairMultiplier := pair.PairMultiplier()
+	requiredAmount := o.RequiredSellAmount(pair)
+	totalRequiredAmount := o.TotalRequiredSellAmount(pair)
 
 	balanceRecord, err := s.accountDao.GetTokenBalances(o.UserAddress)
 	if err != nil {
@@ -69,18 +70,23 @@ func (s *ValidatorService) ValidateBalance(o *types.Order) error {
 	}
 
 	availableSellTokenBalance := math.Sub(sellTokenBalance, sellTokenLockedBalance)
+	availableSellTokenAllowance := math.Sub(sellTokenAllowance, sellTokenLockedBalance)
 
 	//Sell Token Balance
-	if sellTokenBalance.Cmp(o.SellAmount(pairMultiplier)) == -1 {
+	if sellTokenBalance.Cmp(totalRequiredAmount) == -1 {
 		return fmt.Errorf("Insufficient %v Balance", o.SellTokenSymbol())
 	}
 
-	if availableSellTokenBalance.Cmp(o.SellAmount(pairMultiplier)) == -1 {
+	if availableSellTokenBalance.Cmp(totalRequiredAmount) == -1 {
 		return fmt.Errorf("Insufficient %v Balance", o.SellTokenSymbol())
 	}
 
-	if sellTokenAllowance.Cmp(o.SellAmount(pairMultiplier)) == -1 {
+	if sellTokenAllowance.Cmp(totalRequiredAmount)) == -1 {
 		return fmt.Errorf("Insufficient %v Allowance", o.SellTokenSymbol())
+	}
+
+	if availableSellTokenAllowance.Cmp(totalRequiredAmount)) == -1 {
+		return fmt.Errorf("Insufficient %v Balance", o.SellTokenSymbol())
 	}
 
 	sellTokenBalanceRecord := balanceRecord[o.SellToken()]
