@@ -1,7 +1,6 @@
 package server
 
 import (
-	"crypto/tls"
 	"fmt"
 	"log"
 	"net/http"
@@ -49,11 +48,11 @@ func Start() {
 	router := NewRouter(provider, rabbitConn)
 	router.HandleFunc("/socket", ws.ConnectionEndpoint)
 
-	certManager := autocert.Manager{
-		Prompt:     autocert.AcceptTOS,
-		HostPolicy: autocert.HostWhitelist("engine.amp.exchange"),
-		Cache:      autocert.DirCache("certs"),
-	}
+	// certManager := autocert.Manager{
+	// 	Prompt:     autocert.AcceptTOS,
+	// 	HostPolicy: autocert.HostWhitelist("engine.amp.exchange"),
+	// 	Cache:      autocert.DirCache("/certs"),
+	// }
 
 	allowedHeaders := handlers.AllowedHeaders([]string{"Content-Type", "Accept", "Authorization", "Access-Control-Allow-Origin"})
 	allowedOrigins := handlers.AllowedOrigins([]string{"*"})
@@ -61,19 +60,28 @@ func Start() {
 
 	// start the server
 	if app.Config.EnableTLS {
-		server := &http.Server{
-			Addr:      ":443",
-			Handler:   handlers.CORS(allowedHeaders, allowedOrigins, allowedMethods)(router),
-			TLSConfig: &tls.Config{GetCertificate: certManager.GetCertificate},
-		}
-
-		go handleCerts(&certManager)
-
 		log.Printf("server %v starting on port :443", app.Version)
-		err := server.ListenAndServeTLS("", "")
+		err := http.ListenAndServeTLS(":443",
+			"/etc/ssl/matching-engine/server_certificate.pem",
+			"/etc/ssl/matching-engine/server_key.pem",
+			handlers.CORS(allowedHeaders, allowedOrigins, allowedMethods)(router),
+		)
+
 		if err != nil {
 			panic(err)
 		}
+		// server := &http.Server{
+		// 	Addr:      ":443",
+		// 	Handler:
+		// 	TLSConfig: &tls.Config{GetCertificate: certManager.GetCertificate},
+		// }
+
+		// go handleCerts(&certManager)
+
+		// err := server.ListenAndServeTLS("", "")
+		// if err != nil {
+		// 	panic(err)
+		// }
 
 	} else {
 		address := fmt.Sprintf(":%v", app.Config.ServerPort)
