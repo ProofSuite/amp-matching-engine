@@ -54,13 +54,9 @@ func Start() {
 	// 	Cache:      autocert.DirCache("/certs"),
 	// }
 
-	log.Printf("Hey")
-
 	allowedHeaders := handlers.AllowedHeaders([]string{"Content-Type", "Accept", "Authorization", "Access-Control-Allow-Origin"})
 	allowedOrigins := handlers.AllowedOrigins([]string{"*"})
 	allowedMethods := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS"})
-
-	log.Printf("im here")
 
 	// start the server
 	if app.Config.EnableTLS {
