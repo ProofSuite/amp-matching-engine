@@ -24,8 +24,8 @@ func NewAccountDao() *AccountDao {
 	dbName := app.Config.DBName
 	collection := "accounts"
 	index := mgo.Index{
-		Key:    []string{"address"},
-		Unique: true,
+		Key: []string{"address"},
+		// Unique: true,
 	}
 
 	err := db.Session.DB(dbName).C(collection).EnsureIndex(index)
