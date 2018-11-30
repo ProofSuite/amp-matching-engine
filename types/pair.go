@@ -37,8 +37,6 @@ func (p *Pair) MarshalJSON() ([]byte, error) {
 		"baseTokenAddress":   p.BaseTokenAddress,
 		"quoteTokenAddress":  p.QuoteTokenAddress,
 		"active":             p.Active,
-		"createdAt":          p.CreatedAt.Format(time.RFC3339Nano),
-		"updatedAt":          p.UpdatedAt.Format(time.RFC3339Nano),
 	}
 
 	if p.MakeFee != nil {
