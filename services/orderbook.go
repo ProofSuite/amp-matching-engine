@@ -2,6 +2,7 @@ package services
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/Proofsuite/amp-matching-engine/types"
@@ -98,6 +99,10 @@ func (s *OrderBookService) GetRawOrderBook(bt, qt common.Address) (*types.RawOrd
 	if err != nil {
 		logger.Error(err)
 		return nil, err
+	}
+
+	if pair == nil {
+		return nil, fmt.Errorf("Pair does not exist")
 	}
 
 	orders, err := s.orderDao.GetRawOrderBook(pair)

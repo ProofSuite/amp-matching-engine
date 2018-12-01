@@ -87,6 +87,10 @@ func (oc *OrderCancel) VerifySignature(o *Order) (bool, error) {
 		oc.Hash.Bytes(),
 	)
 
+	if o == nil {
+		return false, errors.New("Recovered address is incorrect")
+	}
+
 	address, err := oc.Signature.Verify(common.BytesToHash(message))
 	if err != nil {
 		return false, err
