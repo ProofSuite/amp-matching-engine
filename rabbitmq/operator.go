@@ -224,6 +224,7 @@ func (c *Connection) ConsumeQueuedTrades(ch *amqp.Channel, q *amqp.Queue, fn fun
 
 		forever := make(chan bool)
 
+		//TODO add more error handling
 		go func() {
 			for d := range msgs {
 				m := &types.Matches{}
@@ -239,15 +240,16 @@ func (c *Connection) ConsumeQueuedTrades(ch *amqp.Channel, q *amqp.Queue, fn fun
 				if err != nil {
 					logger.Error(err)
 					d.Nack(false, false)
-				}
 
-				err = fn(m, d.DeliveryTag)
-				if err != nil {
-					logger.Error(err)
-					d.Nack(false, false)
+				} else {
+					err = fn(m, d.DeliveryTag)
+					if err != nil {
+						logger.Error(err)
+						d.Nack(false, false)
+					} else {
+						d.Ack(false)
+					}
 				}
-
-				d.Ack(false)
 			}
 		}()
 
