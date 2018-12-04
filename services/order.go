@@ -116,9 +116,6 @@ func (s *OrderService) NewOrder(o *types.Order) error {
 		return errors.New("Pair not found")
 	}
 
-	utils.PrintJSON(o.QuoteAmount(p).String())
-	utils.PrintJSON(p.MinQuoteAmount().String())
-
 	if math.IsStrictlySmallerThan(o.QuoteAmount(p), p.MinQuoteAmount()) {
 		return errors.New("Order amount too low")
 	}
@@ -213,14 +210,16 @@ func (s *OrderService) HandleEngineResponse(res *types.EngineResponse) error {
 
 func (s *OrderService) HandleOperatorMessages(msg *types.OperatorMessage) error {
 	switch msg.MessageType {
-	case "TRADE_PENDING":
-		s.handleOperatorTradePending(msg)
-	case "TRADE_SUCCESS":
-		s.handleOperatorTradeSuccess(msg)
 	case "TRADE_ERROR":
 		s.handleOperatorTradeError(msg)
+	case "TRADE_TX_PENDING":
+		s.handleOperatorTradeTxPending(msg)
+	case "TRADE_TX_SUCCESS":
+		s.handleOperatorTradeTxSuccess(msg)
+	case "TRADE_TX_ERROR":
+		s.handleOperatorTradeTxError(msg)
 	case "TRADE_INVALID":
-		s.handleOperatorTradeError(msg)
+		s.handleOperatorTradeInvalid(msg)
 	default:
 		s.handleOperatorUnknownMessage(msg)
 	}
@@ -301,18 +300,20 @@ func (s *OrderService) handleEngineOrderMatched(res *types.EngineResponse) {
 		}
 	}
 
-	err := s.tradeDao.Create(validMatches.Trades...)
-	if err != nil {
-		logger.Error(err)
-		ws.SendOrderMessage("ERROR", taker, err)
-		return
-	}
+	if validMatches.Length() > 0 {
+		err := s.tradeDao.Create(validMatches.Trades...)
+		if err != nil {
+			logger.Error(err)
+			ws.SendOrderMessage("ERROR", taker, err)
+			return
+		}
 
-	err = s.broker.PublishTrades(&validMatches)
-	if err != nil {
-		logger.Error(err)
-		ws.SendOrderMessage("ERROR", taker, err)
-		return
+		err = s.broker.PublishTrades(&validMatches)
+		if err != nil {
+			logger.Error(err)
+			ws.SendOrderMessage("ERROR", taker, err)
+			return
+		}
 	}
 
 	// we only update the orderbook with the current set of orders if there are no invalid matches.
@@ -324,7 +325,6 @@ func (s *OrderService) handleEngineOrderMatched(res *types.EngineResponse) {
 	}
 }
 
-// handleEngineUnknownMessage returns a websocket messsage in case the engine resonse is not recognized
 func (s *OrderService) handleEngineUnknownMessage(res *types.EngineResponse) {
 	log.Print("Receiving unknown engine message")
 	utils.PrintJSON(res)
@@ -335,7 +335,9 @@ func (s *OrderService) handleOperatorUnknownMessage(msg *types.OperatorMessage) 
 	utils.PrintJSON(msg)
 }
 
-func (s *OrderService) handleOperatorTradePending(msg *types.OperatorMessage) {
+// handleOperatorTradeTxPending notifies clients a trade tx was successfully sent to the Ethereum chain
+// and is currently pending
+func (s *OrderService) handleOperatorTradeTxPending(msg *types.OperatorMessage) {
 	matches := msg.Matches
 	trades := matches.Trades
 	orders := matches.MakerOrders
@@ -351,9 +353,9 @@ func (s *OrderService) handleOperatorTradePending(msg *types.OperatorMessage) {
 	s.broadcastTradeUpdate(trades)
 }
 
-// handleOperatorTradeSuccess handles successfull trade messages from the orderbook. It updates
+// handleOperatorTradeTxSuccess handles successfull trade messages from the orderbook. It updates
 // the trade status in the database and
-func (s *OrderService) handleOperatorTradeSuccess(msg *types.OperatorMessage) {
+func (s *OrderService) handleOperatorTradeTxSuccess(msg *types.OperatorMessage) {
 	matches := msg.Matches
 	hashes := []common.Hash{}
 	trades := matches.Trades
@@ -385,10 +387,74 @@ func (s *OrderService) handleOperatorTradeSuccess(msg *types.OperatorMessage) {
 	s.broadcastTradeUpdate(trades)
 }
 
-// handleOperatorTradeError handles error messages from the operator (case where the blockchain tx was made
-// but ended up failing. It updates the trade status in the db. None of the orders are reincluded in the engine
-// orderbook.
+// handleOperatorTradeTxError handles cases where a blockchain transaction is reverted
+func (s *OrderService) handleOperatorTradeTxError(msg *types.OperatorMessage) {
+	matches := msg.Matches
+	trades := matches.Trades
+	orders := matches.MakerOrders
+
+	errType := msg.ErrorType
+	if errType != "" {
+		logger.Error("")
+	}
+
+	for _, t := range trades {
+		err := s.tradeDao.UpdateTradeStatus(t.Hash, "ERROR")
+		if err != nil {
+			logger.Error(err)
+		}
+
+		t.Status = "ERROR"
+	}
+
+	taker := trades[0].Taker
+	ws.SendOrderMessage("ORDER_ERROR", taker, matches)
+
+	for _, o := range orders {
+		maker := o.UserAddress
+		ws.SendOrderMessage("ORDER_ERROR", maker, o)
+	}
+
+	s.broadcastTradeUpdate(trades)
+}
+
+// handleOperatorTradeError handles cases where the operator encountered a server error (not due to an invalid order
+// or a blockchain error)
 func (s *OrderService) handleOperatorTradeError(msg *types.OperatorMessage) {
+	matches := msg.Matches
+	trades := matches.Trades
+	orders := matches.MakerOrders
+
+	errType := msg.ErrorType
+	if errType != "" {
+		logger.Error("")
+	}
+
+	for _, t := range trades {
+		err := s.tradeDao.UpdateTradeStatus(t.Hash, "ERROR")
+		if err != nil {
+			logger.Error(err)
+		}
+
+		t.Status = "ERROR"
+	}
+
+	taker := trades[0].Taker
+	ws.SendOrderMessage("ORDER_ERROR", taker, matches)
+
+	for _, o := range orders {
+		maker := o.UserAddress
+		ws.SendOrderMessage("ORDER_ERROR", maker, o)
+	}
+
+	s.broadcastTradeUpdate(trades)
+}
+
+// handleOperatorTradeInvalid handles the case where one of the two orders is invalid
+// which can be the case for example if one of the account addresses does suddendly
+// not have enough tokens to satisfy the order. Ultimately, the goal would be to
+// reinclude the non-invalid orders in the orderbook
+func (s *OrderService) handleOperatorTradeInvalid(msg *types.OperatorMessage) {
 	matches := msg.Matches
 	trades := matches.Trades
 	orders := matches.MakerOrders
