@@ -1,7 +1,6 @@
 package operator
 
 import (
-	"encoding/json"
 	"errors"
 	"strconv"
 	"sync"
@@ -35,11 +34,8 @@ type Operator struct {
 }
 
 type OperatorInterface interface {
-	SubscribeOperatorMessages(fn func(*types.OperatorMessage) error) error
 	QueueTrade(o *types.Order, t *types.Trade) error
 	GetShortestQueue() (*TxQueue, int, error)
-	SetFeeAccount(account common.Address) (*eth.Transaction, error)
-	SetOperator(account common.Address, isOperator bool) (*eth.Transaction, error)
 	FeeAccount() (common.Address, error)
 	Operator(addr common.Address) (bool, error)
 }
@@ -59,7 +55,6 @@ func NewOperator(
 ) (*Operator, error) {
 	txqueues := []*TxQueue{}
 	addressIndex := make(map[common.Address]*TxQueue)
-
 	wallets, err := walletService.GetOperatorWallets()
 	if err != nil {
 		panic(err)
@@ -106,47 +101,11 @@ func NewOperator(
 	return op, nil
 }
 
-// SubscribeOperatorMessages
-func (op *Operator) SubscribeOperatorMessages(fn func(*types.OperatorMessage) error) error {
-	ch := op.Broker.GetChannel("OPERATOR_SUB")
-	q := op.Broker.GetQueue(ch, "TX_MESSAGES")
-
-	go func() {
-		msgs, err := ch.Consume(
-			q.Name,
-			"",
-			true,
-			false,
-			false,
-			false,
-			nil,
-		)
-
-		if err != nil {
-			logger.Error("Failed to register a consumer", err)
-		}
-
-		forever := make(chan bool)
-
-		go func() {
-			for m := range msgs {
-				om := &types.OperatorMessage{}
-
-				err := json.Unmarshal(m.Body, &om)
-				if err != nil {
-					logger.Error(err)
-					continue
-				}
-
-				logger.Info(om)
-
-				go fn(om)
-			}
-		}()
-
-		<-forever
-	}()
-	return nil
+func (op *Operator) HandleError(m *types.Matches) {
+	err := op.Broker.PublishErrorMessage(m, "Server error")
+	if err != nil {
+		logger.Error(err)
+	}
 }
 
 func (op *Operator) HandleTxError(m *types.Matches, id int) {
@@ -214,6 +173,7 @@ func (op *Operator) HandleTrades(msg *types.OperatorMessage) error {
 	err := op.QueueTrade(msg.Matches)
 	if err != nil {
 		logger.Error(err)
+		op.HandleError(msg.Matches)
 		return err
 	}
 
@@ -230,8 +190,6 @@ func (op *Operator) QueueTrade(m *types.Matches) error {
 		logger.Error(err)
 		return err
 	}
-
-	logger.Infof("Queuing matches on queue: %v", txq.Name)
 
 	if len > 10 {
 		logger.Warning("Transaction queue is full")
@@ -268,42 +226,6 @@ func (op *Operator) GetShortestQueue() (*TxQueue, int, error) {
 	}
 
 	return shortest, min, nil
-}
-
-// SetFeeAccount sets the fee account of the exchange contract. The fee account receives
-// the trading fees whenever a trade is settled.
-func (op *Operator) SetFeeAccount(account common.Address) (*eth.Transaction, error) {
-	txOpts, err := op.GetTxSendOptions()
-	if err != nil {
-		logger.Error(err)
-		return nil, err
-	}
-
-	tx, err := op.Exchange.SetFeeAccount(account, txOpts)
-	if err != nil {
-		logger.Error(err)
-		return nil, err
-	}
-
-	return tx, nil
-}
-
-// SetOperator updates the operator settings of the given address. Only addresses with an
-// operator access can execute Withdraw and Trade transactions to the Exchange smart contract
-func (op *Operator) SetOperator(account common.Address, isOperator bool) (*eth.Transaction, error) {
-	txOpts, err := op.GetTxSendOptions()
-	if err != nil {
-		logger.Error(err)
-		return nil, err
-	}
-
-	tx, err := op.Exchange.SetOperator(account, isOperator, txOpts)
-	if err != nil {
-		logger.Error(err)
-		return nil, err
-	}
-
-	return tx, nil
 }
 
 // FeeAccount is the Ethereum towards the exchange trading fees are sent
