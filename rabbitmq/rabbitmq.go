@@ -82,7 +82,6 @@ func NewTLSConnection() *amqp.Connection {
 	address := uri.String()
 
 	// address = "amqp://hey:cool@127.0.0.1:5672"
-
 	// cfg.RootCAs.AppendCertsFromPEM(ca)
 
 	cert, err := tls.LoadX509KeyPair(app.Config.RabbitMQCert, app.Config.RabbitMQKey)
