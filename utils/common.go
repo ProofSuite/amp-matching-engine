@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -40,6 +41,22 @@ func GetOHLCVChannelID(bt, qt common.Address, unit string, duration int64) strin
 
 func GetOrderBookChannelID(bt, qt common.Address) string {
 	return strings.ToLower(fmt.Sprintf("%s::%s", bt.Hex(), qt.Hex()))
+}
+
+func Retry(retries int, fn func() error) error {
+	if err := fn(); err != nil {
+		retries--
+		if retries <= 0 {
+			return err
+		}
+
+		// preventing thundering herd problem (https://en.wikipedia.org/wiki/Thundering_herd_problem)
+		time.Sleep(time.Second)
+
+		return Retry(retries, fn)
+	}
+
+	return nil
 }
 
 func PrintJSON(x interface{}) {
