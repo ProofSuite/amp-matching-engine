@@ -15,6 +15,7 @@ type PairService struct {
 	pairDao  interfaces.PairDao
 	tokenDao interfaces.TokenDao
 	tradeDao interfaces.TradeDao
+	orderDao interfaces.OrderDao
 	eng      interfaces.Engine
 }
 
@@ -23,10 +24,11 @@ func NewPairService(
 	pairDao interfaces.PairDao,
 	tokenDao interfaces.TokenDao,
 	tradeDao interfaces.TradeDao,
+	orderDao interfaces.OrderDao,
 	eng interfaces.Engine,
 ) *PairService {
 
-	return &PairService{pairDao, tokenDao, tradeDao, eng}
+	return &PairService{pairDao, tokenDao, tradeDao, orderDao, eng}
 }
 
 // Create function is responsible for inserting new pair in DB.
@@ -136,7 +138,7 @@ func (s *PairService) GetTokenPairData(bt, qt common.Address) ([]*types.Tick, er
 	return res, nil
 }
 
-func (s *PairService) GetAllTokenPairData() ([]*types.Tick, error) {
+func (s *PairService) GetAllTokenPairData() ([]*types.PairData, error) {
 	now := time.Now()
 	end := time.Unix(now.Unix(), 0)
 	start := time.Unix(now.AddDate(0, 0, -7).Unix(), 0)
@@ -147,7 +149,7 @@ func (s *PairService) GetAllTokenPairData() ([]*types.Tick, error) {
 		return nil, err
 	}
 
-	q := []bson.M{
+	tradeDataQuery := []bson.M{
 		bson.M{
 			"$match": bson.M{
 				"createdAt": bson.M{
@@ -174,19 +176,60 @@ func (s *PairService) GetAllTokenPairData() ([]*types.Tick, error) {
 		},
 	}
 
-	ticks, err := s.tradeDao.Aggregate(q)
+	orderDataQuery := []bson.M{
+		bson.M{
+			"$match": bson.M{
+				"status": bson.M{"$in": []string{"OPEN", "PARTIAL_FILLED"}},
+			},
+		},
+		bson.M{
+			"$group": bson.M{
+				"_id": bson.M{
+					"baseToken":  "$baseToken",
+					"quoteToken": "$quoteToken",
+					"pairName":   "$pairName",
+				},
+				"orderCount": bson.M{"$sum": one},
+				"orderVolume": bson.M{
+					"$sum": bson.M{
+						"$subtract": []bson.M{bson.M{"$toDecimal": "$amount"}, bson.M{"$toDecimal": "$filledAmount"}},
+					},
+				},
+			},
+		},
+	}
+
+	tradeData, err := s.tradeDao.Aggregate(tradeDataQuery)
 	if err != nil {
 		return nil, err
 	}
 
-	pairsData := []*types.Tick{}
+	orderData := []*types.OrderData{}
+	err = s.orderDao.Aggregate(orderDataQuery, orderData)
+	if err != nil {
+		return nil, err
+	}
 
+	pairsData := []*types.PairData{}
 	for _, p := range pairs {
-		pairData := &types.Tick{Pair: types.PairID{p.Name(), p.BaseTokenAddress, p.QuoteTokenAddress}}
-		for _, tick := range ticks {
-			if tick.AddressCode() == p.AddressCode() {
-				pairData = tick
-				break
+		pairData := &types.PairData{Pair: types.PairID{p.Name(), p.BaseTokenAddress, p.QuoteTokenAddress}}
+
+		for _, t := range tradeData {
+			if t.AddressCode() == p.AddressCode() {
+				pairData.Open = t.Open
+				pairData.High = t.High
+				pairData.Low = t.Low
+				pairData.Volume = t.Volume
+				pairData.Close = t.Close
+				pairData.Count = t.Count
+
+			}
+		}
+
+		for _, o := range orderData {
+			if o.AddressCode() == p.AddressCode() {
+				pairData.OrderVolume = o.OrderVolume
+				pairData.OrderCount = o.OrderCount
 			}
 		}
 

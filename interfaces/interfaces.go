@@ -42,6 +42,7 @@ type OrderDao interface {
 	GetOrderBookPricePoint(p *types.Pair, pp *big.Int, side string) (*big.Int, error)
 	FindAndModify(h common.Hash, o *types.Order) (*types.Order, error)
 	Drop() error
+	Aggregate(q []bson.M, res interface{}) error
 }
 
 type AccountDao interface {

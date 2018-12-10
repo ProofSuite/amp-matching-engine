@@ -1,0 +1,24 @@
+# github.com/Proofsuite/amp-matching-engine/server
+server/server.go:120:25: cannot use orderDao (type *daos.OrderDao) as type interfaces.OrderDao in argument to engine.NewEngine:
+	*daos.OrderDao does not implement interfaces.OrderDao (wrong type for GetUserLockedBalance method)
+		have GetUserLockedBalance(common.Address, common.Address, *"github.com/Proofsuite/amp-matching-engine/types".Pair) (*big.Int, error)
+		want GetUserLockedBalance(common.Address, common.Address) (*big.Int, error)
+server/server.go:127:50: cannot use orderDao (type *daos.OrderDao) as type interfaces.OrderDao in argument to services.NewValidatorService:
+	*daos.OrderDao does not implement interfaces.OrderDao (wrong type for GetUserLockedBalance method)
+		have GetUserLockedBalance(common.Address, common.Address, *"github.com/Proofsuite/amp-matching-engine/types".Pair) (*big.Int, error)
+		want GetUserLockedBalance(common.Address, common.Address) (*big.Int, error)
+server/server.go:128:40: not enough arguments in call to services.NewPairService
+	have (*daos.PairDao, *daos.TokenDao, *daos.TradeDao, *engine.Engine)
+	want (interfaces.PairDao, interfaces.TokenDao, interfaces.TradeDao, interfaces.OrderDao, interfaces.Engine)
+server/server.go:129:42: cannot use orderDao (type *daos.OrderDao) as type interfaces.OrderDao in argument to services.NewOrderService:
+	*daos.OrderDao does not implement interfaces.OrderDao (wrong type for GetUserLockedBalance method)
+		have GetUserLockedBalance(common.Address, common.Address, *"github.com/Proofsuite/amp-matching-engine/types".Pair) (*big.Int, error)
+		want GetUserLockedBalance(common.Address, common.Address) (*big.Int, error)
+server/server.go:130:50: cannot use orderDao (type *daos.OrderDao) as type interfaces.OrderDao in argument to services.NewOrderBookService:
+	*daos.OrderDao does not implement interfaces.OrderDao (wrong type for GetUserLockedBalance method)
+		have GetUserLockedBalance(common.Address, common.Address, *"github.com/Proofsuite/amp-matching-engine/types".Pair) (*big.Int, error)
+		want GetUserLockedBalance(common.Address, common.Address) (*big.Int, error)
+server/server.go:164:29: cannot use pairService (type *services.PairService) as type interfaces.PairService in argument to endpoints.ServePairResource:
+	*services.PairService does not implement interfaces.PairService (wrong type for GetAllTokenPairData method)
+		have GetAllTokenPairData() ([]*"github.com/Proofsuite/amp-matching-engine/types".PairData, error)
+		want GetAllTokenPairData() ([]*"github.com/Proofsuite/amp-matching-engine/types".Tick, error)

@@ -23,10 +23,9 @@ func TestTokenDao(t *testing.T) {
 	dao.Drop()
 
 	token := &types.Token{
-		Name:            "PRFT",
 		Symbol:          "PRFT",
 		ContractAddress: common.HexToAddress("0x6e9a406696617ec5105f9382d33ba3360fcfabcc"),
-		Decimal:         18,
+		Decimals:        18,
 		Active:          true,
 		Quote:           true,
 	}

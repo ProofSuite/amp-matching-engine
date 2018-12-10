@@ -40,14 +40,8 @@ func TestTradeDao(t *testing.T) {
 			MakerOrderHash: common.HexToHash("0x6d9ad89548c9e3ce4c97825d027291477f2c44a8caef792095f2cabc978493ff"),
 			TxHash:         common.HexToHash("0x41787e3a418997174e2445b51849e79953e334d94a02119e25beff1f13e39aa8"),
 			PairName:       "ZRX/WETH",
-			Signature: &types.Signature{
-				V: 28,
-				R: common.HexToHash("0x10b30eb0072a4f0a38b6fca0b731cba15eb2e1702845d97c1230b53a839bcb85"),
-				S: common.HexToHash("0x6d9ad89548c9e3ce4c97825d027291477f2c44a8caef792095f2cabc978493ff"),
-			},
-			PricePoint: big.NewInt(10000000),
-			Side:       "BUY",
-			Amount:     big.NewInt(100),
+			PricePoint:     big.NewInt(10000000),
+			Amount:         big.NewInt(100),
 		},
 		&types.Trade{
 			ID:             bson.ObjectIdHex("537f700b537461b70c5f0004"),
@@ -59,14 +53,8 @@ func TestTradeDao(t *testing.T) {
 			Hash:           common.HexToHash("0xb9070a2d333403c255ce71ddf6e795053599b2e885321de40353832b96d8880a"),
 			MakerOrderHash: common.HexToHash("0x6d9ad89548c9e3ce4c97825d027291477f2c44a8caef792095f2cabc978493ff"),
 			PairName:       "ZRX/WETH",
-			Signature: &types.Signature{
-				V: 28,
-				R: common.HexToHash("0x10b30eb0072a4f0a38b6fca0b731cba15eb2e1702845d97c1230b53a839bcb85"),
-				S: common.HexToHash("0x6d9ad89548c9e3ce4c97825d027291477f2c44a8caef792095f2cabc978493ff"),
-			},
-			PricePoint: big.NewInt(10000000),
-			Side:       "BUY",
-			Amount:     big.NewInt(100),
+			PricePoint:     big.NewInt(10000000),
+			Amount:         big.NewInt(100),
 		},
 		&types.Trade{
 			ID:             bson.ObjectIdHex("537f700b537461b70c5f0007"),
@@ -78,14 +66,8 @@ func TestTradeDao(t *testing.T) {
 			Hash:           common.HexToHash("0xb9070a2d333403c255ce71ddf6e795053599b2e885321de40353832b96d8880a"),
 			MakerOrderHash: common.HexToHash("0x6d9ad89548c9e3ce4c97825d027291477f2c44a8caef792095f2cabc978493ff"),
 			PairName:       "ZRX/DAI",
-			Signature: &types.Signature{
-				V: 28,
-				R: common.HexToHash("0x10b30eb0072a4f0a38b6fca0b731cba15eb2e1702845d97c1230b53a839bcb85"),
-				S: common.HexToHash("0x6d9ad89548c9e3ce4c97825d027291477f2c44a8caef792095f2cabc978493ff"),
-			},
-			PricePoint: big.NewInt(10000000),
-			Side:       "BUY",
-			Amount:     big.NewInt(100),
+			PricePoint:     big.NewInt(10000000),
+			Amount:         big.NewInt(100),
 		},
 	}
 
@@ -141,14 +123,8 @@ func TestUpdateTrade(t *testing.T) {
 		MakerOrderHash: common.HexToHash("0x6d9ad89548c9e3ce4c97825d027291477f2c44a8caef792095f2cabc978493ff"),
 		TxHash:         common.HexToHash("Transaction  0xf16e0b1ad8536bc43fba0ac009fc19098e19920e045273fa16fa0fc7c83ae1e8"),
 		PairName:       "ZRX/WETH",
-		Signature: &types.Signature{
-			V: 28,
-			R: common.HexToHash("0x10b30eb0072a4f0a38b6fca0b731cba15eb2e1702845d97c1230b53a839bcb85"),
-			S: common.HexToHash("0x6d9ad89548c9e3ce4c97825d027291477f2c44a8caef792095f2cabc978493ff"),
-		},
-		PricePoint: big.NewInt(10000000),
-		Amount:     big.NewInt(100),
-		Side:       "BUY",
+		PricePoint:     big.NewInt(10000000),
+		Amount:         big.NewInt(100),
 	}
 
 	err := dao.Create(tr)
@@ -162,11 +138,10 @@ func TestUpdateTrade(t *testing.T) {
 		Maker:          tr.Maker,
 		BaseToken:      tr.BaseToken,
 		QuoteToken:     tr.QuoteToken,
-		MakerOrderHash: tr.OrderHash,
+		MakerOrderHash: tr.MakerOrderHash,
 		Hash:           tr.Hash,
 		TxHash:         tr.TxHash,
 		PairName:       tr.PairName,
-		Signature:      tr.Signature,
 		CreatedAt:      tr.CreatedAt,
 		UpdatedAt:      tr.UpdatedAt,
 		Amount:         tr.Amount,

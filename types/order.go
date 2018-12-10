@@ -237,11 +237,24 @@ func (o *Order) QuoteAmount(p *Pair) *big.Int {
 
 // SellAmount
 // If order is a "BUY", then sellToken = quoteToken
-func (o *Order) SellAmount(pairMultiplier *big.Int) *big.Int {
+func (o *Order) SellAmount(p *Pair) *big.Int {
+	pairMultiplier := p.PairMultiplier()
+
 	if o.Side == "BUY" {
 		return math.Div(math.Mul(o.Amount, o.PricePoint), pairMultiplier)
 	} else {
 		return o.Amount
+	}
+}
+
+func (o *Order) RemainingSellAmount(p *Pair) *big.Int {
+	pairMultiplier := p.PairMultiplier()
+
+	if o.Side == "BUY" {
+		remainingAmount := math.Sub(o.Amount, o.FilledAmount)
+		return math.Div(math.Mul(remainingAmount, o.PricePoint), pairMultiplier)
+	} else {
+		return math.Sub(o.Amount, o.FilledAmount)
 	}
 }
 
@@ -641,4 +654,15 @@ func (o OrderBSONUpdate) GetBSON() (interface{}, error) {
 	}
 
 	return update, nil
+}
+
+type OrderData struct {
+	Pair        PairID   `json:"id,omitempty" bson:"_id"`
+	OrderVolume *big.Int `json:"orderVolume,omitempty" bson:"orderVolume"`
+	OrderCount  *big.Int `json:"orderCount,omitempty" bson:"orderCount"`
+}
+
+func (o *OrderData) AddressCode() string {
+	code := o.Pair.BaseToken.Hex() + "::" + o.Pair.QuoteToken.Hex()
+	return code
 }

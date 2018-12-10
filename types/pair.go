@@ -179,3 +179,67 @@ func (p *Pair) GetOrderBookKeys() (sell, buy string) {
 func (p *Pair) GetKVPrefix() string {
 	return p.BaseTokenAddress.Hex() + "::" + p.QuoteTokenAddress.Hex()
 }
+
+type PairData struct {
+	Pair        PairID   `json:"id,omitempty" bson:"_id"`
+	Close       *big.Int `json:"close,omitempty" bson:"close"`
+	Count       *big.Int `json:"count,omitempty" bson:"count"`
+	High        *big.Int `json:"high,omitempty" bson:"high"`
+	Low         *big.Int `json:"low,omitempty" bson:"low"`
+	Open        *big.Int `json:"open,omitempty" bson:"open"`
+	Volume      *big.Int `json:"volume,omitempty" bson:"volume"`
+	Timestamp   int64    `json:"timestamp,omitempty" bson:"timestamp"`
+	OrderVolume *big.Int `json:"orderVolume,omitempty" bson:"orderVolume"`
+	OrderCount  *big.Int `json:"orderCount,omitempty" bson:"orderCount"`
+}
+
+func (p *PairData) MarshalJSON() ([]byte, error) {
+	pairData := map[string]interface{}{
+		"pair": map[string]interface{}{
+			"pairName":   p.Pair.PairName,
+			"baseToken":  p.Pair.BaseToken.Hex(),
+			"quoteToken": p.Pair.QuoteToken.Hex(),
+		},
+		"timestamp": p.Timestamp,
+	}
+
+	if p.Open != nil {
+		pairData["open"] = p.Open.String()
+	}
+
+	if p.High != nil {
+		pairData["high"] = p.High.String()
+	}
+
+	if p.Low != nil {
+		pairData["low"] = p.Low.String()
+	}
+
+	if p.Volume != nil {
+		pairData["volume"] = p.Volume.String()
+	}
+
+	if p.Close != nil {
+		pairData["close"] = p.Close.String()
+	}
+
+	if p.Count != nil {
+		pairData["count"] = p.Count.String()
+	}
+
+	if p.OrderVolume != nil {
+		pairData["orderVolume"] = p.OrderVolume.String()
+	}
+
+	if p.OrderCount != nil {
+		pairData["orderCount"] = p.OrderCount.String()
+	}
+
+	bytes, err := json.Marshal(pairData)
+	return bytes, err
+}
+
+func (p *PairData) AddressCode() string {
+	code := p.Pair.BaseToken.Hex() + "::" + p.Pair.QuoteToken.Hex()
+	return code
+}
