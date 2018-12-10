@@ -35,14 +35,14 @@ type OrderDao interface {
 	UpdateOrderFilledAmount(h common.Hash, value *big.Int) error
 	UpdateOrderFilledAmounts(h []common.Hash, values []*big.Int) ([]*types.Order, error)
 	UpdateOrderStatusesByHashes(status string, hashes ...common.Hash) ([]*types.Order, error)
-	GetUserLockedBalance(account common.Address, token common.Address) (*big.Int, error)
+	GetUserLockedBalance(account common.Address, token common.Address, p *types.Pair) (*big.Int, error)
 	UpdateOrderStatus(h common.Hash, status string) error
 	GetRawOrderBook(*types.Pair) ([]*types.Order, error)
 	GetOrderBook(*types.Pair) ([]map[string]string, []map[string]string, error)
 	GetOrderBookPricePoint(p *types.Pair, pp *big.Int, side string) (*big.Int, error)
 	FindAndModify(h common.Hash, o *types.Order) (*types.Order, error)
 	Drop() error
-	Aggregate(q []bson.M, res interface{}) error
+	Aggregate(q []bson.M) ([]*types.OrderData, error)
 }
 
 type AccountDao interface {
@@ -189,7 +189,7 @@ type PairService interface {
 	GetByID(id bson.ObjectId) (*types.Pair, error)
 	GetByTokenAddress(bt, qt common.Address) (*types.Pair, error)
 	GetTokenPairData(bt, qt common.Address) ([]*types.Tick, error)
-	GetAllTokenPairData() ([]*types.Tick, error)
+	GetAllTokenPairData() ([]*types.PairData, error)
 	GetAll() ([]types.Pair, error)
 }
 

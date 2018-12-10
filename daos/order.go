@@ -758,12 +758,13 @@ func (dao *OrderDao) Drop() error {
 }
 
 // Aggregate function calls the aggregate pipeline of mongodb
-func (dao *OrderDao) Aggregate(q []bson.M, res interface{}) error {
-	err := db.Aggregate(dao.dbName, dao.collectionName, q, &res)
+func (dao *OrderDao) Aggregate(q []bson.M) ([]*types.OrderData, error) {
+	orderData := []*types.OrderData{}
+	err := db.Aggregate(dao.dbName, dao.collectionName, q, &orderData)
 	if err != nil {
 		logger.Error(err)
-		return err
+		return []*types.OrderData{}, err
 	}
 
-	return nil
+	return orderData, nil
 }

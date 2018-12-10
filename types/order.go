@@ -666,3 +666,119 @@ func (o *OrderData) AddressCode() string {
 	code := o.Pair.BaseToken.Hex() + "::" + o.Pair.QuoteToken.Hex()
 	return code
 }
+
+func (o *OrderData) MarshalJSON() ([]byte, error) {
+	orderData := map[string]interface{}{
+		"pair": map[string]interface{}{
+			"pairName":   o.Pair.PairName,
+			"baseToken":  o.Pair.BaseToken.Hex(),
+			"quoteToken": o.Pair.QuoteToken.Hex(),
+		},
+	}
+
+	if o.OrderVolume != nil {
+		orderData["orderVolume"] = o.OrderVolume.String()
+	}
+
+	if o.OrderCount != nil {
+		orderData["orderCount"] = o.OrderCount.String()
+	}
+
+	bytes, err := json.Marshal(orderData)
+	return bytes, err
+}
+
+// UnmarshalJSON creates a trade object from a json byte string
+func (o *OrderData) UnmarshalJSON(b []byte) error {
+	orderData := map[string]interface{}{}
+	err := json.Unmarshal(b, &orderData)
+
+	if err != nil {
+		return err
+	}
+
+	if orderData["pair"] != nil {
+		pair := orderData["pair"].(map[string]interface{})
+		o.Pair = PairID{
+			PairName:   pair["pairName"].(string),
+			BaseToken:  common.HexToAddress(pair["baseToken"].(string)),
+			QuoteToken: common.HexToAddress(pair["quoteToken"].(string)),
+		}
+	}
+
+	if orderData["orderVolume"] != nil {
+		o.OrderVolume = math.ToBigInt(orderData["orderVolume"].(string))
+	}
+
+	if orderData["orderCount"] != nil {
+		o.OrderCount = math.ToBigInt(orderData["orderCount"].(string))
+	}
+
+	return nil
+}
+
+func (o *OrderData) GetBSON() (interface{}, error) {
+	type PairID struct {
+		PairName   string `json:"pairName" bson:"pairName"`
+		BaseToken  string `json:"baseToken" bson:"baseToken"`
+		QuoteToken string `json:"quoteToken" bson:"quoteToken"`
+	}
+
+	count, err := bson.ParseDecimal128(o.OrderCount.String())
+	if err != nil {
+		return nil, err
+	}
+
+	volume, err := bson.ParseDecimal128(o.OrderVolume.String())
+	if err != nil {
+		return nil, err
+	}
+
+	return struct {
+		ID          PairID          `json:"id,omitempty" bson:"_id"`
+		OrderVolume bson.Decimal128 `json:"orderCount" bson:"orderCount"`
+		OrderCount  bson.Decimal128 `json:"orderVolume" bson:"orderVolume"`
+	}{
+		ID: PairID{
+			o.Pair.PairName,
+			o.Pair.BaseToken.Hex(),
+			o.Pair.QuoteToken.Hex(),
+		},
+		OrderVolume: volume,
+		OrderCount:  count,
+	}, nil
+}
+
+func (o *OrderData) SetBSON(raw bson.Raw) error {
+	type PairIDRecord struct {
+		PairName   string `json:"pairName" bson:"pairName"`
+		BaseToken  string `json:"baseToken" bson:"baseToken"`
+		QuoteToken string `json:"quoteToken" bson:"quoteToken"`
+	}
+
+	decoded := new(struct {
+		Pair        PairIDRecord    `json:"pair,omitempty" bson:"_id"`
+		OrderCount  bson.Decimal128 `json:"orderCount" bson:"orderCount"`
+		OrderVolume bson.Decimal128 `json:"orderVolume" bson:"orderVolume"`
+	})
+
+	err := raw.Unmarshal(decoded)
+	if err != nil {
+		return err
+	}
+
+	o.Pair = PairID{
+		PairName:   decoded.Pair.PairName,
+		BaseToken:  common.HexToAddress(decoded.Pair.BaseToken),
+		QuoteToken: common.HexToAddress(decoded.Pair.QuoteToken),
+	}
+
+	o.OrderCount = new(big.Int)
+	o.OrderVolume = new(big.Int)
+	orderCount := decoded.OrderCount.String()
+	orderVolume := decoded.OrderVolume.String()
+	o.OrderCount = math.ToBigInt(orderCount)
+	o.OrderVolume = math.ToBigInt(orderVolume)
+
+	return nil
+}

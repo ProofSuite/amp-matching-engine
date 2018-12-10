@@ -162,8 +162,8 @@ func (s *PairService) GetAllTokenPairData() ([]*types.PairData, error) {
 		bson.M{
 			"$group": bson.M{
 				"_id": bson.M{
-					"baseToken":  "$baseToken",
 					"pairName":   "$pairName",
+					"baseToken":  "$baseToken",
 					"quoteToken": "$quoteToken",
 				},
 				"count":  bson.M{"$sum": one},
@@ -185,9 +185,9 @@ func (s *PairService) GetAllTokenPairData() ([]*types.PairData, error) {
 		bson.M{
 			"$group": bson.M{
 				"_id": bson.M{
+					"pairName":   "$pairName",
 					"baseToken":  "$baseToken",
 					"quoteToken": "$quoteToken",
-					"pairName":   "$pairName",
 				},
 				"orderCount": bson.M{"$sum": one},
 				"orderVolume": bson.M{
@@ -201,12 +201,13 @@ func (s *PairService) GetAllTokenPairData() ([]*types.PairData, error) {
 
 	tradeData, err := s.tradeDao.Aggregate(tradeDataQuery)
 	if err != nil {
+		logger.Error(err)
 		return nil, err
 	}
 
-	orderData := []*types.OrderData{}
-	err = s.orderDao.Aggregate(orderDataQuery, orderData)
+	orderData, err := s.orderDao.Aggregate(orderDataQuery)
 	if err != nil {
+		logger.Error(err)
 		return nil, err
 	}
 
