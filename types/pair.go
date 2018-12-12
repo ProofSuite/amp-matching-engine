@@ -21,6 +21,7 @@ type Pair struct {
 	QuoteTokenSymbol   string         `json:"quoteTokenSymbol,omitempty" bson:"quoteTokenSymbol"`
 	QuoteTokenAddress  common.Address `json:"quoteTokenAddress,omitempty" bson:"quoteTokenAddress"`
 	QuoteTokenDecimals int            `json:"quoteTokenDecimals,omitempty" bson:"quoteTokenDecimals"`
+	Listed             bool           `json:"listed,omitempty" bson:"listed"`
 	Active             bool           `json:"active,omitempty" bson:"active"`
 	MakeFee            *big.Int       `json:"makeFee,omitempty" bson:"makeFee"`
 	TakeFee            *big.Int       `json:"takeFee,omitempty" bson:"takeFee"`
@@ -37,6 +38,7 @@ func (p *Pair) MarshalJSON() ([]byte, error) {
 		"baseTokenAddress":   p.BaseTokenAddress,
 		"quoteTokenAddress":  p.QuoteTokenAddress,
 		"active":             p.Active,
+		"listed":             p.Listed,
 	}
 
 	if p.MakeFee != nil {
@@ -72,6 +74,7 @@ type PairRecord struct {
 	QuoteTokenAddress  string    `json:"quoteTokenAddress" bson:"quoteTokenAddress"`
 	QuoteTokenDecimals int       `json:"quoteTokenDecimals" bson:"quoteTokenDecimals"`
 	Active             bool      `json:"active" bson:"active"`
+	Listed             bool      `json:"listed" bson:"listed"`
 	MakeFee            string    `json:"makeFee" bson:"makeFee"`
 	TakeFee            string    `json:"takeFee" bson:"takeFee"`
 	CreatedAt          time.Time `json:"createdAt" bson:"createdAt"`
@@ -133,6 +136,7 @@ func (p *Pair) SetBSON(raw bson.Raw) error {
 	p.QuoteTokenSymbol = decoded.QuoteTokenSymbol
 	p.QuoteTokenAddress = common.HexToAddress(decoded.QuoteTokenAddress)
 	p.QuoteTokenDecimals = decoded.QuoteTokenDecimals
+	p.Listed = decoded.Listed
 	p.Active = decoded.Active
 	p.MakeFee = makeFee
 	p.TakeFee = takeFee
@@ -144,8 +148,7 @@ func (p *Pair) SetBSON(raw bson.Raw) error {
 
 func (p *Pair) GetBSON() (interface{}, error) {
 	return &PairRecord{
-		ID: p.ID,
-
+		ID:                 p.ID,
 		BaseTokenSymbol:    p.BaseTokenSymbol,
 		BaseTokenAddress:   p.BaseTokenAddress.Hex(),
 		BaseTokenDecimals:  p.BaseTokenDecimals,
@@ -153,6 +156,7 @@ func (p *Pair) GetBSON() (interface{}, error) {
 		QuoteTokenAddress:  p.QuoteTokenAddress.Hex(),
 		QuoteTokenDecimals: p.QuoteTokenDecimals,
 		Active:             p.Active,
+		Listed:             p.Listed,
 		MakeFee:            p.MakeFee.String(),
 		TakeFee:            p.TakeFee.String(),
 		CreatedAt:          p.CreatedAt,

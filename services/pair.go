@@ -95,6 +95,14 @@ func (s *PairService) GetAll() ([]types.Pair, error) {
 	return s.pairDao.GetAll()
 }
 
+func (s *PairService) GetListedPairs() ([]types.Pair, error) {
+	return s.pairDao.GetListedPairs()
+}
+
+func (s *PairService) GetUnlistedPairs() ([]types.Pair, error) {
+	return s.pairDao.GetUnlistedPairs()
+}
+
 func (s *PairService) GetTokenPairData(bt, qt common.Address) ([]*types.Tick, error) {
 	now := time.Now()
 	end := time.Unix(now.Unix(), 0)

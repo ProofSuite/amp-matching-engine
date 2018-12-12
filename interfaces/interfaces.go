@@ -71,11 +71,13 @@ type WalletDao interface {
 type PairDao interface {
 	Create(o *types.Pair) error
 	GetAll() ([]types.Pair, error)
-	GetActivePairs() ([]*types.Pair, error)
+	GetActivePairs() ([]types.Pair, error)
 	GetByID(id bson.ObjectId) (*types.Pair, error)
 	GetByName(name string) (*types.Pair, error)
 	GetByTokenSymbols(baseTokenSymbol, quoteTokenSymbol string) (*types.Pair, error)
 	GetByTokenAddress(baseToken, quoteToken common.Address) (*types.Pair, error)
+	GetListedPairs() ([]types.Pair, error)
+	GetUnlistedPairs() ([]types.Pair, error)
 }
 
 type TradeDao interface {
@@ -109,6 +111,9 @@ type TokenDao interface {
 	GetByAddress(owner common.Address) (*types.Token, error)
 	GetQuoteTokens() ([]types.Token, error)
 	GetBaseTokens() ([]types.Token, error)
+	GetListedTokens() ([]types.Token, error)
+	GetUnlistedTokens() ([]types.Token, error)
+	GetListedBaseTokens() ([]types.Token, error)
 	Drop() error
 }
 
@@ -191,6 +196,8 @@ type PairService interface {
 	GetTokenPairData(bt, qt common.Address) ([]*types.Tick, error)
 	GetAllTokenPairData() ([]*types.PairData, error)
 	GetAll() ([]types.Pair, error)
+	GetListedPairs() ([]types.Pair, error)
+	GetUnlistedPairs() ([]types.Pair, error)
 }
 
 type TokenService interface {
@@ -200,6 +207,9 @@ type TokenService interface {
 	GetAll() ([]types.Token, error)
 	GetQuoteTokens() ([]types.Token, error)
 	GetBaseTokens() ([]types.Token, error)
+	GetListedTokens() ([]types.Token, error)
+	GetUnlistedTokens() ([]types.Token, error)
+	GetListedBaseTokens() ([]types.Token, error)
 }
 
 type TradeService interface {

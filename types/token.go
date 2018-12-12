@@ -18,6 +18,7 @@ type Token struct {
 	ContractAddress common.Address `json:"contractAddress" bson:"contractAddress"`
 	Decimals        int            `json:"decimals" bson:"decimals"`
 	Active          bool           `json:"active" bson:"active"`
+	Listed          bool           `json:"listed" bson:"listed"`
 	Quote           bool           `json:"quote" bson:"quote"`
 	MakeFee         *big.Int       `json:"makeFee,omitempty" bson:"makeFee,omitempty"`
 	TakeFee         *big.Int       `json:"takeFee,omitempty" bson:"makeFee,omitempty"`
@@ -33,6 +34,7 @@ type TokenRecord struct {
 	ContractAddress string        `json:"contractAddress" bson:"contractAddress"`
 	Decimals        int           `json:"decimals" bson:"decimals"`
 	Active          bool          `json:"active" bson:"active"`
+	Listed          bool          `json:"listed" bson:"listed"`
 	Quote           bool          `json:"quote" bson:"quote"`
 	MakeFee         string        `json:"makeFee,omitempty" bson:"makeFee,omitempty"`
 	TakeFee         string        `json:"takeFee,omitempty" bson:"takeFee,omitempty"`
@@ -58,6 +60,7 @@ func (t *Token) MarshalJSON() ([]byte, error) {
 		"contractAddress": t.ContractAddress.Hex(),
 		"decimals":        t.Decimals,
 		"active":          t.Active,
+		"listed":          t.Listed,
 		"quote":           t.Quote,
 		"createdAt":       t.CreatedAt.Format(time.RFC3339Nano),
 		"updatedAt":       t.UpdatedAt.Format(time.RFC3339Nano),
@@ -86,6 +89,7 @@ func (t *Token) UnmarshalJSON(b []byte) error {
 	t.Symbol = token["symbol"].(string)
 	t.Decimals = token["decimals"].(int)
 	t.Active = token["active"].(bool)
+	t.Listed = token["listed"].(bool)
 	t.Quote = token["quote"].(bool)
 
 	if token["createdAt"] != nil {
@@ -117,6 +121,7 @@ func (t *Token) GetBSON() (interface{}, error) {
 		ContractAddress: t.ContractAddress.Hex(),
 		Decimals:        t.Decimals,
 		Active:          t.Active,
+		Listed:          t.Listed,
 		Quote:           t.Quote,
 		CreatedAt:       t.CreatedAt,
 		UpdatedAt:       t.UpdatedAt,
@@ -150,6 +155,7 @@ func (t *Token) SetBSON(raw bson.Raw) error {
 
 	t.Decimals = decoded.Decimals
 	t.Active = decoded.Active
+	t.Listed = decoded.Listed
 	t.Quote = decoded.Quote
 	t.CreatedAt = decoded.CreatedAt
 	t.UpdatedAt = decoded.UpdatedAt

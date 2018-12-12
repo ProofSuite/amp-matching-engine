@@ -73,7 +73,20 @@ func (e *pairEndpoint) HandleCreatePair(w http.ResponseWriter, r *http.Request) 
 }
 
 func (e *pairEndpoint) HandleGetPairs(w http.ResponseWriter, r *http.Request) {
-	res, err := e.pairService.GetAll()
+	v := r.URL.Query()
+
+	var res []types.Pair
+	var err error
+
+	switch v.Get("listed") {
+	case "":
+		res, err = e.pairService.GetAll()
+	case "true":
+		res, err = e.pairService.GetListedPairs()
+	case "false":
+		res, err = e.pairService.GetUnlistedPairs()
+	}
+
 	if err != nil {
 		logger.Error(err)
 		httputils.WriteError(w, http.StatusInternalServerError, "")

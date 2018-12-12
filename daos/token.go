@@ -56,50 +56,99 @@ func (dao *TokenDao) Create(token *types.Token) error {
 
 // GetAll function fetches all the tokens in the token collection of mongodb.
 func (dao *TokenDao) GetAll() ([]types.Token, error) {
-	var response []types.Token
-	err := db.Get(dao.dbName, dao.collectionName, bson.M{}, 0, 0, &response)
+	var res []types.Token
+	err := db.Get(dao.dbName, dao.collectionName, bson.M{}, 0, 0, &res)
 	if err != nil {
 		logger.Error(err)
 		return nil, err
 	}
 
-	return response, nil
+	return res, nil
+}
+
+func (dao *TokenDao) GetListedTokens() ([]types.Token, error) {
+	var res []types.Token
+
+	err := db.Get(dao.dbName, dao.collectionName, bson.M{"listed": true}, 0, 0, &res)
+	if err != nil {
+		logger.Error(err)
+		return nil, err
+	}
+
+	return res, nil
 }
 
 // GetQuote function fetches all the quote tokens in the token collection of mongodb.
 func (dao *TokenDao) GetQuoteTokens() ([]types.Token, error) {
-	var response []types.Token
-	err := db.Get(dao.dbName, dao.collectionName, bson.M{"quote": true}, 0, 0, &response)
+	var res []types.Token
+	err := db.Get(dao.dbName, dao.collectionName, bson.M{"quote": true}, 0, 0, &res)
 	if err != nil {
 		logger.Error(err)
 		return nil, err
 	}
 
-	return response, nil
+	return res, nil
 }
 
 // GetBase function fetches all the base tokens in the token collection of mongodb.
 func (dao *TokenDao) GetBaseTokens() ([]types.Token, error) {
-	var response []types.Token
-	err := db.Get(dao.dbName, dao.collectionName, bson.M{"quote": false}, 0, 0, &response)
+	var res []types.Token
+
+	err := db.Get(dao.dbName, dao.collectionName, bson.M{"quote": false}, 0, 0, &res)
 	if err != nil {
 		logger.Error(err)
 		return nil, err
 	}
 
-	return response, nil
+	if res == nil {
+		res = []types.Token{}
+	}
+
+	return res, nil
+}
+
+func (dao *TokenDao) GetListedBaseTokens() ([]types.Token, error) {
+	var res []types.Token
+
+	err := db.Get(dao.dbName, dao.collectionName, bson.M{"quote": false, "listed": true}, 0, 0, &res)
+	if err != nil {
+		logger.Error(err)
+		return nil, err
+	}
+
+	if res == nil {
+		res = []types.Token{}
+	}
+
+	return res, nil
+}
+
+func (dao *TokenDao) GetUnlistedTokens() ([]types.Token, error) {
+	var res []types.Token
+
+	err := db.Get(dao.dbName, dao.collectionName, bson.M{"quote": false, "listed": false}, 0, 0, &res)
+	if err != nil {
+		logger.Error(err)
+		return nil, err
+	}
+
+	if res == nil {
+		res = []types.Token{}
+	}
+
+	return res, nil
 }
 
 // GetByID function fetches details of a token based on its mongo id
 func (dao *TokenDao) GetByID(id bson.ObjectId) (*types.Token, error) {
-	var response *types.Token
-	err := db.GetByID(dao.dbName, dao.collectionName, id, &response)
+	var res *types.Token
+	err := db.GetByID(dao.dbName, dao.collectionName, id, &res)
 	if err != nil {
 		logger.Error(err)
 		return nil, err
 	}
 
-	return response, nil
+	return res, nil
 }
 
 // GetByAddress function fetches details of a token based on its contract address
