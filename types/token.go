@@ -85,12 +85,33 @@ func (t *Token) UnmarshalJSON(b []byte) error {
 		return err
 	}
 
-	t.ID = bson.ObjectIdHex(token["id"].(string))
-	t.Symbol = token["symbol"].(string)
-	t.Decimals = token["decimals"].(int)
-	t.Active = token["active"].(bool)
-	t.Listed = token["listed"].(bool)
-	t.Quote = token["quote"].(bool)
+	if token["contractAddress"] != nil {
+		t.ContractAddress = common.HexToAddress(token["contractAddress"].(string))
+	}
+
+	if token["listed"] != nil {
+		t.Listed = token["listed"].(bool)
+	}
+
+	if token["quote"] != nil {
+		t.Quote = token["quote"].(bool)
+	}
+
+	if token["active"] != nil {
+		t.Active = token["active"].(bool)
+	}
+
+	if token["decimals"] != nil {
+		t.Decimals = token["decimals"].(int)
+	}
+
+	if token["symbol"] != nil {
+		t.Symbol = token["symbol"].(string)
+	}
+
+	if token["id"] != nil {
+		t.ID = bson.ObjectIdHex(token["id"].(string))
+	}
 
 	if token["createdAt"] != nil {
 		tm, _ := time.Parse(time.RFC3339Nano, token["createdAt"].(string))

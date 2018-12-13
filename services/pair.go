@@ -17,6 +17,7 @@ type PairService struct {
 	tradeDao interfaces.TradeDao
 	orderDao interfaces.OrderDao
 	eng      interfaces.Engine
+	provider interfaces.EthereumProvider
 }
 
 // NewPairService returns a new instance of balance service
@@ -26,9 +27,87 @@ func NewPairService(
 	tradeDao interfaces.TradeDao,
 	orderDao interfaces.OrderDao,
 	eng interfaces.Engine,
+	provider interfaces.EthereumProvider,
 ) *PairService {
 
-	return &PairService{pairDao, tokenDao, tradeDao, orderDao, eng}
+	return &PairService{pairDao, tokenDao, tradeDao, orderDao, eng, provider}
+}
+
+func (s *PairService) CreatePairs(addr common.Address) ([]*types.Pair, error) {
+	quotes, err := s.tokenDao.GetQuoteTokens()
+	if err != nil {
+		logger.Error(err)
+		return nil, err
+	}
+
+	base, err := s.tokenDao.GetByAddress(addr)
+	if err != nil {
+		logger.Error(err)
+		return nil, err
+	}
+
+	if base == nil {
+		symbol, err := s.provider.Symbol(addr)
+		if err != nil {
+			logger.Error(err)
+			return nil, ErrNoContractCode
+		}
+
+		decimals, err := s.provider.Decimals(addr)
+		if err != nil {
+			logger.Error(err)
+			return nil, ErrNoContractCode
+		}
+
+		base := types.Token{
+			Symbol:          symbol,
+			ContractAddress: addr,
+			Decimals:        int(decimals),
+			Active:          true,
+			Listed:          false,
+			Quote:           false,
+		}
+
+		err = s.tokenDao.Create(&base)
+		if err != nil {
+			logger.Error(err)
+			return nil, err
+		}
+	}
+
+	pairs := []*types.Pair{}
+	for _, q := range quotes {
+		p, err := s.pairDao.GetByTokenAddress(addr, q.ContractAddress)
+		if err != nil {
+			logger.Error(err)
+			return nil, err
+		}
+
+		if p == nil {
+			p := types.Pair{
+				QuoteTokenSymbol:   q.Symbol,
+				QuoteTokenAddress:  q.ContractAddress,
+				QuoteTokenDecimals: q.Decimals,
+				BaseTokenSymbol:    base.Symbol,
+				BaseTokenAddress:   base.ContractAddress,
+				BaseTokenDecimals:  base.Decimals,
+				Active:             true,
+				Listed:             false,
+				MakeFee:            q.MakeFee,
+				TakeFee:            q.TakeFee,
+			}
+
+			err := s.pairDao.Create(&p)
+			if err != nil {
+				logger.Error(err)
+				return nil, err
+			}
+
+			pairs = append(pairs, &p)
+		}
+	}
+
+	return pairs, nil
 }
 
 // Create function is responsible for inserting new pair in DB.
@@ -36,6 +115,7 @@ func NewPairService(
 func (s *PairService) Create(pair *types.Pair) error {
 	p, err := s.pairDao.GetByTokenAddress(pair.BaseTokenAddress, pair.QuoteTokenAddress)
 	if err != nil {
+		logger.Error(err)
 		return err
 	}
 
@@ -43,37 +123,70 @@ func (s *PairService) Create(pair *types.Pair) error {
 		return ErrPairExists
 	}
 
-	bt, err := s.tokenDao.GetByAddress(pair.BaseTokenAddress)
+	quote, err := s.tokenDao.GetByAddress(pair.QuoteTokenAddress)
 	if err != nil {
+		logger.Error(err)
 		return err
 	}
 
-	if bt == nil {
-		return ErrBaseTokenNotFound
-	}
-
-	st, err := s.tokenDao.GetByAddress(pair.QuoteTokenAddress)
-	if err != nil {
-		return err
-	}
-
-	if st == nil {
+	if quote == nil {
 		return ErrQuoteTokenNotFound
 	}
 
-	if !st.Quote {
+	if !quote.Quote {
 		return ErrQuoteTokenInvalid
 	}
 
-	pair.QuoteTokenSymbol = st.Symbol
-	pair.QuoteTokenAddress = st.ContractAddress
-	pair.QuoteTokenDecimals = st.Decimals
-	pair.BaseTokenSymbol = bt.Symbol
-	pair.BaseTokenAddress = bt.ContractAddress
-	pair.BaseTokenDecimals = bt.Decimals
-	err = s.pairDao.Create(pair)
+	base, err := s.tokenDao.GetByAddress(pair.BaseTokenAddress)
 	if err != nil {
+		logger.Error(err)
 		return err
+	}
+
+	if base == nil {
+		symbol, err := s.provider.Symbol(pair.BaseTokenAddress)
+		if err != nil {
+			logger.Error(err)
+			return ErrNoContractCode
+		}
+
+		decimals, err := s.provider.Decimals(pair.BaseTokenAddress)
+		if err != nil {
+			logger.Error(err)
+			return ErrNoContractCode
+		}
+
+		token := types.Token{
+			Symbol:          symbol,
+			ContractAddress: pair.BaseTokenAddress,
+			Decimals:        int(decimals),
+			Active:          true,
+			Listed:          false,
+			Quote:           false,
+		}
+
+		err = s.tokenDao.Create(&token)
+		if err != nil {
+			logger.Error(err)
+			return err
+		}
+
+		pair.QuoteTokenSymbol = quote.Symbol
+		pair.QuoteTokenAddress = quote.ContractAddress
+		pair.QuoteTokenDecimals = quote.Decimals
+		pair.BaseTokenSymbol = token.Symbol
+		pair.BaseTokenAddress = token.ContractAddress
+		pair.BaseTokenDecimals = token.Decimals
+		pair.Active = true
+		pair.Listed = false
+		pair.MakeFee = quote.MakeFee
+		pair.TakeFee = quote.TakeFee
+
+		err = s.pairDao.Create(pair)
+		if err != nil {
+			logger.Error(err)
+			return err
+		}
 	}
 
 	return nil

@@ -191,6 +191,7 @@ type OrderBookService interface {
 
 type PairService interface {
 	Create(pair *types.Pair) error
+	CreatePairs(token common.Address) ([]*types.Pair, error)
 	GetByID(id bson.ObjectId) (*types.Pair, error)
 	GetByTokenAddress(bt, qt common.Address) (*types.Pair, error)
 	GetTokenPairData(bt, qt common.Address) ([]*types.Tick, error)
@@ -279,4 +280,6 @@ type EthereumProvider interface {
 	BalanceOf(owner common.Address, token common.Address) (*big.Int, error)
 	Allowance(owner, spender, token common.Address) (*big.Int, error)
 	ExchangeAllowance(owner, token common.Address) (*big.Int, error)
+	Decimals(token common.Address) (uint8, error)
+	Symbol(token common.Address) (string, error)
 }

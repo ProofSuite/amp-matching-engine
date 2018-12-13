@@ -77,7 +77,7 @@ func (dao *PairDao) GetAll() ([]types.Pair, error) {
 func (dao *PairDao) GetListedPairs() ([]types.Pair, error) {
 	var res []types.Pair
 
-	err := db.Get(dao.dbName, dao.collectionName, bson.M{"active": false, "listed": true}, 0, 0, &res)
+	err := db.Get(dao.dbName, dao.collectionName, bson.M{"active": true, "listed": true}, 0, 0, &res)
 	if err != nil {
 		logger.Error(err)
 		return nil, err
@@ -93,7 +93,7 @@ func (dao *PairDao) GetListedPairs() ([]types.Pair, error) {
 func (dao *PairDao) GetUnlistedPairs() ([]types.Pair, error) {
 	var res []types.Pair
 
-	err := db.Get(dao.dbName, dao.collectionName, bson.M{"active": false, "listed": false}, 0, 0, &res)
+	err := db.Get(dao.dbName, dao.collectionName, bson.M{"active": true, "listed": false}, 0, 0, &res)
 	if err != nil {
 		logger.Error(err)
 		return nil, err

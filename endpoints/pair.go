@@ -23,25 +23,74 @@ func ServePairResource(
 	p interfaces.PairService,
 ) {
 	e := &pairEndpoint{p}
-	r.HandleFunc("/pairs", e.HandleCreatePair).Methods("POST")
+	r.HandleFunc("/pairs/create", e.HandleCreatePairs).Methods("POST")
+	r.HandleFunc("/pair/create", e.HandleCreatePair).Methods("POST")
 	r.HandleFunc("/pairs", e.HandleGetPairs).Methods("GET")
 	r.HandleFunc("/pair", e.HandleGetPair).Methods("GET")
 	r.HandleFunc("/pairs/data", e.HandleGetPairData).Methods("GET")
+}
+
+func (e *pairEndpoint) HandleCreatePairs(w http.ResponseWriter, r *http.Request) {
+	token := types.Token{}
+	decoder := json.NewDecoder(r.Body)
+
+	err := decoder.Decode(&token)
+	if err != nil {
+		logger.Info(err)
+		httputils.WriteError(w, http.StatusBadRequest, "Invalid Payload")
+		return
+	}
+
+	defer r.Body.Close()
+
+	pairs, err := e.pairService.CreatePairs(token.ContractAddress)
+	if err != nil {
+		switch err {
+		case services.ErrPairExists:
+			httputils.WriteError(w, http.StatusBadRequest, "Pair exists")
+			return
+		case services.ErrBaseTokenNotFound:
+			httputils.WriteError(w, http.StatusBadRequest, "Base token not found")
+			return
+		case services.ErrQuoteTokenNotFound:
+			httputils.WriteError(w, http.StatusBadRequest, "Quote token not found")
+			return
+		case services.ErrQuoteTokenInvalid:
+			httputils.WriteError(w, http.StatusBadRequest, "Quote token invalid (token is not registered as quote)")
+			return
+		case services.ErrNoContractCode:
+			httputils.WriteError(w, http.StatusBadRequest, "Contract not found at given address")
+			return
+		default:
+			logger.Error(err)
+			httputils.WriteError(w, http.StatusInternalServerError, "Internal server error")
+			return
+		}
+	}
+
+	if len(pairs) == 0 {
+		httputils.WriteJSON(w, http.StatusOK, "Pairs already exist")
+		return
+	}
+
+	httputils.WriteJSON(w, http.StatusCreated, pairs)
 }
 
 func (e *pairEndpoint) HandleCreatePair(w http.ResponseWriter, r *http.Request) {
 	p := &types.Pair{}
 
 	decoder := json.NewDecoder(r.Body)
+
 	err := decoder.Decode(p)
 	if err != nil {
+		logger.Info(err)
 		httputils.WriteError(w, http.StatusBadRequest, "Invalid payload")
 		return
 	}
 
 	defer r.Body.Close()
 
-	err = p.Validate()
+	err = p.ValidateAddresses()
 	if err != nil {
 		httputils.WriteError(w, http.StatusBadRequest, err.Error())
 		return
@@ -61,6 +110,9 @@ func (e *pairEndpoint) HandleCreatePair(w http.ResponseWriter, r *http.Request) 
 			return
 		case services.ErrQuoteTokenInvalid:
 			httputils.WriteError(w, http.StatusBadRequest, "Quote token invalid (token is not registered as quote")
+			return
+		case services.ErrNoContractCode:
+			httputils.WriteError(w, http.StatusBadRequest, "Contract not found at given address")
 			return
 		default:
 			logger.Error(err)

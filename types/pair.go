@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/Proofsuite/amp-matching-engine/utils/math"
 	"github.com/ethereum/go-ethereum/common"
 
@@ -27,6 +28,44 @@ type Pair struct {
 	TakeFee            *big.Int       `json:"takeFee,omitempty" bson:"takeFee"`
 	CreatedAt          time.Time      `json:"-" bson:"createdAt"`
 	UpdatedAt          time.Time      `json:"-" bson:"updatedAt"`
+}
+
+func (p *Pair) UnmarshalJSON(b []byte) error {
+	pair := map[string]interface{}{}
+
+	utils.PrintJSON("I am here")
+
+	err := json.Unmarshal(b, &pair)
+	if err != nil {
+		return err
+	}
+
+	if pair["baseTokenAddress"] != nil {
+		p.BaseTokenAddress = common.HexToAddress(pair["baseTokenAddress"].(string))
+	}
+
+	if pair["quoteTokenAddress"] != nil {
+		p.QuoteTokenAddress = common.HexToAddress(pair["quoteTokenAddress"].(string))
+	}
+
+	if pair["baseTokenSymbol"] != nil {
+		p.BaseTokenSymbol = pair["baseTokenSymbol"].(string)
+	}
+
+	if pair["quoteTokenSymbol"] != nil {
+		p.QuoteTokenSymbol = pair["quoteTokenSymbol"].(string)
+	}
+
+	if pair["baseTokenDecimals"] != nil {
+		p.BaseTokenDecimals = pair["baseTokenDecimals"].(int)
+	}
+
+	if pair["quoteTokenDecimals"] != nil {
+		p.QuoteTokenDecimals = pair["quoteTokenDecimals"].(int)
+	}
+
+	return nil
+	//TODO do we need the rest of the fields ?
 }
 
 func (p *Pair) MarshalJSON() ([]byte, error) {
@@ -162,6 +201,13 @@ func (p *Pair) GetBSON() (interface{}, error) {
 		CreatedAt:          p.CreatedAt,
 		UpdatedAt:          p.UpdatedAt,
 	}, nil
+}
+
+func (p Pair) ValidateAddresses() error {
+	return validation.ValidateStruct(&p,
+		validation.Field(&p.BaseTokenAddress, validation.Required),
+		validation.Field(&p.QuoteTokenAddress, validation.Required),
+	)
 }
 
 // Validate function is used to verify if an instance of
