@@ -89,7 +89,7 @@ func ComparePair(t *testing.T, a, b *types.Pair) {
 
 func CompareToken(t *testing.T, a, b *types.Token) {
 	assert.Equal(t, a.Symbol, b.Symbol)
-	assert.Equal(t, a.ContractAddress, b.ContractAddress)
+	assert.Equal(t, a.Address, b.Address)
 	assert.Equal(t, a.Active, b.Active)
 	assert.Equal(t, a.Quote, b.Quote)
 	assert.Equal(t, a.ID, b.ID)

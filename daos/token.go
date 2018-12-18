@@ -23,7 +23,7 @@ func NewTokenDao() *TokenDao {
 	dbName := app.Config.DBName
 	collection := "tokens"
 	index := mgo.Index{
-		Key:    []string{"contractAddress"},
+		Key:    []string{"address"},
 		Unique: true,
 	}
 
@@ -57,7 +57,10 @@ func (dao *TokenDao) Create(token *types.Token) error {
 // GetAll function fetches all the tokens in the token collection of mongodb.
 func (dao *TokenDao) GetAll() ([]types.Token, error) {
 	var res []types.Token
-	err := db.Get(dao.dbName, dao.collectionName, bson.M{}, 0, 0, &res)
+
+	sort := []string{"-rank"}
+
+	err := db.GetAndSort(dao.dbName, dao.collectionName, bson.M{}, sort, 0, 0, &res)
 	if err != nil {
 		logger.Error(err)
 		return nil, err
@@ -69,7 +72,10 @@ func (dao *TokenDao) GetAll() ([]types.Token, error) {
 func (dao *TokenDao) GetListedTokens() ([]types.Token, error) {
 	var res []types.Token
 
-	err := db.Get(dao.dbName, dao.collectionName, bson.M{"listed": true}, 0, 0, &res)
+	sort := []string{"-rank"}
+	q := bson.M{"listed": true}
+
+	err := db.GetAndSort(dao.dbName, dao.collectionName, q, sort, 0, 0, &res)
 	if err != nil {
 		logger.Error(err)
 		return nil, err
@@ -81,7 +87,11 @@ func (dao *TokenDao) GetListedTokens() ([]types.Token, error) {
 // GetQuote function fetches all the quote tokens in the token collection of mongodb.
 func (dao *TokenDao) GetQuoteTokens() ([]types.Token, error) {
 	var res []types.Token
-	err := db.Get(dao.dbName, dao.collectionName, bson.M{"quote": true}, 0, 0, &res)
+
+	sort := []string{"-rank"}
+	q := bson.M{"quote": true}
+
+	err := db.GetAndSort(dao.dbName, dao.collectionName, q, sort, 0, 0, &res)
 	if err != nil {
 		logger.Error(err)
 		return nil, err
@@ -94,7 +104,9 @@ func (dao *TokenDao) GetQuoteTokens() ([]types.Token, error) {
 func (dao *TokenDao) GetBaseTokens() ([]types.Token, error) {
 	var res []types.Token
 
-	err := db.Get(dao.dbName, dao.collectionName, bson.M{"quote": false}, 0, 0, &res)
+	sort := []string{"-rank"}
+	q := bson.M{"quote": false}
+	err := db.GetAndSort(dao.dbName, dao.collectionName, q, sort, 0, 0, &res)
 	if err != nil {
 		logger.Error(err)
 		return nil, err
@@ -110,7 +122,10 @@ func (dao *TokenDao) GetBaseTokens() ([]types.Token, error) {
 func (dao *TokenDao) GetListedBaseTokens() ([]types.Token, error) {
 	var res []types.Token
 
-	err := db.Get(dao.dbName, dao.collectionName, bson.M{"quote": false, "listed": true}, 0, 0, &res)
+	sort := []string{"-rank"}
+	q := bson.M{"quote": false, "listed": true}
+
+	err := db.GetAndSort(dao.dbName, dao.collectionName, q, sort, 0, 0, &res)
 	if err != nil {
 		logger.Error(err)
 		return nil, err
@@ -126,7 +141,10 @@ func (dao *TokenDao) GetListedBaseTokens() ([]types.Token, error) {
 func (dao *TokenDao) GetUnlistedTokens() ([]types.Token, error) {
 	var res []types.Token
 
-	err := db.Get(dao.dbName, dao.collectionName, bson.M{"quote": false, "listed": false}, 0, 0, &res)
+	sort := []string{"-rank"}
+	q := bson.M{"quote": false, "listed": false}
+
+	err := db.GetAndSort(dao.dbName, dao.collectionName, q, sort, 0, 0, &res)
 	if err != nil {
 		logger.Error(err)
 		return nil, err
@@ -153,7 +171,7 @@ func (dao *TokenDao) GetByID(id bson.ObjectId) (*types.Token, error) {
 
 // GetByAddress function fetches details of a token based on its contract address
 func (dao *TokenDao) GetByAddress(addr common.Address) (*types.Token, error) {
-	q := bson.M{"contractAddress": addr.Hex()}
+	q := bson.M{"address": addr.Hex()}
 	var resp []types.Token
 
 	err := db.Get(dao.dbName, dao.collectionName, q, 0, 1, &resp)

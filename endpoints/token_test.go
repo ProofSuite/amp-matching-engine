@@ -31,7 +31,7 @@ func TestHandleCreateTokens(t *testing.T) {
 		Symbol:          "ZRX",
 		Decimal:         18,
 		Quote:           false,
-		ContractAddress: common.HexToAddress("0x1"),
+		Address: common.HexToAddress("0x1"),
 	}
 
 	tokenService.On("Create", &token).Return(nil)
@@ -92,7 +92,7 @@ func TestHandleGetQuoteTokens(t *testing.T) {
 		Symbol:          "WETH",
 		Decimal:         18,
 		Quote:           true,
-		ContractAddress: common.HexToAddress("0x1"),
+		Address: common.HexToAddress("0x1"),
 	}
 
 	t2 := types.Token{
@@ -100,7 +100,7 @@ func TestHandleGetQuoteTokens(t *testing.T) {
 		Symbol:          "DAI",
 		Decimal:         18,
 		Quote:           true,
-		ContractAddress: common.HexToAddress("0x2"),
+		Address: common.HexToAddress("0x2"),
 	}
 
 	tokenService.On("GetQuoteTokens").Return([]types.Token{t1, t2}, nil)
@@ -133,7 +133,7 @@ func TestHandleGetBaseTokens(t *testing.T) {
 		Symbol:          "WETH",
 		Decimal:         18,
 		Quote:           false,
-		ContractAddress: common.HexToAddress("0x1"),
+		Address: common.HexToAddress("0x1"),
 	}
 
 	t2 := types.Token{
@@ -141,7 +141,7 @@ func TestHandleGetBaseTokens(t *testing.T) {
 		Symbol:          "DAI",
 		Decimal:         18,
 		Quote:           false,
-		ContractAddress: common.HexToAddress("0x2"),
+		Address: common.HexToAddress("0x2"),
 	}
 
 	tokenService.On("GetBaseTokens").Return([]types.Token{t1, t2}, nil)
@@ -176,7 +176,7 @@ func TestHandleGetToken(t *testing.T) {
 		Symbol:          "DAI",
 		Decimal:         18,
 		Quote:           false,
-		ContractAddress: addr,
+		Address: addr,
 	}
 
 	tokenService.On("GetByAddress", addr).Return(&t1, nil)

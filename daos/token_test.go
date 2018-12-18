@@ -24,7 +24,7 @@ func TestTokenDao(t *testing.T) {
 
 	token := &types.Token{
 		Symbol:          "PRFT",
-		ContractAddress: common.HexToAddress("0x6e9a406696617ec5105f9382d33ba3360fcfabcc"),
+		Address: common.HexToAddress("0x6e9a406696617ec5105f9382d33ba3360fcfabcc"),
 		Decimals:        18,
 		Active:          true,
 		Quote:           true,

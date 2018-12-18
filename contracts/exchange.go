@@ -50,10 +50,10 @@ type Exchange struct {
 // be used by default when sending transactions with this object.
 func NewExchange(
 	w interfaces.WalletService,
-	contractAddress common.Address,
+	address common.Address,
 	backend ethereumClientInterface,
 ) (*Exchange, error) {
-	instance, err := contractsinterfaces.NewExchange(contractAddress, backend)
+	instance, err := contractsinterfaces.NewExchange(address, backend)
 	if err != nil {
 		logger.Error(err)
 		return nil, err
@@ -63,7 +63,7 @@ func NewExchange(
 		WalletService: w,
 		Interface:     instance,
 		Client:        backend,
-		Address:       contractAddress,
+		Address:       address,
 	}, nil
 }
 

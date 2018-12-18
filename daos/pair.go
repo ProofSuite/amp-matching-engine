@@ -66,7 +66,9 @@ func (dao *PairDao) Create(pair *types.Pair) error {
 // GetAll function fetches all the pairs in the pair collection of mongodb.
 func (dao *PairDao) GetAll() ([]types.Pair, error) {
 	var res []types.Pair
-	err := db.Get(dao.dbName, dao.collectionName, bson.M{}, 0, 0, &res)
+
+	sort := []string{"-rank"}
+	err := db.GetAndSort(dao.dbName, dao.collectionName, bson.M{}, sort, 0, 0, &res)
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +79,8 @@ func (dao *PairDao) GetAll() ([]types.Pair, error) {
 func (dao *PairDao) GetListedPairs() ([]types.Pair, error) {
 	var res []types.Pair
 
-	err := db.Get(dao.dbName, dao.collectionName, bson.M{"active": true, "listed": true}, 0, 0, &res)
+	sort := []string{"-rank"}
+	err := db.GetAndSort(dao.dbName, dao.collectionName, bson.M{"active": true, "listed": true}, sort, 0, 0, &res)
 	if err != nil {
 		logger.Error(err)
 		return nil, err
@@ -93,7 +96,8 @@ func (dao *PairDao) GetListedPairs() ([]types.Pair, error) {
 func (dao *PairDao) GetUnlistedPairs() ([]types.Pair, error) {
 	var res []types.Pair
 
-	err := db.Get(dao.dbName, dao.collectionName, bson.M{"active": true, "listed": false}, 0, 0, &res)
+	sort := []string{"-rank"}
+	err := db.GetAndSort(dao.dbName, dao.collectionName, bson.M{"active": true, "listed": false}, sort, 0, 0, &res)
 	if err != nil {
 		logger.Error(err)
 		return nil, err
@@ -110,8 +114,9 @@ func (dao *PairDao) GetActivePairs() ([]types.Pair, error) {
 	var res []types.Pair
 
 	q := bson.M{"active": true}
+	sort := []string{"-rank"}
 
-	err := db.Get(dao.dbName, dao.collectionName, q, 0, 0, &res)
+	err := db.GetAndSort(dao.dbName, dao.collectionName, q, sort, 0, 0, &res)
 	if err != nil {
 		return nil, err
 	}

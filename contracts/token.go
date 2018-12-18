@@ -22,10 +22,10 @@ type Token struct {
 func NewToken(
 	w interfaces.WalletService,
 	tx interfaces.TxService,
-	contractAddress common.Address,
+	address common.Address,
 	backend bind.ContractBackend,
 ) (*Token, error) {
-	instance, err := contractsinterfaces.NewERC20(contractAddress, backend)
+	instance, err := contractsinterfaces.NewERC20(address, backend)
 	if err != nil {
 		return nil, err
 	}

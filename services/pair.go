@@ -59,16 +59,16 @@ func (s *PairService) CreatePairs(addr common.Address) ([]*types.Pair, error) {
 			return nil, ErrNoContractCode
 		}
 
-		base := types.Token{
-			Symbol:          symbol,
-			ContractAddress: addr,
-			Decimals:        int(decimals),
-			Active:          true,
-			Listed:          false,
-			Quote:           false,
+		base = &types.Token{
+			Symbol:   symbol,
+			Address:  addr,
+			Decimals: int(decimals),
+			Active:   true,
+			Listed:   false,
+			Quote:    false,
 		}
 
-		err = s.tokenDao.Create(&base)
+		err = s.tokenDao.Create(base)
 		if err != nil {
 			logger.Error(err)
 			return nil, err
@@ -77,7 +77,7 @@ func (s *PairService) CreatePairs(addr common.Address) ([]*types.Pair, error) {
 
 	pairs := []*types.Pair{}
 	for _, q := range quotes {
-		p, err := s.pairDao.GetByTokenAddress(addr, q.ContractAddress)
+		p, err := s.pairDao.GetByTokenAddress(addr, q.Address)
 		if err != nil {
 			logger.Error(err)
 			return nil, err
@@ -86,10 +86,10 @@ func (s *PairService) CreatePairs(addr common.Address) ([]*types.Pair, error) {
 		if p == nil {
 			p := types.Pair{
 				QuoteTokenSymbol:   q.Symbol,
-				QuoteTokenAddress:  q.ContractAddress,
+				QuoteTokenAddress:  q.Address,
 				QuoteTokenDecimals: q.Decimals,
 				BaseTokenSymbol:    base.Symbol,
-				BaseTokenAddress:   base.ContractAddress,
+				BaseTokenAddress:   base.Address,
 				BaseTokenDecimals:  base.Decimals,
 				Active:             true,
 				Listed:             false,
@@ -157,12 +157,12 @@ func (s *PairService) Create(pair *types.Pair) error {
 		}
 
 		token := types.Token{
-			Symbol:          symbol,
-			ContractAddress: pair.BaseTokenAddress,
-			Decimals:        int(decimals),
-			Active:          true,
-			Listed:          false,
-			Quote:           false,
+			Symbol:   symbol,
+			Address:  pair.BaseTokenAddress,
+			Decimals: int(decimals),
+			Active:   true,
+			Listed:   false,
+			Quote:    false,
 		}
 
 		err = s.tokenDao.Create(&token)
@@ -172,10 +172,10 @@ func (s *PairService) Create(pair *types.Pair) error {
 		}
 
 		pair.QuoteTokenSymbol = quote.Symbol
-		pair.QuoteTokenAddress = quote.ContractAddress
+		pair.QuoteTokenAddress = quote.Address
 		pair.QuoteTokenDecimals = quote.Decimals
 		pair.BaseTokenSymbol = token.Symbol
-		pair.BaseTokenAddress = token.ContractAddress
+		pair.BaseTokenAddress = token.Address
 		pair.BaseTokenDecimals = token.Decimals
 		pair.Active = true
 		pair.Listed = false

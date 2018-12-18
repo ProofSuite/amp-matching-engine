@@ -5,7 +5,6 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/Proofsuite/amp-matching-engine/utils/math"
 	"github.com/ethereum/go-ethereum/common"
 
@@ -24,6 +23,7 @@ type Pair struct {
 	QuoteTokenDecimals int            `json:"quoteTokenDecimals,omitempty" bson:"quoteTokenDecimals"`
 	Listed             bool           `json:"listed,omitempty" bson:"listed"`
 	Active             bool           `json:"active,omitempty" bson:"active"`
+	Rank               int            `json:"rank,omitempty" bson:"rank"`
 	MakeFee            *big.Int       `json:"makeFee,omitempty" bson:"makeFee"`
 	TakeFee            *big.Int       `json:"takeFee,omitempty" bson:"takeFee"`
 	CreatedAt          time.Time      `json:"-" bson:"createdAt"`
@@ -32,8 +32,6 @@ type Pair struct {
 
 func (p *Pair) UnmarshalJSON(b []byte) error {
 	pair := map[string]interface{}{}
-
-	utils.PrintJSON("I am here")
 
 	err := json.Unmarshal(b, &pair)
 	if err != nil {
@@ -64,6 +62,10 @@ func (p *Pair) UnmarshalJSON(b []byte) error {
 		p.QuoteTokenDecimals = pair["quoteTokenDecimals"].(int)
 	}
 
+	if pair["rank"] != nil {
+		p.Rank = pair["rank"].(int)
+	}
+
 	return nil
 	//TODO do we need the rest of the fields ?
 }
@@ -76,6 +78,7 @@ func (p *Pair) MarshalJSON() ([]byte, error) {
 		"quoteTokenDecimals": p.QuoteTokenDecimals,
 		"baseTokenAddress":   p.BaseTokenAddress,
 		"quoteTokenAddress":  p.QuoteTokenAddress,
+		"rank":               p.Rank,
 		"active":             p.Active,
 		"listed":             p.Listed,
 	}
@@ -116,6 +119,7 @@ type PairRecord struct {
 	Listed             bool      `json:"listed" bson:"listed"`
 	MakeFee            string    `json:"makeFee" bson:"makeFee"`
 	TakeFee            string    `json:"takeFee" bson:"takeFee"`
+	Rank               int       `json:"rank" bson:"rank"`
 	CreatedAt          time.Time `json:"createdAt" bson:"createdAt"`
 	UpdatedAt          time.Time `json:"updatedAt" bson:"updatedAt"`
 }
@@ -177,6 +181,7 @@ func (p *Pair) SetBSON(raw bson.Raw) error {
 	p.QuoteTokenDecimals = decoded.QuoteTokenDecimals
 	p.Listed = decoded.Listed
 	p.Active = decoded.Active
+	p.Rank = decoded.Rank
 	p.MakeFee = makeFee
 	p.TakeFee = takeFee
 
@@ -196,6 +201,7 @@ func (p *Pair) GetBSON() (interface{}, error) {
 		QuoteTokenDecimals: p.QuoteTokenDecimals,
 		Active:             p.Active,
 		Listed:             p.Listed,
+		Rank:               p.Rank,
 		MakeFee:            p.MakeFee.String(),
 		TakeFee:            p.TakeFee.String(),
 		CreatedAt:          p.CreatedAt,
@@ -241,6 +247,7 @@ type PairData struct {
 	Timestamp   int64    `json:"timestamp,omitempty" bson:"timestamp"`
 	OrderVolume *big.Int `json:"orderVolume,omitempty" bson:"orderVolume"`
 	OrderCount  *big.Int `json:"orderCount,omitempty" bson:"orderCount"`
+	Rank        int      `json"rank,omitempty" bson:"rank"`
 }
 
 func (p *PairData) MarshalJSON() ([]byte, error) {
@@ -251,6 +258,7 @@ func (p *PairData) MarshalJSON() ([]byte, error) {
 			"quoteToken": p.Pair.QuoteToken.Hex(),
 		},
 		"timestamp": p.Timestamp,
+		"rank":      p.Rank,
 	}
 
 	if p.Open != nil {

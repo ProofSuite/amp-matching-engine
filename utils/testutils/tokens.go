@@ -8,13 +8,13 @@ import (
 func GetTestZRXToken() types.Token {
 	return types.Token{
 		Symbol:          "ZRX",
-		ContractAddress: common.HexToAddress("0x2034842261b82651885751fc293bba7ba5398156"),
+		Address: common.HexToAddress("0x2034842261b82651885751fc293bba7ba5398156"),
 	}
 }
 
 func GetTestWETHToken() types.Token {
 	return types.Token{
 		Symbol:          "WETH",
-		ContractAddress: common.HexToAddress("0x276e16ada4b107332afd776691a7fbbaede168ef"),
+		Address: common.HexToAddress("0x276e16ada4b107332afd776691a7fbbaede168ef"),
 	}
 }

@@ -23,15 +23,15 @@ package e2e
 // 	initBalance := big.NewInt(10000000000000000)
 
 // 	for _, token := range tokens {
-// 		account1.TokenBalances[token.ContractAddress] = &types.TokenBalance{
-// 			Address:       token.ContractAddress,
+// 		account1.TokenBalances[token.Address] = &types.TokenBalance{
+// 			Address:       token.Address,
 // 			Symbol:        token.Symbol,
 // 			Balance:       initBalance,
 // 			Allowance:     initBalance,
 // 			LockedBalance: big.NewInt(0),
 // 		}
-// 		account2.TokenBalances[token.ContractAddress] = &types.TokenBalance{
-// 			Address:       token.ContractAddress,
+// 		account2.TokenBalances[token.Address] = &types.TokenBalance{
+// 			Address:       token.Address,
 // 			Symbol:        token.Symbol,
 // 			Balance:       initBalance,
 // 			Allowance:     initBalance,

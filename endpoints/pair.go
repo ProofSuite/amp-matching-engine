@@ -9,6 +9,7 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/Proofsuite/amp-matching-engine/services"
 	"github.com/Proofsuite/amp-matching-engine/types"
+	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/Proofsuite/amp-matching-engine/utils/httputils"
 	"github.com/gorilla/mux"
 )
@@ -43,7 +44,9 @@ func (e *pairEndpoint) HandleCreatePairs(w http.ResponseWriter, r *http.Request)
 
 	defer r.Body.Close()
 
-	pairs, err := e.pairService.CreatePairs(token.ContractAddress)
+	utils.PrintJSON(token)
+
+	pairs, err := e.pairService.CreatePairs(token.Address)
 	if err != nil {
 		switch err {
 		case services.ErrPairExists:
@@ -69,7 +72,7 @@ func (e *pairEndpoint) HandleCreatePairs(w http.ResponseWriter, r *http.Request)
 	}
 
 	if len(pairs) == 0 {
-		httputils.WriteJSON(w, http.StatusOK, "Pairs already exist")
+		httputils.WriteError(w, http.StatusBadRequest, "Pairs already exist")
 		return
 	}
 

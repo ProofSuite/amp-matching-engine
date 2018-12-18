@@ -21,7 +21,7 @@ func NewTokenService(tokenDao interfaces.TokenDao) *TokenService {
 
 // Create inserts a new token into the database
 func (s *TokenService) Create(token *types.Token) error {
-	t, err := s.tokenDao.GetByAddress(token.ContractAddress)
+	t, err := s.tokenDao.GetByAddress(token.Address)
 	if err != nil {
 		logger.Error(err)
 		return err
