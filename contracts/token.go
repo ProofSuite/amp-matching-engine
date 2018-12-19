@@ -16,16 +16,16 @@ import (
 type Token struct {
 	WalletService interfaces.WalletService
 	TxService     interfaces.TxService
-	Interface     *contractsinterfaces.Token
+	Interface     *contractsinterfaces.ERC20
 }
 
 func NewToken(
 	w interfaces.WalletService,
 	tx interfaces.TxService,
-	contractAddress common.Address,
+	address common.Address,
 	backend bind.ContractBackend,
 ) (*Token, error) {
-	instance, err := contractsinterfaces.NewToken(contractAddress, backend)
+	instance, err := contractsinterfaces.NewERC20(address, backend)
 	if err != nil {
 		return nil, err
 	}
@@ -141,8 +141,8 @@ func (t *Token) ApproveFrom(w *types.Wallet, spender common.Address, amount *big
 	return tx, nil
 }
 
-func (t *Token) ListenToTransferEvents() (chan *contractsinterfaces.TokenTransfer, error) {
-	events := make(chan *contractsinterfaces.TokenTransfer)
+func (t *Token) ListenToTransferEvents() (chan *contractsinterfaces.ERC20Transfer, error) {
+	events := make(chan *contractsinterfaces.ERC20Transfer)
 	options := &bind.WatchOpts{nil, nil}
 	toList := []common.Address{}
 	fromList := []common.Address{}
@@ -156,7 +156,7 @@ func (t *Token) ListenToTransferEvents() (chan *contractsinterfaces.TokenTransfe
 }
 
 func (t *Token) PrintTransferEvents() error {
-	events := make(chan *contractsinterfaces.TokenTransfer)
+	events := make(chan *contractsinterfaces.ERC20Transfer)
 	options := &bind.WatchOpts{nil, nil}
 	toList := []common.Address{}
 	fromList := []common.Address{}

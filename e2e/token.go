@@ -10,7 +10,7 @@ package e2e
 // 		Name:            "HotPotCoin",
 // 		Symbol:          "HPC",
 // 		Decimal:         18,
-// 		ContractAddress: common.HexToAddress("0x1888a8db0b7db59413ce07150b3373972bf818d3"),
+// 		Address: common.HexToAddress("0x1888a8db0b7db59413ce07150b3373972bf818d3"),
 // 		Active:          true,
 // 		Quote:           true,
 // 	}
@@ -19,7 +19,7 @@ package e2e
 // 		Name:            "Aura.Test",
 // 		Symbol:          "AUT",
 // 		Decimal:         18,
-// 		ContractAddress: common.HexToAddress("0x2034842261b82651885751fc293bba7ba5398156"),
+// 		Address: common.HexToAddress("0x2034842261b82651885751fc293bba7ba5398156"),
 // 		Active:          true,
 // 		Quote:           false,
 // 	}
@@ -27,12 +27,12 @@ package e2e
 // 		Name:            "Weth",
 // 		Symbol:          "Weth",
 // 		Decimal:         18,
-// 		ContractAddress: common.HexToAddress("0x2EB24432177e82907dE24b7c5a6E0a5c03226135"),
+// 		Address: common.HexToAddress("0x2EB24432177e82907dE24b7c5a6E0a5c03226135"),
 // 		Active:          true,
 // 		Quote:           false,
 // 	}
 // 	// create token test
-// 	res := testAPI(router, "POST", "/tokens", `{  "name":"HotPotCoin", "symbol":"HPC", "decimal":18, "contractAddress":"0x1888a8db0b7db59413ce07150b3373972bf818d3","active":true,"quote":true}`)
+// 	res := testAPI(router, "POST", "/tokens", `{  "name":"HotPotCoin", "symbol":"HPC", "decimal":18, "address":"0x1888a8db0b7db59413ce07150b3373972bf818d3","active":true,"quote":true}`)
 // 	assert.Equal(t, http.StatusOK, res.Code, "t1 - create token")
 
 // 	resp := types.Token{}
@@ -50,7 +50,7 @@ package e2e
 // 	dbTokensList = append(dbTokensList, resp)
 
 // 	// Duplicate token test
-// 	res = testAPI(router, "POST", "/tokens", `{  "name":"HotPotCoin", "symbol":"HPC", "decimal":18, "contractAddress":"0x1888a8db0b7db59413ce07150b3373972bf818d3","active":true,"quote":true }`)
+// 	res = testAPI(router, "POST", "/tokens", `{  "name":"HotPotCoin", "symbol":"HPC", "decimal":18, "address":"0x1888a8db0b7db59413ce07150b3373972bf818d3","active":true,"quote":true }`)
 
 // 	if assert.Equal(t, 401, res.Code, "t2 - create duplicate token") {
 // 		fmt.Println("PASS  't2 - create duplicate token'")
@@ -59,7 +59,7 @@ package e2e
 // 	}
 
 // 	// create second token test
-// 	res = testAPI(router, "POST", "/tokens", `{  "name":"Aura.Test", "symbol":"AUT", "decimal":18, "contractAddress":"0x2034842261b82651885751fc293bba7ba5398156","active":true }`)
+// 	res = testAPI(router, "POST", "/tokens", `{  "name":"Aura.Test", "symbol":"AUT", "decimal":18, "address":"0x2034842261b82651885751fc293bba7ba5398156","active":true }`)
 // 	assert.Equal(t, http.StatusOK, res.Code, "t3 - create second token")
 // 	if err := json.Unmarshal(res.Body.Bytes(), &resp); err != nil {
 // 		fmt.Printf("%v", err)
@@ -110,7 +110,7 @@ package e2e
 // 	}
 
 // 	// add weth token(for order fees validation)
-// 	res = testAPI(router, "POST", "/tokens", `{  "name":"Weth", "symbol":"Weth", "decimal":18, "contractAddress":"0x2EB24432177e82907dE24b7c5a6E0a5c03226135","active":true }`)
+// 	res = testAPI(router, "POST", "/tokens", `{  "name":"Weth", "symbol":"Weth", "decimal":18, "address":"0x2EB24432177e82907dE24b7c5a6E0a5c03226135","active":true }`)
 // 	assert.Equal(t, http.StatusOK, res.Code, "t6 - create weth token")
 // 	if err := json.Unmarshal(res.Body.Bytes(), &resp); err != nil {
 // 		fmt.Printf("%v", err)
@@ -178,7 +178,7 @@ package e2e
 // 	response = response && assert.Equalf(t, actual.Symbol, expected.Symbol, fmt.Sprintf("Token Symbol doesn't match. Expected: %v , Got: %v", expected.Symbol, actual.Symbol))
 // 	response = response && assert.Equalf(t, actual.Name, expected.Name, fmt.Sprintf("Token Name doesn't match. Expected: %v , Got: %v", expected.Name, actual.Name))
 // 	response = response && assert.Equalf(t, actual.Decimal, expected.Decimal, fmt.Sprintf("Token Decimal doesn't match. Expected: %v , Got: %v", expected.Decimal, actual.Decimal))
-// 	response = response && assert.Equalf(t, actual.ContractAddress, expected.ContractAddress, fmt.Sprintf("Token ContractAddress doesn't match. Expected: %v , Got: %v", expected.ContractAddress, actual.ContractAddress))
+// 	response = response && assert.Equalf(t, actual.Address, expected.Address, fmt.Sprintf("Token Address doesn't match. Expected: %v , Got: %v", expected.Address, actual.Address))
 // 	response = response && assert.Equalf(t, actual.Active, expected.Active, fmt.Sprintf("Token Active doesn't match. Expected: %v , Got: %v", expected.Active, actual.Active))
 // 	response = response && assert.Equalf(t, actual.Quote, expected.Quote, fmt.Sprintf("Token Quote doesn't match. Expected: %v , Got: %v", expected.Quote, actual.Quote))
 

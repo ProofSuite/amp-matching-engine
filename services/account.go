@@ -46,8 +46,8 @@ func (s *AccountService) Create(a *types.Account) error {
 
 	// currently by default, the tokens balances are set to 0
 	for _, token := range tokens {
-		a.TokenBalances[token.ContractAddress] = &types.TokenBalance{
-			Address:        token.ContractAddress,
+		a.TokenBalances[token.Address] = &types.TokenBalance{
+			Address:        token.Address,
 			Symbol:         token.Symbol,
 			Balance:        big.NewInt(0),
 			Allowance:      big.NewInt(0),
@@ -92,8 +92,8 @@ func (s *AccountService) FindOrCreate(addr common.Address) (*types.Account, erro
 
 	// currently by default, the tokens balances are set to 0
 	for _, t := range tokens {
-		a.TokenBalances[t.ContractAddress] = &types.TokenBalance{
-			Address:        t.ContractAddress,
+		a.TokenBalances[t.Address] = &types.TokenBalance{
+			Address:        t.Address,
 			Symbol:         t.Symbol,
 			Balance:        big.NewInt(0),
 			Allowance:      big.NewInt(0),

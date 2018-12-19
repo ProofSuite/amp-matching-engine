@@ -475,16 +475,24 @@ func (dao *OrderDao) GetHistoryByUserAddress(addr common.Address, limit ...int) 
 	return res, nil
 }
 
-func (dao *OrderDao) GetUserLockedBalance(account common.Address, token common.Address) (*big.Int, error) {
+func (dao *OrderDao) GetUserLockedBalance(account common.Address, token common.Address, p *types.Pair) (*big.Int, error) {
 	var orders []*types.Order
+
 	q := bson.M{
-		"userAddress": account.Hex(),
-		"status": bson.M{"$in": []string{
-			"OPEN",
-			"PARTIAL_FILLED",
+		"$or": []bson.M{
+			bson.M{
+				"userAddress": account.Hex(),
+				"status":      bson.M{"$in": []string{"OPEN", "PARTIAL_FILLED"}},
+				"quoteToken":  token.Hex(),
+				"side":        "BUY",
+			},
+			bson.M{
+				"userAddress": account.Hex(),
+				"status":      bson.M{"$in": []string{"OPEN", "PARTIAL_FILLED"}},
+				"baseToken":   token.Hex(),
+				"side":        "SELL",
+			},
 		},
-		},
-		"sellToken": token.Hex(),
 	}
 
 	err := db.Get(dao.dbName, dao.collectionName, q, 0, 0, &orders)
@@ -493,16 +501,9 @@ func (dao *OrderDao) GetUserLockedBalance(account common.Address, token common.A
 		return nil, err
 	}
 
-	//TODO verify and refactor
 	totalLockedBalance := big.NewInt(0)
 	for _, o := range orders {
-		lockedBalance := big.NewInt(0)
-		if o.Side == "BUY" {
-			lockedBalance = math.Sub(o.Amount, o.FilledAmount)
-		} else if o.Side == "SELL" {
-			lockedBalance = math.Mul(math.Sub(o.Amount, o.FilledAmount), o.PricePoint)
-		}
-
+		lockedBalance := o.RemainingSellAmount(p)
 		totalLockedBalance = math.Add(totalLockedBalance, lockedBalance)
 	}
 
@@ -754,4 +755,16 @@ func (dao *OrderDao) Drop() error {
 	}
 
 	return nil
+}
+
+// Aggregate function calls the aggregate pipeline of mongodb
+func (dao *OrderDao) Aggregate(q []bson.M) ([]*types.OrderData, error) {
+	orderData := []*types.OrderData{}
+	err := db.Aggregate(dao.dbName, dao.collectionName, q, &orderData)
+	if err != nil {
+		logger.Error(err)
+		return []*types.OrderData{}, err
+	}
+
+	return orderData, nil
 }
