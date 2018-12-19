@@ -15,7 +15,9 @@ type PairService struct {
 	pairDao  interfaces.PairDao
 	tokenDao interfaces.TokenDao
 	tradeDao interfaces.TradeDao
+	orderDao interfaces.OrderDao
 	eng      interfaces.Engine
+	provider interfaces.EthereumProvider
 }
 
 // NewPairService returns a new instance of balance service
@@ -23,10 +25,89 @@ func NewPairService(
 	pairDao interfaces.PairDao,
 	tokenDao interfaces.TokenDao,
 	tradeDao interfaces.TradeDao,
+	orderDao interfaces.OrderDao,
 	eng interfaces.Engine,
+	provider interfaces.EthereumProvider,
 ) *PairService {
 
-	return &PairService{pairDao, tokenDao, tradeDao, eng}
+	return &PairService{pairDao, tokenDao, tradeDao, orderDao, eng, provider}
+}
+
+func (s *PairService) CreatePairs(addr common.Address) ([]*types.Pair, error) {
+	quotes, err := s.tokenDao.GetQuoteTokens()
+	if err != nil {
+		logger.Error(err)
+		return nil, err
+	}
+
+	base, err := s.tokenDao.GetByAddress(addr)
+	if err != nil {
+		logger.Error(err)
+		return nil, err
+	}
+
+	if base == nil {
+		symbol, err := s.provider.Symbol(addr)
+		if err != nil {
+			logger.Error(err)
+			return nil, ErrNoContractCode
+		}
+
+		decimals, err := s.provider.Decimals(addr)
+		if err != nil {
+			logger.Error(err)
+			return nil, ErrNoContractCode
+		}
+
+		base = &types.Token{
+			Symbol:   symbol,
+			Address:  addr,
+			Decimals: int(decimals),
+			Active:   true,
+			Listed:   false,
+			Quote:    false,
+		}
+
+		err = s.tokenDao.Create(base)
+		if err != nil {
+			logger.Error(err)
+			return nil, err
+		}
+	}
+
+	pairs := []*types.Pair{}
+	for _, q := range quotes {
+		p, err := s.pairDao.GetByTokenAddress(addr, q.Address)
+		if err != nil {
+			logger.Error(err)
+			return nil, err
+		}
+
+		if p == nil {
+			p := types.Pair{
+				QuoteTokenSymbol:   q.Symbol,
+				QuoteTokenAddress:  q.Address,
+				QuoteTokenDecimals: q.Decimals,
+				BaseTokenSymbol:    base.Symbol,
+				BaseTokenAddress:   base.Address,
+				BaseTokenDecimals:  base.Decimals,
+				Active:             true,
+				Listed:             false,
+				MakeFee:            q.MakeFee,
+				TakeFee:            q.TakeFee,
+			}
+
+			err := s.pairDao.Create(&p)
+			if err != nil {
+				logger.Error(err)
+				return nil, err
+			}
+
+			pairs = append(pairs, &p)
+		}
+	}
+
+	return pairs, nil
 }
 
 // Create function is responsible for inserting new pair in DB.
@@ -34,6 +115,7 @@ func NewPairService(
 func (s *PairService) Create(pair *types.Pair) error {
 	p, err := s.pairDao.GetByTokenAddress(pair.BaseTokenAddress, pair.QuoteTokenAddress)
 	if err != nil {
+		logger.Error(err)
 		return err
 	}
 
@@ -41,37 +123,70 @@ func (s *PairService) Create(pair *types.Pair) error {
 		return ErrPairExists
 	}
 
-	bt, err := s.tokenDao.GetByAddress(pair.BaseTokenAddress)
+	quote, err := s.tokenDao.GetByAddress(pair.QuoteTokenAddress)
 	if err != nil {
+		logger.Error(err)
 		return err
 	}
 
-	if bt == nil {
-		return ErrBaseTokenNotFound
-	}
-
-	st, err := s.tokenDao.GetByAddress(pair.QuoteTokenAddress)
-	if err != nil {
-		return err
-	}
-
-	if st == nil {
+	if quote == nil {
 		return ErrQuoteTokenNotFound
 	}
 
-	if !st.Quote {
+	if !quote.Quote {
 		return ErrQuoteTokenInvalid
 	}
 
-	pair.QuoteTokenSymbol = st.Symbol
-	pair.QuoteTokenAddress = st.ContractAddress
-	pair.QuoteTokenDecimals = st.Decimals
-	pair.BaseTokenSymbol = bt.Symbol
-	pair.BaseTokenAddress = bt.ContractAddress
-	pair.BaseTokenDecimals = bt.Decimals
-	err = s.pairDao.Create(pair)
+	base, err := s.tokenDao.GetByAddress(pair.BaseTokenAddress)
 	if err != nil {
+		logger.Error(err)
 		return err
+	}
+
+	if base == nil {
+		symbol, err := s.provider.Symbol(pair.BaseTokenAddress)
+		if err != nil {
+			logger.Error(err)
+			return ErrNoContractCode
+		}
+
+		decimals, err := s.provider.Decimals(pair.BaseTokenAddress)
+		if err != nil {
+			logger.Error(err)
+			return ErrNoContractCode
+		}
+
+		token := types.Token{
+			Symbol:   symbol,
+			Address:  pair.BaseTokenAddress,
+			Decimals: int(decimals),
+			Active:   true,
+			Listed:   false,
+			Quote:    false,
+		}
+
+		err = s.tokenDao.Create(&token)
+		if err != nil {
+			logger.Error(err)
+			return err
+		}
+
+		pair.QuoteTokenSymbol = quote.Symbol
+		pair.QuoteTokenAddress = quote.Address
+		pair.QuoteTokenDecimals = quote.Decimals
+		pair.BaseTokenSymbol = token.Symbol
+		pair.BaseTokenAddress = token.Address
+		pair.BaseTokenDecimals = token.Decimals
+		pair.Active = true
+		pair.Listed = false
+		pair.MakeFee = quote.MakeFee
+		pair.TakeFee = quote.TakeFee
+
+		err = s.pairDao.Create(pair)
+		if err != nil {
+			logger.Error(err)
+			return err
+		}
 	}
 
 	return nil
@@ -91,6 +206,14 @@ func (s *PairService) GetByTokenAddress(bt, qt common.Address) (*types.Pair, err
 // GetAll is reponsible for fetching all the pairs in the DB
 func (s *PairService) GetAll() ([]types.Pair, error) {
 	return s.pairDao.GetAll()
+}
+
+func (s *PairService) GetListedPairs() ([]types.Pair, error) {
+	return s.pairDao.GetListedPairs()
+}
+
+func (s *PairService) GetUnlistedPairs() ([]types.Pair, error) {
+	return s.pairDao.GetUnlistedPairs()
 }
 
 func (s *PairService) GetTokenPairData(bt, qt common.Address) ([]*types.Tick, error) {
@@ -136,7 +259,7 @@ func (s *PairService) GetTokenPairData(bt, qt common.Address) ([]*types.Tick, er
 	return res, nil
 }
 
-func (s *PairService) GetAllTokenPairData() ([]*types.Tick, error) {
+func (s *PairService) GetAllTokenPairData() ([]*types.PairData, error) {
 	now := time.Now()
 	end := time.Unix(now.Unix(), 0)
 	start := time.Unix(now.AddDate(0, 0, -7).Unix(), 0)
@@ -147,7 +270,7 @@ func (s *PairService) GetAllTokenPairData() ([]*types.Tick, error) {
 		return nil, err
 	}
 
-	q := []bson.M{
+	tradeDataQuery := []bson.M{
 		bson.M{
 			"$match": bson.M{
 				"createdAt": bson.M{
@@ -160,8 +283,8 @@ func (s *PairService) GetAllTokenPairData() ([]*types.Tick, error) {
 		bson.M{
 			"$group": bson.M{
 				"_id": bson.M{
-					"baseToken":  "$baseToken",
 					"pairName":   "$pairName",
+					"baseToken":  "$baseToken",
 					"quoteToken": "$quoteToken",
 				},
 				"count":  bson.M{"$sum": one},
@@ -174,19 +297,61 @@ func (s *PairService) GetAllTokenPairData() ([]*types.Tick, error) {
 		},
 	}
 
-	ticks, err := s.tradeDao.Aggregate(q)
+	orderDataQuery := []bson.M{
+		bson.M{
+			"$match": bson.M{
+				"status": bson.M{"$in": []string{"OPEN", "PARTIAL_FILLED"}},
+			},
+		},
+		bson.M{
+			"$group": bson.M{
+				"_id": bson.M{
+					"pairName":   "$pairName",
+					"baseToken":  "$baseToken",
+					"quoteToken": "$quoteToken",
+				},
+				"orderCount": bson.M{"$sum": one},
+				"orderVolume": bson.M{
+					"$sum": bson.M{
+						"$subtract": []bson.M{bson.M{"$toDecimal": "$amount"}, bson.M{"$toDecimal": "$filledAmount"}},
+					},
+				},
+			},
+		},
+	}
+
+	tradeData, err := s.tradeDao.Aggregate(tradeDataQuery)
 	if err != nil {
+		logger.Error(err)
 		return nil, err
 	}
 
-	pairsData := []*types.Tick{}
+	orderData, err := s.orderDao.Aggregate(orderDataQuery)
+	if err != nil {
+		logger.Error(err)
+		return nil, err
+	}
 
+	pairsData := []*types.PairData{}
 	for _, p := range pairs {
-		pairData := &types.Tick{Pair: types.PairID{p.Name(), p.BaseTokenAddress, p.QuoteTokenAddress}}
-		for _, tick := range ticks {
-			if tick.AddressCode() == p.AddressCode() {
-				pairData = tick
-				break
+		pairData := &types.PairData{Pair: types.PairID{p.Name(), p.BaseTokenAddress, p.QuoteTokenAddress}}
+
+		for _, t := range tradeData {
+			if t.AddressCode() == p.AddressCode() {
+				pairData.Open = t.Open
+				pairData.High = t.High
+				pairData.Low = t.Low
+				pairData.Volume = t.Volume
+				pairData.Close = t.Close
+				pairData.Count = t.Count
+
+			}
+		}
+
+		for _, o := range orderData {
+			if o.AddressCode() == p.AddressCode() {
+				pairData.OrderVolume = o.OrderVolume
+				pairData.OrderCount = o.OrderCount
 			}
 		}
 

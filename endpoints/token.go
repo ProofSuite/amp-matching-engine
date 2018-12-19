@@ -57,10 +57,28 @@ func (e *tokenEndpoint) HandleCreateTokens(w http.ResponseWriter, r *http.Reques
 }
 
 func (e *tokenEndpoint) HandleGetTokens(w http.ResponseWriter, r *http.Request) {
-	res, err := e.tokenService.GetAll()
+	v := r.URL.Query()
+
+	var res []types.Token
+	var err error
+
+	switch v.Get("listed") {
+	case "":
+		res, err = e.tokenService.GetAll()
+	case "true":
+		res, err = e.tokenService.GetListedTokens()
+	case "false":
+		res, err = e.tokenService.GetUnlistedTokens()
+	}
+
 	if err != nil {
 		logger.Error(err)
 		httputils.WriteError(w, http.StatusInternalServerError, "")
+		return
+	}
+
+	if res == nil {
+		httputils.WriteJSON(w, http.StatusOK, []types.Pair{})
 		return
 	}
 
@@ -78,7 +96,20 @@ func (e *tokenEndpoint) HandleGetQuoteTokens(w http.ResponseWriter, r *http.Requ
 }
 
 func (e *tokenEndpoint) HandleGetBaseTokens(w http.ResponseWriter, r *http.Request) {
-	res, err := e.tokenService.GetBaseTokens()
+	v := r.URL.Query()
+
+	var res []types.Token
+	var err error
+
+	switch v.Get("listed") {
+	case "":
+		res, err = e.tokenService.GetBaseTokens()
+	case "true":
+		res, err = e.tokenService.GetListedBaseTokens()
+	case "false":
+		res, err = e.tokenService.GetUnlistedTokens()
+	}
+
 	if err != nil {
 		logger.Error(err)
 		httputils.WriteError(w, http.StatusInternalServerError, "")

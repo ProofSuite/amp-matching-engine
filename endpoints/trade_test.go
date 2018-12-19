@@ -31,7 +31,7 @@ func TestHandleGetTradeHistory(t *testing.T) {
 	tr2 := types.Trade{}
 	trs := []types.Trade{tr1, tr2}
 
-	tradeService.On("GetByPairAddress", t1.ContractAddress, t2.ContractAddress).Returns(trs)
+	tradeService.On("GetByPairAddress", t1.Address, t2.Address).Returns(trs)
 
 	req, err := http.NewRequest("GET", "/trades/history/{")
 

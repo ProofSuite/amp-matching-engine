@@ -126,8 +126,42 @@ func (e *EthereumProvider) GetPendingNonceAt(a common.Address) (uint64, error) {
 	return nonce, nil
 }
 
+func (e *EthereumProvider) Decimals(token common.Address) (uint8, error) {
+	tokenInterface, err := contractsinterfaces.NewERC20(token, e.Client)
+	if err != nil {
+		logger.Error(err)
+		return 0, err
+	}
+
+	opts := &bind.CallOpts{Pending: true}
+	decimals, err := tokenInterface.Decimals(opts)
+	if err != nil {
+		logger.Error(err)
+		return 0, err
+	}
+
+	return decimals, nil
+}
+
+func (e *EthereumProvider) Symbol(token common.Address) (string, error) {
+	tokenInterface, err := contractsinterfaces.NewERC20(token, e.Client)
+	if err != nil {
+		logger.Error(err)
+		return "", err
+	}
+
+	opts := &bind.CallOpts{Pending: true}
+	symbol, err := tokenInterface.Symbol(opts)
+	if err != nil {
+		logger.Error(err)
+		return "", err
+	}
+
+	return symbol, nil
+}
+
 func (e *EthereumProvider) BalanceOf(owner common.Address, token common.Address) (*big.Int, error) {
-	tokenInterface, err := contractsinterfaces.NewToken(token, e.Client)
+	tokenInterface, err := contractsinterfaces.NewERC20(token, e.Client)
 	if err != nil {
 		logger.Error(err)
 		return nil, err
@@ -144,7 +178,7 @@ func (e *EthereumProvider) BalanceOf(owner common.Address, token common.Address)
 }
 
 func (e *EthereumProvider) Allowance(owner, spender, token common.Address) (*big.Int, error) {
-	tokenInterface, err := contractsinterfaces.NewToken(token, e.Client)
+	tokenInterface, err := contractsinterfaces.NewERC20(token, e.Client)
 	if err != nil {
 		return nil, err
 	}
@@ -160,7 +194,7 @@ func (e *EthereumProvider) Allowance(owner, spender, token common.Address) (*big
 }
 
 func (e *EthereumProvider) ExchangeAllowance(owner, token common.Address) (*big.Int, error) {
-	tokenInterface, err := contractsinterfaces.NewToken(token, e.Client)
+	tokenInterface, err := contractsinterfaces.NewERC20(token, e.Client)
 	if err != nil {
 		logger.Error(err)
 		return nil, err
@@ -177,7 +211,7 @@ func (e *EthereumProvider) ExchangeAllowance(owner, token common.Address) (*big.
 	return a, nil
 }
 
-// func (e *EthereumProvider) NewTokenInstance(
+// func (e *EthereumProvider) NewERC20Instance(
 // 	w interfaces.WalletService,
 // 	tx interfaces.TxService,
 // 	token common.Address,

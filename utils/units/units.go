@@ -9,3 +9,7 @@ import (
 func Ethers(value int64) *big.Int {
 	return math.Mul(big.NewInt(1e18), big.NewInt(value))
 }
+
+func E36() *big.Int {
+	return math.Mul(big.NewInt(1e18), big.NewInt(1e18))
+}
