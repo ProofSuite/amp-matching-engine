@@ -127,7 +127,7 @@ func (s *OrderService) NewOrder(o *types.Order) error {
 		return err
 	}
 
-	err = s.validator.ValidateBalance(o)
+	err = s.validator.ValidateAvailableBalance(o)
 	if err != nil {
 		logger.Error(err)
 		return err
@@ -272,7 +272,6 @@ func (s *OrderService) handleEngineOrderMatched(res *types.EngineResponse) {
 	o := res.Order //res.Order is the "taker" order
 	taker := o.UserAddress
 	matches := *res.Matches
-	ws.SendOrderMessage("ORDER_MATCHED", taker, types.OrderMatchedPayload{&matches})
 
 	orders := []*types.Order{o}
 	validMatches := types.Matches{TakerOrder: o}
@@ -301,6 +300,8 @@ func (s *OrderService) handleEngineOrderMatched(res *types.EngineResponse) {
 	}
 
 	if validMatches.Length() > 0 {
+		ws.SendOrderMessage("ORDER_MATCHED", taker, types.OrderMatchedPayload{&matches})
+
 		err := s.tradeDao.Create(validMatches.Trades...)
 		if err != nil {
 			logger.Error(err)
