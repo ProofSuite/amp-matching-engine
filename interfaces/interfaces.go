@@ -251,6 +251,7 @@ type AccountService interface {
 
 type ValidatorService interface {
 	ValidateBalance(o *types.Order) error
+	ValidateAvailableBalance(o *types.Order) error
 }
 
 type EthereumConfig interface {
