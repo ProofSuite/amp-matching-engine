@@ -300,8 +300,6 @@ func (s *OrderService) handleEngineOrderMatched(res *types.EngineResponse) {
 	}
 
 	if validMatches.Length() > 0 {
-		ws.SendOrderMessage("ORDER_MATCHED", taker, types.OrderMatchedPayload{&matches})
-
 		err := s.tradeDao.Create(validMatches.Trades...)
 		if err != nil {
 			logger.Error(err)
@@ -315,6 +313,8 @@ func (s *OrderService) handleEngineOrderMatched(res *types.EngineResponse) {
 			ws.SendOrderMessage("ERROR", taker, err)
 			return
 		}
+
+		ws.SendOrderMessage("ORDER_MATCHED", taker, types.OrderMatchedPayload{&matches})
 	}
 
 	// we only update the orderbook with the current set of orders if there are no invalid matches.
