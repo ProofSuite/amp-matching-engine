@@ -7,9 +7,9 @@ package e2e
 
 // 	neededPair := types.Pair{
 // 		Name:              strings.ToUpper(tokens[0].Symbol + "/" + tokens[1].Symbol),
-// 		BaseTokenAddress:  tokens[1].ContractAddress,
+// 		BaseTokenAddress:  tokens[1].Address,
 // 		BaseTokenSymbol:   tokens[1].Symbol,
-// 		QuoteTokenAddress: tokens[0].ContractAddress,
+// 		QuoteTokenAddress: tokens[0].Address,
 // 		QuoteTokenSymbol:  tokens[0].Symbol,
 // 		Active:            true,
 // 		// MakeFee:           big.NewInt(0),
@@ -17,7 +17,7 @@ package e2e
 // 	}
 
 // 	// create pair test
-// 	res := testAPI(router, "POST", "/pairs", `{"quoteTokenAddress":"`+tokens[0].ContractAddress.Hex()+`", "baseTokenAddress":"`+tokens[1].ContractAddress.Hex()+`", "active":true}`)
+// 	res := testAPI(router, "POST", "/pairs", `{"quoteTokenAddress":"`+tokens[0].Address.Hex()+`", "baseTokenAddress":"`+tokens[1].Address.Hex()+`", "active":true}`)
 
 // 	assert.Equal(t, http.StatusOK, res.Code, "t1 - create pair")
 // 	var resp types.Pair
@@ -34,7 +34,7 @@ package e2e
 // 	listPairs = append(listPairs, neededPair)
 
 // 	// Duplicate pair test
-// 	res = testAPI(router, "POST", "/pairs", `{"quoteTokenAddress":"`+tokens[0].ContractAddress.Hex()+`", "baseTokenAddress":"`+tokens[1].ContractAddress.Hex()+`"}`)
+// 	res = testAPI(router, "POST", "/pairs", `{"quoteTokenAddress":"`+tokens[0].Address.Hex()+`", "baseTokenAddress":"`+tokens[1].Address.Hex()+`"}`)
 // 	if assert.Equal(t, 401, res.Code, "t2 - create duplicate pair") {
 // 		fmt.Println("PASS  't2 - create duplicate pair'")
 // 	} else {
@@ -42,7 +42,7 @@ package e2e
 // 	}
 
 // 	// fetch pair detail test
-// 	res = testAPI(router, "GET", "/pairs/"+tokens[1].ContractAddress.Hex()+"/"+tokens[0].ContractAddress.Hex(), "")
+// 	res = testAPI(router, "GET", "/pairs/"+tokens[1].Address.Hex()+"/"+tokens[0].Address.Hex(), "")
 // 	assert.Equal(t, http.StatusOK, res.Code, "t2 - fetch pair")
 // 	if err := json.Unmarshal(res.Body.Bytes(), &resp); err != nil {
 // 		fmt.Printf("%v", err)

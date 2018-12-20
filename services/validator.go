@@ -84,7 +84,7 @@ func (s *ValidatorService) ValidateBalance(o *types.Order) error {
 		return err
 	}
 
-	sellTokenLockedBalance, err := s.orderDao.GetUserLockedBalance(o.UserAddress, o.SellToken())
+	sellTokenLockedBalance, err := s.orderDao.GetUserLockedBalance(o.UserAddress, o.SellToken(), pair)
 	if err != nil {
 		logger.Error(err)
 		return err

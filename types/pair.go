@@ -21,11 +21,53 @@ type Pair struct {
 	QuoteTokenSymbol   string         `json:"quoteTokenSymbol,omitempty" bson:"quoteTokenSymbol"`
 	QuoteTokenAddress  common.Address `json:"quoteTokenAddress,omitempty" bson:"quoteTokenAddress"`
 	QuoteTokenDecimals int            `json:"quoteTokenDecimals,omitempty" bson:"quoteTokenDecimals"`
+	Listed             bool           `json:"listed,omitempty" bson:"listed"`
 	Active             bool           `json:"active,omitempty" bson:"active"`
+	Rank               int            `json:"rank,omitempty" bson:"rank"`
 	MakeFee            *big.Int       `json:"makeFee,omitempty" bson:"makeFee"`
 	TakeFee            *big.Int       `json:"takeFee,omitempty" bson:"takeFee"`
 	CreatedAt          time.Time      `json:"-" bson:"createdAt"`
 	UpdatedAt          time.Time      `json:"-" bson:"updatedAt"`
+}
+
+func (p *Pair) UnmarshalJSON(b []byte) error {
+	pair := map[string]interface{}{}
+
+	err := json.Unmarshal(b, &pair)
+	if err != nil {
+		return err
+	}
+
+	if pair["baseTokenAddress"] != nil {
+		p.BaseTokenAddress = common.HexToAddress(pair["baseTokenAddress"].(string))
+	}
+
+	if pair["quoteTokenAddress"] != nil {
+		p.QuoteTokenAddress = common.HexToAddress(pair["quoteTokenAddress"].(string))
+	}
+
+	if pair["baseTokenSymbol"] != nil {
+		p.BaseTokenSymbol = pair["baseTokenSymbol"].(string)
+	}
+
+	if pair["quoteTokenSymbol"] != nil {
+		p.QuoteTokenSymbol = pair["quoteTokenSymbol"].(string)
+	}
+
+	if pair["baseTokenDecimals"] != nil {
+		p.BaseTokenDecimals = pair["baseTokenDecimals"].(int)
+	}
+
+	if pair["quoteTokenDecimals"] != nil {
+		p.QuoteTokenDecimals = pair["quoteTokenDecimals"].(int)
+	}
+
+	if pair["rank"] != nil {
+		p.Rank = pair["rank"].(int)
+	}
+
+	return nil
+	//TODO do we need the rest of the fields ?
 }
 
 func (p *Pair) MarshalJSON() ([]byte, error) {
@@ -36,7 +78,9 @@ func (p *Pair) MarshalJSON() ([]byte, error) {
 		"quoteTokenDecimals": p.QuoteTokenDecimals,
 		"baseTokenAddress":   p.BaseTokenAddress,
 		"quoteTokenAddress":  p.QuoteTokenAddress,
+		"rank":               p.Rank,
 		"active":             p.Active,
+		"listed":             p.Listed,
 	}
 
 	if p.MakeFee != nil {
@@ -72,8 +116,10 @@ type PairRecord struct {
 	QuoteTokenAddress  string    `json:"quoteTokenAddress" bson:"quoteTokenAddress"`
 	QuoteTokenDecimals int       `json:"quoteTokenDecimals" bson:"quoteTokenDecimals"`
 	Active             bool      `json:"active" bson:"active"`
+	Listed             bool      `json:"listed" bson:"listed"`
 	MakeFee            string    `json:"makeFee" bson:"makeFee"`
 	TakeFee            string    `json:"takeFee" bson:"takeFee"`
+	Rank               int       `json:"rank" bson:"rank"`
 	CreatedAt          time.Time `json:"createdAt" bson:"createdAt"`
 	UpdatedAt          time.Time `json:"updatedAt" bson:"updatedAt"`
 }
@@ -133,7 +179,9 @@ func (p *Pair) SetBSON(raw bson.Raw) error {
 	p.QuoteTokenSymbol = decoded.QuoteTokenSymbol
 	p.QuoteTokenAddress = common.HexToAddress(decoded.QuoteTokenAddress)
 	p.QuoteTokenDecimals = decoded.QuoteTokenDecimals
+	p.Listed = decoded.Listed
 	p.Active = decoded.Active
+	p.Rank = decoded.Rank
 	p.MakeFee = makeFee
 	p.TakeFee = takeFee
 
@@ -144,8 +192,7 @@ func (p *Pair) SetBSON(raw bson.Raw) error {
 
 func (p *Pair) GetBSON() (interface{}, error) {
 	return &PairRecord{
-		ID: p.ID,
-
+		ID:                 p.ID,
 		BaseTokenSymbol:    p.BaseTokenSymbol,
 		BaseTokenAddress:   p.BaseTokenAddress.Hex(),
 		BaseTokenDecimals:  p.BaseTokenDecimals,
@@ -153,11 +200,20 @@ func (p *Pair) GetBSON() (interface{}, error) {
 		QuoteTokenAddress:  p.QuoteTokenAddress.Hex(),
 		QuoteTokenDecimals: p.QuoteTokenDecimals,
 		Active:             p.Active,
+		Listed:             p.Listed,
+		Rank:               p.Rank,
 		MakeFee:            p.MakeFee.String(),
 		TakeFee:            p.TakeFee.String(),
 		CreatedAt:          p.CreatedAt,
 		UpdatedAt:          p.UpdatedAt,
 	}, nil
+}
+
+func (p Pair) ValidateAddresses() error {
+	return validation.ValidateStruct(&p,
+		validation.Field(&p.BaseTokenAddress, validation.Required),
+		validation.Field(&p.QuoteTokenAddress, validation.Required),
+	)
 }
 
 // Validate function is used to verify if an instance of
@@ -178,4 +234,70 @@ func (p *Pair) GetOrderBookKeys() (sell, buy string) {
 
 func (p *Pair) GetKVPrefix() string {
 	return p.BaseTokenAddress.Hex() + "::" + p.QuoteTokenAddress.Hex()
+}
+
+type PairData struct {
+	Pair        PairID   `json:"id,omitempty" bson:"_id"`
+	Close       *big.Int `json:"close,omitempty" bson:"close"`
+	Count       *big.Int `json:"count,omitempty" bson:"count"`
+	High        *big.Int `json:"high,omitempty" bson:"high"`
+	Low         *big.Int `json:"low,omitempty" bson:"low"`
+	Open        *big.Int `json:"open,omitempty" bson:"open"`
+	Volume      *big.Int `json:"volume,omitempty" bson:"volume"`
+	Timestamp   int64    `json:"timestamp,omitempty" bson:"timestamp"`
+	OrderVolume *big.Int `json:"orderVolume,omitempty" bson:"orderVolume"`
+	OrderCount  *big.Int `json:"orderCount,omitempty" bson:"orderCount"`
+	Rank        int      `json"rank,omitempty" bson:"rank"`
+}
+
+func (p *PairData) MarshalJSON() ([]byte, error) {
+	pairData := map[string]interface{}{
+		"pair": map[string]interface{}{
+			"pairName":   p.Pair.PairName,
+			"baseToken":  p.Pair.BaseToken.Hex(),
+			"quoteToken": p.Pair.QuoteToken.Hex(),
+		},
+		"timestamp": p.Timestamp,
+		"rank":      p.Rank,
+	}
+
+	if p.Open != nil {
+		pairData["open"] = p.Open.String()
+	}
+
+	if p.High != nil {
+		pairData["high"] = p.High.String()
+	}
+
+	if p.Low != nil {
+		pairData["low"] = p.Low.String()
+	}
+
+	if p.Volume != nil {
+		pairData["volume"] = p.Volume.String()
+	}
+
+	if p.Close != nil {
+		pairData["close"] = p.Close.String()
+	}
+
+	if p.Count != nil {
+		pairData["count"] = p.Count.String()
+	}
+
+	if p.OrderVolume != nil {
+		pairData["orderVolume"] = p.OrderVolume.String()
+	}
+
+	if p.OrderCount != nil {
+		pairData["orderCount"] = p.OrderCount.String()
+	}
+
+	bytes, err := json.Marshal(pairData)
+	return bytes, err
+}
+
+func (p *PairData) AddressCode() string {
+	code := p.Pair.BaseToken.Hex() + "::" + p.Pair.QuoteToken.Hex()
+	return code
 }

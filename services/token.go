@@ -21,7 +21,7 @@ func NewTokenService(tokenDao interfaces.TokenDao) *TokenService {
 
 // Create inserts a new token into the database
 func (s *TokenService) Create(token *types.Token) error {
-	t, err := s.tokenDao.GetByAddress(token.ContractAddress)
+	t, err := s.tokenDao.GetByAddress(token.Address)
 	if err != nil {
 		logger.Error(err)
 		return err
@@ -55,6 +55,14 @@ func (s *TokenService) GetAll() ([]types.Token, error) {
 	return s.tokenDao.GetAll()
 }
 
+func (s *TokenService) GetListedTokens() ([]types.Token, error) {
+	return s.tokenDao.GetListedTokens()
+}
+
+func (s *TokenService) GetUnlistedTokens() ([]types.Token, error) {
+	return s.tokenDao.GetUnlistedTokens()
+}
+
 // GetQuote fetches all the quote tokens from db
 func (s *TokenService) GetQuoteTokens() ([]types.Token, error) {
 	return s.tokenDao.GetQuoteTokens()
@@ -63,4 +71,8 @@ func (s *TokenService) GetQuoteTokens() ([]types.Token, error) {
 // GetBase fetches all the quote tokens from db
 func (s *TokenService) GetBaseTokens() ([]types.Token, error) {
 	return s.tokenDao.GetBaseTokens()
+}
+
+func (s *TokenService) GetListedBaseTokens() ([]types.Token, error) {
+	return s.tokenDao.GetListedBaseTokens()
 }
