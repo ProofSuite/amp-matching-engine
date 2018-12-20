@@ -2,6 +2,7 @@ package ws
 
 import (
 	"errors"
+	"sync"
 )
 
 var rawOrderBookSocket *RawOrderBookSocket
@@ -11,12 +12,14 @@ var rawOrderBookSocket *RawOrderBookSocket
 type RawOrderBookSocket struct {
 	subscriptions     map[string]map[*Client]bool
 	subscriptionsList map[*Client][]string
+	mu                sync.Mutex
 }
 
 func NewRawOrderBookSocket() *RawOrderBookSocket {
 	return &RawOrderBookSocket{
 		subscriptions:     make(map[string]map[*Client]bool),
 		subscriptionsList: make(map[*Client][]string),
+		mu:                sync.Mutex{},
 	}
 }
 
@@ -33,6 +36,9 @@ func GetRawOrderBookSocket() *RawOrderBookSocket {
 // streaming data over the socker for any pair.
 // pair := utils.GetPairKey(bt, qt)
 func (s *RawOrderBookSocket) Subscribe(channelID string, c *Client) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	if c == nil {
 		return errors.New("No connection found")
 	}
@@ -70,6 +76,9 @@ func (s *RawOrderBookSocket) UnsubscribeHandler() func(c *Client) {
 // subscribed to. It can be called on unsubscription message from user or due to some other reason by
 // system
 func (s *RawOrderBookSocket) UnsubscribeChannel(channelID string, c *Client) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	if s.subscriptions[channelID][c] {
 		s.subscriptions[channelID][c] = false
 		delete(s.subscriptions[channelID], c)
@@ -89,6 +98,9 @@ func (s *RawOrderBookSocket) Unsubscribe(c *Client) {
 
 // BroadcastMessage streams message to all the subscribtions subscribed to the pair
 func (s *RawOrderBookSocket) BroadcastMessage(channelID string, p interface{}) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	for c, status := range s.subscriptions[channelID] {
 		if status {
 			s.SendUpdateMessage(c, p)
