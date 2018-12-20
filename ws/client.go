@@ -14,9 +14,13 @@ type Client struct {
 	send chan types.WebsocketMessage
 }
 
+// TODO: refactor into non-global variables
 var unsubscribeHandlers map[*Client][]func(*Client)
+var subscriptionMutex sync.Mutex
 
 func NewClient(c *websocket.Conn) *Client {
+	subscriptionMutex.Lock()
+	defer subscriptionMutex.Unlock()
 	conn := &Client{Conn: c, mu: sync.Mutex{}, send: make(chan types.WebsocketMessage)}
 
 	if unsubscribeHandlers == nil {
@@ -52,6 +56,9 @@ func (c *Client) SendMessage(channel string, msgType string, payload interface{}
 }
 
 func (c *Client) closeConnection() {
+	subscriptionMutex.Lock()
+	defer subscriptionMutex.Unlock()
+
 	for _, unsub := range unsubscribeHandlers[c] {
 		go unsub(c)
 	}
