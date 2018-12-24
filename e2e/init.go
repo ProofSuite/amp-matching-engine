@@ -23,7 +23,7 @@ import (
 	routing "github.com/go-ozzo/ozzo-routing"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/mgo.v2/dbtest"
+	"github.com/globalsign/mgo/dbtest"
 )
 
 type apiTestCase struct {

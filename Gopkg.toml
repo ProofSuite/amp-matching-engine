@@ -95,3 +95,11 @@
 
 [prune]
   go-tests = true
+
+[[constraint]]
+  name = "github.com/mongodb/mongo-go-driver"
+  version = "0.1.0"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/globalsign/mgo"

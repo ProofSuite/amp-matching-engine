@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/Proofsuite/amp-matching-engine/types"
-	"gopkg.in/mgo.v2/dbtest"
+	"github.com/globalsign/mgo/dbtest"
 )
 
 var server dbtest.DBServer

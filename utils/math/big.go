@@ -24,6 +24,10 @@ func Neg(x *big.Int) *big.Int {
 	return big.NewInt(0).Neg(x)
 }
 
+func Avg(x *big.Int, y *big.Int) *big.Int {
+	return Div(Add(x, y), big.NewInt(2))
+}
+
 func ToBigInt(s string) *big.Int {
 	res := big.NewInt(0)
 	res.SetString(s, 10)
@@ -69,6 +73,14 @@ func IsZero(x *big.Int) bool {
 
 func IsEqual(x, y *big.Int) bool {
 	if x.Cmp(y) == 0 {
+		return true
+	} else {
+		return false
+	}
+}
+
+func IsNotEqual(x, y *big.Int) bool {
+	if x.Cmp(y) != 0 {
 		return true
 	} else {
 		return false

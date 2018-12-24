@@ -6,10 +6,11 @@ import (
 
 	"github.com/Proofsuite/amp-matching-engine/app"
 	"github.com/Proofsuite/amp-matching-engine/types"
+	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/Proofsuite/amp-matching-engine/utils/math"
 	"github.com/ethereum/go-ethereum/common"
-	mgo "gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	mgo "github.com/globalsign/mgo"
+	"github.com/globalsign/mgo/bson"
 )
 
 // OrderDao contains:
@@ -59,6 +60,11 @@ func NewOrderDao(opts ...OrderDaoOption) *OrderDao {
 		Key: []string{"quoteToken"},
 	}
 
+	i5 := mgo.Index{
+		Key:       []string{"pricepoint"},
+		Collation: &mgo.Collation{NumericOrdering: true, Locale: "en"},
+	}
+
 	err := db.Session.DB(dao.dbName).C(dao.collectionName).EnsureIndex(index)
 	if err != nil {
 		panic(err)
@@ -75,6 +81,11 @@ func NewOrderDao(opts ...OrderDaoOption) *OrderDao {
 	}
 
 	err = db.Session.DB(dao.dbName).C(dao.collectionName).EnsureIndex(i4)
+	if err != nil {
+		panic(err)
+	}
+
+	err = db.Session.DB(dao.dbName).C(dao.collectionName).EnsureIndex(i5)
 	if err != nil {
 		panic(err)
 	}
@@ -521,13 +532,8 @@ func (dao *OrderDao) GetRawOrderBook(p *types.Pair) ([]*types.Order, error) {
 			},
 		},
 		bson.M{
-			"$addFields": bson.M{
-				"priceDecimal": bson.M{"$toDecimal": "$pricepoint"},
-			},
-		},
-		bson.M{
 			"$sort": bson.M{
-				"priceDecimal": 1,
+				"pricepoint": 1,
 			},
 		},
 	}
@@ -553,7 +559,7 @@ func (dao *OrderDao) GetOrderBook(p *types.Pair) ([]map[string]string, []map[str
 		},
 		bson.M{
 			"$group": bson.M{
-				"_id":        bson.M{"$toDecimal": "$pricepoint"},
+				"_id":        "$pricepoint",
 				"pricepoint": bson.M{"$first": "$pricepoint"},
 				"amount": bson.M{
 					"$sum": bson.M{
@@ -587,7 +593,7 @@ func (dao *OrderDao) GetOrderBook(p *types.Pair) ([]map[string]string, []map[str
 		},
 		bson.M{
 			"$group": bson.M{
-				"_id":        bson.M{"$toDecimal": "$pricepoint"},
+				"_id":        "$pricepoint",
 				"pricepoint": bson.M{"$first": "$pricepoint"},
 				"amount": bson.M{
 					"$sum": bson.M{
@@ -640,7 +646,7 @@ func (dao *OrderDao) GetOrderBookPricePoint(p *types.Pair, pp *big.Int, side str
 		},
 		bson.M{
 			"$group": bson.M{
-				"_id":        bson.M{"$toDecimal": "$pricepoint"},
+				"_id":        "$pricepoint",
 				"pricepoint": bson.M{"$first": "$pricepoint"},
 				"amount": bson.M{
 					"$sum": bson.M{
@@ -674,7 +680,6 @@ func (dao *OrderDao) GetOrderBookPricePoint(p *types.Pair, pp *big.Int, side str
 
 func (dao *OrderDao) GetMatchingBuyOrders(o *types.Order) ([]*types.Order, error) {
 	var orders []*types.Order
-	decimalPricepoint, _ := bson.ParseDecimal128(o.PricePoint.String())
 
 	q := []bson.M{
 		bson.M{
@@ -686,17 +691,12 @@ func (dao *OrderDao) GetMatchingBuyOrders(o *types.Order) ([]*types.Order, error
 			},
 		},
 		bson.M{
-			"$addFields": bson.M{
-				"priceDecimal": bson.M{"$toDecimal": "$pricepoint"},
-			},
-		},
-		bson.M{
 			"$match": bson.M{
-				"priceDecimal": bson.M{"$gte": decimalPricepoint},
+				"pricepoint": bson.M{"$gte": o.PricePoint.String()},
 			},
 		},
 		bson.M{
-			"$sort": bson.M{"priceDecimal": -1, "createdAt": 1},
+			"$sort": bson.M{"pricepoint": -1, "createdAt": 1},
 		},
 	}
 
@@ -706,12 +706,13 @@ func (dao *OrderDao) GetMatchingBuyOrders(o *types.Order) ([]*types.Order, error
 		return nil, err
 	}
 
+	utils.PrintJSON(orders)
+
 	return orders, nil
 }
 
 func (dao *OrderDao) GetMatchingSellOrders(o *types.Order) ([]*types.Order, error) {
 	var orders []*types.Order
-	decimalPricepoint, _ := bson.ParseDecimal128(o.PricePoint.String())
 
 	q := []bson.M{
 		bson.M{
@@ -723,17 +724,12 @@ func (dao *OrderDao) GetMatchingSellOrders(o *types.Order) ([]*types.Order, erro
 			},
 		},
 		bson.M{
-			"$addFields": bson.M{
-				"priceDecimal": bson.M{"$toDecimal": "$pricepoint"},
-			},
-		},
-		bson.M{
 			"$match": bson.M{
-				"priceDecimal": bson.M{"$lte": decimalPricepoint},
+				"pricepoint": bson.M{"$lte": o.PricePoint.String()},
 			},
 		},
 		bson.M{
-			"$sort": bson.M{"priceDecimal": 1, "createdAt": 1},
+			"$sort": bson.M{"pricepoint": 1, "createdAt": 1},
 		},
 	}
 
@@ -742,6 +738,8 @@ func (dao *OrderDao) GetMatchingSellOrders(o *types.Order) ([]*types.Order, erro
 		logger.Error(err)
 		return nil, err
 	}
+
+	utils.PrintJSON(orders)
 
 	return orders, nil
 }

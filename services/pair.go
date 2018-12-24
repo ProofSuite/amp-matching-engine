@@ -1,12 +1,14 @@
 package services
 
 import (
+	"math/big"
 	"time"
 
 	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/Proofsuite/amp-matching-engine/types"
+	"github.com/Proofsuite/amp-matching-engine/utils/math"
 	"github.com/ethereum/go-ethereum/common"
-	"gopkg.in/mgo.v2/bson"
+	"github.com/globalsign/mgo/bson"
 )
 
 // PairService struct with daos required, responsible for communicating with daos.
@@ -288,19 +290,20 @@ func (s *PairService) GetAllTokenPairData() ([]*types.PairData, error) {
 					"quoteToken": "$quoteToken",
 				},
 				"count":  bson.M{"$sum": one},
-				"open":   bson.M{"$first": bson.M{"$toDecimal": "$pricepoint"}},
-				"high":   bson.M{"$max": bson.M{"$toDecimal": "$pricepoint"}},
-				"low":    bson.M{"$min": bson.M{"$toDecimal": "$pricepoint"}},
-				"close":  bson.M{"$last": bson.M{"$toDecimal": "$pricepoint"}},
+				"open":   bson.M{"$first": "$pricepoint"},
+				"high":   bson.M{"$max": "$pricepoint"},
+				"low":    bson.M{"$min": "$pricepoint"},
+				"close":  bson.M{"$last": "$pricepoint"},
 				"volume": bson.M{"$sum": bson.M{"$toDecimal": "$amount"}},
 			},
 		},
 	}
 
-	orderDataQuery := []bson.M{
+	bidsQuery := []bson.M{
 		bson.M{
 			"$match": bson.M{
 				"status": bson.M{"$in": []string{"OPEN", "PARTIAL_FILLED"}},
+				"side":   "BUY",
 			},
 		},
 		bson.M{
@@ -316,6 +319,32 @@ func (s *PairService) GetAllTokenPairData() ([]*types.PairData, error) {
 						"$subtract": []bson.M{bson.M{"$toDecimal": "$amount"}, bson.M{"$toDecimal": "$filledAmount"}},
 					},
 				},
+				"bestPrice": bson.M{"$max": "$pricepoint"},
+			},
+		},
+	}
+
+	asksQuery := []bson.M{
+		bson.M{
+			"$match": bson.M{
+				"status": bson.M{"$in": []string{"OPEN", "PARTIAL_FILLED"}},
+				"side":   "SELL",
+			},
+		},
+		bson.M{
+			"$group": bson.M{
+				"_id": bson.M{
+					"pairName":   "$pairName",
+					"baseToken":  "$baseToken",
+					"quoteToken": "$quoteToken",
+				},
+				"orderCount": bson.M{"$sum": one},
+				"orderVolume": bson.M{
+					"$sum": bson.M{
+						"$subtract": []bson.M{bson.M{"$toDecimal": "$amount"}, bson.M{"$toDecimal": "$filledAmount"}},
+					},
+				},
+				"bestPrice": bson.M{"$min": "$pricepoint"},
 			},
 		},
 	}
@@ -326,7 +355,13 @@ func (s *PairService) GetAllTokenPairData() ([]*types.PairData, error) {
 		return nil, err
 	}
 
-	orderData, err := s.orderDao.Aggregate(orderDataQuery)
+	bidsData, err := s.orderDao.Aggregate(bidsQuery)
+	if err != nil {
+		logger.Error(err)
+		return nil, err
+	}
+
+	asksData, err := s.orderDao.Aggregate(asksQuery)
 	if err != nil {
 		logger.Error(err)
 		return nil, err
@@ -344,14 +379,33 @@ func (s *PairService) GetAllTokenPairData() ([]*types.PairData, error) {
 				pairData.Volume = t.Volume
 				pairData.Close = t.Close
 				pairData.Count = t.Count
-
+				pairData.OrderVolume = big.NewInt(0)
+				pairData.OrderCount = big.NewInt(0)
+				pairData.BidPrice = big.NewInt(0)
+				pairData.AskPrice = big.NewInt(0)
+				pairData.Price = big.NewInt(0)
 			}
 		}
 
-		for _, o := range orderData {
+		for _, o := range bidsData {
 			if o.AddressCode() == p.AddressCode() {
 				pairData.OrderVolume = o.OrderVolume
 				pairData.OrderCount = o.OrderCount
+				pairData.BidPrice = o.BestPrice
+			}
+		}
+
+		for _, o := range asksData {
+			if o.AddressCode() == p.AddressCode() {
+				pairData.OrderVolume = math.Add(pairData.OrderVolume, o.OrderVolume)
+				pairData.OrderCount = math.Add(pairData.OrderCount, o.OrderCount)
+				pairData.AskPrice = o.BestPrice
+
+				if math.IsNotEqual(pairData.BidPrice, big.NewInt(0)) && math.IsNotEqual(pairData.AskPrice, big.NewInt(0)) {
+					pairData.Price = math.Avg(pairData.BidPrice, pairData.AskPrice)
+				} else {
+					pairData.Price = big.NewInt(0)
+				}
 			}
 		}
 

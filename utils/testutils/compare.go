@@ -7,7 +7,7 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/go-test/deep"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/mgo.v2/dbtest"
+	"github.com/globalsign/mgo/dbtest"
 )
 
 func CompareEngineResponse(t *testing.T, a, b *types.EngineResponse) {

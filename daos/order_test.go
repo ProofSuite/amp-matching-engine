@@ -13,8 +13,8 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/utils/units"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
-	mgo "gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	mgo "github.com/globalsign/mgo"
+	"github.com/globalsign/mgo/bson"
 )
 
 func init() {
