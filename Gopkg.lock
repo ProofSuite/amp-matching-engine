@@ -2,14 +2,6 @@
 
 
 [[projects]]
-  digest = "1:e3bb58bcd5cf318d91ccdb290fd8e0e78d16add716b1ccf861fed19c1551fde0"
-  name = "github.com/Sirupsen/logrus"
-  packages = ["."]
-  pruneopts = "T"
-  revision = "3e01752db0189b9157070a0e1668a620f9a85da2"
-  version = "v1.0.6"
-
-[[projects]]
   branch = "master"
   digest = "1:7afff364b8e5e9f1085fe77ae5630b8e0f7482338a50535881aa0b433e48fb0b"
   name = "github.com/alicebob/gopher-json"
@@ -123,21 +115,23 @@
   version = "v1.4.7"
 
 [[projects]]
-  digest = "1:04aaed75f08f644903d160fefbaef53b610fe407355842943663f7c09212345b"
-  name = "github.com/go-ozzo/ozzo-dbx"
-  packages = ["."]
+  branch = "master"
+  digest = "1:0ab8d37960557936b3b2ebd497a354d448efe067c42187cfc13549c2bbb0fb5f"
+  name = "github.com/globalsign/mgo"
+  packages = [
+    ".",
+    "bson",
+    "internal/json",
+    "internal/sasl",
+    "internal/scram",
+  ]
   pruneopts = "T"
-  revision = "e984ee904f1b2df904d0b2e6b2ca5064c87c0409"
-  version = "v1.1"
+  revision = "eeefdecb41b842af6dc652aaea4026e8403e62df"
 
 [[projects]]
   digest = "1:a4f2e2f2ef9cb8f6df3368bc98302bd39b0154227a72bc93184566d1d4cc4cd3"
   name = "github.com/go-ozzo/ozzo-routing"
-  packages = [
-    ".",
-    "access",
-    "fault",
-  ]
+  packages = ["."]
   pruneopts = "T"
   revision = "9dcabc145f0d565b5219e2fd72c3da04876980b7"
   version = "v2.1.4"
@@ -270,6 +264,45 @@
   pruneopts = "T"
   revision = "fa473d140ef3c6adf42d6b391fe76707f1f243c8"
   version = "v1.0.0"
+
+[[projects]]
+  digest = "1:f690f4e68b04af81843940ef5400d2dd46da23804d791f2cb78e00aea980b20c"
+  name = "github.com/mongodb/mongo-go-driver"
+  packages = [
+    "bson",
+    "bson/bsoncodec",
+    "bson/bsonrw",
+    "bson/bsontype",
+    "bson/primitive",
+    "event",
+    "internal",
+    "mongo",
+    "mongo/options",
+    "mongo/readconcern",
+    "mongo/readpref",
+    "mongo/writeconcern",
+    "tag",
+    "version",
+    "x/bsonx",
+    "x/bsonx/bsoncore",
+    "x/mongo/driver",
+    "x/mongo/driver/auth",
+    "x/mongo/driver/auth/internal/gssapi",
+    "x/mongo/driver/session",
+    "x/mongo/driver/topology",
+    "x/mongo/driver/uuid",
+    "x/network/address",
+    "x/network/command",
+    "x/network/compressor",
+    "x/network/connection",
+    "x/network/connstring",
+    "x/network/description",
+    "x/network/result",
+    "x/network/wiremessage",
+  ]
+  pruneopts = "T"
+  revision = "29905d4bda472574c8b499e2f93b5b2747d8fbd7"
+  version = "v0.1.0"
 
 [[projects]]
   branch = "master"
@@ -428,6 +461,22 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:fb87ad6629b8ae41bdf7bec0a22cc4a5553ab550b4a52c88edacfbfe61ffd87d"
+  name = "github.com/xdg/scram"
+  packages = ["."]
+  pruneopts = "T"
+  revision = "7eeb5667e42c09cb51bf7b7c28aea8c56767da90"
+
+[[projects]]
+  branch = "master"
+  digest = "1:f5c1d04bc09c644c592b45b9f0bad4030521b1a7d11c7dadbb272d9439fa6e8e"
+  name = "github.com/xdg/stringprep"
+  packages = ["."]
+  pruneopts = "T"
+  revision = "73f8eece6fdcd902c185bf651de50f3828bed5ed"
+
+[[projects]]
+  branch = "master"
   digest = "1:afd95c12c4ae9bf890c277401e42ee3394cb5ad86881fbdc05c773650501db85"
   name = "github.com/yuin/gopher-lua"
   packages = [
@@ -444,10 +493,11 @@
   digest = "1:62fac8c414ce3fb59b87102ebebb04edd0287a721c0cd6b36f4dc866a42cf772"
   name = "golang.org/x/crypto"
   packages = [
+    "acme",
+    "acme/autocert",
     "pbkdf2",
     "ripemd160",
     "scrypt",
-    "ssh/terminal",
   ]
   pruneopts = "T"
   revision = "0e37d006457bf46f9e6692014ba72ef82c33022c"
@@ -465,12 +515,19 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:6932d1ef4294f3ea819748e89d1003f5df3804b20b84b5f1c60f8f1d7c933e2d"
+  name = "golang.org/x/sync"
+  packages = ["semaphore"]
+  pruneopts = "T"
+  revision = "37e7f081c4d4c64e13b10787722085407fe5d15f"
+
+[[projects]]
+  branch = "master"
   digest = "1:57d967d0c359c56065e766555f82df575d98c6b1979f7d257b83220ed1340d3b"
   name = "golang.org/x/sys"
   packages = [
     "cpu",
     "unix",
-    "windows",
   ]
   pruneopts = "T"
   revision = "d0be0721c37eeb5299f245a996a483160fc36940"
@@ -553,7 +610,6 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
-    "github.com/Sirupsen/logrus",
     "github.com/alicebob/miniredis",
     "github.com/ethereum/go-ethereum",
     "github.com/ethereum/go-ethereum/accounts/abi",
@@ -567,16 +623,16 @@
     "github.com/ethereum/go-ethereum/ethclient",
     "github.com/ethereum/go-ethereum/event",
     "github.com/ethereum/go-ethereum/rpc",
-    "github.com/go-ozzo/ozzo-dbx",
+    "github.com/globalsign/mgo",
     "github.com/go-ozzo/ozzo-routing",
-    "github.com/go-ozzo/ozzo-routing/access",
-    "github.com/go-ozzo/ozzo-routing/fault",
     "github.com/go-ozzo/ozzo-validation",
     "github.com/go-test/deep",
     "github.com/gomodule/redigo/redis",
     "github.com/gorilla/handlers",
     "github.com/gorilla/mux",
     "github.com/gorilla/websocket",
+    "github.com/mongodb/mongo-go-driver/mongo",
+    "github.com/mongodb/mongo-go-driver/mongo/options",
     "github.com/op/go-logging",
     "github.com/posener/wstest",
     "github.com/robfig/cron",
@@ -584,6 +640,7 @@
     "github.com/streadway/amqp",
     "github.com/stretchr/testify/assert",
     "github.com/stretchr/testify/mock",
+    "golang.org/x/crypto/acme/autocert",
     "gopkg.in/mgo.v2",
     "gopkg.in/mgo.v2/bson",
     "gopkg.in/mgo.v2/dbtest",

@@ -9,8 +9,8 @@ import (
 
 	"github.com/Proofsuite/amp-matching-engine/app"
 	"github.com/Proofsuite/amp-matching-engine/utils"
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	"github.com/globalsign/mgo"
+	"github.com/globalsign/mgo/bson"
 )
 
 // Database struct contains the pointer to mgo.session
@@ -246,8 +246,10 @@ func (d *Database) Aggregate(dbName, collection string, query []bson.M, response
 	sc := d.Session.Copy()
 	defer sc.Close()
 
+	collation := mgo.Collation{Locale: "en", NumericOrdering: true}
 	result := reflect.ValueOf(response).Interface()
-	err := sc.DB(dbName).C(collection).Pipe(query).All(result)
+
+	err := sc.DB(dbName).C(collection).Pipe(query).Collation(&collation).All(result)
 	if err != nil {
 		logger.Error(err)
 		return err

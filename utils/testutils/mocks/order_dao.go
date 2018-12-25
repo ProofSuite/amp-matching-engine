@@ -3,7 +3,7 @@
 package mocks
 
 import big "math/big"
-import bson "gopkg.in/mgo.v2/bson"
+import bson "github.com/globalsign/mgo/bson"
 import common "github.com/ethereum/go-ethereum/common"
 
 import mock "github.com/stretchr/testify/mock"

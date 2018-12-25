@@ -13,7 +13,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/sha3"
-	"gopkg.in/mgo.v2/bson"
+	"github.com/globalsign/mgo/bson"
 )
 
 // Order contains the data related to an order sent by the user
@@ -660,6 +660,7 @@ type OrderData struct {
 	Pair        PairID   `json:"id,omitempty" bson:"_id"`
 	OrderVolume *big.Int `json:"orderVolume,omitempty" bson:"orderVolume"`
 	OrderCount  *big.Int `json:"orderCount,omitempty" bson:"orderCount"`
+	BestPrice   *big.Int `json:"bestPrice,omitempty" bson:"bestPrice"`
 }
 
 func (o *OrderData) AddressCode() string {
@@ -682,6 +683,10 @@ func (o *OrderData) MarshalJSON() ([]byte, error) {
 
 	if o.OrderCount != nil {
 		orderData["orderCount"] = o.OrderCount.String()
+	}
+
+	if o.BestPrice != nil {
+		orderData["bestPrice"] = o.BestPrice.String()
 	}
 
 	bytes, err := json.Marshal(orderData)
@@ -714,6 +719,10 @@ func (o *OrderData) UnmarshalJSON(b []byte) error {
 		o.OrderCount = math.ToBigInt(orderData["orderCount"].(string))
 	}
 
+	if orderData["bestPrice"] != nil {
+		o.BestPrice = math.ToBigInt(orderData["bestPrice"].(string))
+	}
+
 	return nil
 }
 
@@ -734,10 +743,16 @@ func (o *OrderData) GetBSON() (interface{}, error) {
 		return nil, err
 	}
 
+	bestPrice := o.BestPrice.String()
+	if err != nil {
+		return nil, err
+	}
+
 	return struct {
 		ID          PairID          `json:"id,omitempty" bson:"_id"`
 		OrderVolume bson.Decimal128 `json:"orderCount" bson:"orderCount"`
 		OrderCount  bson.Decimal128 `json:"orderVolume" bson:"orderVolume"`
+		BestPrice   string          `json:"bestPrice" bson:"bestPrice"`
 	}{
 		ID: PairID{
 			o.Pair.PairName,
@@ -746,6 +761,7 @@ func (o *OrderData) GetBSON() (interface{}, error) {
 		},
 		OrderVolume: volume,
 		OrderCount:  count,
+		BestPrice:   bestPrice,
 	}, nil
 }
 
@@ -760,6 +776,7 @@ func (o *OrderData) SetBSON(raw bson.Raw) error {
 		Pair        PairIDRecord    `json:"pair,omitempty" bson:"_id"`
 		OrderCount  bson.Decimal128 `json:"orderCount" bson:"orderCount"`
 		OrderVolume bson.Decimal128 `json:"orderVolume" bson:"orderVolume"`
+		BestPrice   string          `json:"bestPrice" bson:"bestPrice"`
 	})
 
 	err := raw.Unmarshal(decoded)
@@ -773,12 +790,13 @@ func (o *OrderData) SetBSON(raw bson.Raw) error {
 		QuoteToken: common.HexToAddress(decoded.Pair.QuoteToken),
 	}
 
-	o.OrderCount = new(big.Int)
-	o.OrderVolume = new(big.Int)
 	orderCount := decoded.OrderCount.String()
 	orderVolume := decoded.OrderVolume.String()
+	bestPrice := decoded.BestPrice
+
 	o.OrderCount = math.ToBigInt(orderCount)
 	o.OrderVolume = math.ToBigInt(orderVolume)
+	o.BestPrice = math.ToBigInt(bestPrice)
 
 	return nil
 }

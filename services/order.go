@@ -12,7 +12,7 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/ws"
 	"github.com/ethereum/go-ethereum/common"
 
-	"gopkg.in/mgo.v2/bson"
+	"github.com/globalsign/mgo/bson"
 
 	"github.com/Proofsuite/amp-matching-engine/rabbitmq"
 	"github.com/Proofsuite/amp-matching-engine/types"

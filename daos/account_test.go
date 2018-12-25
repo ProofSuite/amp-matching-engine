@@ -9,7 +9,7 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/utils/testutils"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/mgo.v2/bson"
+	"github.com/globalsign/mgo/bson"
 )
 
 // var db *Database

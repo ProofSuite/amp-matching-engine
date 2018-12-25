@@ -2,8 +2,8 @@ package services
 
 import (
 	"github.com/Proofsuite/amp-matching-engine/daos"
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/dbtest"
+	"github.com/globalsign/mgo"
+	"github.com/globalsign/mgo/dbtest"
 	"io/ioutil"
 )
 
