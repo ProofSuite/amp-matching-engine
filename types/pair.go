@@ -9,7 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 
 	validation "github.com/go-ozzo/ozzo-validation"
-	"gopkg.in/mgo.v2/bson"
+	"github.com/globalsign/mgo/bson"
 )
 
 // Pair struct is used to model the pair data in the system and DB
@@ -247,6 +247,9 @@ type PairData struct {
 	Timestamp   int64    `json:"timestamp,omitempty" bson:"timestamp"`
 	OrderVolume *big.Int `json:"orderVolume,omitempty" bson:"orderVolume"`
 	OrderCount  *big.Int `json:"orderCount,omitempty" bson:"orderCount"`
+	AskPrice    *big.Int `json:"askPrice,omitempty" bson:"askPrice"`
+	BidPrice    *big.Int `json:"bidPrice,omitempty" bson:"bidPrice"`
+	Price       *big.Int `json:"price,omitempty" bson:"price"`
 	Rank        int      `json"rank,omitempty" bson:"rank"`
 }
 
@@ -291,6 +294,18 @@ func (p *PairData) MarshalJSON() ([]byte, error) {
 
 	if p.OrderCount != nil {
 		pairData["orderCount"] = p.OrderCount.String()
+	}
+
+	if p.AskPrice != nil {
+		pairData["askPrice"] = p.AskPrice.String()
+	}
+
+	if p.BidPrice != nil {
+		pairData["bidPrice"] = p.BidPrice.String()
+	}
+
+	if p.Price != nil {
+		pairData["price"] = p.Price.String()
 	}
 
 	bytes, err := json.Marshal(pairData)

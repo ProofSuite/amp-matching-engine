@@ -6,8 +6,8 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/app"
 	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/ethereum/go-ethereum/common"
-	mgo "gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	mgo "github.com/globalsign/mgo"
+	"github.com/globalsign/mgo/bson"
 )
 
 // TradeDao contains:
@@ -54,6 +54,11 @@ func NewTradeDao() *TradeDao {
 		Key: []string{"createdAt", "status", "baseToken", "quoteToken"},
 	}
 
+	i8 := mgo.Index{
+		Key:       []string{"pricepoint"},
+		Collation: &mgo.Collation{NumericOrdering: true, Locale: "en"},
+	}
+
 	err := db.Session.DB(dbName).C(collection).EnsureIndex(i1)
 	if err != nil {
 		panic(err)
@@ -85,6 +90,11 @@ func NewTradeDao() *TradeDao {
 	}
 
 	err = db.Session.DB(dbName).C(collection).EnsureIndex(i7)
+	if err != nil {
+		panic(err)
+	}
+
+	err = db.Session.DB(dbName).C(collection).EnsureIndex(i8)
 	if err != nil {
 		panic(err)
 	}
