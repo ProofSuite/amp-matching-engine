@@ -8,7 +8,7 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/utils/math"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/go-ozzo/ozzo-validation"
-	"gopkg.in/mgo.v2/bson"
+	"github.com/globalsign/mgo/bson"
 )
 
 // Token struct is used to model the token data in the system and DB

@@ -9,7 +9,6 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/interfaces"
 	"github.com/Proofsuite/amp-matching-engine/services"
 	"github.com/Proofsuite/amp-matching-engine/types"
-	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/Proofsuite/amp-matching-engine/utils/httputils"
 	"github.com/gorilla/mux"
 )
@@ -43,8 +42,6 @@ func (e *pairEndpoint) HandleCreatePairs(w http.ResponseWriter, r *http.Request)
 	}
 
 	defer r.Body.Close()
-
-	utils.PrintJSON(token)
 
 	pairs, err := e.pairService.CreatePairs(token.Address)
 	if err != nil {
