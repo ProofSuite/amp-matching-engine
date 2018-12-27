@@ -15,6 +15,9 @@ import (
 type Engine struct {
 	orderbooks   map[string]*OrderBook
 	rabbitMQConn *rabbitmq.Connection
+	orderDao     interfaces.OrderDao
+	tradeDao     interfaces.TradeDao
+	pairDao      interfaces.PairDao
 }
 
 var logger = utils.EngineLogger
@@ -45,7 +48,14 @@ func NewEngine(
 		obs[p.Code()] = ob
 	}
 
-	engine := &Engine{obs, rabbitMQConn}
+	engine := &Engine{
+		obs,
+		rabbitMQConn,
+		orderDao,
+		tradeDao,
+		pairDao,
+	}
+
 	return engine
 }
 
@@ -134,7 +144,20 @@ func (e *Engine) handleNewOrder(bytes []byte) error {
 
 	ob := e.orderbooks[code]
 	if ob == nil {
-		return errors.New("Orderbook error")
+		p, err := e.pairDao.GetByTokenAddress(o.BaseToken, o.QuoteToken)
+		if err != nil {
+			return errors.New("Unknown pair")
+		}
+
+		e.orderbooks[code] = &OrderBook{
+			rabbitMQConn: e.rabbitMQConn,
+			orderDao:     e.orderDao,
+			tradeDao:     e.tradeDao,
+			pair:         p,
+			mutex:        &sync.Mutex{},
+		}
+
+		ob = e.orderbooks[code]
 	}
 
 	err = ob.newOrder(o)
