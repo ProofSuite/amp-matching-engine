@@ -8,6 +8,7 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/app"
 	"github.com/Proofsuite/amp-matching-engine/contracts/contractsinterfaces"
 	"github.com/Proofsuite/amp-matching-engine/interfaces"
+	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	eth "github.com/ethereum/go-ethereum/core/types"
@@ -127,7 +128,19 @@ func (e *EthereumProvider) GetPendingNonceAt(a common.Address) (uint64, error) {
 }
 
 func (e *EthereumProvider) Decimals(token common.Address) (uint8, error) {
-	tokenInterface, err := contractsinterfaces.NewERC20(token, e.Client)
+	var tokenInterface *contractsinterfaces.ERC20
+	var err error
+
+	// retry in case the connection with the ethereum client is asleep
+	err = utils.Retry(3, func() error {
+		tokenInterface, err = contractsinterfaces.NewERC20(token, e.Client)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+
 	if err != nil {
 		logger.Error(err)
 		return 0, err
@@ -144,7 +157,19 @@ func (e *EthereumProvider) Decimals(token common.Address) (uint8, error) {
 }
 
 func (e *EthereumProvider) Symbol(token common.Address) (string, error) {
-	tokenInterface, err := contractsinterfaces.NewERC20(token, e.Client)
+	// retry in case the connection with the ethereum client is asleep
+	var tokenInterface *contractsinterfaces.ERC20
+	var err error
+
+	err = utils.Retry(3, func() error {
+		tokenInterface, err = contractsinterfaces.NewERC20(token, e.Client)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+
 	if err != nil {
 		logger.Error(err)
 		return "", err
