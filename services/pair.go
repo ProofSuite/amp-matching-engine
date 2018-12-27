@@ -369,7 +369,20 @@ func (s *PairService) GetAllTokenPairData() ([]*types.PairData, error) {
 
 	pairsData := []*types.PairData{}
 	for _, p := range pairs {
-		pairData := &types.PairData{Pair: types.PairID{p.Name(), p.BaseTokenAddress, p.QuoteTokenAddress}}
+		pairData := &types.PairData{
+			Pair:        types.PairID{p.Name(), p.BaseTokenAddress, p.QuoteTokenAddress},
+			Open:        big.NewInt(0),
+			High:        big.NewInt(0),
+			Low:         big.NewInt(0),
+			Volume:      big.NewInt(0),
+			Close:       big.NewInt(0),
+			Count:       big.NewInt(0),
+			OrderVolume: big.NewInt(0),
+			OrderCount:  big.NewInt(0),
+			BidPrice:    big.NewInt(0),
+			AskPrice:    big.NewInt(0),
+			Price:       big.NewInt(0),
+		}
 
 		for _, t := range tradeData {
 			if t.AddressCode() == p.AddressCode() {
@@ -379,11 +392,6 @@ func (s *PairService) GetAllTokenPairData() ([]*types.PairData, error) {
 				pairData.Volume = t.Volume
 				pairData.Close = t.Close
 				pairData.Count = t.Count
-				pairData.OrderVolume = big.NewInt(0)
-				pairData.OrderCount = big.NewInt(0)
-				pairData.BidPrice = big.NewInt(0)
-				pairData.AskPrice = big.NewInt(0)
-				pairData.Price = big.NewInt(0)
 			}
 		}
 
