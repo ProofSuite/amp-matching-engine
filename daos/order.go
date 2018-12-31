@@ -6,7 +6,6 @@ import (
 
 	"github.com/Proofsuite/amp-matching-engine/app"
 	"github.com/Proofsuite/amp-matching-engine/types"
-	"github.com/Proofsuite/amp-matching-engine/utils"
 	"github.com/Proofsuite/amp-matching-engine/utils/math"
 	"github.com/ethereum/go-ethereum/common"
 	mgo "github.com/globalsign/mgo"
@@ -706,8 +705,6 @@ func (dao *OrderDao) GetMatchingBuyOrders(o *types.Order) ([]*types.Order, error
 		return nil, err
 	}
 
-	utils.PrintJSON(orders)
-
 	return orders, nil
 }
 
@@ -738,8 +735,6 @@ func (dao *OrderDao) GetMatchingSellOrders(o *types.Order) ([]*types.Order, erro
 		logger.Error(err)
 		return nil, err
 	}
-
-	utils.PrintJSON(orders)
 
 	return orders, nil
 }

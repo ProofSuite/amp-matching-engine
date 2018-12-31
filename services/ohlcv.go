@@ -74,10 +74,6 @@ func (s *OHLCVService) GetOHLCV(pairs []types.PairAddresses, duration int64, uni
 	currentTimestamp := time.Now().Unix()
 
 	sort := bson.M{"$sort": bson.M{"timestamp": 1}}
-	// toDecimal := bson.M{"$addFields": bson.M{
-	// 	"priceDecimal":  bson.M{"$toDecimal": "$pricepoint"},
-	// 	"amountDecimal": bson.M{"$toDecimal": "$amount"},
-	// }}
 
 	modTime, intervalInSeconds := getModTime(currentTimestamp, duration, unit)
 	group, addFields := getGroupAddFieldBson("$createdAt", unit, duration)
@@ -99,8 +95,6 @@ func (s *OHLCVService) GetOHLCV(pairs []types.PairAddresses, duration int64, uni
 	if err != nil {
 		return nil, err
 	}
-
-	utils.PrintJSON(res)
 
 	if res == nil {
 		return []*types.Tick{}, nil

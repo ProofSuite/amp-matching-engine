@@ -7,8 +7,8 @@ import (
 
 	"github.com/Proofsuite/amp-matching-engine/utils/math"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/go-ozzo/ozzo-validation"
 	"github.com/globalsign/mgo/bson"
+	"github.com/go-ozzo/ozzo-validation"
 )
 
 // Token struct is used to model the token data in the system and DB
@@ -51,7 +51,6 @@ func (t Token) Validate() error {
 	return validation.ValidateStruct(&t,
 		validation.Field(&t.Symbol, validation.Required),
 		validation.Field(&t.Address, validation.Required),
-		validation.Field(&t.Decimals, validation.Required),
 	)
 }
 
