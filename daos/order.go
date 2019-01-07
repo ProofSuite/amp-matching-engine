@@ -47,6 +47,10 @@ func NewOrderDao(opts ...OrderDaoOption) *OrderDao {
 		Unique: true,
 	}
 
+	i1 := mgo.Index{
+		Key: []string{"userAddress"},
+	}
+
 	i2 := mgo.Index{
 		Key: []string{"status"},
 	}
@@ -64,7 +68,20 @@ func NewOrderDao(opts ...OrderDaoOption) *OrderDao {
 		Collation: &mgo.Collation{NumericOrdering: true, Locale: "en"},
 	}
 
+	i6 := mgo.Index{
+		Key: []string{"baseToken", "quoteToken", "pricepoint"},
+	}
+
+	i7 := mgo.Index{
+		Key: []string{"side", "status"},
+	}
+
 	err := db.Session.DB(dao.dbName).C(dao.collectionName).EnsureIndex(index)
+	if err != nil {
+		panic(err)
+	}
+
+	err = db.Session.DB(dao.dbName).C(dao.collectionName).EnsureIndex(i1)
 	if err != nil {
 		panic(err)
 	}
@@ -85,6 +102,16 @@ func NewOrderDao(opts ...OrderDaoOption) *OrderDao {
 	}
 
 	err = db.Session.DB(dao.dbName).C(dao.collectionName).EnsureIndex(i5)
+	if err != nil {
+		panic(err)
+	}
+
+	err = db.Session.DB(dao.dbName).C(dao.collectionName).EnsureIndex(i6)
+	if err != nil {
+		panic(err)
+	}
+
+	err = db.Session.DB(dao.dbName).C(dao.collectionName).EnsureIndex(i7)
 	if err != nil {
 		panic(err)
 	}
@@ -453,6 +480,10 @@ func (dao *OrderDao) GetCurrentByUserAddress(addr common.Address, limit ...int) 
 	if err != nil {
 		logger.Error(err)
 		return nil, err
+	}
+
+	if res == nil {
+		return []*types.Order{}, nil
 	}
 
 	return res, nil

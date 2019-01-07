@@ -22,6 +22,7 @@ type Database struct {
 // Global instance of Database struct for singleton use
 var db *Database
 var logger = utils.Logger
+var defaultTimeout = 10 * time.Second
 
 func InitSession(session *mgo.Session) (*mgo.Session, error) {
 	if db == nil {
@@ -89,7 +90,7 @@ func NewTLSSession() *mgo.Session {
 		panic(err)
 	}
 
-	// session.SetMode(mgo.Monotonic, true)
+	session.SetMode(mgo.Monotonic, true)
 	return session
 }
 
@@ -127,7 +128,7 @@ func NewSecureTLSSession() *mgo.Session {
 		panic(err)
 	}
 
-	// session.SetMode(mgo.Monotonic, true)
+	session.SetMode(mgo.Monotonic, true)
 	return session
 }
 
@@ -149,7 +150,7 @@ func (d *Database) GetByID(dbName, collection string, id bson.ObjectId, response
 	sc := d.Session.Copy()
 	defer sc.Close()
 
-	err = sc.DB(dbName).C(collection).FindId(id).One(response)
+	err = sc.DB(dbName).C(collection).FindId(id).SetMaxTime(defaultTimeout).One(response)
 	return
 }
 
@@ -160,7 +161,7 @@ func (d *Database) Get(dbName, collection string, query interface{}, offset, lim
 	sc := d.Session.Copy()
 	defer sc.Close()
 
-	err = sc.DB(dbName).C(collection).Find(query).Skip(offset).Limit(limit).All(response)
+	err = sc.DB(dbName).C(collection).Find(query).SetMaxTime(defaultTimeout).Skip(offset).Limit(limit).All(response)
 	return
 }
 
@@ -168,7 +169,7 @@ func (d *Database) Query(dbName, collection string, query interface{}, selector 
 	sc := d.Session.Copy()
 	defer sc.Close()
 
-	err = sc.DB(dbName).C(collection).Find(query).Skip(offset).Limit(limit).Select(selector).All(response)
+	err = sc.DB(dbName).C(collection).Find(query).SetMaxTime(defaultTimeout).Skip(offset).Limit(limit).Select(selector).All(response)
 	return
 }
 
@@ -179,7 +180,7 @@ func (d *Database) GetAndSort(dbName, collection string, query interface{}, sort
 	sc := d.Session.Copy()
 	defer sc.Close()
 
-	err = sc.DB(dbName).C(collection).Find(query).Sort(sort...).Skip(offset).Limit(limit).All(response)
+	err = sc.DB(dbName).C(collection).Find(query).SetMaxTime(defaultTimeout).Sort(sort...).Skip(offset).Limit(limit).All(response)
 	return
 }
 
@@ -229,7 +230,7 @@ func (d *Database) FindAndModify(dbName, collection string, query interface{}, c
 	sc := d.Session.Copy()
 	defer sc.Close()
 
-	_, err := sc.DB(dbName).C(collection).Find(query).Apply(change, response)
+	_, err := sc.DB(dbName).C(collection).Find(query).SetMaxTime(defaultTimeout).Apply(change, response)
 	if err != nil {
 		logger.Error(err)
 		return err
@@ -249,7 +250,7 @@ func (d *Database) Aggregate(dbName, collection string, query []bson.M, response
 	collation := mgo.Collation{Locale: "en", NumericOrdering: true}
 	result := reflect.ValueOf(response).Interface()
 
-	err := sc.DB(dbName).C(collection).Pipe(query).Collation(&collation).All(result)
+	err := sc.DB(dbName).C(collection).Pipe(query).SetMaxTime(10 * time.Second).Collation(&collation).All(result)
 	if err != nil {
 		logger.Error(err)
 		return err
