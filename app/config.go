@@ -105,8 +105,6 @@ func LoadConfig(configPath string, env string) error {
 		Config.ServerCACert = v.Get("MATCHING_ENGINE_CA_CERT").(string)
 		Config.ServerCert = v.Get("MATCHING_ENGINE_SERVER_CERT").(string)
 		Config.ServerKey = v.Get("MATCHING_ENGINE_SERVER_KEY").(string)
-		Config.MongoDBCert = v.Get("MONGODB_CLIENT_CERT").(string)
-		Config.MongoDBKey = v.Get("MONGODB_CLIENT_KEY").(string)
 		Config.RabbitMQKey = v.Get("RABBITMQ_CLIENT_KEY").(string)
 		Config.RabbitMQCert = v.Get("RABBITMQ_CLIENT_CERT").(string)
 		Config.MongoDBUsername = v.Get("MONGODB_USERNAME").(string)
@@ -118,8 +116,6 @@ func LoadConfig(configPath string, env string) error {
 		Config.ServerCACert = ""
 		Config.ServerCert = ""
 		Config.ServerKey = ""
-		Config.MongoDBCert = ""
-		Config.MongoDBKey = ""
 		Config.RabbitMQKey = ""
 		Config.RabbitMQCert = ""
 		Config.MongoDBUsername = ""
