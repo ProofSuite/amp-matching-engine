@@ -77,7 +77,7 @@ func NewOrderDao(opts ...OrderDaoOption) *OrderDao {
 	}
 
 	i8 := mgo.Index{
-		Key: []string{"baseToken", "quoteToken", "side", "status"}
+		Key: []string{"baseToken", "quoteToken", "side", "status"},
 	}
 
 	err := db.Session.DB(dao.dbName).C(dao.collectionName).EnsureIndex(index)

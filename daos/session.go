@@ -70,9 +70,9 @@ func NewTLSSession() *mgo.Session {
 
 	dialInfo := &mgo.DialInfo{
 		Addrs: []string{
-			"ampcluster0-shard-00-00-xzynf.mongodb.net:27017",
-			"ampcluster0-shard-00-01-xzynf.mongodb.net:27017",
-			"ampcluster0-shard-00-02-xzynf.mongodb.net:27017",
+			app.Config.MongoDBShardURL1,
+			app.Config.MongoDBShardURL2,
+			app.Config.MongoDBShardURL3,
 		},
 		Timeout:  60 * time.Second,
 		Database: "admin",
