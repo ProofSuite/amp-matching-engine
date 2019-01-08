@@ -18,9 +18,12 @@ type appConfig struct {
 	// the server port. Defaults to 8080
 	ServerPort int `mapstructure:"server_port"`
 	// the data source name (MongoURL) for connecting to the database. required.
-	MongoURL        string `mapstructure:"mongo_url"`
-	MongoDBPassword string `mapstructure:"mongo_password"`
-	MongoDBUsername string `mapstructure:"mongo_username"`
+	MongoURL         string `mapstructure:"mongo_url"`
+	MongoDBPassword  string `mapstructure:"mongo_password"`
+	MongoDBUsername  string `mapstructure:"mongo_username"`
+	MongoDBShardURL1 string `mapstructure:"mongo_shard_url_1"`
+	MongoDBShardURL2 string `mapstructure:"mongo_shard_url_2"`
+	MongoDBShardURL3 string `mapstructure:"mongo_shard_url_3"`
 
 	RabbitMQURL      string `mapstructure:"rabbitmq_url"`
 	RabbitMQPassword string `mapstructure:"rabbitmq_password"`
@@ -105,27 +108,29 @@ func LoadConfig(configPath string, env string) error {
 		Config.ServerCACert = v.Get("MATCHING_ENGINE_CA_CERT").(string)
 		Config.ServerCert = v.Get("MATCHING_ENGINE_SERVER_CERT").(string)
 		Config.ServerKey = v.Get("MATCHING_ENGINE_SERVER_KEY").(string)
-		Config.MongoDBCert = v.Get("MONGODB_CLIENT_CERT").(string)
-		Config.MongoDBKey = v.Get("MONGODB_CLIENT_KEY").(string)
 		Config.RabbitMQKey = v.Get("RABBITMQ_CLIENT_KEY").(string)
 		Config.RabbitMQCert = v.Get("RABBITMQ_CLIENT_CERT").(string)
 		Config.MongoDBUsername = v.Get("MONGODB_USERNAME").(string)
 		Config.MongoDBPassword = v.Get("MONGODB_PASSWORD").(string)
 		Config.RabbitMQUsername = v.Get("RABBITMQ_USERNAME").(string)
 		Config.RabbitMQPassword = v.Get("RABBITMQ_PASSWORD").(string)
+		Config.MongoDBShardURL1 = v.Get("MONGODB_SHARD_URL_1").(string)
+		Config.MongoDBShardURL2 = v.Get("MONGODB_SHARD_URL_2").(string)
+		Config.MongoDBShardURL3 = v.Get("MONGODB_SHARD_URL_3").(string)
 	} else {
 		Config.EnableTLS = false
 		Config.ServerCACert = ""
 		Config.ServerCert = ""
 		Config.ServerKey = ""
-		Config.MongoDBCert = ""
-		Config.MongoDBKey = ""
 		Config.RabbitMQKey = ""
 		Config.RabbitMQCert = ""
 		Config.MongoDBUsername = ""
 		Config.MongoDBPassword = ""
 		Config.RabbitMQUsername = ""
 		Config.RabbitMQPassword = ""
+		Config.MongoDBShardURL1 = ""
+		Config.MongoDBShardURL2 = ""
+		Config.MongoDBShardURL3 = ""
 	}
 
 	//Ethereum Configuration
@@ -141,6 +146,9 @@ func LoadConfig(configPath string, env string) error {
 	logger.Infof("Exchange contract address: %v", Config.Ethereum["exchange_address"])
 	logger.Infof("MongoDB url: %v", Config.MongoURL)
 	logger.Infof("MongoUserName: %v", Config.MongoDBUsername)
+	logger.Infof("MongoShardURL2: %v", Config.MongoDBShardURL1)
+	logger.Infof("MongoShardURL2: %v", Config.MongoDBShardURL2)
+	logger.Infof("MongoShardURL2: %v", Config.MongoDBShardURL3)
 	logger.Infof("RabbitMQ url: %v", Config.RabbitMQURL)
 	logger.Infof("RabbitMQUserName: %v", Config.RabbitMQUsername)
 	logger.Infof("Fee Account: %v", Config.Ethereum["fee_account"])
