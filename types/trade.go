@@ -236,6 +236,11 @@ func (t *Trade) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+func (t *Trade) QuoteAmount(p *Pair) *big.Int {
+	pairMultiplier := p.PairMultiplier()
+	return math.Div(math.Mul(t.Amount, t.PricePoint), pairMultiplier)
+}
+
 func (t *Trade) GetBSON() (interface{}, error) {
 	tr := TradeRecord{
 		ID:             t.ID,

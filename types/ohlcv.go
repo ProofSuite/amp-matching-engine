@@ -36,6 +36,19 @@ type OHLCVParams struct {
 	Units    string          `json:"units"`
 }
 
+func (t *Tick) AveragePrice() *big.Int {
+	return math.Avg(t.Open, t.Close)
+}
+
+// RoundedVolume returns the value exchanged during this tick in the currency for which the 'exchangeRate' param
+// was provided.
+func (t *Tick) ConvertedVolume(p *Pair, exchangeRate float64) float64 {
+	valueAsToken := math.DivideToFloat(t.Volume, p.BaseTokenMultiplier())
+	value := valueAsToken / exchangeRate
+
+	return value
+}
+
 // MarshalJSON returns the json encoded byte array representing the trade struct
 func (t *Tick) MarshalJSON() ([]byte, error) {
 	tick := map[string]interface{}{

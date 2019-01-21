@@ -3,6 +3,7 @@ package interfaces
 import (
 	"context"
 	"math/big"
+	"time"
 
 	"github.com/Proofsuite/amp-matching-engine/contracts/contractsinterfaces"
 	"github.com/Proofsuite/amp-matching-engine/rabbitmq"
@@ -27,6 +28,7 @@ type OrderDao interface {
 	GetByID(id bson.ObjectId) (*types.Order, error)
 	GetByHash(h common.Hash) (*types.Order, error)
 	GetByHashes(hashes []common.Hash) ([]*types.Order, error)
+
 	GetByUserAddress(addr common.Address, limit ...int) ([]*types.Order, error)
 	GetCurrentByUserAddress(a common.Address, limit ...int) ([]*types.Order, error)
 	GetHistoryByUserAddress(a common.Address, limit ...int) ([]*types.Order, error)
@@ -76,6 +78,7 @@ type PairDao interface {
 	GetByName(name string) (*types.Pair, error)
 	GetByTokenSymbols(baseTokenSymbol, quoteTokenSymbol string) (*types.Pair, error)
 	GetByTokenAddress(baseToken, quoteToken common.Address) (*types.Pair, error)
+	GetDefaultPairs() ([]types.Pair, error)
 	GetListedPairs() ([]types.Pair, error)
 	GetUnlistedPairs() ([]types.Pair, error)
 }
@@ -87,6 +90,7 @@ type TradeDao interface {
 	GetAll() ([]types.Trade, error)
 	Aggregate(q []bson.M) ([]*types.Tick, error)
 	GetByPairName(name string) ([]*types.Trade, error)
+	GetErroredTradeCount(start, end time.Time) (int, error)
 	GetByHash(h common.Hash) (*types.Trade, error)
 	GetByMakerOrderHash(h common.Hash) ([]*types.Trade, error)
 	GetByTakerOrderHash(h common.Hash) ([]*types.Trade, error)
@@ -142,6 +146,12 @@ type Engine interface {
 	// RecoverOrders(matches types.Matches) error
 	// CancelOrder(order *types.Order) (*types.EngineResponse, error)
 	// DeleteOrder(o *types.Order) error
+}
+
+type InfoService interface {
+	GetExchangeData() (*types.ExchangeData, error)
+	GetExchangeStats() (*types.ExchangeStats, error)
+	GetPairStats() (*types.PairStats, error)
 }
 
 type WalletService interface {
@@ -252,6 +262,11 @@ type AccountService interface {
 type ValidatorService interface {
 	ValidateBalance(o *types.Order) error
 	ValidateAvailableBalance(o *types.Order) error
+}
+
+type PriceService interface {
+	GetDollarMarketPrices(baseCurrencies []string) (map[string]float64, error)
+	GetMultipleMarketPrices(baseCurrencies []string, quoteCurrencies []string) (map[string]map[string]float64, error)
 }
 
 type EthereumConfig interface {
