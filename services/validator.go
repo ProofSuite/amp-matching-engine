@@ -45,12 +45,6 @@ func (s *ValidatorService) ValidateAvailableBalance(o *types.Order) error {
 
 	totalRequiredAmount := o.TotalRequiredSellAmount(pair)
 
-	// balanceRecord, err := s.accountDao.GetTokenBalances(o.UserAddress)
-	// if err != nil {
-	// 	logger.Error(err)
-	// 	return err
-	// }
-
 	var sellTokenBalance *big.Int
 	var sellTokenAllowance *big.Int
 
@@ -109,19 +103,6 @@ func (s *ValidatorService) ValidateAvailableBalance(o *types.Order) error {
 		return fmt.Errorf("Insufficient %v allowance available", o.SellTokenSymbol())
 	}
 
-	// sellTokenBalanceRecord := balanceRecord[o.SellToken()]
-	// if sellTokenBalanceRecord == nil {
-	// 	return errors.New("Account error: Balance record not found")
-	// }
-
-	// sellTokenBalanceRecord.Balance.Set(sellTokenBalance)
-	// sellTokenBalanceRecord.Allowance.Set(sellTokenAllowance)
-	// err = s.accountDao.UpdateTokenBalance(o.UserAddress, o.SellToken(), sellTokenBalanceRecord)
-	// if err != nil {
-	// 	logger.Error(err)
-	// 	return err
-	// }
-
 	return nil
 }
 
@@ -135,12 +116,6 @@ func (s *ValidatorService) ValidateBalance(o *types.Order) error {
 	}
 
 	totalRequiredAmount := o.TotalRequiredSellAmount(pair)
-
-	// balanceRecord, err := s.accountDao.GetTokenBalances(o.UserAddress)
-	// if err != nil {
-	// 	logger.Error(err)
-	// 	return err
-	// }
 
 	var sellTokenBalance *big.Int
 	var sellTokenAllowance *big.Int
@@ -182,19 +157,6 @@ func (s *ValidatorService) ValidateBalance(o *types.Order) error {
 	if sellTokenAllowance.Cmp(totalRequiredAmount) == -1 {
 		return fmt.Errorf("Insufficient %v Allowance", o.SellTokenSymbol())
 	}
-
-	// sellTokenBalanceRecord := balanceRecord[o.SellToken()]
-	// if sellTokenBalanceRecord == nil {
-	// 	return errors.New("Account error: Balance record not found")
-	// }
-
-	// sellTokenBalanceRecord.Balance.Set(sellTokenBalance)
-	// sellTokenBalanceRecord.Allowance.Set(sellTokenAllowance)
-	// err = s.accountDao.UpdateTokenBalance(o.UserAddress, o.SellToken(), sellTokenBalanceRecord)
-	// if err != nil {
-	// 	logger.Error(err)
-	// 	return err
-	// }
 
 	return nil
 }

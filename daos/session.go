@@ -74,10 +74,14 @@ func NewTLSSession() *mgo.Session {
 			app.Config.MongoDBShardURL2,
 			app.Config.MongoDBShardURL3,
 		},
-		Timeout:  60 * time.Second,
-		Database: "admin",
-		Username: app.Config.MongoDBUsername,
-		Password: app.Config.MongoDBPassword,
+		Timeout:       20 * time.Second,
+		ReadTimeout:   20 * time.Second,
+		WriteTimeout:  20 * time.Second,
+		PoolTimeout:   20 * time.Second,
+		MaxIdleTimeMS: 30000,
+		Database:      "admin",
+		Username:      app.Config.MongoDBUsername,
+		Password:      app.Config.MongoDBPassword,
 	}
 
 	dialInfo.DialServer = func(addr *mgo.ServerAddr) (net.Conn, error) {
@@ -181,6 +185,14 @@ func (d *Database) GetAndSort(dbName, collection string, query interface{}, sort
 	defer sc.Close()
 
 	err = sc.DB(dbName).C(collection).Find(query).SetMaxTime(defaultTimeout).Sort(sort...).Skip(offset).Limit(limit).All(response)
+	return
+}
+
+func (d *Database) Count(dbName, collection string, query interface{}) (n int, err error) {
+	sc := d.Session.Copy()
+	defer sc.Close()
+
+	n, err = sc.DB(dbName).C(collection).Find(query).Count()
 	return
 }
 

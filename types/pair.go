@@ -8,8 +8,8 @@ import (
 	"github.com/Proofsuite/amp-matching-engine/utils/math"
 	"github.com/ethereum/go-ethereum/common"
 
-	validation "github.com/go-ozzo/ozzo-validation"
 	"github.com/globalsign/mgo/bson"
+	validation "github.com/go-ozzo/ozzo-validation"
 )
 
 // Pair struct is used to model the pair data in the system and DB
@@ -154,6 +154,22 @@ func (p *Pair) Name() string {
 	return name
 }
 
+func (p *Pair) ParseAmount(a *big.Int) float64 {
+	nominator := a
+	denominator := p.BaseTokenMultiplier()
+	amount := math.DivideToFloat(nominator, denominator)
+
+	return amount
+}
+
+func (p *Pair) ParsePricePoint(pp *big.Int) float64 {
+	nominator := pp
+	denominator := math.Mul(math.Exp(big.NewInt(10), big.NewInt(18)), p.QuoteTokenMultiplier())
+	price := math.DivideToFloat(nominator, denominator)
+
+	return price
+}
+
 func (p *Pair) MinQuoteAmount() *big.Int {
 	return math.Add(math.Mul(big.NewInt(2), p.MakeFee), math.Mul(big.NewInt(2), p.TakeFee))
 }
@@ -237,20 +253,22 @@ func (p *Pair) GetKVPrefix() string {
 }
 
 type PairData struct {
-	Pair        PairID   `json:"id,omitempty" bson:"_id"`
-	Close       *big.Int `json:"close,omitempty" bson:"close"`
-	Count       *big.Int `json:"count,omitempty" bson:"count"`
-	High        *big.Int `json:"high,omitempty" bson:"high"`
-	Low         *big.Int `json:"low,omitempty" bson:"low"`
-	Open        *big.Int `json:"open,omitempty" bson:"open"`
-	Volume      *big.Int `json:"volume,omitempty" bson:"volume"`
-	Timestamp   int64    `json:"timestamp,omitempty" bson:"timestamp"`
-	OrderVolume *big.Int `json:"orderVolume,omitempty" bson:"orderVolume"`
-	OrderCount  *big.Int `json:"orderCount,omitempty" bson:"orderCount"`
-	AskPrice    *big.Int `json:"askPrice,omitempty" bson:"askPrice"`
-	BidPrice    *big.Int `json:"bidPrice,omitempty" bson:"bidPrice"`
-	Price       *big.Int `json:"price,omitempty" bson:"price"`
-	Rank        int      `json"rank,omitempty" bson:"rank"`
+	Pair               PairID   `json:"id,omitempty" bson:"_id"`
+	Close              *big.Int `json:"close,omitempty" bson:"close"`
+	Count              *big.Int `json:"count,omitempty" bson:"count"`
+	High               *big.Int `json:"high,omitempty" bson:"high"`
+	Low                *big.Int `json:"low,omitempty" bson:"low"`
+	Open               *big.Int `json:"open,omitempty" bson:"open"`
+	Volume             *big.Int `json:"volume,omitempty" bson:"volume"`
+	Timestamp          int64    `json:"timestamp,omitempty" bson:"timestamp"`
+	OrderVolume        *big.Int `json:"orderVolume,omitempty" bson:"orderVolume"`
+	OrderCount         *big.Int `json:"orderCount,omitempty" bson:"orderCount"`
+	AverageOrderAmount *big.Int `json:"averageOrderAmount" bson:"averageOrderAmount"`
+	AverageTradeAmount *big.Int `json:"averageTradeAmount" bson:"averageTradeAmount"`
+	AskPrice           *big.Int `json:"askPrice,omitempty" bson:"askPrice"`
+	BidPrice           *big.Int `json:"bidPrice,omitempty" bson:"bidPrice"`
+	Price              *big.Int `json:"price,omitempty" bson:"price"`
+	Rank               int      `json"rank,omitempty" bson:"rank"`
 }
 
 func (p *PairData) MarshalJSON() ([]byte, error) {
@@ -296,6 +314,14 @@ func (p *PairData) MarshalJSON() ([]byte, error) {
 		pairData["orderCount"] = p.OrderCount.String()
 	}
 
+	if p.AverageOrderAmount != nil {
+		pairData["averageOrderAmount"] = p.AverageOrderAmount.String()
+	}
+
+	if p.AverageTradeAmount != nil {
+		pairData["averageTradeAmount"] = p.AverageTradeAmount.String()
+	}
+
 	if p.AskPrice != nil {
 		pairData["askPrice"] = p.AskPrice.String()
 	}
@@ -315,4 +341,28 @@ func (p *PairData) MarshalJSON() ([]byte, error) {
 func (p *PairData) AddressCode() string {
 	code := p.Pair.BaseToken.Hex() + "::" + p.Pair.QuoteToken.Hex()
 	return code
+}
+
+func (p *PairData) ToAPIData(pair *Pair) *PairAPIData {
+	pairAPIData := PairAPIData{}
+	pairAPIData.PairName = p.Pair.PairName
+	pairAPIData.LastPrice = pair.ParsePricePoint(p.Close)
+	pairAPIData.Volume = pair.ParseAmount(p.Volume)
+	pairAPIData.OrderVolume = pair.ParseAmount(p.OrderVolume)
+	pairAPIData.AverageOrderAmount = pair.ParseAmount(p.AverageOrderAmount)
+	pairAPIData.AverageTradeAmount = pair.ParseAmount(p.AverageTradeAmount)
+
+	return &pairAPIData
+}
+
+//PairAPIData is a similar structure to PairData that contains human-readable data for a certain pair
+type PairAPIData struct {
+	PairName           string  `json:"pairName"`
+	LastPrice          float64 `json:"lastPrice"`
+	TradeCount         float64 `json:"tradeCount"`
+	OrderCount         float64 `json:"orderCount"`
+	Volume             float64 `json:"volume"`
+	OrderVolume        float64 `json:"orderVolume"`
+	AverageOrderAmount float64 `json:"averageOrderAmount"`
+	AverageTradeAmount float64 `json:"averageTradeAmount"`
 }

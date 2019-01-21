@@ -370,18 +370,20 @@ func (s *PairService) GetAllTokenPairData() ([]*types.PairData, error) {
 	pairsData := []*types.PairData{}
 	for _, p := range pairs {
 		pairData := &types.PairData{
-			Pair:        types.PairID{p.Name(), p.BaseTokenAddress, p.QuoteTokenAddress},
-			Open:        big.NewInt(0),
-			High:        big.NewInt(0),
-			Low:         big.NewInt(0),
-			Volume:      big.NewInt(0),
-			Close:       big.NewInt(0),
-			Count:       big.NewInt(0),
-			OrderVolume: big.NewInt(0),
-			OrderCount:  big.NewInt(0),
-			BidPrice:    big.NewInt(0),
-			AskPrice:    big.NewInt(0),
-			Price:       big.NewInt(0),
+			Pair:               types.PairID{p.Name(), p.BaseTokenAddress, p.QuoteTokenAddress},
+			Open:               big.NewInt(0),
+			High:               big.NewInt(0),
+			Low:                big.NewInt(0),
+			Volume:             big.NewInt(0),
+			Close:              big.NewInt(0),
+			Count:              big.NewInt(0),
+			OrderVolume:        big.NewInt(0),
+			OrderCount:         big.NewInt(0),
+			BidPrice:           big.NewInt(0),
+			AskPrice:           big.NewInt(0),
+			Price:              big.NewInt(0),
+			AverageOrderAmount: big.NewInt(0),
+			AverageTradeAmount: big.NewInt(0),
 		}
 
 		for _, t := range tradeData {
@@ -392,6 +394,8 @@ func (s *PairService) GetAllTokenPairData() ([]*types.PairData, error) {
 				pairData.Volume = t.Volume
 				pairData.Close = t.Close
 				pairData.Count = t.Count
+				pairData.AverageTradeAmount = math.Div(t.Volume, t.Count)
+
 			}
 		}
 
@@ -400,6 +404,7 @@ func (s *PairService) GetAllTokenPairData() ([]*types.PairData, error) {
 				pairData.OrderVolume = o.OrderVolume
 				pairData.OrderCount = o.OrderCount
 				pairData.BidPrice = o.BestPrice
+				pairData.AverageOrderAmount = math.Div(pairData.OrderVolume, pairData.OrderCount)
 			}
 		}
 
@@ -408,6 +413,7 @@ func (s *PairService) GetAllTokenPairData() ([]*types.PairData, error) {
 				pairData.OrderVolume = math.Add(pairData.OrderVolume, o.OrderVolume)
 				pairData.OrderCount = math.Add(pairData.OrderCount, o.OrderCount)
 				pairData.AskPrice = o.BestPrice
+				pairData.AverageOrderAmount = math.Div(pairData.OrderVolume, pairData.OrderCount)
 
 				if math.IsNotEqual(pairData.BidPrice, big.NewInt(0)) && math.IsNotEqual(pairData.AskPrice, big.NewInt(0)) {
 					pairData.Price = math.Avg(pairData.BidPrice, pairData.AskPrice)
