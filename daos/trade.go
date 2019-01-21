@@ -239,6 +239,24 @@ func (dao *TradeDao) GetAll() ([]types.Trade, error) {
 	return response, nil
 }
 
+func (dao *TradeDao) GetErroredTradeCount(start, end time.Time) (int, error) {
+	q := bson.M{
+		"status": bson.M{"$in": []string{"ERROR"}},
+		"createdAt": bson.M{
+			"$gte": start,
+			"$lt":  end,
+		},
+	}
+
+	n, err := db.Count(dao.dbName, dao.collectionName, q)
+	if err != nil {
+		logger.Error(err)
+		return 0, err
+	}
+
+	return n, nil
+}
+
 // Aggregate function calls the aggregate pipeline of mongodb
 func (dao *TradeDao) Aggregate(q []bson.M) ([]*types.Tick, error) {
 	var res []*types.Tick

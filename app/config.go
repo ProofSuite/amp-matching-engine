@@ -113,8 +113,8 @@ func LoadConfig(configPath string, env string) error {
 		Config.MongoDBUsername = v.Get("MONGODB_USERNAME").(string)
 		Config.MongoDBPassword = v.Get("MONGODB_PASSWORD").(string)
 		Config.RabbitMQUsername = v.Get("RABBITMQ_USERNAME").(string)
-		Config.RabbitMQPassword = v.Get("RABBITMQ_PASSWORD").(string)
 		Config.MongoDBShardURL1 = v.Get("MONGODB_SHARD_URL_1").(string)
+		Config.RabbitMQPassword = v.Get("RABBITMQ_PASSWORD").(string)
 		Config.MongoDBShardURL2 = v.Get("MONGODB_SHARD_URL_2").(string)
 		Config.MongoDBShardURL3 = v.Get("MONGODB_SHARD_URL_3").(string)
 	} else {

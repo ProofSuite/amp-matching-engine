@@ -125,6 +125,9 @@ func NewRouter(
 	tokenService := services.NewTokenService(tokenDao)
 	tradeService := services.NewTradeService(tradeDao)
 	validatorService := services.NewValidatorService(provider, accountDao, orderDao, pairDao)
+	priceService := services.NewPriceService()
+
+	infoService := services.NewInfoService(pairDao, tokenDao, tradeDao, orderDao, priceService)
 	pairService := services.NewPairService(pairDao, tokenDao, tradeDao, orderDao, eng, provider)
 	orderService := services.NewOrderService(orderDao, pairDao, accountDao, tradeDao, eng, validatorService, rabbitConn)
 	orderBookService := services.NewOrderBookService(pairDao, tokenDao, orderDao, eng)
@@ -158,7 +161,7 @@ func NewRouter(
 	}
 
 	// deploy http and ws endpoints
-	endpoints.ServeInfoResource(r, walletService, tokenService)
+	endpoints.ServeInfoResource(r, walletService, tokenService, infoService)
 	endpoints.ServeAccountResource(r, accountService)
 	endpoints.ServeTokenResource(r, tokenService)
 	endpoints.ServePairResource(r, pairService)

@@ -5,6 +5,7 @@ import (
 
 	"github.com/Proofsuite/amp-matching-engine/app"
 	"github.com/Proofsuite/amp-matching-engine/interfaces"
+	"github.com/Proofsuite/amp-matching-engine/types"
 	"github.com/Proofsuite/amp-matching-engine/utils/httputils"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gorilla/mux"
@@ -13,17 +14,22 @@ import (
 type infoEndpoint struct {
 	walletService interfaces.WalletService
 	tokenService  interfaces.TokenService
+	infoService   interfaces.InfoService
 }
 
 func ServeInfoResource(
 	r *mux.Router,
 	walletService interfaces.WalletService,
 	tokenService interfaces.TokenService,
+	infoService interfaces.InfoService,
 ) {
 
-	e := &infoEndpoint{walletService, tokenService}
+	e := &infoEndpoint{walletService, tokenService, infoService}
 	r.HandleFunc("/info", e.handleGetInfo)
 	r.HandleFunc("/info/exchange", e.handleGetExchangeInfo)
+	r.HandleFunc("/info/exchange/data", e.handleGetExchangeData)
+	r.HandleFunc("/info/exchange/stats", e.handleGetExchangeStats)
+	r.HandleFunc("/info/pairs/stats", e.handleGetPairStats)
 	r.HandleFunc("/info/operators", e.handleGetOperatorsInfo)
 	r.HandleFunc("/info/fees", e.handleGetFeeInfo)
 }
@@ -97,4 +103,52 @@ func (e *infoEndpoint) handleGetFeeInfo(w http.ResponseWriter, r *http.Request) 
 	}
 
 	httputils.WriteJSON(w, http.StatusOK, fees)
+}
+
+func (e *infoEndpoint) handleGetExchangeStats(w http.ResponseWriter, r *http.Request) {
+	res, err := e.infoService.GetExchangeStats()
+	if err != nil {
+		logger.Error(err)
+		httputils.WriteError(w, http.StatusInternalServerError, "")
+		return
+	}
+
+	if res == nil {
+		httputils.WriteJSON(w, http.StatusOK, []types.Pair{})
+		return
+	}
+
+	httputils.WriteJSON(w, http.StatusOK, res)
+}
+
+func (e *infoEndpoint) handleGetPairStats(w http.ResponseWriter, r *http.Request) {
+	res, err := e.infoService.GetPairStats()
+	if err != nil {
+		logger.Error(err)
+		httputils.WriteError(w, http.StatusInternalServerError, "")
+		return
+	}
+
+	if res == nil {
+		httputils.WriteJSON(w, http.StatusOK, []types.Pair{})
+		return
+	}
+
+	httputils.WriteJSON(w, http.StatusOK, res)
+}
+
+func (e *infoEndpoint) handleGetExchangeData(w http.ResponseWriter, r *http.Request) {
+	res, err := e.infoService.GetExchangeData()
+	if err != nil {
+		logger.Error(err)
+		httputils.WriteError(w, http.StatusInternalServerError, "")
+		return
+	}
+
+	if res == nil {
+		httputils.WriteJSON(w, http.StatusOK, []types.Pair{})
+		return
+	}
+
+	httputils.WriteJSON(w, http.StatusOK, res)
 }

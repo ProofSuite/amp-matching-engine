@@ -76,6 +76,24 @@ func (dao *PairDao) GetAll() ([]types.Pair, error) {
 	return res, nil
 }
 
+func (dao *PairDao) GetDefaultPairs() ([]types.Pair, error) {
+	var res []types.Pair
+
+	sort := []string{"-rank"}
+	query := bson.M{"active": true, "listed": true, "rank": bson.M{"$gte": 5}}
+	err := db.GetAndSort(dao.dbName, dao.collectionName, query, sort, 0, 0, &res)
+	if err != nil {
+		logger.Error(err)
+		return nil, err
+	}
+
+	if res == nil {
+		res = []types.Pair{}
+	}
+
+	return res, nil
+}
+
 func (dao *PairDao) GetListedPairs() ([]types.Pair, error) {
 	var res []types.Pair
 
