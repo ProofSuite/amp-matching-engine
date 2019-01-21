@@ -77,6 +77,20 @@ func JSON(x interface{}) string {
 	return fmt.Sprint(string(b), "\n")
 }
 
+func MaxIntMap(m map[string]int) (string, int) {
+	var maxKey string = ""
+	var maxValue int = 0
+
+	for key, val := range m {
+		if val > maxValue {
+			maxValue = val
+			maxKey = key
+		}
+	}
+
+	return maxKey, maxValue
+}
+
 func PrintError(msg string, err error) {
 	log.Printf("\n%v: %v\n", msg, err)
 }
