@@ -351,6 +351,8 @@ func (p *PairData) ToAPIData(pair *Pair) *PairAPIData {
 	pairAPIData.OrderVolume = pair.ParseAmount(p.OrderVolume)
 	pairAPIData.AverageOrderAmount = pair.ParseAmount(p.AverageOrderAmount)
 	pairAPIData.AverageTradeAmount = pair.ParseAmount(p.AverageTradeAmount)
+	pairAPIData.TradeCount = int(p.Count.Int64())
+	pairAPIData.OrderCount = int(p.OrderCount.Int64())
 
 	return &pairAPIData
 }
@@ -359,8 +361,8 @@ func (p *PairData) ToAPIData(pair *Pair) *PairAPIData {
 type PairAPIData struct {
 	PairName           string  `json:"pairName"`
 	LastPrice          float64 `json:"lastPrice"`
-	TradeCount         float64 `json:"tradeCount"`
-	OrderCount         float64 `json:"orderCount"`
+	TradeCount         int     `json:"tradeCount"`
+	OrderCount         int     `json:"orderCount"`
 	Volume             float64 `json:"volume"`
 	OrderVolume        float64 `json:"orderVolume"`
 	AverageOrderAmount float64 `json:"averageOrderAmount"`
