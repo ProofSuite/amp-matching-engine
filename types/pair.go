@@ -343,6 +343,7 @@ func (p *PairData) AddressCode() string {
 	return code
 }
 
+//ToAPIData converts detailed data into public PairAPIData that contains
 func (p *PairData) ToAPIData(pair *Pair) *PairAPIData {
 	pairAPIData := PairAPIData{}
 	pairAPIData.PairName = p.Pair.PairName
