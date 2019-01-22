@@ -44,16 +44,19 @@ func (s *InfoService) GetExchangeStats() (*types.ExchangeStats, error) {
 
 	tokens, err := s.tokenDao.GetBaseTokens()
 	if err != nil {
+		logger.Error(err)
 		return nil, err
 	}
 
 	quoteTokens, err := s.tokenDao.GetQuoteTokens()
 	if err != nil {
+		logger.Error(err)
 		return nil, err
 	}
 
 	erroredTradeCount, err := s.tradeDao.GetErroredTradeCount(start, end)
 	if err != nil {
+		logger.Error(err)
 		return nil, err
 	}
 
@@ -68,11 +71,13 @@ func (s *InfoService) GetExchangeStats() (*types.ExchangeStats, error) {
 
 	rates, err := s.priceService.GetDollarMarketPrices(tokenSymbols)
 	if err != nil {
+		logger.Error(err)
 		return nil, err
 	}
 
 	pairs, err := s.pairDao.GetDefaultPairs()
 	if err != nil {
+		logger.Error(err)
 		return nil, err
 	}
 
@@ -237,16 +242,19 @@ func (s *InfoService) GetExchangeData() (*types.ExchangeData, error) {
 
 	tokens, err := s.tokenDao.GetBaseTokens()
 	if err != nil {
+		logger.Error(err)
 		return nil, err
 	}
 
 	quoteTokens, err := s.tokenDao.GetQuoteTokens()
 	if err != nil {
+		logger.Error(err)
 		return nil, err
 	}
 
 	erroredTradeCount, err := s.tradeDao.GetErroredTradeCount(start, end)
 	if err != nil {
+		logger.Error(err)
 		return nil, err
 	}
 
@@ -261,11 +269,13 @@ func (s *InfoService) GetExchangeData() (*types.ExchangeData, error) {
 
 	rates, err := s.priceService.GetDollarMarketPrices(tokenSymbols)
 	if err != nil {
+		logger.Error(err)
 		return nil, err
 	}
 
 	pairs, err := s.pairDao.GetDefaultPairs()
 	if err != nil {
+		logger.Error(err)
 		return nil, err
 	}
 
@@ -473,11 +483,13 @@ func (s *InfoService) GetPairStats() (*types.PairStats, error) {
 
 	tokens, err := s.tokenDao.GetBaseTokens()
 	if err != nil {
+		logger.Error(err)
 		return nil, err
 	}
 
 	quoteTokens, err := s.tokenDao.GetQuoteTokens()
 	if err != nil {
+		logger.Error(err)
 		return nil, err
 	}
 
@@ -492,6 +504,7 @@ func (s *InfoService) GetPairStats() (*types.PairStats, error) {
 
 	pairs, err := s.pairDao.GetDefaultPairs()
 	if err != nil {
+		logger.Error(err)
 		return nil, err
 	}
 
