@@ -5,8 +5,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
-
-	"github.com/Proofsuite/amp-matching-engine/utils"
 )
 
 type PriceService struct{}
@@ -67,8 +65,6 @@ func (s *PriceService) GetMultipleMarketPrices(baseCurrencies []string, quoteCur
 		logger.Error(err)
 		return nil, err
 	}
-
-	utils.PrintJSON(result)
 
 	return result, nil
 }
