@@ -12,7 +12,7 @@ type ExchangeData struct {
 	TotalOrderAmount     float64        `json:"totalOrderAmount"`
 	MostTradedToken      string         `json:"mostTradedToken"`
 	MostTradedPair       string         `json:"mostTradedPair"`
-	TradeSuccessRatio    float64        `json:"tradeSuccessPercentage"`
+	TradeSuccessRatio    float64        `json:"tradeSuccessRatio"`
 }
 
 type ExchangeStats struct {
@@ -26,7 +26,7 @@ type ExchangeStats struct {
 	TotalOrderAmount     float64 `json:"totalOrderAmount"`
 	MostTradedToken      string  `json:"mostTradedToken"`
 	MostTradedPair       string  `json:"mostTradedPair"`
-	TradeSuccessRatio    float64 `json:"tradeSuccessPercentage"`
+	TradeSuccessRatio    float64 `json:"tradeSuccessRatio"`
 }
 
 type PairStats []*PairAPIData

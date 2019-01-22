@@ -23,7 +23,7 @@ type Tick struct {
 
 // PairID is the subdocument for aggregate grouping for OHLCV data
 type PairID struct {
-	PairName   string         `json:"pair" bson:"pairName"`
+	PairName   string         `json:"pairName" bson:"pairName"`
 	BaseToken  common.Address `json:"baseToken" bson:"baseToken"`
 	QuoteToken common.Address `json:"quoteToken" bson:"quoteToken"`
 }

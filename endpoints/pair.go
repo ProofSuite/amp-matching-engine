@@ -199,7 +199,51 @@ func (e *pairEndpoint) HandleGetPairData(w http.ResponseWriter, r *http.Request)
 	v := r.URL.Query()
 	baseToken := v.Get("baseToken")
 	quoteToken := v.Get("quoteToken")
+	exact := v.Get("exact")
+	simple := v.Get("simple")
 
+	if simple == "true" && exact == "true" {
+		httputils.WriteError(w, http.StatusBadRequest, "'simple' and 'exact' param can not both be true")
+		return
+	}
+
+	//Return simplified version of token pair data
+	if baseToken == "" && quoteToken == "" && simple == "true" {
+		res, err := e.pairService.GetAllSimplifiedTokenPairData()
+		if err != nil {
+			logger.Error(err)
+			httputils.WriteError(w, http.StatusInternalServerError, "")
+			return
+		}
+
+		if res == nil {
+			httputils.WriteJSON(w, http.StatusOK, []types.Pair{})
+			return
+		}
+
+		httputils.WriteJSON(w, http.StatusOK, res)
+		return
+	}
+
+	//Return formal version of token pair data
+	if baseToken == "" && quoteToken == "" && exact == "true" {
+		res, err := e.pairService.GetAllExactTokenPairData()
+		if err != nil {
+			logger.Error(err)
+			httputils.WriteError(w, http.StatusInternalServerError, "")
+			return
+		}
+
+		if res == nil {
+			httputils.WriteJSON(w, http.StatusOK, []types.Pair{})
+			return
+		}
+
+		httputils.WriteJSON(w, http.StatusOK, res)
+		return
+	}
+
+	//Return the simplified version of token pair data
 	if baseToken == "" && quoteToken == "" {
 		res, err := e.pairService.GetAllTokenPairData()
 		if err != nil {

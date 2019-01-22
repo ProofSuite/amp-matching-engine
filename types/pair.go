@@ -253,7 +253,7 @@ func (p *Pair) GetKVPrefix() string {
 }
 
 type PairData struct {
-	Pair               PairID   `json:"id,omitempty" bson:"_id"`
+	Pair               PairID   `json:"pair,omitempty" bson:"_id"`
 	Close              *big.Int `json:"close,omitempty" bson:"close"`
 	Count              *big.Int `json:"count,omitempty" bson:"count"`
 	High               *big.Int `json:"high,omitempty" bson:"high"`
@@ -344,8 +344,8 @@ func (p *PairData) AddressCode() string {
 }
 
 //ToAPIData converts detailed data into public PairAPIData that contains
-func (p *PairData) ToAPIData(pair *Pair) *PairAPIData {
-	pairAPIData := PairAPIData{}
+func (p *PairData) ToSimplifiedAPIData(pair *Pair) *SimplifiedPairAPIData {
+	pairAPIData := SimplifiedPairAPIData{}
 	pairAPIData.PairName = p.Pair.PairName
 	pairAPIData.LastPrice = pair.ParsePricePoint(p.Close)
 	pairAPIData.Volume = pair.ParseAmount(p.Volume)
@@ -358,8 +358,49 @@ func (p *PairData) ToAPIData(pair *Pair) *PairAPIData {
 	return &pairAPIData
 }
 
-//PairAPIData is a similar structure to PairData that contains human-readable data for a certain pair
+func (p *PairData) ToAPIData(pair *Pair) *PairAPIData {
+	pairAPIData := PairAPIData{}
+	pairAPIData.Pair = p.Pair
+	pairAPIData.Open = pair.ParsePricePoint(p.Open)
+	pairAPIData.High = pair.ParsePricePoint(p.High)
+	pairAPIData.Low = pair.ParsePricePoint(p.Low)
+	pairAPIData.Close = pair.ParsePricePoint(p.Close)
+	pairAPIData.Volume = pair.ParseAmount(p.Volume)
+	pairAPIData.Timestamp = int(p.Timestamp)
+	pairAPIData.OrderVolume = pair.ParseAmount(p.OrderVolume)
+	pairAPIData.OrderCount = int(p.OrderCount.Int64())
+	pairAPIData.TradeCount = int(p.Count.Int64())
+	pairAPIData.AverageOrderAmount = pair.ParseAmount(p.AverageOrderAmount)
+	pairAPIData.AverageTradeAmount = pair.ParseAmount(p.AverageTradeAmount)
+	pairAPIData.AskPrice = pair.ParsePricePoint(p.AskPrice)
+	pairAPIData.BidPrice = pair.ParsePricePoint(p.BidPrice)
+	pairAPIData.Price = pair.ParsePricePoint(p.Price)
+	pairAPIData.Rank = p.Rank
+
+	return &pairAPIData
+}
+
 type PairAPIData struct {
+	Pair               PairID  `json:"pair" bson:"_id"`
+	Open               float64 `json:"open" bson:"open"`
+	High               float64 `json:"high" bson:"high"`
+	Low                float64 `json:"low" bson:"low"`
+	Close              float64 `json:"close" bson:"close"`
+	Volume             float64 `json:"volume" bson:"volume"`
+	Timestamp          int     `json:"timestamp" bson:"timestamp"`
+	OrderVolume        float64 `json:"orderVolume" bson:"orderVolume"`
+	OrderCount         int     `json:"orderCount" bson:"orderCount"`
+	TradeCount         int     `json:"tradeCount" bson:"tradeCount"`
+	AverageOrderAmount float64 `json:"averageOrderAmount" bson:"averageOrderAmount"`
+	AverageTradeAmount float64 `json:"averageTradeAmount" bson:"averageTradeAmount"`
+	AskPrice           float64 `json:"askPrice" bson:"askPrice"`
+	BidPrice           float64 `json:"bidPrice" bson:"bidPrice"`
+	Price              float64 `json:"price" bson:"price"`
+	Rank               int     `json:"rank" bson:"rank"`
+}
+
+//PairAPIData is a similar structure to PairData that contains human-readable data for a certain pair
+type SimplifiedPairAPIData struct {
 	PairName           string  `json:"pairName"`
 	LastPrice          float64 `json:"lastPrice"`
 	TradeCount         int     `json:"tradeCount"`
