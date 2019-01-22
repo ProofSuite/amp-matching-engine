@@ -27,11 +27,11 @@ func ServeInfoResource(
 	e := &infoEndpoint{walletService, tokenService, infoService}
 	r.HandleFunc("/info", e.handleGetInfo)
 	r.HandleFunc("/info/exchange", e.handleGetExchangeInfo)
-	r.HandleFunc("/info/exchange/data", e.handleGetExchangeData)
-	r.HandleFunc("/info/exchange/stats", e.handleGetExchangeStats)
-	r.HandleFunc("/info/pairs/stats", e.handleGetPairStats)
 	r.HandleFunc("/info/operators", e.handleGetOperatorsInfo)
 	r.HandleFunc("/info/fees", e.handleGetFeeInfo)
+	r.HandleFunc("/stats/all", e.handleGetStats)
+	r.HandleFunc("/stats/trading", e.handleGetTradingStats)
+	r.HandleFunc("/stats/pairs", e.handleGetPairStats)
 }
 
 func (e *infoEndpoint) handleGetInfo(w http.ResponseWriter, r *http.Request) {
@@ -105,7 +105,7 @@ func (e *infoEndpoint) handleGetFeeInfo(w http.ResponseWriter, r *http.Request) 
 	httputils.WriteJSON(w, http.StatusOK, fees)
 }
 
-func (e *infoEndpoint) handleGetExchangeStats(w http.ResponseWriter, r *http.Request) {
+func (e *infoEndpoint) handleGetTradingStats(w http.ResponseWriter, r *http.Request) {
 	res, err := e.infoService.GetExchangeStats()
 	if err != nil {
 		logger.Error(err)
@@ -137,7 +137,7 @@ func (e *infoEndpoint) handleGetPairStats(w http.ResponseWriter, r *http.Request
 	httputils.WriteJSON(w, http.StatusOK, res)
 }
 
-func (e *infoEndpoint) handleGetExchangeData(w http.ResponseWriter, r *http.Request) {
+func (e *infoEndpoint) handleGetStats(w http.ResponseWriter, r *http.Request) {
 	res, err := e.infoService.GetExchangeData()
 	if err != nil {
 		logger.Error(err)
