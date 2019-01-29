@@ -215,7 +215,11 @@ func (s *InfoService) GetExchangeStats() (*types.ExchangeStats, error) {
 	mostTradedPair, _ := utils.MaxIntMap(pairTradeCounts)
 	totalOrders = totalSellOrders + totalBuyOrders
 	totalOrderAmount := totalBuyOrderAmount + totalSellOrderAmount
-	tradeSuccessRatio := float64(totalTrades-erroredTradeCount) / float64(totalTrades)
+
+	tradeSuccessRatio := float64(1)
+	if totalTrades > 0 {
+		tradeSuccessRatio = float64(totalTrades-erroredTradeCount) / float64(totalTrades)
+	}
 
 	stats := &types.ExchangeStats{
 		TotalOrders:          totalOrders,
