@@ -1,6 +1,7 @@
 package services
 
 import (
+	"log"
 	"math/big"
 	"time"
 
@@ -234,6 +235,8 @@ func (s *InfoService) GetExchangeStats() (*types.ExchangeStats, error) {
 		MostTradedPair:       mostTradedPair,
 		TradeSuccessRatio:    tradeSuccessRatio,
 	}
+
+	log.Printf("%+v\n", stats)
 
 	return stats, nil
 }
