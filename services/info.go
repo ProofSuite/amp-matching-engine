@@ -1,6 +1,7 @@
 package services
 
 import (
+	"log"
 	"math/big"
 	"time"
 
@@ -187,7 +188,10 @@ func (s *InfoService) GetExchangeStats() (*types.ExchangeStats, error) {
 		for _, t := range tradeData {
 			if t.AddressCode() == p.AddressCode() {
 				totalTrades = totalTrades + int(t.Count.Int64())
-				totalVolume = totalVolume + t.ConvertedVolume(&p, rates[p.BaseTokenSymbol])
+
+				if exchangeRate := rates[p.BaseTokenSymbol]; exchangeRate != 0 {
+					totalVolume = totalVolume + t.ConvertedVolume(&p, rates[p.BaseTokenSymbol])
+				}
 
 				pairTradeCounts[p.Name()] = int(t.Count.Int64())
 				tokenTradeCounts[p.BaseTokenSymbol] = tokenTradeCounts[p.BaseTokenSymbol] + int(t.Count.Int64())
@@ -197,7 +201,9 @@ func (s *InfoService) GetExchangeStats() (*types.ExchangeStats, error) {
 		for _, o := range bidsData {
 			if o.AddressCode() == p.AddressCode() {
 				// change and replace by equivalent dollar volume instead of order count
-				totalBuyOrderAmount = totalBuyOrderAmount + o.ConvertedVolume(&p, rates[p.BaseTokenSymbol])
+				if exchangeRate := rates[p.BaseTokenSymbol]; exchangeRate != 0 {
+					totalBuyOrderAmount = totalBuyOrderAmount + o.ConvertedVolume(&p, rates[p.BaseTokenSymbol])
+				}
 				totalBuyOrders = totalBuyOrders + int(o.OrderCount.Int64())
 			}
 		}
@@ -205,7 +211,9 @@ func (s *InfoService) GetExchangeStats() (*types.ExchangeStats, error) {
 		for _, o := range asksData {
 			if o.AddressCode() == p.AddressCode() {
 				// change and replace by equivalent dollar volume instead of order count
-				totalSellOrderAmount = totalSellOrderAmount + o.ConvertedVolume(&p, rates[p.BaseTokenSymbol])
+				if exchangeRate := rates[p.BaseTokenSymbol]; exchangeRate != 0 {
+					totalSellOrderAmount = totalSellOrderAmount + o.ConvertedVolume(&p, rates[p.BaseTokenSymbol])
+				}
 				totalSellOrders = totalSellOrders + int(o.OrderCount.Int64())
 			}
 		}
@@ -234,6 +242,8 @@ func (s *InfoService) GetExchangeStats() (*types.ExchangeStats, error) {
 		MostTradedPair:       mostTradedPair,
 		TradeSuccessRatio:    tradeSuccessRatio,
 	}
+
+	log.Printf("%+v\n", stats)
 
 	return stats, nil
 }
